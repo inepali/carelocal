@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+@theme {
+  /* ── Brand Colors ── */
+  --color-brand-50:  #edf7f3;
+  --color-brand-100: #d4ede4;
+  --color-brand-200: #a9dac9;
+  --color-brand-300: #74c3a8;
+  --color-brand-400: #40a884;
+  --color-brand-500: #1e8f6b;
+  --color-brand-600: #157354;
+  --color-brand-700: #125c44;
+  --color-brand-800: #0f4a36;
+  --color-brand-900: #0b3828;
+
+  --color-amber-400: #fbbf24;
+  --color-amber-500: #f59e0b;
+  --color-amber-600: #d97706;
+
+  /* ── Neutrals ── */
+  --color-surface:   #f8faf9;
+  --color-card:      #ffffff;
+  --color-border:    #e2e8e4;
+  --color-muted:     #6b7a73;
+
+  /* ── Typography ── */
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+}
+
+/* ── Base Reset ── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-surface);
+  color: #1a2e25;
+  line-height: 1.6;
+}
+
+/* ── Utility: gradient text ── */
+.gradient-text {
+  background: linear-gradient(135deg, var(--color-brand-600) 0%, var(--color-brand-400) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Utility: glass card ── */
+.glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.5);
+}
+
+/* ── Utility: shimmer animation for skeleton loading ── */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* ── Utility: subtle pulse for status indicators ── */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.6; transform: scale(0.85); }
+}
+.pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+
+/* ── Utility: slide-up animation ── */
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up { animation: slide-up 0.5s ease forwards; }
+
+/* ── Scrollbar styling ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-brand-200); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-brand-400); }
