@@ -98,7 +98,7 @@ export default function StaffProfilePage() {
           .from('staff_documents')
           .select('id, document_name, document_category')
           .eq('staff_id', profileData.id)
-        setVaultDocs(docs || [])
+        setVaultDocs((docs || []) as any)
       }
 
       setLoading(false)
