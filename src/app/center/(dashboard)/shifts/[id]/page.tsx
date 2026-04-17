@@ -394,7 +394,7 @@ export default function ShiftDetailPage() {
            {isFilled && confirmedClaim ? (
              <div className="bg-[#157354] rounded-[2.5rem] p-8 text-white shadow-xl shadow-[#157354]/20 animate-in fade-in slide-in-from-right-4">
                 <div className="flex items-center gap-2 text-[#a9dac9] font-black uppercase tracking-[0.25em] text-[10px] mb-6">
-                   <Users className="w-3.5 h-3.5" /> Assigned Professional
+                   <User className="w-3.5 h-3.5" /> Assigned Professional
                 </div>
                 <div className="flex items-center gap-5 mb-8">
                    <div className="w-20 h-20 rounded-3xl bg-white/10 flex items-center justify-center text-3xl font-black border-2 border-white/10">
