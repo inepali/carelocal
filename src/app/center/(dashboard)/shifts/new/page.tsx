@@ -21,6 +21,8 @@ export default function PostShiftPage() {
   const [staffType, setStaffType] = useState<StaffType | 'any'>('any')
   const [classroomId, setClassroomId] = useState('any')
   const [notes, setNotes] = useState('')
+  const [hourlyRate, setHourlyRate] = useState('20.00')
+  const [paymentMode, setPaymentMode] = useState('payroll')
 
   useEffect(() => {
     async function loadData() {
@@ -78,6 +80,8 @@ export default function PostShiftPage() {
         staff_type_needed: staffType === 'any' ? null : staffType,
         classroom_id: classroomId === 'any' ? null : classroomId,
         notes: notes || null,
+        hourly_rate: parseFloat(hourlyRate) || 0,
+        payment_mode: paymentMode,
         status: 'open',
         created_by: user.id
     }
@@ -94,14 +98,14 @@ export default function PostShiftPage() {
     }
 
     // Redirect back to shifts list
-    router.push('/center/dashboard/shifts')
+    router.push('/center/shifts')
   }
 
   return (
     <div className="max-w-2xl mx-auto pb-12">
       <div className="mb-6">
         <Link 
-            href="/center/dashboard/shifts" 
+            href="/center/shifts" 
             className="inline-flex items-center gap-2 text-sm text-[#6b7a73] hover:text-[#157354] transition-colors mb-4"
         >
             <ArrowLeft className="w-4 h-4" /> Back to Shifts
@@ -206,6 +210,48 @@ export default function PostShiftPage() {
                         className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25] resize-none"
                     />
                 </div>
+            </div>
+
+            {/* Compensation */}
+            <div className="space-y-4 pt-4">
+                <h2 className="text-lg font-bold text-[#1a2e25] flex items-center gap-2 border-b border-[#e2e8e4] pb-2">
+                    <span className="text-xl">💰</span> Pay & Payment
+                </h2>
+                
+                <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-1">
+                        <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Hourly Rate ($)</label>
+                        <div className="relative">
+                            <span className="absolute left-4 top-3.5 text-[#6b7a73] font-bold">$</span>
+                            <input 
+                                type="number" 
+                                step="0.50"
+                                required
+                                value={hourlyRate}
+                                onChange={(e) => setHourlyRate(e.target.value)}
+                                className="w-full pl-8 pr-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25] font-bold"
+                            />
+                        </div>
+                    </div>
+                    
+                    <div className="flex-1">
+                        <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Payment Method</label>
+                        <select
+                            value={paymentMode}
+                            onChange={(e) => setPaymentMode(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25] font-semibold"
+                        >
+                            <option value="payroll">Corporate Payroll</option>
+                            <option value="venmo">Venmo</option>
+                            <option value="cash">Cash</option>
+                            <option value="check">Company Check</option>
+                            <option value="zelle">Zelle</option>
+                        </select>
+                    </div>
+                </div>
+                <p className="text-[11px] text-[#6b7a73] italic">
+                    Transparency on pay and payment methods helps attract the best educators to your center.
+                </p>
             </div>
 
             {/* Actions */}

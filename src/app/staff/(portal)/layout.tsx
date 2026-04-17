@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, Calendar, FileText, UserCircle } from 'lucide-react'
+import { LogOut, Calendar, FileText, UserCircle, Globe } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 
@@ -18,14 +18,15 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return router.push('/login')
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('staff_profiles')
         .select('first_name, last_name')
         .eq('user_id', user.id)
-        .single()
-
-      if (data) {
-        setUserName(`${data.first_name} ${data.last_name}`)
+      
+      if (data && data.length > 0) {
+        setUserName(`${data[0].first_name} ${data[0].last_name}`)
+      } else {
+        setUserName(user.email?.split('@')[0] || 'Educator')
       }
       setLoading(false)
     }
@@ -39,6 +40,7 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
   }
 
   const NAVIGATION = [
+    { name: 'My Centers', href: '/staff/centers', icon: Globe },
     { name: 'Available Shifts', href: '/staff/shifts', icon: Calendar },
     { name: 'My Documents', href: '/staff/documents', icon: FileText },
     { name: 'My Profile', href: '/staff/profile', icon: UserCircle },
@@ -49,7 +51,7 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="min-h-screen bg-[#f8faf9] flex flex-col font-sans">
+    <div className="staff-shell min-h-screen bg-[#f8faf9] flex flex-col font-sans">
       {/* ── Top Navigation (Mobile friendly for staff) ── */}
       <header className="h-16 bg-[#0b3828] text-white flex items-center justify-between px-6 sticky top-0 z-20">
         <Link href="/staff/shifts" className="flex items-center gap-2">

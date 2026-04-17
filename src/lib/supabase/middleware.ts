@@ -8,8 +8,8 @@ export async function updateSession(request: NextRequest) {
 
   // Create an unauthenticated supabase client
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder',
     {
       cookies: {
         getAll() {
@@ -34,14 +34,20 @@ export async function updateSession(request: NextRequest) {
 
   const isCenterRoute = request.nextUrl.pathname.startsWith('/center')
   const isStaffRoute = request.nextUrl.pathname.startsWith('/staff')
+  const isAdminRoute = request.nextUrl.pathname.startsWith('/admin')
   
-  // Protect routes that require authentication
-  if ((isCenterRoute || isStaffRoute) && !user) {
+  // 1. Basic Auth Protection
+  if ((isCenterRoute || isStaffRoute || isAdminRoute) && !user) {
     const url = request.nextUrl.clone()
-    // Redirect to the login page (or center/staff specific login)
     url.pathname = '/login'
-    // Optional: store the redirect path
     url.searchParams.set('redirect', request.nextUrl.pathname)
+    return NextResponse.redirect(url)
+  }
+
+  // 2. Role-Based Protection for Super Admin
+  if (isAdminRoute && user?.app_metadata?.is_super_admin !== true) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login' // Or a "forbidden" page
     return NextResponse.redirect(url)
   }
 

@@ -1,11 +1,20 @@
 export type SubscriptionTier = 'starter' | 'growth' | 'network' | 'enterprise'
 export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused'
 export type StaffType = 'teacher' | 'floater' | 'support' | 'cook'
-export type CenterStaffStatus = 'invited' | 'active' | 'inactive' | 'removed'
+export type AgeGroup = 'infant' | 'toddler' | 'preschool' | 'school_age' | 'mixed'
+export type CenterStaffStatus = 'invited' | 'applying' | 'active' | 'inactive' | 'removed'
 export type DocumentCategory = 'identity' | 'certification' | 'background' | 'training' | 'medical' | 'other'
 export type DocReviewStatus = 'missing' | 'pending_review' | 'accepted' | 'rejected' | 'expired'
 export type ShiftStatus = 'open' | 'filled' | 'cancelled'
 export type ClaimStatus = 'pending' | 'confirmed' | 'cancelled'
+export type MetroArea = {
+  id: string
+  name: string
+  slug: string
+  state_code: string
+  is_active: boolean
+  created_at: string
+}
 
 export interface Center {
   id: string
@@ -21,6 +30,7 @@ export interface Center {
   license_number?: string
   max_capacity?: number
   logo_url?: string
+  metro_area_id?: string
   subscription_tier: SubscriptionTier
   subscription_status: SubscriptionStatus
   stripe_customer_id?: string
@@ -41,13 +51,47 @@ export interface StaffProfile {
   zip?: string
   staff_type: StaffType
   bio?: string
+  metro_area_id?: string
   available_days: string[]
   available_from?: string
   available_to?: string
+  preferred_payment_methods: string[]
+  availability_notes?: string
   avatar_url?: string
   is_active: boolean
   created_at: string
   updated_at: string
+}
+
+export interface StaffExperience {
+  id: string
+  staff_id: string
+  employer: string
+  role: string
+  age_group?: AgeGroup
+  start_month?: number
+  start_year?: number
+  end_month?: number
+  end_year?: number
+  is_current: boolean
+  description?: string
+  sort_order: number
+  created_at: string
+}
+
+export interface StaffCredential {
+  id: string
+  staff_id: string
+  credential_name: string
+  issuing_body?: string
+  credential_number?: string
+  issue_date?: string
+  expiry_date?: string
+  linked_document_id?: string
+  sort_order: number
+  created_at: string
+  // Joined
+  linked_document?: StaffDocument
 }
 
 export interface CenterStaff {
@@ -72,6 +116,8 @@ export interface StaffDocument {
   issued_date?: string
   expiry_date?: string
   file_url: string
+  file_key?: string
+  bucket_name?: string
   file_name?: string
   file_size_bytes?: number
   notes?: string
@@ -82,10 +128,14 @@ export interface CenterDocumentRequirement {
   id: string
   center_id: string
   document_name: string
+  document_category: DocumentCategory
   is_required: boolean
   applies_to?: StaffType[]
   notes?: string
   sort_order: number
+  template_file_key?: string
+  template_bucket_name?: string
+  template_file_name?: string
   created_at: string
 }
 
@@ -125,6 +175,8 @@ export interface Shift {
   end_time: string
   staff_type_needed?: StaffType
   require_docs_complete: boolean
+  hourly_rate?: number
+  payment_mode?: string
   status: ShiftStatus
   notes?: string
   created_by?: string
@@ -154,6 +206,14 @@ export const STAFF_TYPE_LABELS: Record<StaffType, string> = {
   floater: 'Floater',
   support: 'Support Staff',
   cook: 'Cook',
+}
+
+export const AGE_GROUP_LABELS: Record<AgeGroup, string> = {
+  infant:     'Infant (0–1)',
+  toddler:    'Toddler (1–3)',
+  preschool:  'Pre-K (3–5)',
+  school_age: 'School Age (5+)',
+  mixed:      'Mixed Ages',
 }
 
 export const DOCUMENT_CATEGORY_LABELS: Record<DocumentCategory, string> = {

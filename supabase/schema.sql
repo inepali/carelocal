@@ -279,12 +279,20 @@ create policy "Center admins can update their center"
   using (
     id in (select center_id from center_admins where user_id = auth.uid())
   );
+create policy "Authenticated users can create a center"
+  on centers for insert
+  to authenticated
+  with check (true);
 
 -- Center admins table
 alter table center_admins enable row level security;
 create policy "Users can see their own admin records"
   on center_admins for select
   using (user_id = auth.uid());
+create policy "Users can create their own admin records"
+  on center_admins for insert
+  to authenticated
+  with check (user_id = auth.uid());
 
 -- Staff profiles: visible to the owner and any center they belong to
 alter table staff_profiles enable row level security;
@@ -373,6 +381,21 @@ create policy "Center admins can confirm or cancel claims"
         select center_id from center_admins where user_id = auth.uid()
       )
     )
+  );
+
+-- Subscriptions
+alter table subscriptions enable row level security;
+create policy "Admins can view their own center subscriptions"
+  on subscriptions for select
+  to authenticated
+  using (
+    center_id in (select center_id from center_admins where user_id = auth.uid())
+  );
+create policy "Admins can create subscriptions for their center"
+  on subscriptions for insert
+  to authenticated
+  with check (
+    center_id in (select center_id from center_admins where user_id = auth.uid())
   );
 
 -- =============================================================

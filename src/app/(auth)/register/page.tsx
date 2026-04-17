@@ -1,21 +1,22 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff, ArrowRight, Loader2, Building2, User } from 'lucide-react'
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter()
-  // useSearchParams is used here
   const searchParams = useSearchParams()
   const inviteSlug = searchParams.get('invite')
   const isStaffInvite = !!inviteSlug
 
   const supabase = createClient()
   
-  const [step, setStep] = isStaffInvite ? useState(2) : useState(1)
+  // New State
+  const [accountType, setAccountType] = useState<'center' | 'staff' | null>(isStaffInvite ? 'staff' : null)
+  const [step, setStep] = useState(isStaffInvite ? 2 : 0) // Step 0 is selection
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -32,6 +33,8 @@ export default function RegisterPage() {
   // Staff profile details
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
+  const [city, setCity] = useState('')
+  const [zip, setZip] = useState('')
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
@@ -56,7 +59,7 @@ export default function RegisterPage() {
       return
     }
 
-    if (isStaffInvite) {
+    if (accountType === 'staff') {
       // ── STAFF REGISTRATION ──
       const { error: profileError } = await supabase
         .from('staff_profiles')
@@ -65,6 +68,8 @@ export default function RegisterPage() {
           first_name: firstName,
           last_name: lastName,
           email,
+          city,
+          zip,
           staff_type: 'floater', // Default
           is_active: true
         })
@@ -75,35 +80,37 @@ export default function RegisterPage() {
         return
       }
 
-      // Link to center pool
-      const { linkStaffToCenter } = await import('@/lib/api/invites')
-      const { error: linkError } = await linkStaffToCenter(authData.user.id, inviteSlug!)
-      
-      if (linkError) {
-        setError(linkError)
-        setLoading(false)
-        return
+      // Link to center pool ONLY if an invite was used
+      if (inviteSlug) {
+        const { linkStaffToCenter } = await import('@/lib/api/invites')
+        const { error: linkError } = await linkStaffToCenter(authData.user.id, inviteSlug!)
+        
+        if (linkError) {
+          setError(linkError)
+          setLoading(false)
+          return
+        }
       }
 
       router.push('/staff/shifts')
 
     } else {
       // ── CENTER REGISTRATION ──
+      const centerId = crypto.randomUUID()
       const slug = centerName.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.floor(Math.random() * 1000)
       
-      const { data: centerData, error: centerError } = await supabase
+      const { error: centerError } = await supabase
         .from('centers')
         .insert({
+          id: centerId,
           name: centerName,
           slug,
           email,
           phone,
           director_name: directorName,
         })
-        .select('id')
-        .single()
 
-      if (centerError || !centerData) {
+      if (centerError) {
         setError('Failed to create center profile.')
         setLoading(false)
         return
@@ -112,7 +119,7 @@ export default function RegisterPage() {
       const { error: adminError } = await supabase
         .from('center_admins')
         .insert({
-          center_id: centerData.id,
+          center_id: centerId,
           user_id: authData.user.id,
           role: 'owner',
         })
@@ -124,7 +131,7 @@ export default function RegisterPage() {
       }
 
       await supabase.from('subscriptions').insert({
-        center_id: centerData.id,
+        center_id: centerId,
         tier: 'starter',
         status: 'trialing',
         current_period_start: new Date().toISOString(),
@@ -152,13 +159,70 @@ export default function RegisterPage() {
           <p className="text-[#6b7a73] mb-8">
             {isStaffInvite 
               ? 'Complete your profile to start claiming shifts. Staff accounts are always free.' 
-              : 'Start your 60-day free trial. No credit card required.'}
+              : 'Choose how you want to use the platform to get started.'}
           </p>
 
-          <form onSubmit={step === 1 ? (e) => { e.preventDefault(); setStep(2) } : handleRegister} className="space-y-5">
+          <form onSubmit={(e) => {
+            e.preventDefault()
+            if (step === 0) setStep(accountType === 'center' ? 1 : 2)
+            else if (step === 1) setStep(2)
+            else handleRegister(e)
+          }} className="space-y-5">
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
                 {error}
+              </div>
+            )}
+
+            {step === 0 && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <button
+                  type="button"
+                  onClick={() => setAccountType('center')}
+                  className={`w-full p-6 rounded-2xl border-2 text-left transition-all ${
+                    accountType === 'center' 
+                      ? 'border-[#157354] bg-[#edf7f3]' 
+                      : 'border-[#e2e8e4] bg-white hover:border-[#157354]/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${accountType === 'center' ? 'bg-[#157354] text-white' : 'bg-[#f8faf9] text-[#6b7a73]'}`}>
+                      <Building2 className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-[#1a2e25]">I am a Childcare Center</div>
+                      <div className="text-sm text-[#6b7a73]">I want to post shifts and find staff.</div>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAccountType('staff')}
+                  className={`w-full p-6 rounded-2xl border-2 text-left transition-all ${
+                    accountType === 'staff' 
+                      ? 'border-[#157354] bg-[#edf7f3]' 
+                      : 'border-[#e2e8e4] bg-white hover:border-[#157354]/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${accountType === 'staff' ? 'bg-[#157354] text-white' : 'bg-[#f8faf9] text-[#6b7a73]'}`}>
+                      <User className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-[#1a2e25]">I am a Staff Member</div>
+                      <div className="text-sm text-[#6b7a73]">I want to find shifts at local centers.</div>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={!accountType}
+                  className="w-full flex items-center justify-center gap-2 bg-[#157354] text-white font-semibold py-4 rounded-xl hover:bg-[#0f4a36] transition-colors shadow-sm disabled:opacity-50"
+                >
+                  Next <ArrowRight className="w-4 h-4" />
+                </button>
               </div>
             )}
 
@@ -215,27 +279,49 @@ export default function RegisterPage() {
 
             {step === 2 && (
               <div className="space-y-5 animate-in fade-in slide-in-from-right-8 duration-500">
-                {isStaffInvite && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="firstName" className="block text-sm font-medium text-[#1a2e25] mb-1.5">First Name</label>
-                      <input 
-                        id="firstName" type="text" required value={firstName}
-                        onChange={(e) => setFirstName(e.target.value)}
-                        placeholder="Jane"
-                        className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
-                      />
+                {accountType === 'staff' && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="firstName" className="block text-sm font-medium text-[#1a2e25] mb-1.5">First Name</label>
+                        <input 
+                          id="firstName" type="text" required value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          placeholder="Jane"
+                          className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="lastName" className="block text-sm font-medium text-[#1a2e25] mb-1.5">Last Name</label>
+                        <input 
+                          id="lastName" type="text" required value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          placeholder="Doe"
+                          className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label htmlFor="lastName" className="block text-sm font-medium text-[#1a2e25] mb-1.5">Last Name</label>
-                      <input 
-                        id="lastName" type="text" required value={lastName}
-                        onChange={(e) => setLastName(e.target.value)}
-                        placeholder="Doe"
-                        className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
-                      />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="city" className="block text-sm font-medium text-[#1a2e25] mb-1.5">City</label>
+                        <input 
+                          id="city" type="text" required value={city}
+                          onChange={(e) => setCity(e.target.value)}
+                          placeholder="Charlotte"
+                          className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="zip" className="block text-sm font-medium text-[#1a2e25] mb-1.5">Zip Code</label>
+                        <input 
+                          id="zip" type="text" required value={zip}
+                          onChange={(e) => setZip(e.target.value)}
+                          placeholder="28202"
+                          className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
+                        />
+                      </div>
                     </div>
-                  </div>
+                  </>
                 )}
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-[#1a2e25] mb-1.5">
@@ -296,7 +382,10 @@ export default function RegisterPage() {
                 <div className="flex gap-3">
                   <button
                     type="button"
-                    onClick={() => setStep(1)}
+                    onClick={() => {
+                      if (step === 2 && accountType === 'center') setStep(1)
+                      else setStep(0)
+                    }}
                     className="px-4 py-3 rounded-xl border border-[#e2e8e4] text-[#6b7a73] font-medium hover:bg-white transition-colors"
                   >
                     Back
@@ -338,6 +427,18 @@ export default function RegisterPage() {
          </div>
       </div>
     </div>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#f8faf9] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#157354]" />
+      </div>
+    }>
+      <RegisterForm />
+    </Suspense>
   )
 }
 

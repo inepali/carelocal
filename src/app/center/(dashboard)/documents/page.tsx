@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { CenterDocumentRequirement, STAFF_TYPE_LABELS, StaffType } from '@/lib/types'
-import { FileText, Plus, Trash2, Settings2, Info, CheckCircle2, Loader2, AlertCircle } from 'lucide-react'
+import { CenterDocumentRequirement, STAFF_TYPE_LABELS, StaffType, DocumentCategory, DOCUMENT_CATEGORY_LABELS } from '@/lib/types'
+import { FileText, Plus, Trash2, Settings2, Info, CheckCircle2, Loader2, AlertCircle, FileStack, Upload, X, Download } from 'lucide-react'
+import { getPresignedUploadUrl, deleteFile, getPresignedViewUrl } from '@/app/actions/storage.actions'
 
 const STAFF_TYPES: { label: string; value: StaffType }[] = [
   { label: 'Teacher', value: 'teacher' },
@@ -20,9 +21,16 @@ export default function CenterDocumentsConfigPage() {
   
   // Form State
   const [showAdd, setShowAdd] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [reqName, setReqName] = useState('')
   const [isRequired, setIsRequired] = useState(true)
+  const [reqCategory, setReqCategory] = useState<DocumentCategory>('other')
   const [applicableTypes, setApplicableTypes] = useState<StaffType[]>([])
+  
+  // Template State
+  const [templateFile, setTemplateFile] = useState<File | null>(null)
+  const [existingTemplate, setExistingTemplate] = useState<{key: string, bucket: string, name: string} | null>(null)
+  const [deletingTemplate, setDeletingTemplate] = useState(false)
 
   useEffect(() => {
     loadRequirements()
@@ -51,36 +59,175 @@ export default function CenterDocumentsConfigPage() {
     setLoading(false)
   }
 
-  async function handleAdd(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setAdding(true)
 
     const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      setAdding(false)
+      return
+    }
+
     const { data: admin } = await supabase
       .from('center_admins')
       .select('center_id')
-      .eq('user_id', user.id!)
+      .eq('user_id', user.id)
       .single()
 
-    const { error } = await supabase
-      .from('center_document_requirements')
-      .insert({
-        center_id: admin.center_id,
-        document_name: reqName,
-        is_required: isRequired,
-        applies_to: applicableTypes.length > 0 ? applicableTypes : null,
-        sort_order: requirements.length
-      })
+    if (!admin) {
+      setAdding(false)
+      return
+    }
 
-    if (!error) {
-      setReqName('')
-      setShowAdd(false)
-      loadRequirements()
+    let templateData = editingId ? {
+      template_file_key: existingTemplate?.key,
+      template_bucket_name: existingTemplate?.bucket,
+      template_file_name: existingTemplate?.name
+    } : {
+      template_file_key: undefined,
+      template_bucket_name: 'centeruploads',
+      template_file_name: undefined
+    }
+
+    // Handle Template Upload if selected
+    if (templateFile) {
+      const uploadRes = await getPresignedUploadUrl(templateFile.name, templateFile.type, 'center')
+      if (uploadRes.success && uploadRes.uploadUrl && uploadRes.fileKey && uploadRes.bucketName) {
+        const uploadResponse = await fetch(uploadRes.uploadUrl, {
+          method: 'PUT',
+          body: templateFile,
+          headers: { 'Content-Type': templateFile.type }
+        })
+
+        if (uploadResponse.ok) {
+          // If we are replacing an existing template, delete the old one
+          if (existingTemplate?.key) {
+            await deleteFile(existingTemplate.key, existingTemplate.bucket)
+          }
+          
+          templateData = {
+            template_file_key: uploadRes.fileKey,
+            template_bucket_name: uploadRes.bucketName,
+            template_file_name: templateFile.name
+          }
+        } else {
+          alert('Failed to upload template file')
+          setAdding(false)
+          return
+        }
+      } else {
+        alert('Failed to generate template upload link')
+        setAdding(false)
+        return
+      }
+    }
+
+    const payload = {
+      center_id: admin.center_id,
+      document_name: reqName,
+      document_category: reqCategory,
+      is_required: isRequired,
+      applies_to: applicableTypes.length > 0 ? applicableTypes : null,
+      ...templateData
+    }
+
+    if (editingId) {
+      const { error } = await supabase
+        .from('center_document_requirements')
+        .update(payload)
+        .eq('id', editingId)
+
+      if (!error) {
+        cancelEdit()
+        loadRequirements()
+      }
+    } else {
+      const { error } = await supabase
+        .from('center_document_requirements')
+        .insert({
+          ...payload,
+          sort_order: requirements.length
+        })
+
+      if (!error) {
+        setReqName('')
+        setShowAdd(false)
+        setTemplateFile(null)
+        loadRequirements()
+      }
     }
     setAdding(false)
   }
 
+  function startEdit(req: CenterDocumentRequirement) {
+    setEditingId(req.id)
+    setReqName(req.document_name)
+    setReqCategory(req.document_category)
+    setIsRequired(req.is_required)
+    setApplicableTypes(req.applies_to || [])
+    if (req.template_file_key && req.template_bucket_name) {
+      setExistingTemplate({
+        key: req.template_file_key,
+        bucket: req.template_bucket_name,
+        name: req.template_file_name || 'Attached Form'
+      })
+    } else {
+      setExistingTemplate(null)
+    }
+    setShowAdd(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setReqName('')
+    setReqCategory('other')
+    setIsRequired(true)
+    setApplicableTypes([])
+    setTemplateFile(null)
+    setExistingTemplate(null)
+    setShowAdd(false)
+  }
+
+  async function handleRemoveTemplate() {
+    if (!editingId || !existingTemplate) {
+      setExistingTemplate(null)
+      return
+    }
+
+    if (!confirm('Are you sure you want to remove the template from this requirement?')) return
+    
+    setDeletingTemplate(true)
+    const { success } = await deleteFile(existingTemplate.key, existingTemplate.bucket)
+    if (success) {
+      const { error } = await supabase
+        .from('center_document_requirements')
+        .update({
+          template_file_key: null,
+          template_file_name: null
+        })
+        .eq('id', editingId)
+      
+      if (!error) {
+        setExistingTemplate(null)
+        loadRequirements()
+      }
+    }
+    setDeletingTemplate(false)
+  }
+
+  async function handleViewTemplate(key: string, bucket: string) {
+    const res = await getPresignedViewUrl(key, bucket)
+    if (res.success && res.url) {
+      window.open(res.url, '_blank')
+    } else {
+      alert('Could not open file')
+    }
+  }
+
   async function deleteRequirement(id: string) {
+    const req = requirements.find(r => r.id === id)
     if (!confirm('Are you sure? This will remove this requirement for all your staff.')) return
     
     const { error } = await supabase
@@ -89,6 +236,12 @@ export default function CenterDocumentsConfigPage() {
       .eq('id', id)
     
     if (!error) {
+      // Also delete the template if it exists
+      if (req?.template_file_key && req?.template_bucket_name) {
+        await deleteFile(req.template_file_key, req.template_bucket_name)
+      }
+
+      if (editingId === id) cancelEdit()
       setRequirements(requirements.filter(r => r.id !== id))
     }
   }
@@ -107,10 +260,12 @@ export default function CenterDocumentsConfigPage() {
           <p className="text-[#6b7a73]">Define which documents are required for staff to work at your center.</p>
         </div>
         <button 
-          onClick={() => setShowAdd(!showAdd)}
-          className="inline-flex items-center justify-center gap-2 bg-[#157354] text-white font-semibold px-6 py-3 rounded-xl hover:bg-[#0f4a36] shadow-sm transition-colors"
+          onClick={showAdd ? cancelEdit : () => setShowAdd(true)}
+          className={`inline-flex items-center justify-center gap-2 font-semibold px-6 py-3 rounded-xl shadow-sm transition-colors ${
+            showAdd ? 'bg-white text-[#6b7a73] border border-[#e2e8e4] hover:bg-gray-50' : 'bg-[#157354] text-white hover:bg-[#0f4a36]'
+          }`}
         >
-          <Plus className="w-5 h-5" /> {showAdd ? 'Cancel' : 'Add Requirement'}
+          {showAdd ? 'Cancel' : <><Plus className="w-5 h-5" /> Add Requirement</>}
         </button>
       </div>
 
@@ -119,14 +274,21 @@ export default function CenterDocumentsConfigPage() {
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-[#edf7f3] border border-[#a9dac9] rounded-2xl p-6">
             <h3 className="font-bold text-[#0b3828] flex items-center gap-2 mb-3">
-              <Info className="w-5 h-5" /> How this works
+              <Info className="w-5 h-5" /> {editingId ? 'Editing Requirement' : 'How this works'}
             </h3>
-            <ul className="text-sm text-[#3d5a4f] space-y-3">
-              <li>• Each requirement you add here appears on your staff's checklist.</li>
-              <li>• You will be notified when staff upload a document for review.</li>
-              <li>• You can mark requirements as "Optional" for certain staff types.</li>
-              <li>• <strong>You</strong> are responsible for verifying if the uploaded document meets your state standards.</li>
-            </ul>
+            {editingId ? (
+              <p className="text-sm text-[#3d5a4f] leading-relaxed">
+                You are currently editing <strong>{reqName || 'a requirement'}</strong>. 
+                Changes will be updated for all staff members who have this on their checklist.
+              </p>
+            ) : (
+              <ul className="text-sm text-[#3d5a4f] space-y-3">
+                <li>• Each requirement you add here appears on your staff's checklist.</li>
+                <li>• You will be notified when staff upload a document for review.</li>
+                <li>• You can mark requirements as "Optional" for certain staff types.</li>
+                <li>• <strong>You</strong> are responsible for verifying if the uploaded document meets your state standards.</li>
+              </ul>
+            )}
           </div>
         </div>
 
@@ -134,8 +296,10 @@ export default function CenterDocumentsConfigPage() {
         <div className="lg:col-span-2 space-y-6">
           {showAdd && (
             <div className="bg-white border-2 border-[#157354] rounded-2xl p-6 shadow-lg animate-in fade-in slide-in-from-top-4">
-              <h2 className="text-lg font-bold text-[#1a2e25] mb-4">New Requirement</h2>
-              <form onSubmit={handleAdd} className="space-y-4">
+              <h2 className="text-lg font-bold text-[#1a2e25] mb-4">
+                {editingId ? 'Edit Requirement' : 'New Requirement'}
+              </h2>
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Requirement Name</label>
                   <input 
@@ -146,6 +310,20 @@ export default function CenterDocumentsConfigPage() {
                     placeholder="e.g. State Fingerprint Clearance"
                     className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[#1a2e25] mb-1.5 uppercase tracking-widest text-[10px]">Document Type / Category</label>
+                  <select 
+                    value={reqCategory}
+                    onChange={(e) => setReqCategory(e.target.value as DocumentCategory)}
+                    className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 font-bold text-sm"
+                  >
+                    {Object.entries(DOCUMENT_CATEGORY_LABELS).map(([val, label]) => (
+                      <option key={val} value={val}>{label}</option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-[#a8b5ae] mt-2 italic">The category helps staff filter their vault to find the right document for this requirement.</p>
                 </div>
                 
                 <div className="flex items-center gap-2">
@@ -186,13 +364,93 @@ export default function CenterDocumentsConfigPage() {
                   <p className="text-[10px] text-[#a8b5ae] mt-2 italic">If none selected, it applies to all roles.</p>
                 </div>
 
-                <div className="pt-2">
+                <div className="border-t border-[#e2e8e4] pt-6">
+                  <label className="block text-sm font-bold text-[#1a2e25] mb-2 uppercase tracking-wide text-[10px]">Attach Form or Template (Optional)</label>
+                  
+                  {existingTemplate && !templateFile ? (
+                    <div className="flex items-center justify-between p-3 bg-[#f8faf9] rounded-xl border border-[#e2e8e4]">
+                      <div className="flex items-center gap-3">
+                        <FileText className="w-5 h-5 text-[#157354]" />
+                        <div>
+                          <p className="text-xs font-bold text-[#1a2e25]">{existingTemplate.name}</p>
+                          <button 
+                            type="button"
+                            onClick={() => handleViewTemplate(existingTemplate.key, existingTemplate.bucket)}
+                            className="text-[10px] text-[#157354] hover:underline font-bold"
+                          >
+                            View attached file
+                          </button>
+                        </div>
+                      </div>
+                      <button 
+                        type="button"
+                        disabled={deletingTemplate}
+                        onClick={handleRemoveTemplate}
+                        className="p-1.5 text-[#6b7a73] hover:text-red-500 transition-colors"
+                      >
+                        {deletingTemplate ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="relative">
+                        <input 
+                          type="file" 
+                          id="template_upload"
+                          className="hidden"
+                          onChange={(e) => setTemplateFile(e.target.files?.[0] || null)}
+                          accept=".pdf,.doc,.docx,.jpg,.png"
+                        />
+                        <label 
+                          htmlFor="template_upload"
+                          className="flex flex-col items-center justify-center w-full p-6 border-2 border-dashed border-[#e2e8e4] rounded-2xl cursor-pointer hover:border-[#157354] hover:bg-[#f8faf9] transition-all group"
+                        >
+                          {templateFile ? (
+                            <>
+                              <CheckCircle2 className="w-8 h-8 text-[#157354] mb-2" />
+                              <p className="text-sm font-bold text-[#1a2e25]">{templateFile.name}</p>
+                              <button 
+                                type="button"
+                                onClick={(e) => { e.preventDefault(); setTemplateFile(null); }}
+                                className="mt-2 text-xs text-red-500 font-bold hover:underline"
+                              >
+                                Remove selection
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-8 h-8 text-[#a8b5ae] mb-2 group-hover:text-[#157354]" />
+                              <p className="text-sm font-medium text-[#6b7a73]">Click to upload instructions or a blank form</p>
+                              <p className="text-[10px] text-[#a8b5ae] mt-1">PDF, Word, or Images up to 5MB</p>
+                            </>
+                          )}
+                        </label>
+                      </div>
+                      {existingTemplate && templateFile && (
+                        <p className="text-[10px] text-amber-600 font-bold flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" /> This will replace the current template when you save.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-2 flex gap-3">
+                  {editingId && (
+                    <button 
+                      type="button"
+                      onClick={cancelEdit}
+                      className="flex-1 bg-white text-[#6b7a73] font-bold py-3 rounded-xl border border-[#e2e8e4] hover:bg-gray-50 transition-all"
+                    >
+                      Cancel
+                    </button>
+                  )}
                   <button 
                     type="submit"
                     disabled={adding || !reqName}
-                    className="w-full flex items-center justify-center gap-2 bg-[#157354] text-white font-bold py-3 rounded-xl hover:bg-[#0f4a36] disabled:opacity-50 transition-all shadow-md"
+                    className="flex-[2] flex items-center justify-center gap-2 bg-[#157354] text-white font-bold py-3 rounded-xl hover:bg-[#0f4a36] disabled:opacity-50 transition-all shadow-md"
                   >
-                    {adding ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Create Requirement'}
+                    {adding ? <Loader2 className="w-5 h-5 animate-spin" /> : (editingId ? 'Update Requirement' : 'Create Requirement')}
                   </button>
                 </div>
               </form>
@@ -222,13 +480,28 @@ export default function CenterDocumentsConfigPage() {
                           <span className="text-[10px] bg-[#157354] text-white px-2 py-0.5 rounded-full uppercase tracking-tighter">Required</span>
                         )}
                       </h3>
-                      <div className="flex items-center gap-2 mt-1 text-[#6b7a73]">
+                      <div className="flex items-center gap-3 mt-1 text-[#6b7a73]">
+                        <span className="text-[10px] font-black uppercase tracking-widest bg-[#f8faf9] px-2 py-0.5 rounded border border-[#e2e8e4] text-[#a8b5ae]">
+                           {DOCUMENT_CATEGORY_LABELS[req.document_category]}
+                        </span>
                         <span className="text-xs">
                           {req.applies_to ? `Applies to: ${req.applies_to.join(', ')}` : 'Applies to all staff'}
                         </span>
+                        {req.template_file_key && (
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-[#157354] bg-[#edf7f3] px-2 py-0.5 rounded-full border border-[#a9dac9]">
+                            <Download className="w-3 h-3" /> Form Attached
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => startEdit(req)}
+                        className="p-2 text-[#6b7a73] hover:text-[#157354] hover:bg-[#edf7f3] rounded-lg transition-colors border border-transparent hover:border-[#a9dac9]"
+                        title="Edit Requirement"
+                      >
+                        <Settings2 className="w-5 h-5" />
+                      </button>
                       <button 
                         onClick={() => deleteRequirement(req.id)}
                         className="p-2 text-[#6b7a73] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, LayoutDashboard, Users, UserPlus, FileText, Settings, Calendar, Plus } from 'lucide-react'
+import { LogOut, LayoutDashboard, Users, UserPlus, FileText, Settings, Calendar, Plus, Home } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 
@@ -47,10 +47,11 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
 
   const NAVIGATION = [
     { name: 'Dashboard', href: '/center/dashboard', icon: LayoutDashboard },
-    { name: 'Shifts', href: '/center/dashboard/shifts', icon: Calendar },
-    { name: 'Staff Pool', href: '/center/dashboard/staff', icon: Users },
-    { name: 'Documents', href: '/center/dashboard/documents', icon: FileText },
-    { name: 'Settings', href: '/center/dashboard/settings', icon: Settings },
+    { name: 'Shifts', href: '/center/shifts', icon: Calendar },
+    { name: 'Staff Pool', href: '/center/staff', icon: Users },
+    { name: 'Classrooms', href: '/center/classrooms', icon: Home },
+    { name: 'Documents', href: '/center/documents', icon: FileText },
+    { name: 'Settings', href: '/center/settings', icon: Settings },
   ]
 
   if (loading) {
@@ -58,7 +59,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="min-h-screen bg-[#f8faf9] flex font-sans">
+    <div className="center-shell min-h-screen bg-[#f8faf9] flex font-sans">
       {/* ── Sidebar ── */}
       <aside className="w-64 bg-[#0b3828] text-white flex flex-col fixed inset-y-0 z-10">
         <div className="h-16 flex items-center px-6 border-b border-white/10 shrink-0">
@@ -97,7 +98,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
 
         <div className="p-4 border-t border-white/10 shrink-0">
           <Link
-            href="/center/dashboard/shifts/new"
+            href="/center/shifts/new"
             className="flex items-center justify-center gap-2 w-full bg-[#fbbf24] text-[#0b3828] font-semibold py-2.5 rounded-lg hover:bg-[#f59e0b] mb-4 shadow-sm"
           >
             <Plus className="w-4 h-4" /> Post a Shift

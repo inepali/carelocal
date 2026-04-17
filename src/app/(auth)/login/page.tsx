@@ -28,7 +28,14 @@ export default function LoginPage() {
       return
     }
 
-    // Check if user is a center admin or staff member
+    // 1. Check if user is a Super Admin (via metadata)
+    const isSuperAdmin = data.user?.app_metadata?.is_super_admin === true
+    if (isSuperAdmin) {
+      router.push('/admin/dashboard')
+      return
+    }
+
+    // 2. Check if user is a center admin
     const { data: centerAdmin } = await supabase
       .from('center_admins')
       .select('center_id')
