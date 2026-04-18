@@ -11,6 +11,8 @@ const STAFF_TYPES: { label: string; value: StaffType }[] = [
   { label: 'Floater', value: 'floater' },
   { label: 'Support Staff', value: 'support' },
   { label: 'Cook', value: 'cook' },
+  { label: 'Driver', value: 'driver' },
+  { label: 'Admin', value: 'admin' },
 ]
 
 export default function CenterDocumentsConfigPage() {
@@ -18,7 +20,7 @@ export default function CenterDocumentsConfigPage() {
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
   const [requirements, setRequirements] = useState<CenterDocumentRequirement[]>([])
-  
+
   // Form State
   const [showAdd, setShowAdd] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -26,10 +28,10 @@ export default function CenterDocumentsConfigPage() {
   const [isRequired, setIsRequired] = useState(true)
   const [reqCategory, setReqCategory] = useState<DocumentCategory>('other')
   const [applicableTypes, setApplicableTypes] = useState<StaffType[]>([])
-  
+
   // Template State
   const [templateFile, setTemplateFile] = useState<File | null>(null)
-  const [existingTemplate, setExistingTemplate] = useState<{key: string, bucket: string, name: string} | null>(null)
+  const [existingTemplate, setExistingTemplate] = useState<{ key: string, bucket: string, name: string } | null>(null)
   const [deletingTemplate, setDeletingTemplate] = useState(false)
 
   useEffect(() => {
@@ -53,7 +55,7 @@ export default function CenterDocumentsConfigPage() {
         .select('*')
         .eq('center_id', admin.center_id)
         .order('sort_order', { ascending: true })
-      
+
       setRequirements(data || [])
     }
     setLoading(false)
@@ -105,7 +107,7 @@ export default function CenterDocumentsConfigPage() {
           if (existingTemplate?.key) {
             await deleteFile(existingTemplate.key, existingTemplate.bucket)
           }
-          
+
           templateData = {
             template_file_key: uploadRes.fileKey,
             template_bucket_name: uploadRes.bucketName,
@@ -197,7 +199,7 @@ export default function CenterDocumentsConfigPage() {
     }
 
     if (!confirm('Are you sure you want to remove the template from this requirement?')) return
-    
+
     setDeletingTemplate(true)
     const { success } = await deleteFile(existingTemplate.key, existingTemplate.bucket)
     if (success) {
@@ -208,7 +210,7 @@ export default function CenterDocumentsConfigPage() {
           template_file_name: null
         })
         .eq('id', editingId)
-      
+
       if (!error) {
         setExistingTemplate(null)
         loadRequirements()
@@ -229,12 +231,12 @@ export default function CenterDocumentsConfigPage() {
   async function deleteRequirement(id: string) {
     const req = requirements.find(r => r.id === id)
     if (!confirm('Are you sure? This will remove this requirement for all your staff.')) return
-    
+
     const { error } = await supabase
       .from('center_document_requirements')
       .delete()
       .eq('id', id)
-    
+
     if (!error) {
       // Also delete the template if it exists
       if (req?.template_file_key && req?.template_bucket_name) {
@@ -259,11 +261,10 @@ export default function CenterDocumentsConfigPage() {
           <h1 className="text-3xl font-extrabold text-[#0b3828] mb-1">Document Requirements</h1>
           <p className="text-[#6b7a73]">Define which documents are required for staff to work at your center.</p>
         </div>
-        <button 
+        <button
           onClick={showAdd ? cancelEdit : () => setShowAdd(true)}
-          className={`inline-flex items-center justify-center gap-2 font-semibold px-6 py-3 rounded-xl shadow-sm transition-colors ${
-            showAdd ? 'bg-white text-[#6b7a73] border border-[#e2e8e4] hover:bg-gray-50' : 'bg-[#157354] text-white hover:bg-[#0f4a36]'
-          }`}
+          className={`inline-flex items-center justify-center gap-2 font-semibold px-6 py-3 rounded-xl shadow-sm transition-colors ${showAdd ? 'bg-white text-[#6b7a73] border border-[#e2e8e4] hover:bg-gray-50' : 'bg-[#157354] text-white hover:bg-[#0f4a36]'
+            }`}
         >
           {showAdd ? 'Cancel' : <><Plus className="w-5 h-5" /> Add Requirement</>}
         </button>
@@ -278,7 +279,7 @@ export default function CenterDocumentsConfigPage() {
             </h3>
             {editingId ? (
               <p className="text-sm text-[#3d5a4f] leading-relaxed">
-                You are currently editing <strong>{reqName || 'a requirement'}</strong>. 
+                You are currently editing <strong>{reqName || 'a requirement'}</strong>.
                 Changes will be updated for all staff members who have this on their checklist.
               </p>
             ) : (
@@ -302,8 +303,8 @@ export default function CenterDocumentsConfigPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Requirement Name</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     required
                     value={reqName}
                     onChange={(e) => setReqName(e.target.value)}
@@ -314,7 +315,7 @@ export default function CenterDocumentsConfigPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-[#1a2e25] mb-1.5 uppercase tracking-widest text-[10px]">Document Type / Category</label>
-                  <select 
+                  <select
                     value={reqCategory}
                     onChange={(e) => setReqCategory(e.target.value as DocumentCategory)}
                     className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 font-bold text-sm"
@@ -325,14 +326,14 @@ export default function CenterDocumentsConfigPage() {
                   </select>
                   <p className="text-[10px] text-[#a8b5ae] mt-2 italic">The category helps staff filter their vault to find the right document for this requirement.</p>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
-                  <input 
-                    type="checkbox" 
-                    id="is_req" 
+                  <input
+                    type="checkbox"
+                    id="is_req"
                     checked={isRequired}
                     onChange={(e) => setIsRequired(e.target.checked)}
-                    className="w-4 h-4 rounded border-gray-300 text-[#157354] focus:ring-[#157354]" 
+                    className="w-4 h-4 rounded border-gray-300 text-[#157354] focus:ring-[#157354]"
                   />
                   <label htmlFor="is_req" className="text-sm font-medium text-[#1a2e25]">This is a mandatory requirement</label>
                 </div>
@@ -351,11 +352,10 @@ export default function CenterDocumentsConfigPage() {
                             setApplicableTypes([...applicableTypes, type.value])
                           }
                         }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
-                          applicableTypes.includes(type.value) 
-                            ? 'bg-[#157354] text-white border-[#157354]' 
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${applicableTypes.includes(type.value)
+                            ? 'bg-[#157354] text-white border-[#157354]'
                             : 'bg-white text-[#6b7a73] border-[#e2e8e4] hover:bg-gray-50'
-                        }`}
+                          }`}
                       >
                         {type.label}
                       </button>
@@ -366,14 +366,14 @@ export default function CenterDocumentsConfigPage() {
 
                 <div className="border-t border-[#e2e8e4] pt-6">
                   <label className="block text-sm font-bold text-[#1a2e25] mb-2 uppercase tracking-wide text-[10px]">Attach Form or Template (Optional)</label>
-                  
+
                   {existingTemplate && !templateFile ? (
                     <div className="flex items-center justify-between p-3 bg-[#f8faf9] rounded-xl border border-[#e2e8e4]">
                       <div className="flex items-center gap-3">
                         <FileText className="w-5 h-5 text-[#157354]" />
                         <div>
                           <p className="text-xs font-bold text-[#1a2e25]">{existingTemplate.name}</p>
-                          <button 
+                          <button
                             type="button"
                             onClick={() => handleViewTemplate(existingTemplate.key, existingTemplate.bucket)}
                             className="text-[10px] text-[#157354] hover:underline font-bold"
@@ -382,7 +382,7 @@ export default function CenterDocumentsConfigPage() {
                           </button>
                         </div>
                       </div>
-                      <button 
+                      <button
                         type="button"
                         disabled={deletingTemplate}
                         onClick={handleRemoveTemplate}
@@ -394,14 +394,14 @@ export default function CenterDocumentsConfigPage() {
                   ) : (
                     <div className="space-y-3">
                       <div className="relative">
-                        <input 
-                          type="file" 
+                        <input
+                          type="file"
                           id="template_upload"
                           className="hidden"
                           onChange={(e) => setTemplateFile(e.target.files?.[0] || null)}
                           accept=".pdf,.doc,.docx,.jpg,.png"
                         />
-                        <label 
+                        <label
                           htmlFor="template_upload"
                           className="flex flex-col items-center justify-center w-full p-6 border-2 border-dashed border-[#e2e8e4] rounded-2xl cursor-pointer hover:border-[#157354] hover:bg-[#f8faf9] transition-all group"
                         >
@@ -409,7 +409,7 @@ export default function CenterDocumentsConfigPage() {
                             <>
                               <CheckCircle2 className="w-8 h-8 text-[#157354] mb-2" />
                               <p className="text-sm font-bold text-[#1a2e25]">{templateFile.name}</p>
-                              <button 
+                              <button
                                 type="button"
                                 onClick={(e) => { e.preventDefault(); setTemplateFile(null); }}
                                 className="mt-2 text-xs text-red-500 font-bold hover:underline"
@@ -437,7 +437,7 @@ export default function CenterDocumentsConfigPage() {
 
                 <div className="pt-2 flex gap-3">
                   {editingId && (
-                    <button 
+                    <button
                       type="button"
                       onClick={cancelEdit}
                       className="flex-1 bg-white text-[#6b7a73] font-bold py-3 rounded-xl border border-[#e2e8e4] hover:bg-gray-50 transition-all"
@@ -445,7 +445,7 @@ export default function CenterDocumentsConfigPage() {
                       Cancel
                     </button>
                   )}
-                  <button 
+                  <button
                     type="submit"
                     disabled={adding || !reqName}
                     className="flex-[2] flex items-center justify-center gap-2 bg-[#157354] text-white font-bold py-3 rounded-xl hover:bg-[#0f4a36] disabled:opacity-50 transition-all shadow-md"
@@ -482,7 +482,7 @@ export default function CenterDocumentsConfigPage() {
                       </h3>
                       <div className="flex items-center gap-3 mt-1 text-[#6b7a73]">
                         <span className="text-[10px] font-black uppercase tracking-widest bg-[#f8faf9] px-2 py-0.5 rounded border border-[#e2e8e4] text-[#a8b5ae]">
-                           {DOCUMENT_CATEGORY_LABELS[req.document_category]}
+                          {DOCUMENT_CATEGORY_LABELS[req.document_category]}
                         </span>
                         <span className="text-xs">
                           {req.applies_to ? `Applies to: ${req.applies_to.join(', ')}` : 'Applies to all staff'}
@@ -495,14 +495,14 @@ export default function CenterDocumentsConfigPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
+                      <button
                         onClick={() => startEdit(req)}
                         className="p-2 text-[#6b7a73] hover:text-[#157354] hover:bg-[#edf7f3] rounded-lg transition-colors border border-transparent hover:border-[#a9dac9]"
                         title="Edit Requirement"
                       >
                         <Settings2 className="w-5 h-5" />
                       </button>
-                      <button 
+                      <button
                         onClick={() => deleteRequirement(req.id)}
                         className="p-2 text-[#6b7a73] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
                         title="Delete Requirement"
