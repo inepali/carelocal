@@ -132,7 +132,7 @@ export default function StaffProfilePage() {
       </div>
 
       {/* Avatar strip */}
-      <div className="flex items-center gap-6 mb-10 p-6 bg-white rounded-[2rem] border-2 border-[#f0f4f2] shadow-sm">
+      <div className="flex items-center gap-6 mb-10 p-6 bg-white rounded-2xl border border-[#e2e8e4] shadow-sm">
         <div className="w-20 h-20 rounded-[1.5rem] bg-[#157354] text-white flex items-center justify-center text-2xl font-bold shadow-lg shadow-[#157354]/30 shrink-0">
           {profile.first_name?.[0]}{profile.last_name?.[0]}
         </div>
@@ -223,8 +223,8 @@ function PersonalInfoTab({
     setSaving(false)
   }
 
-  const F = 'w-full px-5 py-4 rounded-[1.25rem] border-2 border-[#f0f4f2] bg-white text-[#1a2e25] font-semibold focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all'
-  const L = 'block text-xs font-medium text-[#3d5a4f] mb-2 tracking-wide'
+  const F = 'w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white text-[#1a2e25] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition'
+  const L = 'block text-sm font-medium text-[#1a2e25] mb-1.5'
 
   const PAYMENT_METHODS = [
     { key: 'payroll',  label: 'Payroll',      emoji: '🏢' },
@@ -247,7 +247,7 @@ function PersonalInfoTab({
   }
 
   return (
-    <div className="bg-white border-2 border-[#f0f4f2] rounded-[2.5rem] shadow-sm overflow-hidden">
+    <div className="bg-white border border-[#e2e8e4] rounded-2xl shadow-sm overflow-hidden">
       <form onSubmit={handleSave} className="p-8 md:p-10 space-y-8">
         {message && (
           <div className={`p-4 rounded-xl text-sm font-black border-2 ${message.includes('Error') ? 'bg-red-50 text-red-700 border-red-100' : 'bg-[#f0fdf4] text-[#16a34a] border-[#bbf7d0]'}`}>
@@ -340,7 +340,7 @@ function PersonalInfoTab({
           )}
         </div>
 
-        <button type="submit" disabled={saving} className="w-full flex items-center justify-center gap-3 bg-[#157354] text-white font-black px-10 py-5 rounded-[1.5rem] hover:bg-[#0f4a36] shadow-xl shadow-[#157354]/25 transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-60">
+        <button type="submit" disabled={saving} className="w-full flex items-center justify-center gap-3 bg-[#157354] text-white font-semibold px-8 py-3 rounded-xl hover:bg-[#0f4a36] shadow-sm transition-colors disabled:opacity-60">
           {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-5 h-5 text-white/60" /> Save Profile</>}
         </button>
       </form>
@@ -415,8 +415,8 @@ function ExperienceTab({ staffId, supabase }: { staffId: string; supabase: any }
     setItems(prev => prev.filter(i => i.id !== id))
   }
 
-  const F = 'w-full px-4 py-3 rounded-xl border-2 border-[#f0f4f2] bg-white text-[#1a2e25] font-semibold focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all text-sm'
-  const L = 'block text-xs font-medium text-[#3d5a4f] mb-1.5 tracking-wide'
+  const F = 'w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white text-[#1a2e25] text-sm focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition'
+  const L = 'block text-sm font-medium text-[#1a2e25] mb-1.5'
 
   return (
     <div className="space-y-4">
@@ -615,8 +615,8 @@ function CredentialsTab({ staffId, supabase, vaultDocs }: { staffId: string; sup
     setItems(prev => prev.filter(i => i.id !== id))
   }
 
-  const F = 'w-full px-4 py-3 rounded-xl border-2 border-[#f0f4f2] bg-white text-[#1a2e25] font-semibold focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all text-sm'
-  const L = 'block text-xs font-medium text-[#3d5a4f] mb-1.5 tracking-wide'
+  const F = 'w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white text-[#1a2e25] text-sm focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition'
+  const L = 'block text-sm font-medium text-[#1a2e25] mb-1.5'
 
   return (
     <div className="space-y-4">
@@ -789,10 +789,10 @@ function AvailabilityTab({
     setSaving(false)
   }
 
-  const F = 'w-full px-4 py-3 rounded-xl border-2 border-[#f0f4f2] bg-white text-[#1a2e25] font-semibold focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all text-sm'
+  const F = 'w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white text-[#1a2e25] text-sm focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition'
 
   return (
-    <div className="bg-white border-2 border-[#f0f4f2] rounded-[2.5rem] shadow-sm p-8 md:p-10 space-y-8">
+    <div className="bg-white border border-[#e2e8e4] rounded-2xl shadow-sm p-8 space-y-8">
       {message && (
         <div className={`p-4 rounded-xl text-sm font-medium border-2 ${message.includes('Error') ? 'bg-red-50 text-red-700 border-red-100' : 'bg-[#f0fdf4] text-[#16a34a] border-[#bbf7d0]'}`}>
           {message}
@@ -801,7 +801,7 @@ function AvailabilityTab({
 
       {/* Days picker */}
       <div>
-        <div className="text-xs font-medium text-[#3d5a4f] mb-4 tracking-wide flex items-center gap-2">
+        <div className="text-sm font-medium text-[#1a2e25] mb-3 flex items-center gap-2">
           <CalendarDays className="w-4 h-4 text-[#157354]" /> Days Available for Shifts
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -830,16 +830,16 @@ function AvailabilityTab({
 
       {/* Time range */}
       <div>
-        <div className="text-xs font-medium text-[#3d5a4f] mb-4 tracking-wide flex items-center gap-2">
+        <div className="text-sm font-semibold text-[#1a2e25] mb-3 flex items-center gap-2">
           <Clock className="w-4 h-4 text-[#157354]" /> Preferred Shift Hours
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-[#3d5a4f] mb-1.5 tracking-wide">Earliest Start Time</label>
+            <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Earliest Start Time</label>
             <input type="time" className={F} value={profile.available_from || ''} onChange={e => setProfile({...profile, available_from: e.target.value})} />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#3d5a4f] mb-1.5 tracking-wide">Latest End Time</label>
+            <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Latest End Time</label>
             <input type="time" className={F} value={profile.available_to || ''} onChange={e => setProfile({...profile, available_to: e.target.value})} />
           </div>
         </div>
@@ -847,7 +847,7 @@ function AvailabilityTab({
 
       {/* Notes */}
       <div>
-        <div className="text-xs font-medium text-[#3d5a4f] mb-4 tracking-wide flex items-center gap-2">
+        <div className="text-sm font-medium text-[#1a2e25] mb-3 flex items-center gap-2">
           <FileText className="w-4 h-4 text-[#157354]" /> Availability Notes
         </div>
         <textarea
@@ -861,7 +861,7 @@ function AvailabilityTab({
 
       {/* Summary chip */}
       {activeDays.length > 0 && (
-        <div className="flex flex-wrap gap-2 p-4 bg-[#f8faf9] rounded-2xl border-2 border-[#f0f4f2]">
+        <div className="flex flex-wrap gap-2 p-4 bg-[#f8faf9] rounded-2xl border border-[#e2e8e4]">
           <span className="text-xs font-medium text-[#6b7a73] self-center mr-1">Your schedule:</span>
           {activeDays.map(d => (
             <span key={d} className="bg-[#157354] text-white text-xs font-medium px-3 py-1 rounded-lg capitalize">
@@ -879,7 +879,7 @@ function AvailabilityTab({
       <button
         onClick={handleSave}
         disabled={saving}
-        className="w-full flex items-center justify-center gap-3 bg-[#157354] text-white font-semibold px-10 py-4 rounded-[1.5rem] hover:bg-[#0f4a36] shadow-lg shadow-[#157354]/20 transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-60"
+        className="w-full flex items-center justify-center gap-3 bg-[#157354] text-white font-semibold px-8 py-3 rounded-xl hover:bg-[#0f4a36] shadow-sm transition-colors disabled:opacity-60"
       >
         {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-5 h-5 text-white/60" /> Save Availability</>}
       </button>

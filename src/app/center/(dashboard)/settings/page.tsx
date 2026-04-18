@@ -95,58 +95,58 @@ export default function CenterSettingsPage() {
   return (
     <div className="max-w-6xl mx-auto pb-24 px-6 md:px-10">
       <div className="mb-12">
-        <h1 className="text-5xl font-black text-[#0b3828] mb-2 tracking-tighter">Facility Settings</h1>
-        <p className="text-[#6b7a73] text-xl font-medium">Manage your childcare center and expansion regions.</p>
+        <h1 className="text-3xl font-extrabold text-[#0b3828] mb-2">Facility Settings</h1>
+        <p className="text-[#6b7a73]">Manage your childcare center and expansion regions.</p>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-12 items-start">
         {/* ── Left: Main Settings ── */}
         <div className="lg:col-span-2 space-y-10">
-          <div className="bg-white border-2 border-[#f0f4f2] rounded-[3rem] overflow-hidden shadow-2xl">
-            <div className="p-8 border-b-2 border-[#f0f4f2] bg-[#f8faf9]/50 flex items-center gap-3">
-              <Building2 className="w-6 h-6 text-[#157354]" />
-              <h2 className="font-black text-[#1a2e25] tracking-tight text-xl uppercase tracking-widest">Center Profile</h2>
+          <div className="bg-white border border-[#e2e8e4] rounded-2xl overflow-hidden shadow-sm">
+            <div className="p-5 border-b border-[#e2e8e4] bg-[#f8faf9]/50 flex items-center gap-3">
+              <Building2 className="w-5 h-5 text-[#157354]" />
+              <h2 className="font-semibold text-[#1a2e25] text-base">Center Profile</h2>
             </div>
 
-            <form onSubmit={handleSave} className="p-10 space-y-10">
+            <form onSubmit={handleSave} className="p-8 space-y-6">
               {message && (
-                <div className={`p-6 rounded-[1.5rem] text-sm font-black border-2 ${message.includes('Error') ? 'bg-red-50 text-red-700 border-red-100' : 'bg-[#f0fdf4] text-[#16a34a] border-[#bbf7d0]'}`}>
+                <div className={`px-4 py-3 rounded-xl text-sm border ${message.includes('Error') ? 'bg-red-50 text-red-700 border-red-200' : 'bg-[#f0fdf4] text-[#16a34a] border-[#bbf7d0]'}`}>
                   {message}
                 </div>
               )}
 
               <div className="space-y-6">
                 <div>
-                  <label className="block text-[11px] font-black text-[#1a2e25] mb-3 uppercase tracking-widest leading-none">Legal Center Name</label>
+                  <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Legal Center Name</label>
                   <input 
                     type="text" 
                     value={center.name || ''}
                     onChange={(e) => setCenter({...center, name: e.target.value})}
-                    className="w-full px-6 py-5 rounded-[1.75rem] border-2 border-[#f0f4f2] bg-white text-[#1a2e25] font-black focus:outline-none focus:ring-8 focus:ring-[#157354]/5 focus:border-[#157354] transition-all"
+                    className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white text-[#1a2e25] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition"
                   />
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-8">
                   <div>
-                    <label className="block text-[11px] font-black text-[#1a2e25] mb-3 uppercase tracking-widest leading-none">
+                    <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">
                       Director Name
                     </label>
                     <input 
                       type="text" 
                       value={center.director_name || ''}
                       onChange={(e) => setCenter({...center, director_name: e.target.value})}
-                      className="w-full px-6 py-5 rounded-[1.75rem] border-2 border-[#f0f4f2] bg-white text-[#1a2e25] font-black focus:outline-none focus:ring-8 focus:ring-[#157354]/5 focus:border-[#157354] transition-all"
+                      className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white text-[#1a2e25] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-black text-[#1a2e25] mb-3 uppercase tracking-widest leading-none">
+                    <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">
                       Primary Phone
                     </label>
                     <input 
                       type="tel" 
                       value={center.phone || ''}
                       onChange={(e) => setCenter({...center, phone: e.target.value})}
-                      className="w-full px-6 py-5 rounded-[1.75rem] border-2 border-[#f0f4f2] bg-white text-[#1a2e25] font-black focus:outline-none focus:ring-8 focus:ring-[#157354]/5 focus:border-[#157354] transition-all"
+                      className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white text-[#1a2e25] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition"
                     />
                   </div>
                 </div>
@@ -160,26 +160,26 @@ export default function CenterSettingsPage() {
                     placeholder="Street Address"
                     value={center.address || ''}
                     onChange={(e) => setCenter({...center, address: e.target.value})}
-                    className="w-full px-6 py-5 rounded-[1.75rem] border-2 border-[#f0f4f2] bg-white text-[#1a2e25] font-black focus:outline-none focus:ring-8 focus:ring-[#157354]/5 focus:border-[#157354] transition-all"
+                    className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white text-[#1a2e25] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition"
                   />
                   <div className="grid grid-cols-3 gap-6">
                     <input 
                       type="text" placeholder="City"
                       value={center.city || ''}
                       onChange={(e) => setCenter({...center, city: e.target.value})}
-                      className="col-span-1 px-6 py-5 rounded-[1.75rem] border-2 border-[#f0f4f2] focus:outline-none font-black text-[#1a2e25]"
+                      className="col-span-1 px-4 py-3 rounded-xl border border-[#e2e8e4] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] text-[#1a2e25] transition"
                     />
                     <input 
                       type="text" placeholder="State"
                       value={center.state || ''}
                       onChange={(e) => setCenter({...center, state: e.target.value})}
-                      className="col-span-1 px-6 py-5 rounded-[1.75rem] border-2 border-[#f0f4f2] focus:outline-none font-black text-[#1a2e25]"
+                      className="col-span-1 px-4 py-3 rounded-xl border border-[#e2e8e4] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] text-[#1a2e25] transition"
                     />
                     <input 
                       type="text" placeholder="Zip"
                       value={center.zip || ''}
                       onChange={(e) => setCenter({...center, zip: e.target.value})}
-                      className="col-span-1 px-6 py-5 rounded-[1.75rem] border-2 border-[#f0f4f2] focus:outline-none font-black text-[#1a2e25]"
+                      className="col-span-1 px-4 py-3 rounded-xl border border-[#e2e8e4] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] text-[#1a2e25] transition"
                     />
                   </div>
                 </div>
@@ -189,11 +189,11 @@ export default function CenterSettingsPage() {
                     <Globe className="w-4 h-4" /> Regional Expansion
                   </div>
                   <div>
-                      <label className="block text-[11px] font-black text-[#6b7a73] mb-3 uppercase tracking-widest leading-none">Assigned Metro Area</label>
+                      <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Assigned Metro Area</label>
                       <select 
                         value={center.metro_area_id || ''}
                         onChange={(e) => setCenter({...center, metro_area_id: e.target.value})}
-                        className="w-full px-6 py-5 rounded-[1.75rem] border-2 border-[#f0f4f2] bg-white text-[#1a2e25] font-black focus:outline-none focus:ring-8 focus:ring-[#157354]/5 focus:border-[#157354] transition-all appearance-none cursor-pointer"
+                        className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white text-[#1a2e25] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition appearance-none cursor-pointer"
                       >
                          <option value="">Select established metro area...</option>
                          {metros.map(m => (
@@ -207,23 +207,23 @@ export default function CenterSettingsPage() {
                 </div>
 
                 <div className="pt-4">
-                  <label className="block text-[11px] font-black text-[#1a2e25] mb-3 uppercase tracking-widest leading-none">State License No.</label>
+                  <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">State License No.</label>
                   <input 
                     type="text" 
                     value={center.license_number || ''}
                     onChange={(e) => setCenter({...center, license_number: e.target.value})}
-                    className="w-full px-6 py-5 rounded-[1.75rem] border-2 border-[#f0f4f2] bg-white text-[#1a2e25] font-black focus:outline-none focus:ring-8 focus:ring-[#157354]/5 focus:border-[#157354] transition-all"
+                    className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white text-[#1a2e25] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition"
                   />
                 </div>
               </div>
 
-              <div className="pt-10 flex justify-end">
+              <div className="pt-6 flex justify-end">
                 <button
                   type="submit"
                   disabled={saving}
-                  className="w-full sm:w-auto flex items-center justify-center gap-4 bg-[#157354] text-white font-black px-12 py-6 rounded-[2rem] hover:bg-[#0f4a36] disabled:opacity-50 transition-all shadow-2xl shadow-[#157354]/20 hover:-translate-y-1 active:scale-95 text-xl"
+                  className="flex items-center justify-center gap-2 bg-[#157354] text-white font-semibold px-8 py-3 rounded-xl hover:bg-[#0f4a36] disabled:opacity-60 transition-colors shadow-sm"
                 >
-                  {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : <><Save className="w-6 h-6 text-white/60" /> Save Center Settings</>}
+                  {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-5 h-5" /> Save Center Settings</>}
                 </button>
               </div>
             </form>

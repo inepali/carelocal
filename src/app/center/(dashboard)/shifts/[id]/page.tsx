@@ -190,7 +190,7 @@ export default function ShiftDetailPage() {
               </span>
               <span className="text-[#a8b5ae] font-bold text-xs">ID: {shift.id.substring(0,8)}</span>
             </div>
-            <h1 className="text-5xl font-black text-[#0b3828] tracking-tight leading-none">
+            <h1 className="text-3xl font-extrabold text-[#0b3828]">
                {isEditing ? "Editing Shift" : `${shift.classrooms?.name || 'Any Room'} Shift`}
             </h1>
           </div>
@@ -199,14 +199,14 @@ export default function ShiftDetailPage() {
               <>
                 <button 
                   onClick={() => setIsEditing(false)}
-                  className="px-6 py-3 rounded-2xl border-2 border-slate-200 text-[#6b7a73] font-bold hover:bg-slate-50 transition-all"
+                  className="px-6 py-3 rounded-xl border border-[#e2e8e4] text-[#6b7a73] font-semibold hover:bg-slate-50 transition-colors"
                 >
                   Cancel
                 </button>
                 <button 
                   onClick={handleUpdate}
                   disabled={saving}
-                  className="flex items-center gap-2 bg-[#157354] text-white px-8 py-3 rounded-2xl font-black shadow-lg shadow-[#157354]/20 hover:scale-105 transition-all active:scale-95 disabled:opacity-50"
+                  className="flex items-center gap-2 bg-[#157354] text-white px-8 py-3 rounded-xl font-semibold shadow-sm hover:bg-[#0f4a36] transition-colors disabled:opacity-60"
                 >
                   {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />} Save Changes
                 </button>
@@ -214,7 +214,7 @@ export default function ShiftDetailPage() {
             ) : (
               <button 
                 onClick={() => setIsEditing(true)}
-                className="flex items-center gap-2 bg-white text-[#157354] border-2 border-[#157354]/20 px-8 py-3 rounded-2xl font-black shadow-sm hover:border-[#157354] transition-all active:scale-95"
+                className="flex items-center gap-2 bg-white text-[#157354] border border-[#157354]/20 px-8 py-3 rounded-xl font-semibold shadow-sm hover:border-[#157354] transition-colors"
               >
                 <Edit3 className="w-5 h-5" /> Edit Shift
               </button>
@@ -226,7 +226,7 @@ export default function ShiftDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Col: Details */}
         <div className="lg:col-span-2 space-y-8">
-          <div className="bg-white border-2 border-[#f0f4f2] rounded-[2.5rem] p-8 md:p-12 shadow-sm relative overflow-hidden">
+          <div className="bg-white border border-[#e2e8e4] rounded-2xl p-8 shadow-sm relative overflow-hidden">
             {/* Background design */}
             <div className="absolute top-0 right-0 w-48 h-48 bg-[#edf7f3] rounded-full -mr-24 -mt-24 opacity-60"></div>
             
@@ -234,21 +234,21 @@ export default function ShiftDetailPage() {
               <div className="space-y-8 relative z-10">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-[#a8b5ae] mb-2">Shift Date</label>
-                      <input 
-                        type="date"
-                        value={editDate}
-                        onChange={(e) => setEditDate(e.target.value)}
-                        className="w-full px-5 py-4 rounded-2xl border-2 border-[#f0f4f2] bg-white focus:outline-none focus:border-[#157354] font-bold text-[#1a2e25]"
-                      />
+                      <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Shift Date</label>
+                       <input 
+                         type="date"
+                         value={editDate}
+                         onChange={(e) => setEditDate(e.target.value)}
+                         className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
+                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-[#a8b5ae] mb-2">Classroom</label>
-                      <select 
-                        value={editClassroom}
-                        onChange={(e) => setEditClassroom(e.target.value)}
-                        className="w-full px-5 py-4 rounded-2xl border-2 border-[#f0f4f2] bg-white focus:outline-none focus:border-[#157354] font-bold text-[#1a2e25]"
-                      >
+                      <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Classroom</label>
+                       <select 
+                         value={editClassroom}
+                         onChange={(e) => setEditClassroom(e.target.value)}
+                         className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
+                       >
                          <option value="any">Float / No specific room</option>
                          {classrooms.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                       </select>
@@ -257,20 +257,20 @@ export default function ShiftDetailPage() {
 
                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                     <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-[#a8b5ae] mb-2">Start</label>
-                      <input type="time" value={editStart} onChange={(e) => setEditStart(e.target.value)} className="w-full px-5 py-4 rounded-2xl border-2 border-[#f0f4f2] bg-white focus:outline-none focus:border-[#157354] font-bold text-[#1a2e25]" />
+                      <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Start</label>
+                       <input type="time" value={editStart} onChange={(e) => setEditStart(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]" />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-[#a8b5ae] mb-2">End</label>
-                      <input type="time" value={editEnd} onChange={(e) => setEditEnd(e.target.value)} className="w-full px-5 py-4 rounded-2xl border-2 border-[#f0f4f2] bg-white focus:outline-none focus:border-[#157354] font-bold text-[#1a2e25]" />
+                      <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">End</label>
+                       <input type="time" value={editEnd} onChange={(e) => setEditEnd(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]" />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-[#a8b5ae] mb-2">Rate ($/hr)</label>
-                      <input type="number" step="0.5" value={editRate} onChange={(e) => setEditRate(e.target.value)} className="w-full px-5 py-4 rounded-2xl border-2 border-[#f0f4f2] bg-white focus:outline-none focus:border-[#157354] font-black text-[#157354]" />
+                      <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Rate ($/hr)</label>
+                       <input type="number" step="0.5" value={editRate} onChange={(e) => setEditRate(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#157354] font-semibold" />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-[#a8b5ae] mb-2">Mode</label>
-                      <select value={editMode} onChange={(e) => setEditMode(e.target.value)} className="w-full px-5 py-4 rounded-2xl border-2 border-[#f0f4f2] bg-white focus:outline-none focus:border-[#157354] font-bold text-[#1a2e25]">
+                      <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Mode</label>
+                       <select value={editMode} onChange={(e) => setEditMode(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]">
                          <option value="payroll">Payroll</option>
                          <option value="venmo">Venmo</option>
                          <option value="cash">Cash</option>
@@ -280,13 +280,13 @@ export default function ShiftDetailPage() {
                  </div>
 
                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-[#a8b5ae] mb-2">Notes for Staff</label>
-                    <textarea 
-                      value={editNotes} 
-                      onChange={(e) => setEditNotes(e.target.value)} 
-                      rows={4}
-                      className="w-full px-5 py-4 rounded-2xl border-2 border-[#f0f4f2] bg-white focus:outline-none focus:border-[#157354] font-medium text-[#1a2e25] resize-none"
-                    />
+                     <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Notes for Staff</label>
+                     <textarea 
+                       value={editNotes} 
+                       onChange={(e) => setEditNotes(e.target.value)} 
+                       rows={4}
+                       className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25] resize-none"
+                     />
                  </div>
               </div>
             ) : (
@@ -321,9 +321,9 @@ export default function ShiftDetailPage() {
           </div>
 
           {/* Claims section */}
-          <div className="bg-white border-2 border-[#f0f4f2] rounded-[2.5rem] p-10 shadow-sm">
+          <div className="bg-white border border-[#e2e8e4] rounded-2xl p-8 shadow-sm">
              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-2xl font-black text-[#0b3828] tracking-tight">Educator Claims</h2>
+                <h2 className="text-xl font-bold text-[#0b3828] tracking-tight">Educator Claims</h2>
                 <div className="px-4 py-1.5 bg-[#edf7f3] text-[#157354] rounded-xl text-[10px] font-black uppercase tracking-widest">
                    {claims.length} Interested
                 </div>
@@ -392,7 +392,7 @@ export default function ShiftDetailPage() {
         {/* Right Col: Staff Sidebar */}
         <div className="space-y-8">
            {isFilled && confirmedClaim ? (
-             <div className="bg-[#157354] rounded-[2.5rem] p-8 text-white shadow-xl shadow-[#157354]/20 animate-in fade-in slide-in-from-right-4">
+             <div className="bg-[#157354] rounded-2xl p-8 text-white shadow-lg shadow-[#157354]/20">
                 <div className="flex items-center gap-2 text-[#a9dac9] font-black uppercase tracking-[0.25em] text-[10px] mb-6">
                    <User className="w-3.5 h-3.5" /> Assigned Professional
                 </div>
@@ -427,7 +427,7 @@ export default function ShiftDetailPage() {
                 </button>
              </div>
            ) : (
-             <div className="bg-[#edf7f3] border-2 border-[#157354]/10 rounded-[2.5rem] p-10 text-center">
+             <div className="bg-[#edf7f3] border border-[#157354]/10 rounded-2xl p-10 text-center">
                 <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm">
                    <ShieldCheck className="w-8 h-8 text-[#157354] transition-all" />
                 </div>
@@ -446,7 +446,7 @@ export default function ShiftDetailPage() {
              </div>
            )}
            
-           <div className="bg-[#f8faf9] border-2 border-[#f0f4f2] rounded-[2.5rem] p-10">
+           <div className="bg-[#f8faf9] border border-[#e2e8e4] rounded-2xl p-8">
               <h4 className="font-black text-[#1a2e25] mb-6 uppercase tracking-widest text-xs">Danger Zone</h4>
               <button 
                 onClick={async () => {
