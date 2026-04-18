@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   StaffProfile, StaffExperience, StaffCredential, StaffDocument,
-  STAFF_TYPE_LABELS, StaffType, MetroArea, AgeGroup, AGE_GROUP_LABELS
+  MetroArea, AgeGroup, AGE_GROUP_LABELS
 } from '@/lib/types'
+import { useStaffRoles } from '@/lib/hooks/useStaffRoles'
 import {
   User, Mail, Phone, Save, Loader2, Globe, Briefcase, Award,
   CalendarDays, Plus, Pencil, Trash2, CheckCircle2, AlertTriangle,
@@ -66,6 +67,8 @@ export default function StaffProfilePage() {
   const [staffId, setStaffId]         = useState<string | null>(null)
   const [vaultDocs, setVaultDocs]     = useState<StaffDocument[]>([])
   const [activeTab, setActiveTab]     = useState<TabId>('personal')
+  const [profileCenterId, setProfileCenterId] = useState<string | null>(null)
+  const { roles: staffRoles } = useStaffRoles(profileCenterId)
 
   // ── Load everything once ──
   useEffect(() => {
@@ -82,6 +85,16 @@ export default function StaffProfilePage() {
       if (profileData) {
         setProfile(profileData)
         setStaffId(profileData.id)
+
+        // Fetch first active center association to get that center's custom roles
+        const { data: centerAssoc } = await supabase
+          .from('center_staff')
+          .select('center_id')
+          .eq('staff_id', profileData.id)
+          .eq('status', 'active')
+          .limit(1)
+          .single()
+        if (centerAssoc) setProfileCenterId(centerAssoc.center_id)
       } else {
         setProfile({ email: user.email, user_id: user.id })
       }
@@ -140,7 +153,7 @@ export default function StaffProfilePage() {
           <div className="text-xl font-semibold text-[#1a2e25] tracking-tight">{profile.first_name} {profile.last_name}</div>
           <div className="flex items-center gap-3 mt-1">
             <span className="bg-[#edf7f3] text-[#157354] px-3 py-1 rounded-lg text-[10px] font-semibold border border-[#d4ede4]">
-              {profile.staff_type ? STAFF_TYPE_LABELS[profile.staff_type as StaffType] : 'Educator'}
+              {profile.staff_type ? (staffRoles.find(r => r.value === profile.staff_type)?.label ?? profile.staff_type) : 'Educator'}
             </span>
             <span className="text-[10px] font-medium tracking-wide text-[#a8b5ae]">Verified Member</span>
           </div>
@@ -172,6 +185,7 @@ export default function StaffProfilePage() {
           setProfile={setProfile}
           metros={metros}
           vaultDocCount={vaultDocs.length}
+          staffRoles={staffRoles}
         />
       )}
       {activeTab === 'experience' && staffId && (
@@ -190,12 +204,13 @@ export default function StaffProfilePage() {
 // ─── Personal Info Tab ───────────────────────────────────────────────────────
 
 function PersonalInfoTab({
-  profile, setProfile, metros, vaultDocCount
+  profile, setProfile, metros, vaultDocCount, staffRoles
 }: {
   profile: Partial<StaffProfile>
   setProfile: (p: Partial<StaffProfile>) => void
   metros: MetroArea[]
   vaultDocCount: number
+  staffRoles: import('@/lib/types').StaffRoleType[]
 }) {
   const supabase = createClient()
   const [saving, setSaving] = useState(false)
@@ -295,8 +310,9 @@ function PersonalInfoTab({
         <div className="grid sm:grid-cols-2 gap-6 pt-4 border-t-2 border-[#f0f4f2]">
           <div>
             <label className={L}>Role Type</label>
-            <select value={profile.staff_type || 'teacher'} onChange={e => setProfile({...profile, staff_type: e.target.value as StaffType})} className={`${F} appearance-none cursor-pointer`}>
-              {Object.entries(STAFF_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            <select value={profile.staff_type || ''} onChange={e => setProfile({...profile, staff_type: e.target.value})} className={`${F} appearance-none cursor-pointer`}>
+              <option value="">Select role...</option>
+              {staffRoles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
           </div>
           <div>

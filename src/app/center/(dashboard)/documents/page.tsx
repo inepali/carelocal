@@ -2,24 +2,19 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { CenterDocumentRequirement, STAFF_TYPE_LABELS, StaffType, DocumentCategory, DOCUMENT_CATEGORY_LABELS } from '@/lib/types'
+import { CenterDocumentRequirement, DOCUMENT_CATEGORY_LABELS, DocumentCategory } from '@/lib/types'
+import { useStaffRoles } from '@/lib/hooks/useStaffRoles'
 import { FileText, Plus, Trash2, Settings2, Info, CheckCircle2, Loader2, AlertCircle, FileStack, Upload, X, Download } from 'lucide-react'
 import { getPresignedUploadUrl, deleteFile, getPresignedViewUrl } from '@/app/actions/storage.actions'
 
-const STAFF_TYPES: { label: string; value: StaffType }[] = [
-  { label: 'Teacher', value: 'teacher' },
-  { label: 'Floater', value: 'floater' },
-  { label: 'Support Staff', value: 'support' },
-  { label: 'Cook', value: 'cook' },
-  { label: 'Driver', value: 'driver' },
-  { label: 'Admin', value: 'admin' },
-]
 
 export default function CenterDocumentsConfigPage() {
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
   const [requirements, setRequirements] = useState<CenterDocumentRequirement[]>([])
+  const [centerId, setCenterId] = useState<string | null>(null)
+  const { roles: staffRoles } = useStaffRoles(centerId)
 
   // Form State
   const [showAdd, setShowAdd] = useState(false)
@@ -27,7 +22,7 @@ export default function CenterDocumentsConfigPage() {
   const [reqName, setReqName] = useState('')
   const [isRequired, setIsRequired] = useState(true)
   const [reqCategory, setReqCategory] = useState<DocumentCategory>('other')
-  const [applicableTypes, setApplicableTypes] = useState<StaffType[]>([])
+  const [applicableTypes, setApplicableTypes] = useState<string[]>([])
 
   // Template State
   const [templateFile, setTemplateFile] = useState<File | null>(null)
@@ -50,6 +45,7 @@ export default function CenterDocumentsConfigPage() {
       .single()
 
     if (admin) {
+      setCenterId(admin.center_id)
       const { data } = await supabase
         .from('center_document_requirements')
         .select('*')
@@ -341,23 +337,23 @@ export default function CenterDocumentsConfigPage() {
                 <div>
                   <label className="block text-sm font-medium text-[#1a2e25] mb-1.5 text-xs text-muted-foreground uppercase tracking-widest">Applicable Roles</label>
                   <div className="flex flex-wrap gap-2">
-                    {STAFF_TYPES.map(type => (
+                    {staffRoles.map(role => (
                       <button
-                        key={type.value}
+                        key={role.value}
                         type="button"
                         onClick={() => {
-                          if (applicableTypes.includes(type.value)) {
-                            setApplicableTypes(applicableTypes.filter(t => t !== type.value))
+                          if (applicableTypes.includes(role.value)) {
+                            setApplicableTypes(applicableTypes.filter(t => t !== role.value))
                           } else {
-                            setApplicableTypes([...applicableTypes, type.value])
+                            setApplicableTypes([...applicableTypes, role.value])
                           }
                         }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${applicableTypes.includes(type.value)
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${applicableTypes.includes(role.value)
                             ? 'bg-[#157354] text-white border-[#157354]'
                             : 'bg-white text-[#6b7a73] border-[#e2e8e4] hover:bg-gray-50'
                           }`}
                       >
-                        {type.label}
+                        {role.label}
                       </button>
                     ))}
                   </div>

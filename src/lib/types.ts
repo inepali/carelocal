@@ -1,6 +1,6 @@
 export type SubscriptionTier = 'starter' | 'growth' | 'network' | 'enterprise'
 export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused'
-export type StaffType = 'teacher' | 'floater' | 'support' | 'cook'
+export type StaffType = string  // Open-ended — values are now stored in staff_role_types table
 export type AgeGroup = 'infant' | 'toddler' | 'preschool' | 'school_age' | 'mixed'
 export type CenterStaffStatus = 'invited' | 'applying' | 'active' | 'inactive' | 'removed'
 export type DocumentCategory = 'identity' | 'certification' | 'background' | 'training' | 'medical' | 'other'
@@ -61,6 +61,17 @@ export interface StaffProfile {
   is_active: boolean
   created_at: string
   updated_at: string
+}
+
+/** A staff role type row from the staff_role_types table */
+export interface StaffRoleType {
+  id: string
+  center_id: string | null  // null = platform default
+  value: string
+  label: string
+  sort_order: number
+  is_active: boolean
+  created_at: string
 }
 
 export interface StaffExperience {
@@ -201,7 +212,8 @@ export interface ShiftClaim {
   shift?: Shift
 }
 
-export const STAFF_TYPE_LABELS: Record<StaffType, string> = {
+/** @deprecated Use useStaffRoles() hook instead — values now come from the DB */
+export const STAFF_TYPE_LABELS: Record<string, string> = {
   teacher: 'Teacher',
   floater: 'Floater',
   support: 'Support Staff',

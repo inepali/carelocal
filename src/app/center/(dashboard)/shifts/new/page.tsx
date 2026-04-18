@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { STAFF_TYPE_LABELS, StaffType, Classroom } from '@/lib/types'
+import { Classroom } from '@/lib/types'
+import { useStaffRoles } from '@/lib/hooks/useStaffRoles'
 import { Calendar, Clock, Loader2, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
@@ -13,12 +14,14 @@ export default function PostShiftPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [classrooms, setClassrooms] = useState<Classroom[]>([])
+  const [centerId, setCenterId] = useState<string | null>(null)
+  const { roles: staffRoles } = useStaffRoles(centerId)
 
   // Form State
   const [shiftDate, setShiftDate] = useState('')
   const [startTime, setStartTime] = useState('08:00')
   const [endTime, setEndTime] = useState('16:00')
-  const [staffType, setStaffType] = useState<StaffType | 'any'>('any')
+  const [staffType, setStaffType] = useState<string>('any')
   const [classroomId, setClassroomId] = useState('any')
   const [notes, setNotes] = useState('')
   const [hourlyRate, setHourlyRate] = useState('20.00')
@@ -36,6 +39,7 @@ export default function PostShiftPage() {
         .single()
 
       if (adminData) {
+        setCenterId(adminData.center_id)
         const { data: rooms } = await supabase
           .from('classrooms')
           .select('*')
@@ -175,12 +179,12 @@ export default function PostShiftPage() {
                         <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Role Needed</label>
                         <select
                             value={staffType}
-                            onChange={(e) => setStaffType(e.target.value as StaffType | 'any')}
+                            onChange={(e) => setStaffType(e.target.value)}
                             className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
                         >
                             <option value="any">Any Role</option>
-                            {Object.entries(STAFF_TYPE_LABELS).map(([val, label]) => (
-                                <option key={val} value={val}>{label}</option>
+                            {staffRoles.map(role => (
+                                <option key={role.value} value={role.value}>{role.label}</option>
                             ))}
                         </select>
                     </div>

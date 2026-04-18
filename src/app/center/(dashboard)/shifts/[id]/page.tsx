@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useParams, useRouter } from 'next/navigation'
-import { Shift, Classroom, StaffType, STAFF_TYPE_LABELS } from '@/lib/types'
+import { Shift, Classroom } from '@/lib/types'
+import { useStaffRoles } from '@/lib/hooks/useStaffRoles'
 import { 
   Calendar, Clock, MapPin, ArrowLeft, 
   CheckCircle2, AlertCircle, Loader2, Save, 
@@ -24,6 +25,8 @@ export default function ShiftDetailPage() {
   const [shift, setShift] = useState<any>(null)
   const [classrooms, setClassrooms] = useState<Classroom[]>([])
   const [claims, setClaims] = useState<any[]>([])
+  const [centerId, setCenterId] = useState<string | null>(null)
+  const { roles: staffRoles } = useStaffRoles(centerId)
 
   // Form State (for Edit)
   const [editDate, setEditDate] = useState('')
@@ -56,6 +59,7 @@ export default function ShiftDetailPage() {
 
       if (sError) throw sError
       setShift(shiftData)
+      setCenterId(shiftData.center_id)
 
       // Initialize Edit State
       setEditDate(shiftData.shift_date)

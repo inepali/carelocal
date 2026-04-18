@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, LayoutDashboard, Users, UserPlus, FileText, Settings, Calendar, Plus, Home } from 'lucide-react'
+import { LogOut, LayoutDashboard, Users, UserPlus, FileText, Settings, Calendar, Plus, Home, Tags } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 
@@ -51,6 +51,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
     { name: 'Staff Pool', href: '/center/staff', icon: Users },
     { name: 'Classrooms', href: '/center/classrooms', icon: Home },
     { name: 'Documents', href: '/center/documents', icon: FileText },
+    { name: 'Role Types', href: '/center/roles', icon: Tags },
     { name: 'Settings', href: '/center/settings', icon: Settings },
   ]
 
