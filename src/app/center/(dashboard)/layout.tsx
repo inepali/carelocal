@@ -48,10 +48,10 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
   const NAVIGATION = [
     { name: 'Dashboard', href: '/center/dashboard', icon: LayoutDashboard },
     { name: 'Shifts', href: '/center/shifts', icon: Calendar },
-    { name: 'Staff Pool', href: '/center/staff', icon: Users },
+    { name: 'Staffs', href: '/center/staff', icon: Users },
     { name: 'Classrooms', href: '/center/classrooms', icon: Home },
     { name: 'Documents', href: '/center/documents', icon: FileText },
-    { name: 'Role Types', href: '/center/roles', icon: Tags },
+    { name: 'Roles', href: '/center/roles', icon: Tags },
     { name: 'Settings', href: '/center/settings', icon: Settings },
   ]
 
@@ -102,7 +102,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
             href="/center/shifts/new"
             className="flex items-center justify-center gap-2 w-full bg-[#fbbf24] text-[#0b3828] font-semibold py-2.5 rounded-lg hover:bg-[#f59e0b] mb-4 shadow-sm"
           >
-            <Plus className="w-4 h-4" /> Post a Shift
+            <Plus className="w-4 h-4" /> Post New Shift
           </Link>
           <button
             onClick={handleSignOut}

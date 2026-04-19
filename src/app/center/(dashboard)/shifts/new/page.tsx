@@ -248,7 +248,7 @@ export default function PostShiftPage() {
                             <option value="payroll">Corporate Payroll</option>
                             <option value="venmo">Venmo</option>
                             <option value="cash">Cash</option>
-                            <option value="check">Company Check</option>
+                            <option value="check">Check</option>
                             <option value="zelle">Zelle</option>
                         </select>
                     </div>

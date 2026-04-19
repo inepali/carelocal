@@ -8,7 +8,7 @@ import { useStaffRoles } from '@/lib/hooks/useStaffRoles'
 import { 
   Calendar, Clock, MapPin, ArrowLeft, 
   CheckCircle2, AlertCircle, Loader2, Save, 
-  Trash2, User, Phone, Mail, ShieldCheck, Edit3
+  Trash2, User, Phone, Mail, ShieldCheck, Edit3, AlertTriangle, X
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -36,6 +36,10 @@ export default function ShiftDetailPage() {
   const [editMode, setEditMode] = useState('')
   const [editNotes, setEditNotes] = useState('')
   const [editClassroom, setEditClassroom] = useState('')
+
+  const [cancelModalOpen, setCancelModalOpen] = useState(false)
+  const [cancelSubmitting, setCancelSubmitting] = useState(false)
+  const [cancelModalError, setCancelModalError] = useState<string | null>(null)
 
   useEffect(() => {
     loadShiftData()
@@ -145,6 +149,30 @@ export default function ShiftDetailPage() {
     } catch (err: any) {
       alert("Action failed: " + err.message)
     }
+  }
+
+  function openCancelShiftModal() {
+    setCancelModalError(null)
+    setCancelModalOpen(true)
+  }
+
+  function closeCancelShiftModal() {
+    if (cancelSubmitting) return
+    setCancelModalOpen(false)
+    setCancelModalError(null)
+  }
+
+  async function confirmCancelShift() {
+    setCancelSubmitting(true)
+    setCancelModalError(null)
+    const { error } = await supabase.from('shifts').update({ status: 'cancelled' }).eq('id', id)
+    setCancelSubmitting(false)
+    if (error) {
+      setCancelModalError(error.message)
+      return
+    }
+    setCancelModalOpen(false)
+    router.push('/center/shifts')
   }
 
   if (loading) {
@@ -278,6 +306,7 @@ export default function ShiftDetailPage() {
                          <option value="payroll">Payroll</option>
                          <option value="venmo">Venmo</option>
                          <option value="cash">Cash</option>
+                         <option value="check">Check</option>
                          <option value="zelle">Zelle</option>
                       </select>
                     </div>
@@ -452,20 +481,119 @@ export default function ShiftDetailPage() {
            
            <div className="bg-[#f8faf9] border border-[#e2e8e4] rounded-2xl p-8">
               <h4 className="font-black text-[#1a2e25] mb-6 uppercase tracking-widest text-xs">Danger Zone</h4>
-              <button 
-                onClick={async () => {
-                  if (confirm('Are you sure you want to cancel this shift?')) {
-                    await supabase.from('shifts').update({ status: 'cancelled' }).eq('id', id)
-                    router.push('/center/shifts')
-                  }
-                }}
-                className="w-full flex items-center justify-center gap-2 bg-white text-red-500 border-2 border-red-50 px-6 py-4 rounded-2xl font-bold hover:bg-red-50 hover:border-red-100 transition-all text-sm"
-              >
-                <Trash2 className="w-4 h-4" /> Cancel Shift
-              </button>
+              {shift.status === 'cancelled' ? (
+                <div
+                  role="status"
+                  className="flex items-start gap-3 rounded-2xl border-2 border-red-100 bg-red-50/80 px-5 py-4 text-sm text-red-900"
+                >
+                  <AlertTriangle className="w-5 h-5 shrink-0 text-red-600 mt-0.5" />
+                  <div>
+                    <p className="font-black text-red-900 uppercase tracking-wide text-xs mb-1">Shift cancelled</p>
+                    <p className="text-red-800/90 font-medium leading-relaxed">
+                      This shift is no longer active. Staff who had shown interest may still see it as closed in their history.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={openCancelShiftModal}
+                  className="w-full flex items-center justify-center gap-2 bg-white text-red-600 border-2 border-red-100 px-6 py-4 rounded-2xl font-bold hover:bg-red-50 hover:border-red-200 transition-all text-sm shadow-sm"
+                >
+                  <Trash2 className="w-4 h-4" /> Cancel shift
+                </button>
+              )}
            </div>
         </div>
       </div>
+
+      {cancelModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0b3828]/50 backdrop-blur-sm animate-in fade-in duration-200"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cancel-shift-title"
+          aria-describedby="cancel-shift-desc"
+          onClick={cancelSubmitting ? undefined : closeCancelShiftModal}
+        >
+          <div
+            className="bg-white w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-red-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative bg-gradient-to-br from-red-50 to-amber-50/40 px-8 pt-10 pb-6 border-b border-red-100">
+              <button
+                type="button"
+                onClick={closeCancelShiftModal}
+                disabled={cancelSubmitting}
+                className="absolute right-5 top-5 p-2 rounded-full text-[#6b7a73] hover:bg-white/80 hover:text-[#0b3828] transition-colors disabled:opacity-40"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-red-600 text-white flex items-center justify-center shadow-lg shadow-red-600/25 shrink-0">
+                  <AlertTriangle className="w-7 h-7" strokeWidth={2.25} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-700/80 mb-1">Irreversible action</p>
+                  <h2 id="cancel-shift-title" className="text-2xl font-black text-[#0b3828] tracking-tight leading-tight">
+                    Cancel this shift?
+                  </h2>
+                </div>
+              </div>
+            </div>
+            <div className="px-8 py-6 space-y-4">
+              <p id="cancel-shift-desc" className="text-[#3d5a4f] font-medium leading-relaxed text-sm">
+                The shift will be marked <span className="font-black text-red-700">cancelled</span> and removed from the marketplace.
+                {claims.length > 0 && (
+                  <span className="block mt-3 pt-3 border-t border-[#f0f4f2] text-amber-900">
+                    <span className="font-black text-xs uppercase tracking-widest text-amber-800">Heads up:</span>{' '}
+                    {claims.length} educator{claims.length === 1 ? ' has' : 's have'} already submitted interest or claims — consider messaging them from your roster if needed.
+                  </span>
+                )}
+              </p>
+              {cancelModalError && (
+                <div
+                  role="alert"
+                  className="flex items-start gap-3 rounded-xl border-2 border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
+                >
+                  <AlertCircle className="w-5 h-5 shrink-0 text-red-600 mt-0.5" />
+                  <div>
+                    <p className="font-black text-xs uppercase tracking-wide text-red-800 mb-0.5">Could not cancel</p>
+                    <p className="text-red-900/90 font-medium break-words">{cancelModalError}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="px-8 pb-8 flex flex-col-reverse sm:flex-row gap-3">
+              <button
+                type="button"
+                onClick={closeCancelShiftModal}
+                disabled={cancelSubmitting}
+                className="flex-1 py-4 px-6 rounded-2xl border-2 border-[#e2e8e4] font-black text-xs text-[#3d5a4f] hover:bg-[#f8faf9] transition-all disabled:opacity-50 uppercase tracking-widest"
+              >
+                Keep shift
+              </button>
+              <button
+                type="button"
+                onClick={confirmCancelShift}
+                disabled={cancelSubmitting}
+                className="flex-1 py-4 px-6 rounded-2xl bg-red-600 text-white font-black text-xs uppercase tracking-widest hover:bg-red-700 shadow-lg shadow-red-600/25 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {cancelSubmitting ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" /> Cancelling…
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" /> Yes, cancel shift
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
