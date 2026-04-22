@@ -6,12 +6,22 @@ import { r2 } from '@/lib/r2'
 
 export async function getPresignedUploadUrl(fileName: string, contentType: string, bucketType: 'employee' | 'center' = 'employee') {
   try {
-    const bucketName = bucketType === 'employee' 
-      ? process.env.R2_EMPLOYEE_BUCKET 
+    // Log env var presence (values redacted) to help debug production issues
+    console.log('[R2 Upload] env check:', {
+      R2_ACCOUNT_ID:       !!process.env.R2_ACCOUNT_ID,
+      R2_ACCESS_KEY_ID:    !!process.env.R2_ACCESS_KEY_ID,
+      R2_SECRET_ACCESS_KEY:!!process.env.R2_SECRET_ACCESS_KEY,
+      R2_EMPLOYEE_BUCKET:  !!process.env.R2_EMPLOYEE_BUCKET,
+      R2_CENTER_BUCKET:    !!process.env.R2_CENTER_BUCKET,
+      bucketType,
+    })
+
+    const bucketName = bucketType === 'employee'
+      ? process.env.R2_EMPLOYEE_BUCKET
       : process.env.R2_CENTER_BUCKET
 
     if (!bucketName) {
-      throw new Error(`R2 bucket for ${bucketType} not defined`)
+      throw new Error(`R2_${bucketType === 'employee' ? 'EMPLOYEE' : 'CENTER'}_BUCKET env var is not set on this server`)
     }
 
     // Generate a unique file path
