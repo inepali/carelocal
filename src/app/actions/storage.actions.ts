@@ -44,9 +44,9 @@ export async function getPresignedUploadUrl(fileName: string, contentType: strin
       fileKey: fileKey,
       bucketName: bucketName
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error generating presigned upload URL:', error)
-    return { success: false, error: 'Failed to generate upload URL' }
+    return { success: false, error: error?.message || 'Failed to generate upload URL' }
   }
 }
 
@@ -65,9 +65,9 @@ export async function getPresignedViewUrl(fileKey: string, bucketName: string) {
     const url = await getSignedUrl(r2, command, { expiresIn: 3600 })
 
     return { success: true, url }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error generating presigned view URL:', error)
-    return { success: false, error: 'Failed to generate access link' }
+    return { success: false, error: error?.message || 'Failed to generate access link' }
   }
 }
 export async function deleteFile(fileKey: string, bucketName: string) {
