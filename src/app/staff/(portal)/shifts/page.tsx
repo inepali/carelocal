@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -17,6 +17,7 @@ export default function StaffShiftsPage() {
   const [filterType, setFilterType] = useState<'metro' | 'all'>('metro')
   const [metros, setMetros] = useState<any[]>([])
   const [claimedShiftIds, setClaimedShiftIds] = useState<Set<string>>(new Set())
+  const [confirmedShiftIds, setConfirmedShiftIds] = useState<Set<string>>(new Set())
   const [interestedShiftIds, setInterestedShiftIds] = useState<Set<string>>(new Set())
   const [claimingShiftId, setClaimingShiftId] = useState<string | null>(null)
   const [expressingInterestId, setExpressingInterestId] = useState<string | null>(null)
@@ -81,12 +82,15 @@ export default function StaffShiftsPage() {
         .not('status', 'eq', 'cancelled')
 
       const claimed = new Set<string>()
+      const confirmed = new Set<string>()
       const interested = new Set<string>()
       ;(myClaims || []).forEach((c: any) => {
         if (c.status === 'pending' || c.status === 'confirmed') claimed.add(c.shift_id)
+        if (c.status === 'confirmed') confirmed.add(c.shift_id)
         if (c.status === 'interested') interested.add(c.shift_id)
       })
       setClaimedShiftIds(claimed)
+      setConfirmedShiftIds(confirmed)
       setInterestedShiftIds(interested)
 
       setLoading(false)
@@ -253,6 +257,7 @@ export default function StaffShiftsPage() {
             const isActive = connectionStatus === 'active'
             const isPending = connectionStatus === 'invited'
             const isClaimed = claimedShiftIds.has(shift.id)
+            const isConfirmed = confirmedShiftIds.has(shift.id)
             const isInterested = interestedShiftIds.has(shift.id)
             const centerMetro = metros.find((m: any) => m.id === shift.centers?.metro_area_id)
             const dateLabel = new Date(shift.shift_date).toLocaleDateString('en-US', {
@@ -266,11 +271,13 @@ export default function StaffShiftsPage() {
             const zipPart = shift.centers?.zip ? ` ${shift.centers.zip}` : ''
             const payLabel = (shift.payment_mode || 'Corporate payroll').replace(/_/g, ' ')
 
-            const actionHint = isClaimed
-              ? 'Your claim is pending center confirmation.'
-              : isActive
-                ? 'Verified connection for this center.'
-                : 'Complete onboarding to pick up shifts at this center.'
+            const actionHint = isConfirmed
+              ? 'You are confirmed for this shift. Check your schedule.'
+              : isClaimed
+                ? 'Your claim is pending center confirmation.'
+                : isActive
+                  ? 'Verified connection for this center.'
+                  : 'Complete onboarding to pick up shifts at this center.'
 
             return (
               <div
@@ -282,11 +289,15 @@ export default function StaffShiftsPage() {
                     <span className="shrink-0 rounded-full border border-yellow-200 bg-[#fefce8] px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-yellow-800">
                       Open
                     </span>
-                    {isClaimed && (
+                    {isConfirmed ? (
                       <span className="shrink-0 rounded-full border border-[#dcfce7] bg-[#f0fdf4] px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-[#157354]">
                         Assigned
                       </span>
-                    )}
+                    ) : isClaimed ? (
+                      <span className="shrink-0 rounded-full border border-[#fef08a] bg-[#fefce8] px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-[#854d0e]">
+                        Pending
+                      </span>
+                    ) : null}
                     {isInterested && !isClaimed && (
                       <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#d4ede4] bg-[#edf7f3] px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-[#157354]">
                         <Heart className="h-4 w-4 fill-[#157354]" /> Interested
@@ -329,9 +340,13 @@ export default function StaffShiftsPage() {
                   </div>
 
                   <div className="flex flex-col items-stretch sm:items-end gap-2 w-full md:w-auto shrink-0">
-                    {isClaimed ? (
+                    {isConfirmed ? (
                       <div className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#f0fdf4] text-[#157354] border border-[#dcfce7] font-black text-xs uppercase tracking-widest whitespace-nowrap">
                         <CheckCircle2 className="w-4 h-4" /> Assigned
+                      </div>
+                    ) : isClaimed ? (
+                      <div className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#fefce8] text-[#854d0e] border border-[#fef08a] font-black text-xs uppercase tracking-widest whitespace-nowrap">
+                        <Clock className="w-4 h-4" /> Pending
                       </div>
                     ) : isInterested ? (
                       <>
