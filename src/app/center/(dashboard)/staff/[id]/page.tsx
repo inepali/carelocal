@@ -70,6 +70,8 @@ export default function StaffReviewPage() {
   const [reviewNotes, setReviewNotes] = useState('')
   const [centerId, setCenterId]       = useState<string | null>(null)
   const [activeTab, setActiveTab]     = useState<TabId>('overview')
+  const [showActivationModal, setShowActivationModal] = useState(false)
+  const [activating, setActivating]   = useState(false)
 
   useEffect(() => { loadData() }, [staffId])
 
@@ -167,12 +169,14 @@ export default function StaffReviewPage() {
   }
 
   async function handleActivateStaff() {
-    if (!confirm('Approve this staff member? They will be able to claim your open shifts immediately.')) return
+    setActivating(true)
     const { data: { user } } = await supabase.auth.getUser()
     const { data: admin } = await supabase.from('center_admins').select('center_id').eq('user_id', user!.id).single()
     const { error } = await supabase.from('center_staff').update({ status: 'active', added_at: new Date().toISOString() })
       .eq('center_id', admin!.center_id).eq('staff_id', staffId)
-    if (!error) { alert('Staff member approved!'); loadData() }
+    setActivating(false)
+    setShowActivationModal(false)
+    if (!error) { loadData() }
     else alert('Failed to approve: ' + error.message)
   }
 
@@ -237,7 +241,7 @@ export default function StaffReviewPage() {
             </div>
           </div>
           <button
-            onClick={handleActivateStaff}
+            onClick={() => setShowActivationModal(true)}
             className="bg-[#157354] text-white font-black px-8 py-4 rounded-2xl hover:bg-[#0f4a36] shadow-lg shadow-[#157354]/20 transition-all flex items-center gap-2 active:scale-95 shrink-0"
           >
             <CheckCircle2 className="w-5 h-5" /> Approve & Activate
@@ -608,6 +612,37 @@ export default function StaffReviewPage() {
                 )
               })
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Activation Modal ───────────────────────────────────────── */}
+      {showActivationModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-[#e2e8e4]">
+            <div className="w-16 h-16 bg-[#edf7f3] rounded-2xl flex items-center justify-center mb-6 border-2 border-[#d4ede4]">
+              <ShieldCheck className="w-8 h-8 text-[#157354]" />
+            </div>
+            <h2 className="text-2xl font-black text-[#0b3828] mb-2">Approve Staff Member?</h2>
+            <p className="text-[#6b7a73] font-medium leading-relaxed mb-8">
+              By approving <span className="font-bold text-[#1a2e25]">{profile.first_name} {profile.last_name}</span>, they will instantly be able to view and claim open shifts at your center.
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowActivationModal(false)}
+                disabled={activating}
+                className="flex-1 px-5 py-3 rounded-xl font-bold text-[#6b7a73] bg-[#f8faf9] border-2 border-[#f0f4f2] hover:bg-[#f0f4f2] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleActivateStaff}
+                disabled={activating}
+                className="flex-[2] flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-black text-white bg-[#157354] hover:bg-[#0f4a36] disabled:opacity-70 transition-colors shadow-lg shadow-[#157354]/20"
+              >
+                {activating ? <Loader2 className="w-5 h-5 animate-spin" /> : <><CheckCircle2 className="w-5 h-5" /> Confirm Activation</>}
+              </button>
+            </div>
           </div>
         </div>
       )}

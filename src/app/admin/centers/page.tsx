@@ -32,6 +32,9 @@ export default function AdminCentersPage() {
             tier,
             status,
             current_period_end
+          ),
+          metro_areas (
+            name
           )
         `)
         .order('created_at', { ascending: false })
@@ -104,6 +107,7 @@ export default function AdminCentersPage() {
              <thead>
                <tr className="border-b border-slate-100 bg-slate-50/50">
                  <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Center Details</th>
+                 <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Metro</th>
                  <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Location</th>
                  <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Subscription</th>
                  <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
@@ -132,6 +136,11 @@ export default function AdminCentersPage() {
                              /{center.slug}
                            </div>
                          </div>
+                       </div>
+                     </td>
+                     <td className="px-8 py-6">
+                       <div className="flex items-center gap-2 text-slate-500 font-bold text-xs">
+                         {center.metro_areas?.name || <span className="italic text-slate-300">Unassigned</span>}
                        </div>
                      </td>
                      <td className="px-8 py-6">
