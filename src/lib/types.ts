@@ -5,7 +5,7 @@ export type AgeGroup = 'infant' | 'toddler' | 'preschool' | 'school_age' | 'mixe
 export type CenterStaffStatus = 'invited' | 'applying' | 'active' | 'inactive' | 'removed'
 export type DocumentCategory = 'identity' | 'certification' | 'background' | 'training' | 'medical' | 'other'
 export type DocReviewStatus = 'missing' | 'pending_review' | 'accepted' | 'rejected' | 'expired'
-export type ShiftStatus = 'open' | 'filled' | 'cancelled'
+export type ShiftStatus = 'open' | 'filled' | 'cancelled' | 'unfilled'
 export type ClaimStatus = 'pending' | 'confirmed' | 'cancelled'
 export type MetroArea = {
   id: string
