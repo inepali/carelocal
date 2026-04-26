@@ -14,7 +14,8 @@ import {
   X,
   ShieldCheck,
   CreditCard,
-  Bell
+  Bell,
+  MapPin
 } from 'lucide-react'
 
 export default function AdminLayout({
@@ -46,6 +47,7 @@ export default function AdminLayout({
   const navItems = [
     { name: 'Overview', href: '/admin/dashboard', icon: LayoutDashboard },
     { name: 'Centers', href: '/admin/centers', icon: Building2 },
+    { name: 'Metro Areas', href: '/admin/metros', icon: MapPin },
     { name: 'Global Staff', href: '/admin/staff', icon: Users },
     { name: 'Subscriptions', href: '/admin/billing', icon: CreditCard },
     { name: 'System Settings', href: '/admin/settings', icon: Settings },

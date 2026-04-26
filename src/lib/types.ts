@@ -11,7 +11,9 @@ export type MetroArea = {
   id: string
   name: string
   slug: string
+  city?: string
   state_code: string
+  timezone?: string
   is_active: boolean
   created_at: string
 }
@@ -30,6 +32,7 @@ export interface Center {
   license_number?: string
   max_capacity?: number
   logo_url?: string
+  timezone?: string
   metro_area_id?: string
   subscription_tier: SubscriptionTier
   subscription_status: SubscriptionStatus

@@ -74,7 +74,8 @@ export default function CenterSettingsPage() {
         state: center.state,
         zip: center.zip,
         license_number: center.license_number,
-        metro_area_id: center.metro_area_id
+        metro_area_id: center.metro_area_id,
+        timezone: center.timezone
       })
       .eq('id', center.id)
 
@@ -203,6 +204,24 @@ export default function CenterSettingsPage() {
                       <p className="mt-3 text-[10px] text-[#a8b5ae] font-bold leading-relaxed">
                         Tagging your facility with a Metro Area enables regional discovery for staff across the Carolinas and expanding territories.
                       </p>
+                  </div>
+                  <div>
+                      <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Facility Timezone</label>
+                      <select 
+                        value={center.timezone || ''}
+                        onChange={(e) => setCenter({...center, timezone: e.target.value})}
+                        className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white text-[#1a2e25] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition appearance-none cursor-pointer"
+                      >
+                         <option value="">Select timezone...</option>
+                         <option value="America/Puerto_Rico">Atlantic Time (AST)</option>
+                         <option value="America/New_York">Eastern Time (EST)</option>
+                         <option value="America/Chicago">Central Time (CST)</option>
+                         <option value="America/Denver">Mountain Time (MST)</option>
+                         <option value="America/Phoenix">Mountain Time - Arizona (MST)</option>
+                         <option value="America/Los_Angeles">Pacific Time (PST)</option>
+                         <option value="America/Anchorage">Alaska Time (AKST)</option>
+                         <option value="Pacific/Honolulu">Hawaii Time (HST)</option>
+                      </select>
                   </div>
                 </div>
 
