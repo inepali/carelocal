@@ -14,7 +14,7 @@ export default function StaffShiftsPage() {
   const [myProfile, setMyProfile] = useState<any>(null)
   const [myConnections, setMyConnections] = useState<Record<string, string>>({}) // center_id -> status
   const [joiningCenterId, setJoiningCenterId] = useState<string | null>(null)
-  const [filterType, setFilterType] = useState<'metro' | 'all'>('all')
+  const [filterType, setFilterType] = useState<'metro' | 'all'>('metro')
   const [metros, setMetros] = useState<any[]>([])
   const [claimedShiftIds, setClaimedShiftIds] = useState<Set<string>>(new Set())
   const [confirmedShiftIds, setConfirmedShiftIds] = useState<Set<string>>(new Set())

@@ -35,6 +35,8 @@ function RegisterForm() {
   const [lastName, setLastName] = useState('')
   const [city, setCity] = useState('')
   const [zip, setZip] = useState('')
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [showTermsModal, setShowTermsModal] = useState(false)
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
@@ -143,6 +145,7 @@ function RegisterForm() {
   }
 
   return (
+    <>
     <div className="min-h-screen bg-[#f8faf9] flex flex-col md:flex-row">
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
         <div className="w-full max-w-md">
@@ -379,6 +382,29 @@ function RegisterForm() {
                   <p className="text-xs text-[#6b7a73] mt-2">Must be at least 8 characters.</p>
                 </div>
 
+                <div className="flex items-start gap-3 mt-4">
+                  <div className="flex items-center h-5">
+                    <input
+                      id="terms"
+                      type="checkbox"
+                      required
+                      checked={termsAccepted}
+                      onChange={(e) => setTermsAccepted(e.target.checked)}
+                      className="w-4 h-4 border border-[#e2e8e4] rounded bg-white focus:ring-3 focus:ring-[#157354]/30 accent-[#157354]"
+                    />
+                  </div>
+                  <label htmlFor="terms" className="text-sm font-medium text-[#6b7a73]">
+                    I agree to the{' '}
+                    <button
+                      type="button"
+                      onClick={() => setShowTermsModal(true)}
+                      className="text-[#157354] hover:underline"
+                    >
+                      Terms & Conditions
+                    </button>
+                  </label>
+                </div>
+
                 <div className="flex gap-3">
                   <button
                     type="button"
@@ -427,6 +453,43 @@ function RegisterForm() {
          </div>
       </div>
     </div>
+    
+    {showTermsModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+          <div className="p-4 border-b border-[#e6ece9] flex justify-between items-center bg-[#f8faf9]">
+            <h2 className="text-xl font-bold text-[#0b3828]">Terms & Conditions</h2>
+            <button 
+              onClick={() => setShowTermsModal(false)}
+              className="text-[#6b7a73] hover:text-[#1a2e25] w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#e6ece9] transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="flex-1 overflow-auto bg-white p-0">
+            <iframe src="/terms" className="w-full h-full min-h-[60vh] border-0" />
+          </div>
+          <div className="p-4 border-t border-[#e6ece9] bg-[#f8faf9] flex justify-end gap-3">
+            <button
+              onClick={() => setShowTermsModal(false)}
+              className="px-6 py-2.5 border border-[#e2e8e4] text-[#6b7a73] font-bold rounded-xl hover:bg-white transition-colors"
+            >
+              Close
+            </button>
+            <button
+              onClick={() => {
+                setTermsAccepted(true);
+                setShowTermsModal(false);
+              }}
+              className="px-6 py-2.5 bg-[#157354] text-white font-bold rounded-xl hover:bg-[#0f4a36] transition-colors"
+            >
+              Accept & Close
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }
 
