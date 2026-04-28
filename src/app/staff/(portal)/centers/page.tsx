@@ -16,7 +16,11 @@ import {
   Download,
   Plus,
   MapPin,
-  Clock
+  Clock,
+  Phone,
+  Mail,
+  User,
+  X
 } from 'lucide-react'
 import { getPresignedViewUrl } from '@/app/actions/storage.actions'
 import { 
@@ -52,6 +56,9 @@ function CentersContent() {
   const [matchingStatus, setMatchingStatus] = useState<Record<string, boolean>>({})
   const [vaultDocs, setVaultDocs] = useState<StaffDocument[]>([])
   const [linkingReq, setLinkingReq] = useState<CenterDocumentRequirement | null>(null)
+  
+  // Center Details Modal State
+  const [viewingCenter, setViewingCenter] = useState<any>(null)
 
   useEffect(() => {
     loadInitialData()
@@ -301,6 +308,7 @@ function CentersContent() {
                          )}
                          {assoc.status === 'active' && (
                             <button 
+                               onClick={() => setViewingCenter(assoc.center)}
                                className="px-6 py-3 border-2 border-[#157354] text-[#157354] font-black text-xs uppercase tracking-widest rounded-xl hover:bg-[#edf7f3] transition-all"
                             >
                                View Details
@@ -407,6 +415,89 @@ function CentersContent() {
                       className="w-full py-3 text-[#6b7a73] font-black text-xs uppercase tracking-widest mt-4"
                    >
                       Cancel
+                   </button>
+                </div>
+             </div>
+          </div>
+       )}
+
+       {/* Center Details Modal */}
+       {viewingCenter && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0b3828]/60 backdrop-blur-sm animate-in fade-in duration-200">
+             <div className="bg-white rounded-[2rem] w-full max-w-lg overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95 duration-200">
+                <div className="flex items-center justify-between p-6 bg-[#f8faf9] border-b border-[#f0f4f2]">
+                   <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-[#157354] flex items-center justify-center shadow-md shadow-[#157354]/20 shrink-0">
+                         <Building className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                         <h3 className="text-xl font-black text-[#0b3828] leading-none mb-1">{viewingCenter.name}</h3>
+                         <span className="text-[10px] font-black uppercase tracking-widest text-[#157354] bg-[#dcfce7] px-2 py-0.5 rounded-md">Approved Staff</span>
+                      </div>
+                   </div>
+                   <button 
+                      onClick={() => setViewingCenter(null)}
+                      className="p-2 text-[#a8b5ae] hover:text-[#0b3828] hover:bg-[#edf7f3] rounded-full transition-colors"
+                   >
+                      <X className="w-5 h-5" />
+                   </button>
+                </div>
+                
+                <div className="p-8 space-y-6">
+                   {/* Contact Person */}
+                   <div>
+                      <div className="flex items-center gap-2 mb-2 text-[#6b7a73]">
+                         <User className="w-4 h-4 text-[#a8b5ae]" />
+                         <span className="text-xs font-black uppercase tracking-widest">Director / Contact</span>
+                      </div>
+                      <p className="text-[#0b3828] font-bold text-lg">{viewingCenter.director_name || 'Not provided'}</p>
+                   </div>
+
+                   {/* Address */}
+                   <div>
+                      <div className="flex items-center gap-2 mb-2 text-[#6b7a73]">
+                         <MapPin className="w-4 h-4 text-[#a8b5ae]" />
+                         <span className="text-xs font-black uppercase tracking-widest">Address</span>
+                      </div>
+                      <p className="text-[#0b3828] font-bold text-lg leading-tight">
+                         {viewingCenter.address && <span className="block">{viewingCenter.address}</span>}
+                         {viewingCenter.city}, {viewingCenter.state} {viewingCenter.zip}
+                      </p>
+                   </div>
+
+                   {/* Phone */}
+                   <div>
+                      <div className="flex items-center gap-2 mb-2 text-[#6b7a73]">
+                         <Phone className="w-4 h-4 text-[#a8b5ae]" />
+                         <span className="text-xs font-black uppercase tracking-widest">Phone</span>
+                      </div>
+                      <p className="text-[#0b3828] font-bold text-lg">
+                         {viewingCenter.phone ? (
+                            <a href={`tel:${viewingCenter.phone}`} className="hover:text-[#157354] hover:underline transition-colors">{viewingCenter.phone}</a>
+                         ) : 'Not provided'}
+                      </p>
+                   </div>
+
+                   {/* Email */}
+                   <div>
+                      <div className="flex items-center gap-2 mb-2 text-[#6b7a73]">
+                         <Mail className="w-4 h-4 text-[#a8b5ae]" />
+                         <span className="text-xs font-black uppercase tracking-widest">Email</span>
+                      </div>
+                      <p className="text-[#0b3828] font-bold text-lg break-all">
+                         {viewingCenter.email ? (
+                            <a href={`mailto:${viewingCenter.email}`} className="hover:text-[#157354] hover:underline transition-colors">{viewingCenter.email}</a>
+                         ) : 'Not provided'}
+                      </p>
+                   </div>
+                </div>
+
+                <div className="p-6 bg-[#f8faf9] border-t border-[#f0f4f2]">
+                   <button 
+                      onClick={() => setViewingCenter(null)}
+                      className="w-full py-4 text-center bg-[#157354] text-white font-black text-xs uppercase tracking-widest rounded-xl hover:bg-[#0f4a36] shadow-lg shadow-[#157354]/20 transition-all"
+                   >
+                      Close Details
                    </button>
                 </div>
              </div>

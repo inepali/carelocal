@@ -16,6 +16,7 @@ export default function ShiftDetailPage() {
   const { id } = useParams()
   const router = useRouter()
   const supabase = createClient()
+  const shiftId = Array.isArray(id) ? id[0] : id
   
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -43,13 +44,14 @@ export default function ShiftDetailPage() {
 
   useEffect(() => {
     loadShiftData()
-  }, [id])
+  }, [shiftId])
 
   async function loadShiftData() {
     try {
       setLoading(true)
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
+      if (!shiftId) return
 
       // 1. Fetch Shift
       const { data: shiftData, error: sError } = await supabase
@@ -58,7 +60,7 @@ export default function ShiftDetailPage() {
           *,
           classrooms (*)
         `)
-        .eq('id', id)
+        .eq('id', shiftId)
         .single()
 
       if (sError) throw sError
@@ -81,7 +83,7 @@ export default function ShiftDetailPage() {
           *,
           staff_profiles (*)
         `)
-        .eq('shift_id', id)
+        .eq('shift_id', shiftId)
         .order('claimed_at', { ascending: false })
       
       setClaims(claimsData || [])
@@ -115,7 +117,7 @@ export default function ShiftDetailPage() {
           notes: editNotes,
           classroom_id: editClassroom === 'any' ? null : editClassroom
         })
-        .eq('id', id)
+        .eq('id', shiftId)
 
       if (uError) throw uError
       
@@ -142,7 +144,7 @@ export default function ShiftDetailPage() {
         await supabase
           .from('shifts')
           .update({ status: 'filled' })
-          .eq('id', id)
+          .eq('id', shiftId)
       }
 
       loadShiftData()
@@ -165,7 +167,7 @@ export default function ShiftDetailPage() {
   async function confirmCancelShift() {
     setCancelSubmitting(true)
     setCancelModalError(null)
-    const { error } = await supabase.from('shifts').update({ status: 'cancelled' }).eq('id', id)
+    const { error } = await supabase.from('shifts').update({ status: 'cancelled' }).eq('id', shiftId)
     setCancelSubmitting(false)
     if (error) {
       setCancelModalError(error.message)

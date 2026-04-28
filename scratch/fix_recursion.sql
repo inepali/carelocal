@@ -3,24 +3,43 @@
 -- Please execute this ENTIRE script in the Supabase SQL Editor.
 -- ==========================================
 
--- 1. Wipe all existing policies on shifts to guarantee the ghost recursive policy is deleted
-DROP POLICY IF EXISTS "Center admins can manage shifts" ON shifts;
-DROP POLICY IF EXISTS "Active staff can read open shifts for their centers" ON shifts;
-DROP POLICY IF EXISTS "Staff can view shifts they have claimed regardless of status" ON shifts;
-DROP POLICY IF EXISTS "Staff can view shifts they have claimed" ON shifts;
-DROP POLICY IF EXISTS "Super admins can manage all shifts" ON shifts;
+-- 1. Disable RLS temporarily
+ALTER TABLE shifts DISABLE ROW LEVEL SECURITY;
+ALTER TABLE shift_claims DISABLE ROW LEVEL SECURITY;
 
--- 2. Wipe all existing policies on shift_claims
-DROP POLICY IF EXISTS "Staff can manage their own claims" ON shift_claims;
-DROP POLICY IF EXISTS "Center admins can view claims for their shifts" ON shift_claims;
-DROP POLICY IF EXISTS "Center admins can confirm or cancel claims" ON shift_claims;
-DROP POLICY IF EXISTS "Super admins can manage all shift claims" ON shift_claims;
+-- 2. DYNAMICALLY wipe ANY and ALL custom policies on the "shifts" table (This guarantees the recursive ghost policy is destroyed regardless of its name!)
+DO $$ 
+DECLARE 
+    pol record;
+BEGIN
+    FOR pol IN 
+        SELECT polname 
+        FROM pg_policy 
+        WHERE polrelid = 'public.shifts'::regclass 
+    LOOP
+        EXECUTE format('DROP POLICY IF EXISTS %I ON public.shifts;', pol.polname);
+    END LOOP;
+END $$;
 
--- 3. Re-enable clean baseline Row Level Security
+-- 3. DYNAMICALLY wipe ALL policies on the "shift_claims" table safely
+DO $$ 
+DECLARE 
+    pol record;
+BEGIN
+    FOR pol IN 
+        SELECT polname 
+        FROM pg_policy 
+        WHERE polrelid = 'public.shift_claims'::regclass 
+    LOOP
+        EXECUTE format('DROP POLICY IF EXISTS %I ON public.shift_claims;', pol.polname);
+    END LOOP;
+END $$;
+
+-- 4. Re-enable clean baseline Row Level Security
 ALTER TABLE shifts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shift_claims ENABLE ROW LEVEL SECURITY;
 
--- 4. Rebuild exact baseline policies for shifts
+-- 5. Rebuild exact baseline policies for shifts
 CREATE POLICY "Center admins can manage shifts"
   ON shifts FOR ALL
   USING (
@@ -43,7 +62,7 @@ CREATE POLICY "Super admins can manage all shifts"
   TO authenticated
   USING ( ((auth.jwt() -> 'app_metadata' ->> 'is_super_admin')::boolean = true) );
 
--- 5. Rebuild exact baseline policies for shift_claims
+-- 6. Rebuild exact baseline policies for shift_claims
 CREATE POLICY "Staff can manage their own claims"
   ON shift_claims FOR ALL
   USING (

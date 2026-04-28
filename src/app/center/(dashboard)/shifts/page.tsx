@@ -24,11 +24,12 @@ export default function CenterShiftsPage() {
         }
 
         // 1. Get Center Admin Record
-        const { data: adminData, error: adminError } = await supabase
+        const { data: adminRows, error: adminError } = await supabase
           .from('center_admins')
           .select('center_id')
           .eq('user_id', user.id)
-          .maybeSingle()
+        
+        const centerIds = (adminRows || []).map((r: any) => r.center_id).filter(Boolean)
 
         if (adminError) {
           setError('Failed to fetch center information.')
@@ -36,7 +37,7 @@ export default function CenterShiftsPage() {
           return
         }
 
-        if (!adminData) {
+        if (centerIds.length === 0) {
           setShifts([])
           setLoading(false)
           return
@@ -46,7 +47,7 @@ export default function CenterShiftsPage() {
         const { data: centerShifts, error: shiftsError } = await supabase
           .from('shifts')
           .select(`*, classrooms (name, age_group)`)
-          .eq('center_id', adminData.center_id)
+          .in('center_id', centerIds)
           .order('shift_date', { ascending: false })
 
         if (shiftsError) {

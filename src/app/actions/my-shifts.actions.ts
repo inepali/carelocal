@@ -16,7 +16,7 @@ export async function getMyShiftsBypassingRLS(staffId: string) {
   
   const { data: claims, error: claimsErr } = await supabase
     .from('shift_claims')
-    .select('shift_id')
+    .select('shift_id, status')
     .eq('staff_id', staffId)
     .not('status', 'eq', 'cancelled')
 
