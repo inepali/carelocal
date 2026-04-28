@@ -5,8 +5,9 @@ import { createClient } from '@/lib/supabase/client'
 import { MapPin, CheckCircle2, Loader2, ArrowRight, ShieldCheck, Globe, Sparkles, Heart, Calendar, Clock } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { getMyShiftsBypassingRLS } from '@/app/actions/my-shifts.actions'
 
-export default function StaffShiftsPage() {
+export default function MyShiftsPage() {
   const supabase = createClient()
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -14,7 +15,7 @@ export default function StaffShiftsPage() {
   const [myProfile, setMyProfile] = useState<any>(null)
   const [myConnections, setMyConnections] = useState<Record<string, string>>({}) // center_id -> status
   const [joiningCenterId, setJoiningCenterId] = useState<string | null>(null)
-  const [filterType, setFilterType] = useState<'metro' | 'all'>('all')
+  const [filterType, setFilterType] = useState<'metro' | 'all'>('metro')
   const [metros, setMetros] = useState<any[]>([])
   const [claimedShiftIds, setClaimedShiftIds] = useState<Set<string>>(new Set())
   const [confirmedShiftIds, setConfirmedShiftIds] = useState<Set<string>>(new Set())
@@ -55,32 +56,11 @@ export default function StaffShiftsPage() {
       }, {})
       setMyConnections(connectionMap)
 
-      // 3. Fetch all OPEN shifts from expansion territories
-      const today = new Date().toISOString().split('T')[0]
-      const { data: openShifts } = await supabase
-        .from('shifts')
-        .select(`
-            *,
-            centers (id, name, address, city, state, zip, slug, metro_area_id),
-            classrooms (name, age_group)
-        `)
-        .eq('status', 'open')
-        .gte('shift_date', today)
-        .order('shift_date', { ascending: true })
-        
-      setShifts(openShifts || [])
+      // 3. Fetch shifts AND claims natively through our safe server action (bypasses RLS locks)
+      const { shifts: myFetchedShifts, claims: myClaims } = await getMyShiftsBypassingRLS(profile.id)
+      setShifts(myFetchedShifts)
 
-      // 4. Fetch Metros for context
-      const { data: metroData } = await supabase.from('metro_areas').select('*').eq('is_active', true)
-      setMetros(metroData || [])
-
-      // 5. Fetch my existing claims & interests
-      const { data: myClaims } = await supabase
-        .from('shift_claims')
-        .select('shift_id, status')
-        .eq('staff_id', profile.id)
-        .not('status', 'eq', 'cancelled')
-
+      // 4. Update the claim statuses accurately without getting blocked by RLS
       const claimed = new Set<string>()
       const confirmed = new Set<string>()
       const interested = new Set<string>()
@@ -92,6 +72,10 @@ export default function StaffShiftsPage() {
       setClaimedShiftIds(claimed)
       setConfirmedShiftIds(confirmed)
       setInterestedShiftIds(interested)
+
+      // 5. Fetch Metros for context
+      const { data: metroData } = await supabase.from('metro_areas').select('*').eq('is_active', true)
+      setMetros(metroData || [])
 
       setLoading(false)
     }
@@ -164,19 +148,8 @@ export default function StaffShiftsPage() {
     setClaimingShiftId(null)
   }
 
-  // Matching Logic: Filter by Metro Area ID and exclude already claimed shifts
-  const filteredShifts = shifts.filter(shift => {
-    // Hide shifts that appear in "My Shifts" (already booked, pending, or interested)
-    if (claimedShiftIds.has(shift.id) || interestedShiftIds.has(shift.id)) return false
-    
-    if (filterType === 'all') return true
-    if (!myProfile || !myProfile.metro_area_id) return true
-    
-    return shift.centers?.metro_area_id === myProfile.metro_area_id
-  })
-
-  const currentMetroName = myProfile?.metro_areas?.name || 'your region'
-
+  // Removed metro matching explicitly since this is purely a calendar of YOUR shifts
+  
   if (loading) {
      return (
        <div className="max-w-5xl animate-pulse">
@@ -189,73 +162,24 @@ export default function StaffShiftsPage() {
   return (
     <div className="max-w-5xl pb-32">
       <div className="mb-10">
-        <div className="flex items-center gap-2 text-[#157354] font-black tracking-[0.12em] text-[10px] uppercase mb-2">
-          <Sparkles className="w-4 h-4" /> Expansion Marketplace
-        </div>
-        <h1 className="text-4xl font-black text-[#0b3828] mb-2 tracking-tight">Available Shifts</h1>
+        <h1 className="text-4xl font-black text-[#0b3828] mb-2 tracking-tight">My Shifts</h1>
         <p className="text-[#6b7a73] text-lg font-medium">
-          {filterType === 'metro' && myProfile?.metro_area_id
-            ? `Showing opportunities in ${currentMetroName}.`
-            : 'Showing all shifts across our expanding network.'}
+          A personal overview of shifts you have claimed or are booked for.
         </p>
       </div>
 
-      <div className="mb-12">
-        <div className="bg-white border-2 border-[#157354]/10 rounded-[2rem] p-8 shadow-xl shadow-[#157354]/5">
-          <h2 className="text-xl font-black text-[#0b3828] mb-6 flex items-center gap-3">
-            <Globe className="w-6 h-6 text-[#157354]" />
-            Region filter
-          </h2>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <button
-              type="button"
-              onClick={() => setFilterType('metro')}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 px-6 py-4 font-black text-xs uppercase tracking-widest transition-all ${
-                filterType === 'metro'
-                  ? 'border-[#157354] bg-[#157354] text-white shadow-lg shadow-[#157354]/20'
-                  : 'border-[#f0f4f2] bg-[#f8faf9] text-[#3d5a4f] hover:border-[#157354]/30'
-              }`}
-            >
-              <MapPin className="w-5 h-5" /> My Metro
-            </button>
-            <button
-              type="button"
-              onClick={() => setFilterType('all')}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 px-6 py-4 font-black text-xs uppercase tracking-widest transition-all ${
-                filterType === 'all'
-                  ? 'border-[#157354] bg-[#157354] text-white shadow-lg shadow-[#157354]/20'
-                  : 'border-[#f0f4f2] bg-[#f8faf9] text-[#3d5a4f] hover:border-[#157354]/30'
-              }`}
-            >
-              <Globe className="w-5 h-5" /> All Metros
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {filteredShifts.length === 0 ? (
+      {shifts.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-[#e2e8e4]">
-          <Globe className="w-12 h-12 text-[#a8b5ae] mx-auto mb-4" />
-          <p className="text-[#6b7a73] font-bold">No shifts in this view yet</p>
-          <p className="text-sm text-[#a8b5ae] mt-1 max-w-md mx-auto">
-            {filterType === 'metro'
-              ? `Try All Metros to see openings outside ${currentMetroName}.`
-              : 'There are no open shifts right now.'}
+          <Calendar className="w-12 h-12 text-[#a8b5ae] mx-auto mb-4" />
+          <h3 className="text-xl font-black text-[#0b3828] mb-2">No booked shifts yet</h3>
+          <p className="text-[#6b7a73] font-medium max-w-sm mx-auto">
+            Try checking the Available Shifts tabs to discover and claim your first shift!
           </p>
-          {filterType === 'metro' && (
-            <button
-              type="button"
-              onClick={() => setFilterType('all')}
-              className="mt-8 bg-[#157354] text-white font-black text-xs uppercase tracking-widest px-8 py-4 rounded-xl hover:bg-[#0f4a36] shadow-lg shadow-[#157354]/20 transition-all"
-            >
-              Show all metros
-            </button>
-          )}
         </div>
       ) : (
         <div className="space-y-6">
-          <h2 className="text-2xl font-black text-[#0b3828] mb-6 px-2">Open shifts</h2>
-          {filteredShifts.map((shift) => {
+          <h2 className="text-2xl font-black text-[#0b3828] mb-6 px-2">Booked & Pending Shifts</h2>
+          {shifts.map((shift) => {
             const connectionStatus = myConnections[shift.center_id]
             const isActive = connectionStatus === 'active'
             const isPending = connectionStatus === 'invited'
