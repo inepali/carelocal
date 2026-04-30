@@ -20,7 +20,8 @@ import {
    Phone,
    Mail,
    User,
-   X
+   X,
+   Star
 } from 'lucide-react'
 import { getPresignedViewUrl } from '@/app/actions/storage.actions'
 import {
@@ -60,6 +61,8 @@ function CentersContent() {
 
    // Center Details Modal State
    const [viewingCenter, setViewingCenter] = useState<any>(null)
+   const [centerReviews, setCenterReviews] = useState<Record<string, any[]>>({})
+   const [centerRatings, setCenterRatings] = useState<Record<string, { avg: number, count: number }>>({})
 
    useEffect(() => {
       loadInitialData()
@@ -95,6 +98,40 @@ function CentersContent() {
             .eq('staff_id', profile.id)
 
          setVaultDocs(docs || [])
+
+         // 4. Fetch Reviews for affiliated centers
+         if (associations && associations.length > 0) {
+            const centerIds = associations.map((a: any) => a.center_id)
+            const { data: revs } = await supabase
+               .from('shift_reviews')
+               .select('*')
+               .in('reviewee_id', centerIds)
+               .eq('reviewer_type', 'staff')
+            
+            if (revs && revs.length > 0) {
+               // We need staff names for these reviewers
+               const sIds = revs.map((r: any) => r.reviewer_id)
+               const { data: sData } = await supabase.from('staff_profiles').select('id, first_name, last_name').in('id', sIds)
+               const sMap = (sData || []).reduce((acc: any, curr: any) => { acc[curr.id] = `${curr.first_name} ${curr.last_name[0]}.`; return acc; }, {})
+               
+               const rMap: Record<string, any[]> = {}
+               const ratingMap: Record<string, { avg: number, count: number }> = { ...centerRatings }
+               
+               revs.forEach((r: any) => {
+                  if (!rMap[r.reviewee_id]) rMap[r.reviewee_id] = []
+                  rMap[r.reviewee_id].push({ ...r, reviewer_name: sMap[r.reviewer_id] || 'Staff Member' })
+               })
+               
+               Object.keys(rMap).forEach(cId => {
+                  const count = rMap[cId].length
+                  const sum = rMap[cId].reduce((acc, curr) => acc + curr.rating, 0)
+                  ratingMap[cId] = { avg: sum / count, count }
+               })
+               
+               setCenterReviews(rMap)
+               setCenterRatings(ratingMap)
+            }
+         }
       }
       setLoading(false)
    }
@@ -108,6 +145,27 @@ function CentersContent() {
          .select('*')
          .or(`name.ilike.%${searchQuery}%,city.ilike.%${searchQuery}%`)
          .limit(10)
+
+      if (data && data.length > 0) {
+         const cIds = data.map(c => c.id)
+         const { data: revs } = await supabase
+            .from('shift_reviews')
+            .select('reviewee_id, rating')
+            .in('reviewee_id', cIds)
+            .eq('reviewer_type', 'staff')
+            
+         if (revs && revs.length > 0) {
+            const newRatings = { ...centerRatings }
+            cIds.forEach(cId => {
+               const cRevs = revs.filter(r => r.reviewee_id === cId)
+               if (cRevs.length > 0) {
+                  const sum = cRevs.reduce((acc, curr) => acc + curr.rating, 0)
+                  newRatings[cId] = { avg: sum / cRevs.length, count: cRevs.length }
+               }
+            })
+            setCenterRatings(newRatings)
+         }
+      }
 
       setSearchResults(data || [])
       setSearching(false)
@@ -242,8 +300,16 @@ function CentersContent() {
                                     <Building className="w-6 h-6 text-[#157354]" />
                                  </div>
                                  <div>
-                                    <div className="font-black text-[#0b3828] tracking-tight">{center.name}</div>
-                                    <div className="text-xs text-[#6b7a73] font-bold uppercase tracking-widest flex items-center gap-2">
+                                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                                       <div className="font-black text-[#0b3828] tracking-tight text-lg">{center.name}</div>
+                                       {centerRatings[center.id] && (
+                                          <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-[#d97706] bg-[#fffbeb] px-2 py-0.5 rounded-md border border-[#fef3c7]">
+                                             <Star className="w-3 h-3 fill-current" />
+                                             {centerRatings[center.id].avg.toFixed(1)} ({centerRatings[center.id].count})
+                                          </span>
+                                       )}
+                                    </div>
+                                    <div className="text-xs text-[#6b7a73] font-bold uppercase tracking-widest flex items-center gap-2 mt-0.5">
                                        <MapPin className="w-3 h-3" /> {center.city}, {center.state}
                                     </div>
                                  </div>
@@ -291,8 +357,14 @@ function CentersContent() {
                                  }`}>
                                  {assoc.status}
                               </span>
+                              {centerRatings[assoc.center.id] && (
+                                 <span className="flex items-center gap-1.5 text-[#d97706] font-black uppercase tracking-[0.1em] text-[10px] bg-[#fffbeb] px-3 py-1 rounded-full border-2 border-[#fef3c7]">
+                                    <Star className="w-3.5 h-3.5 fill-current" />
+                                    {centerRatings[assoc.center.id].avg.toFixed(1)} ({centerRatings[assoc.center.id].count})
+                                 </span>
+                              )}
                            </div>
-                           <div className="text-[#6b7a73] font-medium flex items-center justify-center md:justify-start gap-4 text-sm mt-2">
+                           <div className="text-[#6b7a73] font-medium flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm mt-2">
                               <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-[#a8b5ae]" /> {assoc.center.city}, {assoc.center.state}</span>
                               <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-[#a8b5ae]" /> Joined {new Date(assoc.added_at).toLocaleDateString()}</span>
                            </div>
@@ -490,6 +562,40 @@ function CentersContent() {
                            ) : 'Not provided'}
                         </p>
                      </div>
+                     {/* Reviews Section */}
+                     {(centerReviews[viewingCenter.id] || []).length > 0 && (
+                        <div className="pt-6 border-t-2 border-[#f0f4f2]">
+                           <h4 className="text-lg font-black text-[#0b3828] mb-4 flex items-center gap-2">
+                              <Star className="w-5 h-5 text-[#fbbf24] fill-[#fbbf24]" /> Staff Reviews
+                           </h4>
+                           <div className="grid gap-3">
+                              {(centerReviews[viewingCenter.id] || []).map((review: any) => (
+                                 <div key={review.id} className="p-4 rounded-2xl bg-[#f8faf9] border border-[#e2e8e4]">
+                                    <div className="flex items-center justify-between mb-2">
+                                       <div className="font-bold text-[#1a2e25] text-sm">{review.reviewer_name}</div>
+                                       <div className="flex gap-1">
+                                          {[...Array(5)].map((_, i) => (
+                                             <Star key={i} className={`w-3.5 h-3.5 ${i < review.rating ? 'text-[#fbbf24] fill-[#fbbf24]' : 'text-[#e2e8e4] fill-transparent'}`} />
+                                          ))}
+                                       </div>
+                                    </div>
+                                    {review.tags && review.tags.length > 0 && (
+                                       <div className="flex flex-wrap gap-1.5 mb-2">
+                                          {review.tags.map((tag: string) => (
+                                             <span key={tag} className="text-[9px] font-black uppercase tracking-widest bg-[#edf7f3] text-[#157354] px-2 py-1 rounded-md border border-[#d4ede4]">
+                                                {tag}
+                                             </span>
+                                          ))}
+                                       </div>
+                                    )}
+                                    {review.public_comment && (
+                                       <p className="text-xs text-[#3d5a4f] italic mt-2 bg-white p-3 rounded-xl border border-[#e2e8e4]">"{review.public_comment}"</p>
+                                    )}
+                                 </div>
+                              ))}
+                           </div>
+                        </div>
+                     )}
                   </div>
 
                   <div className="p-6 bg-[#f8faf9] border-t border-[#f0f4f2]">

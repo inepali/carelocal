@@ -9,12 +9,12 @@ import {
 import {
   User, Mail, Phone, Save, Loader2, Globe, Briefcase, Award,
   CalendarDays, Plus, Pencil, Trash2, CheckCircle2, AlertTriangle,
-  XCircle, FileText, Clock, ChevronDown, X, ShieldCheck, Link2
+  XCircle, FileText, Clock, ChevronDown, X, ShieldCheck, Link2, Star
 } from 'lucide-react'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-type TabId = 'personal' | 'experience' | 'credentials' | 'availability'
+type TabId = 'personal' | 'experience' | 'credentials' | 'availability' | 'reviews'
 
 const MONTHS = [
   'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'
@@ -65,6 +65,7 @@ export default function StaffProfilePage() {
   const [metros, setMetros]           = useState<MetroArea[]>([])
   const [staffId, setStaffId]         = useState<string | null>(null)
   const [vaultDocs, setVaultDocs]     = useState<StaffDocument[]>([])
+  const [reviews, setReviews]         = useState<any[]>([])
   const [activeTab, setActiveTab]     = useState<TabId>('personal')
 
   // ── Load everything once ──
@@ -99,6 +100,20 @@ export default function StaffProfilePage() {
           .select('id, document_name, document_category')
           .eq('staff_id', profileData.id)
         setVaultDocs((docs || []) as any)
+
+        // Fetch Reviews from Centers
+        const { data: revs } = await supabase
+          .from('shift_reviews')
+          .select('*')
+          .eq('reviewee_id', profileData.id)
+          .eq('reviewer_type', 'center')
+        
+        if (revs && revs.length > 0) {
+           const cIds = revs.map((r: any) => r.reviewer_id)
+           const { data: cData } = await supabase.from('centers').select('id, name').in('id', cIds)
+           const cMap = (cData || []).reduce((acc: any, curr: any) => { acc[curr.id] = curr.name; return acc; }, {})
+           setReviews(revs.map((r: any) => ({ ...r, reviewer_name: cMap[r.reviewer_id] || 'Center' })))
+        }
       }
 
       setLoading(false)
@@ -121,6 +136,7 @@ export default function StaffProfilePage() {
     { id: 'experience',    label: 'Experience',      Icon: Briefcase },
     { id: 'credentials',   label: 'Credentials',     Icon: Award },
     { id: 'availability',  label: 'Availability',    Icon: CalendarDays },
+    { id: 'reviews',       label: 'Reviews',         Icon: Star },
   ]
 
   return (
@@ -179,6 +195,9 @@ export default function StaffProfilePage() {
       )}
       {activeTab === 'availability' && (
         <AvailabilityTab profile={profile} setProfile={setProfile} supabase={supabase} />
+      )}
+      {activeTab === 'reviews' && (
+        <ReviewsTab reviews={reviews} />
       )}
     </div>
   )
@@ -873,6 +892,49 @@ function AvailabilityTab({
       >
         {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-5 h-5 text-white/60" /> Save Availability</>}
       </button>
+    </div>
+  )
+}
+
+// ─── Reviews Tab ───────────────────────────────────────────────────────────
+
+function ReviewsTab({ reviews }: { reviews: any[] }) {
+  return (
+    <div className="space-y-4">
+      {reviews.length === 0 ? (
+        <div className="text-center py-16 bg-white rounded-[2rem] border-2 border-dashed border-[#e2e8e4]">
+          <Star className="w-10 h-10 text-[#a8b5ae] mx-auto mb-3" />
+          <p className="text-[#6b7a73] font-bold text-sm">No reviews yet.</p>
+          <p className="text-[#a8b5ae] text-xs mt-1">Complete shifts to build your reputation!</p>
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {reviews.map(review => (
+            <div key={review.id} className="p-6 rounded-[1.5rem] bg-white border border-[#e2e8e4] hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between mb-3">
+                <div className="font-bold text-[#1a2e25] text-lg">{review.reviewer_name}</div>
+                <div className="flex gap-1">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className={`w-5 h-5 ${i < review.rating ? 'text-[#fbbf24] fill-[#fbbf24]' : 'text-[#e2e8e4] fill-transparent'}`} />
+                  ))}
+                </div>
+              </div>
+              {review.tags && review.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {review.tags.map((tag: string) => (
+                    <span key={tag} className="text-[10px] font-black uppercase tracking-widest bg-[#edf7f3] text-[#157354] px-2.5 py-1 rounded-lg border border-[#d4ede4]">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {review.public_comment && (
+                <p className="text-sm text-[#3d5a4f] mt-3 italic p-4 bg-[#f8faf9] rounded-xl border border-[#e2e8e4]">"{review.public_comment}"</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

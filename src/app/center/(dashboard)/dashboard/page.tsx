@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Shift, StaffProfile } from '@/lib/types'
 import Link from 'next/link'
-import { Calendar, Users, AlertCircle, FileText, ArrowRight, CheckCircle2, Clock, Plus, UserPlus, Globe } from 'lucide-react'
+import { Calendar, Users, AlertCircle, FileText, ArrowRight, CheckCircle2, Clock, Plus, UserPlus, Globe, Star } from 'lucide-react'
 
 export default function DashboardOverview() {
   const supabase = createClient()
@@ -13,7 +13,9 @@ export default function DashboardOverview() {
     activeStaff: 0,
     openShifts: 0,
     filledShifts: 0,
-    missingDocs: 0
+    missingDocs: 0,
+    avgRating: 0,
+    totalReviews: 0
   })
   const [upcomingShifts, setUpcomingShifts] = useState<any[]>([])
   const [recentActivity, setRecentActivity] = useState<any[]>([])
@@ -41,21 +43,33 @@ export default function DashboardOverview() {
         { count: pendingDocCount },
         { data: shiftsData },
         { data: claimsData },
-        { data: poolData }
+        { data: poolData },
+        { data: reviewsData }
       ] = await Promise.all([
         supabase.from('center_staff').select('*', { count: 'exact', head: true }).eq('center_id', centerId).eq('status', 'active'),
         supabase.from('shifts').select('*', { count: 'exact', head: true }).eq('center_id', centerId).eq('status', 'open').gte('shift_date', today),
         supabase.from('center_staff_document_status').select('*', { count: 'exact', head: true }).eq('center_id', centerId).eq('status', 'pending_review'),
         supabase.from('shifts').select('*, classrooms(name)').eq('center_id', centerId).eq('status', 'open').gte('shift_date', today).order('shift_date', { ascending: true }).limit(3),
         supabase.from('shift_claims').select('*, staff_profiles(first_name, last_name), shifts(shift_date, start_time, classroom_id, classrooms(name))').eq('status', 'pending').order('claimed_at', { ascending: false }).limit(3),
-        supabase.from('center_staff').select('*, staff_profiles(first_name, last_name)').eq('center_id', centerId).order('added_at', { ascending: false }).limit(3)
+        supabase.from('center_staff').select('*, staff_profiles(first_name, last_name)').eq('center_id', centerId).order('added_at', { ascending: false }).limit(3),
+        supabase.from('shift_reviews').select('rating').eq('reviewee_id', centerId).eq('reviewer_type', 'staff')
       ])
+
+      let avgRating = 0
+      let totalReviews = 0
+      if (reviewsData && reviewsData.length > 0) {
+        totalReviews = reviewsData.length
+        const sum = reviewsData.reduce((acc, curr) => acc + curr.rating, 0)
+        avgRating = sum / totalReviews
+      }
 
       setStats({
         activeStaff: staffCount || 0,
         openShifts: openCount || 0,
         filledShifts: 0, // Placeholder
-        missingDocs: pendingDocCount || 0
+        missingDocs: pendingDocCount || 0,
+        avgRating,
+        totalReviews
       })
 
       setUpcomingShifts(shiftsData || [])
@@ -116,7 +130,7 @@ export default function DashboardOverview() {
       </div>
 
       {/* ── Stats Grid ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
         <div className="bg-white p-7 rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300 group">
           <div className="flex items-start justify-between mb-6">
             <div className="p-4 rounded-2xl bg-[#edf7f3] text-[#157354] shadow-sm group-hover:bg-[#157354] group-hover:text-white transition-colors">
@@ -153,6 +167,22 @@ export default function DashboardOverview() {
           <div>
             <div className="text-4xl font-black text-[#0b3828] mb-1">{stats.missingDocs}</div>
             <div className="text-sm font-bold text-[#6b7a73]">Docs Pending Review</div>
+          </div>
+        </div>
+
+        <div className="bg-white p-7 rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300 group">
+          <div className="flex items-start justify-between mb-6">
+            <div className="p-4 rounded-2xl bg-[#fefce8] text-[#fbbf24] shadow-sm group-hover:bg-[#fbbf24] group-hover:text-white transition-colors">
+              <Star className="w-6 h-6" />
+            </div>
+            <div className="text-[10px] font-black uppercase tracking-widest text-amber-500">Reputation</div>
+          </div>
+          <div>
+            <div className="text-4xl font-black text-[#0b3828] mb-1 flex items-baseline gap-1">
+              {stats.avgRating > 0 ? stats.avgRating.toFixed(1) : '—'}
+              <Star className="w-5 h-5 text-[#fbbf24] fill-[#fbbf24]" />
+            </div>
+            <div className="text-sm font-bold text-[#6b7a73]">{stats.totalReviews} Staff Review{stats.totalReviews !== 1 ? 's' : ''}</div>
           </div>
         </div>
       </div>

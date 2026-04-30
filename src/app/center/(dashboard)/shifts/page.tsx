@@ -2,14 +2,20 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Calendar, Clock, AlertCircle, Loader2, Heart, Plus } from 'lucide-react'
+import { Calendar, Clock, AlertCircle, Loader2, Heart, Plus, Star, LogIn, LogOut, CheckCircle2 } from 'lucide-react'
 import Link from 'next/link'
+import { submitReview } from '@/app/actions/reviews.actions'
+import { checkInStaff, checkOutStaff } from '@/app/actions/timeclock.actions'
+import { ReviewModal } from '@/components/ReviewModal'
 
 export default function CenterShiftsPage() {
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
   const [shifts, setShifts] = useState<any[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [reviewingShift, setReviewingShift] = useState<any>(null)
+  const [reviewingStaffId, setReviewingStaffId] = useState<string | null>(null)
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadShifts() {
@@ -96,14 +102,32 @@ export default function CenterShiftsPage() {
           ;(profiles || []).forEach((p: any) => { staffMap[p.id] = p })
         }
 
-        // 6. Enrich shifts
-        const enrichedShifts = centerShifts.map(shift => ({
-          ...shift,
-          shift_claims: (allClaims || [])
+        // 6. Fetch existing reviews
+        const { data: reviews } = await supabase
+          .from('shift_reviews')
+          .select('reviewee_id')
+          .in('reviewee_id', staffIds)
+          .in('reviewer_id', centerIds)
+          .eq('reviewer_type', 'center')
+
+        const reviewedMap: Record<string, boolean> = {}
+        ;(reviews || []).forEach((r: any) => { reviewedMap[r.reviewee_id] = true })
+
+        // 7. Enrich shifts
+        const enrichedShifts = centerShifts.map(shift => {
+          const shiftClaims = (allClaims || [])
             .filter((c: any) => c.shift_id === shift.id)
-            .map((c: any) => ({ ...c, staff_profiles: staffMap[c.staff_id] || null })),
-          interest_count: interestMap[shift.id] || 0,
-        }))
+            .map((c: any) => ({ ...c, staff_profiles: staffMap[c.staff_id] || null }));
+            
+          const confirmedClaim = shiftClaims.find((c: any) => c.status === 'confirmed');
+          
+          return {
+            ...shift,
+            shift_claims: shiftClaims,
+            interest_count: interestMap[shift.id] || 0,
+            is_reviewed: confirmedClaim ? !!reviewedMap[confirmedClaim.staff_id] : false
+          }
+        })
 
         setShifts(enrichedShifts)
         setError(null)
@@ -116,6 +140,34 @@ export default function CenterShiftsPage() {
 
     loadShifts()
   }, [])
+
+  const handleReviewSubmit = async (data: any) => {
+    if (!reviewingShift || !reviewingStaffId) return
+    
+    await submitReview({
+      shift_id: reviewingShift.id,
+      reviewer_id: reviewingShift.center_id, // center's ID
+      reviewee_id: reviewingStaffId,
+      reviewer_type: 'center',
+      ...data
+    })
+    
+    // Refresh to hide the review button
+    window.location.reload()
+  }
+
+  const handleCheckIn = async (shiftId: string, staffId: string) => {
+    setActionLoadingId(shiftId)
+    await checkInStaff(shiftId, staffId)
+    // Refresh page manually for simple state update
+    window.location.reload()
+  }
+
+  const handleCheckOut = async (shiftId: string, staffId: string) => {
+    setActionLoadingId(shiftId)
+    await checkOutStaff(shiftId, staffId)
+    window.location.reload()
+  }
 
   if (loading) {
     return (
@@ -225,10 +277,11 @@ export default function CenterShiftsPage() {
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
                           shift.status === 'open'   ? 'bg-[#d4ede4] text-[#0f4a36]' :
+                          (shift.status === 'completed' || (shift.shift_claims || []).some((c:any) => c.check_out_time)) ? 'bg-[#f8faf9] text-[#6b7a73] border border-[#e2e8e4]' :
                           shift.status === 'filled' ? 'bg-[#f0fdf4] text-[#16a34a] border border-[#bbf7d0]' :
                           'bg-gray-100 text-gray-700'
                         }`}>
-                          {shift.status.charAt(0).toUpperCase() + shift.status.slice(1)}
+                          {(shift.status === 'completed' || (shift.shift_claims || []).some((c:any) => c.check_out_time)) ? 'Completed' : shift.status === 'filled' ? 'Assigned' : shift.status.charAt(0).toUpperCase() + shift.status.slice(1)}
                         </span>
                       </td>
 
@@ -258,17 +311,35 @@ export default function CenterShiftsPage() {
                           const staff          = activeClaim?.staff_profiles
                           if (!staff) return <span className="text-[#a8b5ae] italic text-xs">Unassigned</span>
                           return (
-                            <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-full bg-[#157354] text-white flex items-center justify-center text-xs font-semibold shrink-0">
-                                {(staff.first_name || '?')[0]}
-                              </div>
-                              <span className="font-medium text-[#1a2e25] text-sm">
-                                {staff.first_name} {staff.last_name}
-                              </span>
-                              {pendingClaim && !confirmedClaim && (
-                                <span className="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-md font-medium">
-                                  Pending
+                            <div className="flex flex-col gap-1.5">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-[#157354] text-white flex items-center justify-center text-xs font-semibold shrink-0">
+                                  {(staff.first_name || '?')[0]}
+                                </div>
+                                <span className="font-medium text-[#1a2e25] text-sm">
+                                  {staff.first_name} {staff.last_name}
                                 </span>
+                                {pendingClaim && !confirmedClaim && (
+                                  <span className="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-md font-medium">
+                                    Pending
+                                  </span>
+                                )}
+                              </div>
+                              
+                              {confirmedClaim?.check_in_time && (
+                                <div className="text-[11px] text-[#6b7a73] font-medium ml-8 flex items-center gap-1.5 flex-wrap">
+                                  <span className="flex items-center gap-1"><LogIn className="w-3 h-3 text-[#157354]" /> {new Date(confirmedClaim.check_in_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                  {confirmedClaim.check_out_time && (
+                                    <>
+                                      <span className="text-[#e2e8e4]">|</span>
+                                      <span className="flex items-center gap-1"><LogOut className="w-3 h-3 text-rose-600" /> {new Date(confirmedClaim.check_out_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                      <span className="text-[#e2e8e4]">|</span>
+                                      <span className="font-bold text-[#157354]">
+                                        {((new Date(confirmedClaim.check_out_time).getTime() - new Date(confirmedClaim.check_in_time).getTime()) / 3600000).toFixed(2)} hrs
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
                               )}
                             </div>
                           )
@@ -277,12 +348,71 @@ export default function CenterShiftsPage() {
 
                       {/* Actions */}
                       <td className="px-6 py-4 text-right">
-                        <Link
-                          href={`/center/shifts/${shift.id}`}
-                          className="text-[#157354] hover:text-[#0b3828] font-semibold bg-[#edf7f3] px-4 py-2 rounded-xl transition-all hover:scale-105 active:scale-95 inline-block text-xs text-center shadow-sm"
-                        >
-                          Manage
-                        </Link>
+                        <div className="flex justify-end gap-2">
+                          {(() => {
+                            const confirmedClaim = (shift.shift_claims || []).find((c: any) => c.status === 'confirmed')
+                            
+                            // 1. If completed, show Review
+                            if ((shift.status === 'completed' || confirmedClaim?.check_out_time) && confirmedClaim) {
+                              if (shift.is_reviewed) {
+                                return (
+                                  <div className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#f8faf9] text-[#6b7a73] border border-[#e2e8e4] font-bold whitespace-nowrap text-xs">
+                                    <CheckCircle2 className="w-3.5 h-3.5" /> Reviewed
+                                  </div>
+                                )
+                              }
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setReviewingShift(shift)
+                                    setReviewingStaffId(confirmedClaim.staff_id)
+                                  }}
+                                  className="text-[#0b3828] font-semibold bg-[#fbbf24] px-4 py-2 rounded-xl transition-all hover:bg-[#f59e0b] shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap text-xs"
+                                >
+                                  <Star className="w-3.5 h-3.5" /> Review
+                                </button>
+                              )
+                            }
+                            
+                            // 2. If filled (and not yet checked out), show Check In / Check Out
+                            if (shift.status === 'filled' && confirmedClaim && !confirmedClaim.check_out_time) {
+                              if (!confirmedClaim.check_in_time) {
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCheckIn(shift.id, confirmedClaim.staff_id)}
+                                    disabled={actionLoadingId === shift.id}
+                                    className="text-white font-semibold bg-[#157354] px-4 py-2 rounded-xl transition-all hover:bg-[#0f4a36] shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap text-xs disabled:opacity-50"
+                                  >
+                                    {actionLoadingId === shift.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogIn className="w-3.5 h-3.5" />}
+                                    Check In
+                                  </button>
+                                )
+                              } else if (!confirmedClaim.check_out_time) {
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCheckOut(shift.id, confirmedClaim.staff_id)}
+                                    disabled={actionLoadingId === shift.id}
+                                    className="text-rose-700 font-semibold bg-rose-100 px-4 py-2 rounded-xl transition-all hover:bg-rose-200 shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap text-xs disabled:opacity-50 border border-rose-200"
+                                  >
+                                    {actionLoadingId === shift.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogOut className="w-3.5 h-3.5" />}
+                                    Check Out
+                                  </button>
+                                )
+                              }
+                            }
+                            
+                            return null
+                          })()}
+                          <Link
+                            href={`/center/shifts/${shift.id}`}
+                            className="text-[#157354] hover:text-[#0b3828] font-semibold bg-[#edf7f3] px-4 py-2 rounded-xl transition-all hover:scale-105 active:scale-95 inline-block text-xs text-center shadow-sm"
+                          >
+                            Manage
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   )
@@ -292,6 +422,17 @@ export default function CenterShiftsPage() {
           </table>
         </div>
       </div>
+
+      <ReviewModal 
+        isOpen={!!reviewingShift}
+        onClose={() => {
+          setReviewingShift(null)
+          setReviewingStaffId(null)
+        }}
+        onSubmit={handleReviewSubmit}
+        reviewerType="center"
+        title={reviewingShift && reviewingStaffId ? `Review Staff Performance` : ''}
+      />
     </div>
   )
 }

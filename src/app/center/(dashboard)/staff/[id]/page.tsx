@@ -12,7 +12,7 @@ import {
   ArrowLeft, CheckCircle2, XCircle, Clock, FileText, ExternalLink,
   MessageSquare, AlertCircle, Loader2, ShieldCheck, User, Briefcase,
   Award, CalendarDays, MapPin, Phone, Mail, CreditCard,
-  AlertTriangle, Globe
+  AlertTriangle, Globe, Star
 } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
@@ -72,6 +72,7 @@ export default function StaffReviewPage() {
   const [activeTab, setActiveTab]     = useState<TabId>('overview')
   const [showActivationModal, setShowActivationModal] = useState(false)
   const [activating, setActivating]   = useState(false)
+  const [reviews, setReviews]         = useState<any[]>([])
 
   useEffect(() => { loadData() }, [staffId])
 
@@ -136,6 +137,26 @@ export default function StaffReviewPage() {
         .eq('staff_id', staffId)
         .order('sort_order', { ascending: true })
       setCredentials(creds || [])
+
+      // 7. Reviews
+      const { data: reviewsData } = await supabase
+        .from('shift_reviews')
+        .select('*')
+        .eq('reviewee_id', staffId)
+        .eq('reviewer_type', 'center')
+      
+      if (reviewsData && reviewsData.length > 0) {
+        const cIds = reviewsData.map((r: any) => r.reviewer_id)
+        const { data: cData } = await supabase.from('centers').select('id, name').in('id', cIds)
+        const cMap = (cData || []).reduce((acc: any, curr: any) => { acc[curr.id] = curr.name; return acc; }, {})
+        const enrichedReviews = reviewsData.map((r: any) => ({
+          ...r,
+          reviewer_name: cMap[r.reviewer_id] || 'Center'
+        }))
+        setReviews(enrichedReviews)
+      } else {
+        setReviews([])
+      }
     }
     setLoading(false)
   }
@@ -318,6 +339,41 @@ export default function StaffReviewPage() {
               <div className="text-xs font-black text-[#6b7a73] uppercase tracking-widest">Days Available</div>
             </div>
           </div>
+
+          {/* Reviews */}
+          {reviews.length > 0 && (
+            <div className="bg-white border-2 border-[#f0f4f2] rounded-[2rem] p-8 mt-6">
+              <h2 className="text-lg font-black text-[#0b3828] mb-4 flex items-center gap-2">
+                <Star className="w-5 h-5 text-[#fbbf24] fill-[#fbbf24]" /> Reviews from Centers
+              </h2>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {reviews.map(review => (
+                  <div key={review.id} className="p-5 rounded-2xl bg-[#f8faf9] border border-[#e2e8e4]">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="font-black text-[#1a2e25] text-sm">{review.reviewer_name}</div>
+                      <div className="flex gap-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} className={`w-4 h-4 ${i < review.rating ? 'text-[#fbbf24] fill-[#fbbf24]' : 'text-[#e2e8e4] fill-transparent'}`} />
+                        ))}
+                      </div>
+                    </div>
+                    {review.tags && review.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {review.tags.map((tag: string) => (
+                          <span key={tag} className="text-[9px] font-black uppercase tracking-widest bg-[#edf7f3] text-[#157354] px-2 py-1 rounded-md border border-[#d4ede4]">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {review.public_comment && (
+                      <p className="text-sm text-[#3d5a4f] italic bg-white p-3 rounded-xl border border-[#e2e8e4]">"{review.public_comment}"</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

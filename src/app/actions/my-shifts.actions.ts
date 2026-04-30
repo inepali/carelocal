@@ -16,11 +16,11 @@ export async function getMyShiftsBypassingRLS(staffId: string) {
   
   const { data: claims, error: claimsErr } = await supabase
     .from('shift_claims')
-    .select('shift_id, status')
+    .select('shift_id, status, check_in_time, check_out_time')
     .eq('staff_id', staffId)
     .not('status', 'eq', 'cancelled')
 
-  if (claimsErr || !claims || claims.length === 0) return { shifts: [], claims: [] }
+  if (claimsErr || !claims || claims.length === 0) return { shifts: [], claims: [], reviews: [] }
   
   const shiftIds = claims.map(c => c.shift_id)
   
@@ -32,8 +32,16 @@ export async function getMyShiftsBypassingRLS(staffId: string) {
     
   if (shiftsErr) {
      console.error("Failed to fetch my shifts by service role:", shiftsErr)
-     return { shifts: [], claims: claims }
+     return { shifts: [], claims: claims, reviews: [] }
   }
   
-  return { shifts: shifts || [], claims: claims }
+  const centerIds = Array.from(new Set((shifts || []).map(s => s.center_id)))
+  const { data: reviews } = await supabase
+    .from('shift_reviews')
+    .select('reviewee_id')
+    .in('reviewee_id', centerIds)
+    .eq('reviewer_id', staffId)
+    .eq('reviewer_type', 'staff')
+  
+  return { shifts: shifts || [], claims: claims, reviews: reviews || [] }
 }

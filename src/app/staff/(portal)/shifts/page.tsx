@@ -289,10 +289,11 @@ export default function StaffShiftsPage() {
               >
                 <div className="flex min-w-0 justify-center md:justify-start mb-3">
                   <div className="flex max-w-full flex-nowrap items-center gap-1.5 overflow-x-auto pb-1 [scrollbar-width:thin]">
-                    <span className="shrink-0 rounded-full border border-yellow-200 bg-[#fefce8] px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-yellow-800">
-                      Open
-                    </span>
-                    {isConfirmed ? (
+                    {shift.status === 'completed' ? (
+                      <span className="shrink-0 rounded-full border border-[#e2e8e4] bg-[#f8faf9] px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-[#6b7a73]">
+                        Completed
+                      </span>
+                    ) : isConfirmed ? (
                       <span className="shrink-0 rounded-full border border-[#dcfce7] bg-[#f0fdf4] px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-[#157354]">
                         Assigned
                       </span>
@@ -300,7 +301,11 @@ export default function StaffShiftsPage() {
                       <span className="shrink-0 rounded-full border border-[#fef08a] bg-[#fefce8] px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-[#854d0e]">
                         Pending
                       </span>
-                    ) : null}
+                    ) : (
+                      <span className="shrink-0 rounded-full border border-yellow-200 bg-[#fefce8] px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-yellow-800">
+                        Open
+                      </span>
+                    )}
                     {isInterested && !isClaimed && (
                       <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#d4ede4] bg-[#edf7f3] px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-[#157354]">
                         <Heart className="h-4 w-4 fill-[#157354]" /> Interested

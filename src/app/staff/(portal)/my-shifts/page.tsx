@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { MapPin, CheckCircle2, Loader2, ArrowRight, ShieldCheck, Globe, Sparkles, Heart, Calendar, Clock } from 'lucide-react'
+import { MapPin, CheckCircle2, Loader2, ArrowRight, ShieldCheck, Globe, Sparkles, Heart, Calendar, Clock, Star, LogIn, LogOut } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { getMyShiftsBypassingRLS } from '@/app/actions/my-shifts.actions'
+import { submitReview } from '@/app/actions/reviews.actions'
+import { ReviewModal } from '@/components/ReviewModal'
 
 export default function MyShiftsPage() {
   const supabase = createClient()
@@ -22,6 +24,8 @@ export default function MyShiftsPage() {
   const [interestedShiftIds, setInterestedShiftIds] = useState<Set<string>>(new Set())
   const [claimingShiftId, setClaimingShiftId] = useState<string | null>(null)
   const [expressingInterestId, setExpressingInterestId] = useState<string | null>(null)
+  const [reviewingShift, setReviewingShift] = useState<any>(null)
+  const [reviewedCenterIds, setReviewedCenterIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     async function loadData() {
@@ -57,8 +61,13 @@ export default function MyShiftsPage() {
       setMyConnections(connectionMap)
 
       // 3. Fetch shifts AND claims natively through our safe server action (bypasses RLS locks)
-      const { shifts: myFetchedShifts, claims: myClaims } = await getMyShiftsBypassingRLS(profile.id)
-      setShifts(myFetchedShifts)
+      const { shifts: myFetchedShifts, claims: myClaims, reviews: myReviews } = await getMyShiftsBypassingRLS(profile.id)
+      
+      const enrichedShifts = myFetchedShifts.map((s: any) => ({
+        ...s,
+        my_claim: myClaims.find((c: any) => c.shift_id === s.id)
+      }))
+      setShifts(enrichedShifts)
 
       // 4. Update the claim statuses accurately without getting blocked by RLS
       const claimed = new Set<string>()
@@ -72,6 +81,10 @@ export default function MyShiftsPage() {
       setClaimedShiftIds(claimed)
       setConfirmedShiftIds(confirmed)
       setInterestedShiftIds(interested)
+
+      const reviewed = new Set<string>()
+      ;(myReviews || []).forEach((r: any) => reviewed.add(r.reviewee_id))
+      setReviewedCenterIds(reviewed)
 
       // 5. Fetch Metros for context
       const { data: metroData } = await supabase.from('metro_areas').select('*').eq('is_active', true)
@@ -148,6 +161,19 @@ export default function MyShiftsPage() {
     setClaimingShiftId(null)
   }
 
+  const handleReviewSubmit = async (data: any) => {
+    if (!myProfile || !reviewingShift) return
+    
+    await submitReview({
+      shift_id: reviewingShift.id,
+      reviewer_id: myProfile.id,
+      reviewee_id: reviewingShift.center_id,
+      reviewer_type: 'staff',
+      ...data
+    })
+    setReviewedCenterIds(prev => new Set([...prev, reviewingShift.center_id]))
+  }
+
   // Removed metro matching explicitly since this is purely a calendar of YOUR shifts
   
   if (loading) {
@@ -197,8 +223,13 @@ export default function MyShiftsPage() {
             const locationLine = [shift.centers?.city, shift.centers?.state].filter(Boolean).join(', ') || '—'
             const zipPart = shift.centers?.zip ? ` ${shift.centers.zip}` : ''
             const payLabel = (shift.payment_mode || 'Corporate payroll').replace(/_/g, ' ')
+            const myClaim = shift.my_claim
+            const isCompleted = shift.status === 'completed' || !!myClaim?.check_out_time
+            const isReviewed = reviewedCenterIds.has(shift.center_id)
 
-            const actionHint = isConfirmed
+            const actionHint = isCompleted
+              ? isReviewed ? 'You have reviewed this center.' : 'Shift completed. Please share your experience.'
+              : isConfirmed
               ? 'You are confirmed for this shift. Check your schedule.'
               : isClaimed
                 ? 'Your claim is pending center confirmation.'
@@ -213,10 +244,11 @@ export default function MyShiftsPage() {
               >
                 <div className="flex min-w-0 justify-center md:justify-start mb-3">
                   <div className="flex max-w-full flex-nowrap items-center gap-1.5 overflow-x-auto pb-1 [scrollbar-width:thin]">
-                    <span className="shrink-0 rounded-full border border-yellow-200 bg-[#fefce8] px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-yellow-800">
-                      Open
-                    </span>
-                    {isConfirmed ? (
+                    {isCompleted ? (
+                      <span className="shrink-0 rounded-full border border-[#e2e8e4] bg-[#f8faf9] px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-[#6b7a73]">
+                        Completed
+                      </span>
+                    ) : isConfirmed ? (
                       <span className="shrink-0 rounded-full border border-[#dcfce7] bg-[#f0fdf4] px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-[#157354]">
                         Assigned
                       </span>
@@ -224,7 +256,11 @@ export default function MyShiftsPage() {
                       <span className="shrink-0 rounded-full border border-[#fef08a] bg-[#fefce8] px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-[#854d0e]">
                         Pending
                       </span>
-                    ) : null}
+                    ) : (
+                      <span className="shrink-0 rounded-full border border-yellow-200 bg-[#fefce8] px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-yellow-800">
+                        Open
+                      </span>
+                    )}
                     {isInterested && !isClaimed && (
                       <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#d4ede4] bg-[#edf7f3] px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-[#157354]">
                         <Heart className="h-4 w-4 fill-[#157354]" /> Interested
@@ -264,14 +300,40 @@ export default function MyShiftsPage() {
                         <span className="font-black uppercase tracking-widest text-[#a8b5ae] text-[10px]">Room</span> {roomLabel}
                       </p>
                     )}
+                    
+                    {myClaim?.check_in_time && (
+                      <div className="mt-3 p-3 bg-[#f8faf9] rounded-xl border border-[#e2e8e4] inline-flex flex-col gap-1">
+                        <div className="text-xs text-[#6b7a73] font-medium flex items-center gap-2">
+                          <LogIn className="w-3.5 h-3.5 text-[#157354]" /> In: {new Date(myClaim.check_in_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        </div>
+                        {myClaim.check_out_time && (
+                          <div className="text-xs text-[#6b7a73] font-medium flex items-center gap-2">
+                            <LogOut className="w-3.5 h-3.5 text-rose-600" /> Out: {new Date(myClaim.check_out_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            <span className="font-black text-[#157354] ml-2">
+                              {((new Date(myClaim.check_out_time).getTime() - new Date(myClaim.check_in_time).getTime()) / 3600000).toFixed(2)} hrs
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex flex-col items-stretch sm:items-end gap-2 w-full md:w-auto shrink-0">
-                    {isConfirmed ? (
-                      <div className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#f0fdf4] text-[#157354] border border-[#dcfce7] font-black text-xs uppercase tracking-widest whitespace-nowrap">
-                        <CheckCircle2 className="w-4 h-4" /> Assigned
-                      </div>
-                    ) : isClaimed ? (
+                    {isCompleted ? (
+                      isReviewed ? (
+                        <div className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#f8faf9] text-[#6b7a73] border border-[#e2e8e4] font-black text-xs uppercase tracking-widest whitespace-nowrap">
+                          <CheckCircle2 className="w-4 h-4" /> Reviewed
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setReviewingShift(shift)}
+                          className="px-5 py-2.5 bg-[#fbbf24] text-[#0b3828] font-black text-xs uppercase tracking-widest rounded-xl hover:bg-[#f59e0b] shadow-lg shadow-amber-200/30 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
+                        >
+                          <Star className="w-4 h-4" /> Leave Review
+                        </button>
+                      )
+                    ) : isConfirmed ? (
                       <div className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#fefce8] text-[#854d0e] border border-[#fef08a] font-black text-xs uppercase tracking-widest whitespace-nowrap">
                         <Clock className="w-4 h-4" /> Pending
                       </div>
@@ -354,6 +416,14 @@ export default function MyShiftsPage() {
           })}
         </div>
       )}
+
+      <ReviewModal 
+        isOpen={!!reviewingShift}
+        onClose={() => setReviewingShift(null)}
+        onSubmit={handleReviewSubmit}
+        reviewerType="staff"
+        title={reviewingShift ? `Review ${reviewingShift.centers?.name}` : ''}
+      />
     </div>
   )
 }
