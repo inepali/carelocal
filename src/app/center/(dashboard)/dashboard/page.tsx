@@ -15,7 +15,9 @@ export default function DashboardOverview() {
     filledShifts: 0,
     missingDocs: 0,
     avgRating: 0,
-    totalReviews: 0
+    totalReviews: 0,
+    trialDaysLeft: 0,
+    isTrialing: false
   })
   const [upcomingShifts, setUpcomingShifts] = useState<any[]>([])
   const [recentActivity, setRecentActivity] = useState<any[]>([])
@@ -33,6 +35,25 @@ export default function DashboardOverview() {
 
       if (!adminData) return
       const centerId = adminData.center_id
+
+      const { data: centerData } = await supabase
+        .from('centers')
+        .select('created_at, trial_months, subscriptions(status)')
+        .eq('id', centerId)
+        .single()
+
+      let trialDaysLeft = 0;
+      let isTrialing = false;
+      if (centerData) {
+        const sub = centerData.subscriptions?.[0]
+        if (!sub || sub.status !== 'active') {
+          const trialMonths = centerData.trial_months || 6
+          const trialEnd = new Date(centerData.created_at)
+          trialEnd.setMonth(trialEnd.getMonth() + trialMonths)
+          trialDaysLeft = Math.ceil((trialEnd.getTime() - new Date().getTime()) / (1000 * 3600 * 24))
+          if (trialDaysLeft > 0) isTrialing = true
+        }
+      }
 
       const today = new Date().toISOString().split('T')[0]
 
@@ -69,7 +90,9 @@ export default function DashboardOverview() {
         filledShifts: 0, // Placeholder
         missingDocs: pendingDocCount || 0,
         avgRating,
-        totalReviews
+        totalReviews,
+        trialDaysLeft,
+        isTrialing
       })
 
       setUpcomingShifts(shiftsData || [])
@@ -128,6 +151,23 @@ export default function DashboardOverview() {
           <Plus className="w-5 h-5" /> Post New Shift
         </Link>
       </div>
+
+      {stats.isTrialing && (
+        <div className="mb-10 bg-[#fffbeb] border border-[#fcd34d] p-4 rounded-[1.5rem] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-in fade-in slide-in-from-bottom-2">
+           <div className="flex items-center gap-4">
+             <div className="w-12 h-12 rounded-xl bg-[#fde68a] flex items-center justify-center shrink-0">
+               <AlertCircle className="w-6 h-6 text-[#d97706]" />
+             </div>
+             <div>
+               <div className="font-black text-[#b45309] text-lg">Free Trial Active</div>
+               <div className="text-sm font-bold text-[#d97706]">You have {stats.trialDaysLeft} days remaining on your free trial.</div>
+             </div>
+           </div>
+           <Link href="/center/settings/billing" className="bg-[#d97706] text-white px-6 py-3 rounded-xl font-bold hover:bg-[#b45309] transition-colors shadow-sm whitespace-nowrap text-center">
+             Subscribe Now
+           </Link>
+        </div>
+      )}
 
       {/* ── Stats Grid ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">

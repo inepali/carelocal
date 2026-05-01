@@ -38,6 +38,7 @@ export interface Center {
   subscription_status: SubscriptionStatus
   stripe_customer_id?: string
   trial_ends_at?: string
+  trial_months?: number
   created_at: string
   updated_at: string
 }

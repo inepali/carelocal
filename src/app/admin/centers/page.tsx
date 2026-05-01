@@ -64,6 +64,15 @@ export default function AdminCentersPage() {
     }
   }
 
+  const updateTrialMonths = async (centerId: string, months: number) => {
+    const { error } = await supabase.from('centers').update({ trial_months: months }).eq('id', centerId)
+    if (!error) {
+      setCenters(prev => prev.map(c => c.id === centerId ? { ...c, trial_months: months } : c))
+    } else {
+      alert('Failed to update trial months')
+    }
+  }
+
   if (loading) {
     return (
       <div className="space-y-4 animate-pulse">
@@ -110,6 +119,7 @@ export default function AdminCentersPage() {
                  <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Metro</th>
                  <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Location</th>
                  <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Subscription</th>
+                 <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Free Trial</th>
                  <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
                  <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Actions</th>
                </tr>
@@ -163,6 +173,18 @@ export default function AdminCentersPage() {
                             Exp: {new Date(sub.current_period_end).toLocaleDateString()}
                          </div>
                        )}
+                     </td>
+                     <td className="px-8 py-6">
+                       <select 
+                         value={center.trial_months || 6} 
+                         onChange={(e) => updateTrialMonths(center.id, parseInt(e.target.value))}
+                         className="bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 px-2 py-1 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                       >
+                         <option value={6}>6 Months</option>
+                         <option value={3}>3 Months</option>
+                         <option value={2}>2 Months</option>
+                         <option value={1}>1 Month</option>
+                       </select>
                      </td>
                      <td className="px-8 py-6">
                        <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${getStatusColor(sub?.status || 'inactive')}`}>

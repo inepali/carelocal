@@ -158,7 +158,7 @@ export default function HomePage() {
           </div>
 
           <p className="mt-5 text-sm text-[#6b7a73]">
-            60-day free trial · No credit card required · Staff accounts always free
+            6-month free trial · No credit card required · Staff accounts always free
           </p>
         </div>
 
@@ -302,7 +302,7 @@ export default function HomePage() {
             ))}
           </div>
           <p className="text-center text-sm text-[#6b7a73] mt-8">
-            All plans include a 60-day free trial. Annual billing saves 2 months.
+            All plans include a 6-month free trial. Annual billing saves 2 months.
             <Link href="/contact" className="text-[#157354] font-medium ml-1 hover:underline">
               Need Enterprise? Contact us →
             </Link>
