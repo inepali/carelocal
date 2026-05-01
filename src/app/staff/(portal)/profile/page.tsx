@@ -161,21 +161,29 @@ export default function StaffProfilePage() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-2 overflow-x-auto pb-1 mb-8 scrollbar-none">
-        {TABS.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-all shrink-0 border-2 ${
-              activeTab === tab.id
-                ? 'bg-[#157354] text-white border-[#157354] shadow-lg shadow-[#157354]/20'
-                : 'bg-white text-[#6b7a73] border-[#f0f4f2] hover:border-[#157354]/30 hover:text-[#0b3828]'
-            }`}
-          >
-            <tab.Icon className="w-4 h-4" />
-            {tab.label}
-          </button>
-        ))}
+      <div className="border-b border-gray-200 mb-8">
+        <nav className="-mb-px flex space-x-8 overflow-x-auto scrollbar-none" aria-label="Tabs">
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`group inline-flex items-center border-b-2 py-4 px-1 text-sm font-medium whitespace-nowrap transition-colors ${
+                activeTab === tab.id
+                  ? 'border-[#157354] text-[#157354]'
+                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+              }`}
+              aria-current={activeTab === tab.id ? 'page' : undefined}
+            >
+              <tab.Icon
+                className={`-ml-0.5 mr-2 h-5 w-5 ${
+                  activeTab === tab.id ? 'text-[#157354]' : 'text-gray-400 group-hover:text-gray-500'
+                }`}
+                aria-hidden="true"
+              />
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </nav>
       </div>
 
       {/* Tab content */}
@@ -354,19 +362,7 @@ function PersonalInfoTab({
         </button>
       </form>
 
-      {/* Documents vault summary */}
-      <div className="mx-8 md:mx-10 mb-10 p-5 rounded-2xl bg-[#f8faf9] border-2 border-[#f0f4f2] flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm"><FileText className="w-5 h-5 text-[#157354]" /></div>
-          <div>
-            <div className="font-black text-sm text-[#0b3828]">Document Vault</div>
-            <div className="text-[11px] text-[#6b7a73] font-bold">{vaultDocCount} {vaultDocCount === 1 ? 'document' : 'documents'} stored</div>
-          </div>
-        </div>
-        <a href="/staff/documents" className="text-[11px] font-black text-[#157354] uppercase tracking-widest hover:underline flex items-center gap-1">
-          Manage <ChevronDown className="w-3 h-3 -rotate-90" />
-        </a>
-      </div>
+
     </div>
   )
 }

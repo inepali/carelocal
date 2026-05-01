@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { StaffDocument, DOCUMENT_CATEGORY_LABELS, DocumentCategory, Center, CenterDocumentRequirement, StaffType, CenterStaffDocumentStatus } from '@/lib/types'
-import { FileText, Plus, Trash2, ArrowRight, Upload, Info, CheckCircle2, Loader2, AlertCircle, ShieldCheck, ChevronRight, X, Calendar, ExternalLink, Globe, Sparkles, Download } from 'lucide-react'
+import { FileText, Plus, Trash2, ArrowRight, Upload, Info, CheckCircle2, Loader2, AlertCircle, ShieldCheck, ChevronRight, X, Calendar, ExternalLink, Globe, Sparkles, Download, Eye } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { getPresignedUploadUrl, getPresignedViewUrl } from '@/app/actions/storage.actions'
 
@@ -342,7 +342,7 @@ function DocumentsContent() {
                   className="p-3 text-[#157354] hover:bg-[#edf7f3] rounded-xl transition-colors group/btn"
                   title="View Document"
                 >
-                  <ExternalLink className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
+                  <Eye className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
                 </button>
                 <button 
                   onClick={() => deleteDoc(doc.id)}
