@@ -53,7 +53,7 @@ export interface StaffProfile {
   city?: string
   state?: string
   zip?: string
-  staff_type: StaffType
+  staff_type?: StaffType
   bio?: string
   metro_area_id?: string
   available_days: string[]
