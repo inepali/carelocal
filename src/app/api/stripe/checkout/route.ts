@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 // Default to a dummy key if not set to prevent immediate crashes, but warn
 const stripeSecret = process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder'
 const stripe = new Stripe(stripeSecret, {
-  apiVersion: '2025-02-24.acacia', // Update this based on the installed stripe-node version
+  apiVersion: '2026-04-22.dahlia', // Update this based on the installed stripe-node version
 })
 
 export async function POST(req: NextRequest) {

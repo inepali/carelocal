@@ -7,7 +7,7 @@ const stripeSecret = process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder'
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_placeholder'
 
 const stripe = new Stripe(stripeSecret, {
-  apiVersion: '2025-02-24.acacia',
+  apiVersion: '2026-04-22.dahlia',
 })
 
 export async function POST(req: NextRequest) {
@@ -54,8 +54,8 @@ export async function POST(req: NextRequest) {
                 stripe_subscription_id: subscription.id,
                 status: subscription.status,
                 tier: tier,
-                current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-                cancel_at_period_end: subscription.cancel_at_period_end,
+                current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+                cancel_at_period_end: (subscription as any).cancel_at_period_end,
                 updated_at: new Date().toISOString()
               }, { onConflict: 'center_id' })
               
@@ -87,8 +87,8 @@ export async function POST(req: NextRequest) {
             .from('subscriptions')
             .update({
               status: subscription.status,
-              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-              cancel_at_period_end: subscription.cancel_at_period_end,
+              current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+              cancel_at_period_end: (subscription as any).cancel_at_period_end,
               updated_at: new Date().toISOString()
             })
             .eq('center_id', centerRecord.id)
