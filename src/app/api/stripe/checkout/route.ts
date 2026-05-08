@@ -24,15 +24,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { tierId, priceId } = await req.json()
+    const { tierId } = await req.json()
 
-    if (!tierId || !priceId) {
-      return NextResponse.json({ error: 'Missing tierId or priceId' }, { status: 400 })
+    if (!tierId) {
+      return NextResponse.json({ error: 'Missing tierId' }, { status: 400 })
     }
 
-    if (priceId === 'price_starter_placeholder' || priceId.includes('placeholder')) {
+    let priceId = ''
+    if (tierId === 'starter') priceId = process.env.STRIPE_PRICE_STARTER || process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER || ''
+    if (tierId === 'growth') priceId = process.env.STRIPE_PRICE_GROWTH || process.env.NEXT_PUBLIC_STRIPE_PRICE_GROWTH || ''
+    if (tierId === 'network') priceId = process.env.STRIPE_PRICE_NETWORK || process.env.NEXT_PUBLIC_STRIPE_PRICE_NETWORK || ''
+
+    if (!priceId || priceId.includes('placeholder')) {
       return NextResponse.json(
-        { error: 'Please configure actual Stripe Price IDs in your environment (.env.local) to proceed.' },
+        { error: `Please configure the Stripe Price ID for ${tierId} in your environment variables to proceed.` },
         { status: 400 }
       )
     }
