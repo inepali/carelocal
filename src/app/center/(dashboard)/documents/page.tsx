@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { CenterDocumentRequirement, DOCUMENT_CATEGORY_LABELS, DocumentCategory } from '@/lib/types'
 import { useStaffRoles } from '@/lib/hooks/useStaffRoles'
-import { FileText, Plus, Trash2, Settings2, Info, CheckCircle2, Loader2, AlertCircle, FileStack, Upload, X, Download } from 'lucide-react'
+import { FileText, Plus, Trash2, Settings2, Info, CheckCircle2, Loader2, AlertCircle, FileStack, Upload, X, Download, ShieldCheck } from 'lucide-react'
 import { getPresignedUploadUrl, deleteFile, getPresignedViewUrl } from '@/app/actions/storage.actions'
 
 
@@ -18,10 +18,12 @@ export default function CenterDocumentsConfigPage() {
 
   // Form State
   const [showAdd, setShowAdd] = useState(false)
+  const [activeTab, setActiveTab] = useState<'standard' | 'internal'>('standard')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [reqName, setReqName] = useState('')
   const [isRequired, setIsRequired] = useState(true)
-  const [reqCategory, setReqCategory] = useState<DocumentCategory>('other')
+  const [isInternal, setIsInternal] = useState(false)
+  const [reqCategory, setReqCategory] = useState<DocumentCategory | ''>('')
   const [applicableTypes, setApplicableTypes] = useState<string[]>([])
 
   // Template State
@@ -126,6 +128,7 @@ export default function CenterDocumentsConfigPage() {
       document_name: reqName,
       document_category: reqCategory,
       is_required: isRequired,
+      is_internal: isInternal,
       applies_to: applicableTypes.length > 0 ? applicableTypes : null,
       ...templateData
     }
@@ -139,6 +142,8 @@ export default function CenterDocumentsConfigPage() {
       if (!error) {
         cancelEdit()
         loadRequirements()
+      } else {
+        alert('Failed to update requirement: ' + error.message)
       }
     } else {
       const { error } = await supabase
@@ -152,7 +157,10 @@ export default function CenterDocumentsConfigPage() {
         setReqName('')
         setShowAdd(false)
         setTemplateFile(null)
+        setReqCategory('')
         loadRequirements()
+      } else {
+        alert('Failed to create requirement: ' + error.message)
       }
     }
     setAdding(false)
@@ -163,6 +171,7 @@ export default function CenterDocumentsConfigPage() {
     setReqName(req.document_name)
     setReqCategory(req.document_category)
     setIsRequired(req.is_required)
+    setIsInternal(req.is_internal || false)
     setApplicableTypes(req.applies_to || [])
     if (req.template_file_key && req.template_bucket_name) {
       setExistingTemplate({
@@ -180,8 +189,9 @@ export default function CenterDocumentsConfigPage() {
   function cancelEdit() {
     setEditingId(null)
     setReqName('')
-    setReqCategory('other')
+    setReqCategory('')
     setIsRequired(true)
+    setIsInternal(false)
     setApplicableTypes([])
     setTemplateFile(null)
     setExistingTemplate(null)
@@ -281,6 +291,7 @@ export default function CenterDocumentsConfigPage() {
             ) : (
               <ul className="text-sm text-[#3d5a4f] space-y-3">
                 <li>• Each requirement you add here appears on your staff's checklist.</li>
+                <li>• You can mark documents as "Center-Only" so staff cannot see them, but you can upload them internally.</li>
                 <li>• You will be notified when staff upload a document for review.</li>
                 <li>• You can mark requirements as "Optional" for certain staff types.</li>
                 <li>• <strong>You</strong> are responsible for verifying if the uploaded document meets your state standards.</li>
@@ -312,10 +323,12 @@ export default function CenterDocumentsConfigPage() {
                 <div>
                   <label className="block text-sm font-medium text-[#1a2e25] mb-1.5 uppercase tracking-widest text-[10px]">Document Type / Category</label>
                   <select
+                    required
                     value={reqCategory}
                     onChange={(e) => setReqCategory(e.target.value as DocumentCategory)}
                     className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 font-bold text-sm"
                   >
+                    <option value="" disabled>-- Select --</option>
                     {Object.entries(DOCUMENT_CATEGORY_LABELS).map(([val, label]) => (
                       <option key={val} value={val}>{label}</option>
                     ))}
@@ -323,15 +336,27 @@ export default function CenterDocumentsConfigPage() {
                   <p className="text-[10px] text-[#a8b5ae] mt-2 italic">The category helps staff filter their vault to find the right document for this requirement.</p>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="is_req"
-                    checked={isRequired}
-                    onChange={(e) => setIsRequired(e.target.checked)}
-                    className="w-4 h-4 rounded border-gray-300 text-[#157354] focus:ring-[#157354]"
-                  />
-                  <label htmlFor="is_req" className="text-sm font-medium text-[#1a2e25]">This is a mandatory requirement</label>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="is_req"
+                      checked={isRequired}
+                      onChange={(e) => setIsRequired(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-300 text-[#157354] focus:ring-[#157354]"
+                    />
+                    <label htmlFor="is_req" className="text-sm font-medium text-[#1a2e25]">This is a mandatory requirement</label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="is_internal"
+                      checked={isInternal}
+                      onChange={(e) => setIsInternal(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-300 text-[#157354] focus:ring-[#157354]"
+                    />
+                    <label htmlFor="is_internal" className="text-sm font-medium text-[#1a2e25]">Center-Only (Staff cannot see this requirement or the files)</label>
+                  </div>
                 </div>
 
                 <div>
@@ -453,12 +478,38 @@ export default function CenterDocumentsConfigPage() {
             </div>
           )}
 
-          {requirements.length === 0 ? (
+          {/* Tabs */}
+          <div className="flex border-b-2 border-[#f0f4f2] mb-6">
+            <button
+              onClick={() => setActiveTab('standard')}
+              className={`pb-4 px-6 font-bold text-sm transition-all border-b-4 -mb-[2px] ${
+                activeTab === 'standard'
+                  ? 'border-[#157354] text-[#157354]'
+                  : 'border-transparent text-[#a8b5ae] hover:text-[#6b7a73]'
+              }`}
+            >
+              Standard Requirements
+            </button>
+            <button
+              onClick={() => setActiveTab('internal')}
+              className={`pb-4 px-6 font-bold text-sm transition-all border-b-4 -mb-[2px] flex items-center gap-2 ${
+                activeTab === 'internal'
+                  ? 'border-[#157354] text-[#157354]'
+                  : 'border-transparent text-[#a8b5ae] hover:text-[#6b7a73]'
+              }`}
+            >
+              Center-Only Documents <ShieldCheck className="w-4 h-4" />
+            </button>
+          </div>
+
+          {(activeTab === 'standard' ? requirements.filter(r => !r.is_internal) : requirements.filter(r => r.is_internal)).length === 0 ? (
             <div className="bg-white border border-[#e2e8e4] rounded-2xl p-12 text-center shadow-sm">
               <Settings2 className="w-12 h-12 text-[#e2e8e4] mx-auto mb-4" />
               <h2 className="text-xl font-bold text-[#0b3828] mb-2">No requirements defined</h2>
               <p className="text-[#6b7a73] max-w-sm mx-auto mb-6">
-                Start by adding the common documents you need from your staff, like CPR certifications or Background Checks.
+                {activeTab === 'standard' 
+                  ? 'Start by adding the common documents you need from your staff, like CPR certifications or Background Checks.'
+                  : 'Add internal documents that you want to keep on file for staff, hidden from their portal.'}
               </p>
             </div>
           ) : (
@@ -467,12 +518,12 @@ export default function CenterDocumentsConfigPage() {
                 <FileText className="w-4 h-4" /> Configured Requirements
               </div>
               <div className="divide-y divide-[#e2e8e4]">
-                {requirements.map((req) => (
+                {(activeTab === 'standard' ? requirements.filter(r => !r.is_internal) : requirements.filter(r => r.is_internal)).map((req) => (
                   <div key={req.id} className="p-6 flex items-center justify-between hover:bg-[#f8faf9] transition-colors group">
                     <div>
                       <h3 className="font-bold text-[#1a2e25] flex items-center gap-2 text-base">
                         {req.document_name}
-                        {req.is_required && (
+                        {req.is_required && !req.is_internal && (
                           <span className="text-[10px] bg-[#157354] text-white px-2 py-0.5 rounded-full uppercase tracking-tighter">Required</span>
                         )}
                       </h3>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { MapPin, CheckCircle2, Loader2, ArrowRight, ShieldCheck, Globe, Sparkles, Heart, Calendar, Clock, Star, LogIn, LogOut } from 'lucide-react'
+import { MapPin, CheckCircle2, Loader2, ArrowRight, ShieldCheck, Globe, Sparkles, Heart, Calendar, Clock, Star, LogIn, LogOut, X } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { getMyShiftsBypassingRLS } from '@/app/actions/my-shifts.actions'
@@ -24,6 +24,7 @@ export default function MyShiftsPage() {
   const [interestedShiftIds, setInterestedShiftIds] = useState<Set<string>>(new Set())
   const [claimingShiftId, setClaimingShiftId] = useState<string | null>(null)
   const [expressingInterestId, setExpressingInterestId] = useState<string | null>(null)
+  const [withdrawingShiftId, setWithdrawingShiftId] = useState<string | null>(null)
   const [reviewingShift, setReviewingShift] = useState<any>(null)
   const [reviewedCenterIds, setReviewedCenterIds] = useState<Set<string>>(new Set())
 
@@ -134,6 +135,24 @@ export default function MyShiftsPage() {
       setInterestedShiftIds(prev => new Set([...prev, shiftId]))
     }
     setExpressingInterestId(null)
+  }
+
+  const handleWithdraw = async (shiftId: string) => {
+    if (!myProfile || withdrawingShiftId) return
+    setWithdrawingShiftId(shiftId)
+
+    const { error } = await supabase.from('shift_claims')
+      .update({ status: 'interested' })
+      .eq('shift_id', shiftId)
+      .eq('staff_id', myProfile.id)
+
+    if (error) {
+      alert('Failed to withdraw claim: ' + error.message)
+    } else {
+      setClaimedShiftIds(prev => { const s = new Set(prev); s.delete(shiftId); return s })
+      setInterestedShiftIds(prev => new Set([...prev, shiftId]))
+    }
+    setWithdrawingShiftId(null)
   }
 
   const handleClaim = async (shiftId: string) => {
@@ -334,9 +353,24 @@ export default function MyShiftsPage() {
                         </button>
                       )
                     ) : isConfirmed ? (
-                      <div className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#fefce8] text-[#854d0e] border border-[#fef08a] font-black text-xs uppercase tracking-widest whitespace-nowrap">
-                        <Clock className="w-4 h-4" /> Pending
+                      <div className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#f0fdf4] text-[#157354] border border-[#dcfce7] font-black text-xs uppercase tracking-widest whitespace-nowrap">
+                        <CheckCircle2 className="w-4 h-4" /> Assigned
                       </div>
+                    ) : isClaimed ? (
+                      <button
+                        type="button"
+                        onClick={() => handleWithdraw(shift.id)}
+                        disabled={withdrawingShiftId === shift.id}
+                        className="px-5 py-2.5 bg-[#fee2e2] text-[#991b1b] border border-[#fecaca] font-black text-xs uppercase tracking-widest rounded-xl hover:bg-[#fecaca] transition-all disabled:opacity-50 flex items-center justify-center gap-2 whitespace-nowrap"
+                      >
+                        {withdrawingShiftId === shift.id ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <>
+                            <X className="w-4 h-4" /> Withdraw Claim
+                          </>
+                        )}
+                      </button>
                     ) : isInterested ? (
                       <>
                         <p className="text-center md:text-right text-[10px] font-bold text-[#6b7a73] uppercase tracking-wide max-w-[220px]">

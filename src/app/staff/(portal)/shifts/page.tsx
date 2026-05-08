@@ -14,7 +14,6 @@ export default function StaffShiftsPage() {
   const [myProfile, setMyProfile] = useState<any>(null)
   const [myConnections, setMyConnections] = useState<Record<string, string>>({}) // center_id -> status
   const [joiningCenterId, setJoiningCenterId] = useState<string | null>(null)
-  const [filterType, setFilterType] = useState<'metro' | 'all'>('metro')
   const [metros, setMetros] = useState<any[]>([])
   const [claimedShiftIds, setClaimedShiftIds] = useState<Set<string>>(new Set())
   const [confirmedShiftIds, setConfirmedShiftIds] = useState<Set<string>>(new Set())
@@ -164,18 +163,12 @@ export default function StaffShiftsPage() {
     setClaimingShiftId(null)
   }
 
-  // Matching Logic: Filter by Metro Area ID and exclude already claimed shifts
+  // Matching Logic: Exclude already claimed/interested shifts
   const filteredShifts = shifts.filter(shift => {
     // Hide shifts that appear in "My Shifts" (already booked, pending, or interested)
     if (claimedShiftIds.has(shift.id) || interestedShiftIds.has(shift.id)) return false
-    
-    if (filterType === 'all') return true
-    if (!myProfile || !myProfile.metro_area_id) return true
-    
-    return shift.centers?.metro_area_id === myProfile.metro_area_id
+    return true
   })
-
-  const currentMetroName = myProfile?.metro_areas?.name || 'your region'
 
   if (loading) {
      return (
@@ -194,63 +187,17 @@ export default function StaffShiftsPage() {
         </div>
         <h1 className="text-4xl font-black text-[#0b3828] mb-2 tracking-tight">Available Shifts</h1>
         <p className="text-[#6b7a73] text-lg font-medium">
-          {filterType === 'metro' && myProfile?.metro_area_id
-            ? `Showing opportunities in ${currentMetroName}.`
-            : 'Showing all shifts across our expanding network.'}
+          Showing all shifts across our expanding network.
         </p>
-      </div>
-
-      <div className="mb-12">
-        <div className="bg-white border-2 border-[#157354]/10 rounded-[2rem] p-8 shadow-xl shadow-[#157354]/5">
-          <h2 className="text-xl font-black text-[#0b3828] mb-6 flex items-center gap-3">
-            <Globe className="w-6 h-6 text-[#157354]" />
-            Region filter
-          </h2>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <button
-              type="button"
-              onClick={() => setFilterType('metro')}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 px-6 py-4 font-black text-xs uppercase tracking-widest transition-all ${
-                filterType === 'metro'
-                  ? 'border-[#157354] bg-[#157354] text-white shadow-lg shadow-[#157354]/20'
-                  : 'border-[#f0f4f2] bg-[#f8faf9] text-[#3d5a4f] hover:border-[#157354]/30'
-              }`}
-            >
-              <MapPin className="w-5 h-5" /> My Metro
-            </button>
-            <button
-              type="button"
-              onClick={() => setFilterType('all')}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 px-6 py-4 font-black text-xs uppercase tracking-widest transition-all ${
-                filterType === 'all'
-                  ? 'border-[#157354] bg-[#157354] text-white shadow-lg shadow-[#157354]/20'
-                  : 'border-[#f0f4f2] bg-[#f8faf9] text-[#3d5a4f] hover:border-[#157354]/30'
-              }`}
-            >
-              <Globe className="w-5 h-5" /> All Metros
-            </button>
-          </div>
-        </div>
       </div>
 
       {filteredShifts.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-[#e2e8e4]">
           <Globe className="w-12 h-12 text-[#a8b5ae] mx-auto mb-4" />
-          <p className="text-[#6b7a73] font-bold">No shifts in this view yet</p>
-          <p className="text-sm text-[#a8b5ae] mt-1 max-w-md mx-auto">
-            {filterType === 'metro'
-              ? `Try All Metros to see openings outside ${currentMetroName}.`
-              : 'There are no open shifts right now.'}
+          <h3 className="text-xl font-black text-[#0b3828] mb-2">No open shifts</h3>
+          <p className="text-[#6b7a73] font-medium max-w-md mx-auto">
+            There are no open shifts right now. Check back later for new opportunities!
           </p>
-          {filterType === 'metro' && (
-            <button
-              type="button"
-              onClick={() => setFilterType('all')}
-              className="mt-8 bg-[#157354] text-white font-black text-xs uppercase tracking-widest px-8 py-4 rounded-xl hover:bg-[#0f4a36] shadow-lg shadow-[#157354]/20 transition-all"
-            >
-              Show all metros
-            </button>
-          )}
         </div>
       ) : (
         <div className="space-y-6">

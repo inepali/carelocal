@@ -12,7 +12,7 @@ import {
   ArrowLeft, CheckCircle2, XCircle, Clock, FileText, ExternalLink,
   MessageSquare, AlertCircle, Loader2, ShieldCheck, User, Briefcase,
   Award, CalendarDays, MapPin, Phone, Mail, CreditCard,
-  AlertTriangle, Globe, Star
+  AlertTriangle, Globe, Star, Upload, FileStack, Plus, Trash2
 } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
@@ -51,7 +51,7 @@ const PAYMENT_LABELS: Record<string, string> = {
   cash: '💵 Cash', zelle: '⚡ Zelle', venmo: '💙 Venmo', cashapp: '💚 Cash App', paypal: '🅿️ PayPal'
 }
 
-type TabId = 'overview' | 'experience' | 'credentials' | 'availability' | 'documents'
+type TabId = 'overview' | 'experience' | 'credentials' | 'availability' | 'documents' | 'internal_docs'
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
@@ -73,6 +73,14 @@ export default function StaffReviewPage() {
   const [showActivationModal, setShowActivationModal] = useState(false)
   const [activating, setActivating]   = useState(false)
   const [reviews, setReviews]         = useState<any[]>([])
+  const [internalDocs, setInternalDocs] = useState<any[]>([])
+  
+  // Internal Docs Upload State
+  const [showInternalUpload, setShowInternalUpload] = useState(false)
+  const [internalReqId, setInternalReqId] = useState('')
+  const [internalFile, setInternalFile] = useState<File | null>(null)
+  const [internalReviewDate, setInternalReviewDate] = useState('')
+  const [uploadingInternal, setUploadingInternal] = useState(false)
 
   useEffect(() => { loadData() }, [staffId])
 
@@ -157,6 +165,17 @@ export default function StaffReviewPage() {
       } else {
         setReviews([])
       }
+
+      // 8. Internal Docs (catch error if migration not run yet)
+      const { data: intDocs, error: intDocsErr } = await supabase
+        .from('center_internal_documents')
+        .select('*')
+        .eq('staff_id', staffId)
+        .eq('center_id', admin.center_id)
+        .order('uploaded_at', { ascending: false })
+      if (!intDocsErr) {
+        setInternalDocs(intDocs || [])
+      }
     }
     setLoading(false)
   }
@@ -201,6 +220,61 @@ export default function StaffReviewPage() {
     else alert('Failed to approve: ' + error.message)
   }
 
+  async function handleUploadInternal(e: React.FormEvent) {
+    e.preventDefault()
+    if (!internalFile || !internalReqId || !centerId) return
+    setUploadingInternal(true)
+    
+    try {
+      const { getPresignedUploadUrl } = await import('@/app/actions/storage.actions')
+      const uploadRes = await getPresignedUploadUrl(internalFile.name, internalFile.type, 'center_internal')
+      if (uploadRes.success && uploadRes.uploadUrl && uploadRes.fileKey && uploadRes.bucketName) {
+        const uploadResponse = await fetch(uploadRes.uploadUrl, {
+          method: 'PUT',
+          body: internalFile,
+          headers: { 'Content-Type': internalFile.type }
+        })
+
+        if (uploadResponse.ok) {
+          const req = requirements.find(r => r.id === internalReqId)
+          const { error } = await supabase.from('center_internal_documents').insert({
+            center_id: centerId,
+            staff_id: staffId,
+            requirement_id: internalReqId,
+            document_name: req?.document_name || 'Internal Document',
+            file_url: uploadRes.fileKey, // Store key for now, or construct URL
+            file_key: uploadRes.fileKey,
+            bucket_name: uploadRes.bucketName,
+            future_review_date: internalReviewDate || null
+          })
+          if (!error) {
+            setShowInternalUpload(false)
+            setInternalFile(null)
+            setInternalReqId('')
+            setInternalReviewDate('')
+            loadData()
+          } else {
+            alert('Failed to save document record: ' + error.message)
+          }
+        } else {
+          alert('Failed to upload file to storage.')
+        }
+      }
+    } catch (err) {
+      alert('Error uploading document.')
+    } finally {
+      setUploadingInternal(false)
+    }
+  }
+
+  async function handleDeleteInternal(id: string, fileKey: string, bucketName: string) {
+    if (!confirm('Are you sure you want to delete this internal document?')) return
+    const { deleteFile } = await import('@/app/actions/storage.actions')
+    await deleteFile(fileKey, bucketName)
+    await supabase.from('center_internal_documents').delete().eq('id', id)
+    loadData()
+  }
+
   if (loading) return (
     <div className="max-w-5xl mx-auto p-8 animate-pulse space-y-6">
       <div className="h-8 w-40 bg-slate-200 rounded" />
@@ -216,11 +290,13 @@ export default function StaffReviewPage() {
     { id: 'credentials',  label: 'Credentials',  Icon: Award },
     { id: 'availability', label: 'Availability', Icon: CalendarDays },
     { id: 'documents',    label: 'Documents',    Icon: ShieldCheck },
+    { id: 'internal_docs', label: 'Other Documents', Icon: FileStack },
   ]
 
-  // compliance progress
-  const acceptedCount = statuses.filter(s => s.status === 'accepted').length
-  const totalReqs = requirements.length
+  // compliance progress (exclude internal requirements)
+  const complianceReqs = requirements.filter(r => !r.is_internal)
+  const acceptedCount = statuses.filter(s => s.status === 'accepted' && complianceReqs.some(cr => cr.id === s.requirement_id)).length
+  const totalReqs = complianceReqs.length
 
   return (
     <div className="max-w-5xl mx-auto pb-20 px-4">
@@ -553,14 +629,14 @@ export default function StaffReviewPage() {
           </div>
 
           <div className="p-6 space-y-6">
-            {requirements.length === 0 ? (
+            {complianceReqs.length === 0 ? (
               <div className="text-center py-12 text-[#a8b5ae]">
                 <Globe className="w-10 h-10 mx-auto mb-3" />
                 <p className="font-bold">No document requirements configured for your center.</p>
                 <p className="text-sm mt-1">Add requirements in your center settings.</p>
               </div>
             ) : (
-              requirements.map((req) => {
+              complianceReqs.map((req) => {
                 const status    = statuses.find(s => s.requirement_id === req.id)
                 const matchedDoc = uploads.find(u => u.id === status?.matched_document_id)
                 return (
@@ -667,6 +743,137 @@ export default function StaffReviewPage() {
                   </div>
                 )
               })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Internal Docs Tab ──────────────────────────────────────── */}
+      {activeTab === 'internal_docs' && (
+        <div className="bg-white border-2 border-[#f0f4f2] rounded-[2rem] overflow-hidden">
+          <div className="p-6 border-b-2 border-[#f0f4f2] bg-[#f8faf9] flex items-center justify-between">
+            <h2 className="text-lg font-black text-[#0b3828] flex items-center gap-2">
+              <FileStack className="w-5 h-5 text-[#157354]" /> Center-Only Documents
+            </h2>
+            <button
+              onClick={() => setShowInternalUpload(!showInternalUpload)}
+              className="flex items-center gap-2 px-4 py-2 bg-[#157354] text-white font-black text-sm rounded-xl hover:bg-[#0f4a36] transition-colors shadow-sm"
+            >
+              <Plus className="w-4 h-4" /> Upload Document
+            </button>
+          </div>
+
+          {showInternalUpload && (
+            <div className="p-6 border-b-2 border-[#f0f4f2] bg-white">
+              <form onSubmit={handleUploadInternal} className="space-y-4 max-w-xl">
+                <div>
+                  <label className="block text-xs font-black text-[#0b3828] uppercase tracking-widest mb-2">Select Requirement Type</label>
+                  <select
+                    required
+                    value={internalReqId}
+                    onChange={(e) => setInternalReqId(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-[#f0f4f2] bg-[#f8faf9] text-sm focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all font-bold text-[#1a2e25]"
+                  >
+                    <option value="">-- Select a center-only requirement --</option>
+                    {requirements.filter(r => r.is_internal).map(r => (
+                      <option key={r.id} value={r.id}>{r.document_name}</option>
+                    ))}
+                  </select>
+                  {requirements.filter(r => r.is_internal).length === 0 && (
+                    <p className="text-xs text-amber-600 mt-2 font-bold">
+                      No center-only requirements defined. Go to Settings &gt; Documents to create one.
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-[#0b3828] uppercase tracking-widest mb-2">File</label>
+                  <input
+                    type="file"
+                    required
+                    onChange={(e) => setInternalFile(e.target.files?.[0] || null)}
+                    className="w-full text-sm text-[#6b7a73] file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-black file:bg-[#edf7f3] file:text-[#157354] hover:file:bg-[#d4ede4] transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-[#0b3828] uppercase tracking-widest mb-2">Future Review Date (Optional)</label>
+                  <input
+                    type="date"
+                    value={internalReviewDate}
+                    onChange={(e) => setInternalReviewDate(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-[#f0f4f2] bg-white text-sm focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all text-[#1a2e25]"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => { setShowInternalUpload(false); setInternalFile(null); setInternalReqId(''); setInternalReviewDate(''); }}
+                    className="px-5 py-2.5 bg-white border-2 border-[#f0f4f2] text-[#6b7a73] font-black rounded-xl hover:bg-[#f8faf9] transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={uploadingInternal || !internalFile || !internalReqId}
+                    className="px-5 py-2.5 bg-[#157354] text-white font-black rounded-xl hover:bg-[#0f4a36] disabled:opacity-50 transition-colors flex items-center gap-2"
+                  >
+                    {uploadingInternal ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                    Upload
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          <div className="p-6">
+            {internalDocs.length === 0 ? (
+              <div className="text-center py-12 text-[#a8b5ae]">
+                <FileStack className="w-10 h-10 mx-auto mb-3" />
+                <p className="font-bold text-[#6b7a73]">No internal documents uploaded yet.</p>
+                <p className="text-sm mt-1">These documents are only visible to your center.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {internalDocs.map(doc => (
+                  <div key={doc.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-white border-2 border-[#f0f4f2] rounded-2xl">
+                    <div className="flex items-center gap-4">
+                      <div className="w-11 h-11 rounded-xl bg-[#f8faf9] flex items-center justify-center shrink-0 border border-[#e2e8e4]">
+                        <FileText className="w-5 h-5 text-[#6b7a73]" />
+                      </div>
+                      <div>
+                        <div className="font-black text-[#1a2e25]">{doc.document_name}</div>
+                        <div className="text-xs text-[#a8b5ae] font-bold mt-0.5 flex flex-wrap items-center gap-2">
+                          <span>Uploaded {new Date(doc.uploaded_at).toLocaleDateString()}</span>
+                          {doc.future_review_date && (
+                            <>
+                              <span>·</span>
+                              <span className="text-amber-600">Review by {new Date(doc.future_review_date).toLocaleDateString()}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => handleView(doc.file_key, doc.bucket_name, doc.file_url)}
+                        className="p-2.5 rounded-xl bg-[#edf7f3] text-[#157354] hover:bg-[#d4ede4] transition-colors"
+                        title="View Document"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteInternal(doc.id, doc.file_key, doc.bucket_name)}
+                        className="p-2.5 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                        title="Delete Document"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>

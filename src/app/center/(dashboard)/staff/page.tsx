@@ -16,6 +16,8 @@ export default function StaffPoolPage() {
   const [centerInfo, setCenterInfo] = useState<{ id: string, slug: string, city: string, zip: string } | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [inviting, setInviting] = useState<string | null>(null)
+  const [showInviteModal, setShowInviteModal] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
 
   useEffect(() => {
     async function loadStaffPool() {
@@ -105,11 +107,28 @@ export default function StaffPoolPage() {
     setInviting(null)
   }
 
+  const [copied, setCopied] = useState(false)
+
   const copyInviteLink = () => {
      if (!centerInfo) return
      const link = getStaffInviteLink(centerInfo.slug)
      navigator.clipboard.writeText(link)
-     alert("Invite link copied to clipboard: " + link)
+     setCopied(true)
+     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleSendEmailInvite = (e: React.FormEvent) => {
+     e.preventDefault()
+     if (!centerInfo || !inviteEmail) return
+     
+     const link = getStaffInviteLink(centerInfo.slug)
+     const subject = encodeURIComponent("You're invited to join our center on Carelocal")
+     const body = encodeURIComponent(`Hi there,\n\nWe would like to invite you to join our educator pool on Carelocal.\n\nPlease click the link below to get started and create your account:\n\n${link}\n\nThanks,\nOur Team`)
+     
+     window.location.href = `mailto:${inviteEmail}?subject=${subject}&body=${body}`
+     
+     setShowInviteModal(false)
+     setInviteEmail('')
   }
 
   if (loading) {
@@ -176,7 +195,7 @@ export default function StaffPoolPage() {
             </button>
           </div>
           <button 
-             onClick={copyInviteLink}
+             onClick={() => setShowInviteModal(true)}
              className="inline-flex items-center justify-center bg-white border-2 border-[#157354]/10 text-[#157354] font-black px-8 py-3 rounded-2xl hover:bg-[#f8faf9] hover:border-[#157354] shadow-sm transition-all active:scale-95"
           >
              Invite Staff
@@ -219,8 +238,8 @@ export default function StaffPoolPage() {
                         <p className="text-[#6b7a73] max-w-xs mx-auto text-lg mb-8">
                           {activeTab === 'onboarding' ? "You don't have any pending onboarding requests at the moment." : "Spread the word to get more educators into your pool!"}
                         </p>
-                        <button onClick={copyInviteLink} className="bg-[#fbbf24] text-[#0b3828] font-black px-10 py-4 rounded-2xl hover:bg-[#f59e0b] shadow-lg shadow-[#fbbf24]/20 transition-all">
-                           Copy Invite Link
+                        <button onClick={copyInviteLink} disabled={copied} className="flex items-center justify-center gap-2 mx-auto bg-[#fbbf24] text-[#0b3828] font-black px-10 py-4 rounded-2xl hover:bg-[#f59e0b] shadow-lg shadow-[#fbbf24]/20 transition-all disabled:opacity-80">
+                           {copied ? <><CheckCircle2 className="w-5 h-5" /> Copied!</> : 'Copy Invite Link'}
                         </button>
                       </td>
                     </tr>
@@ -290,6 +309,80 @@ export default function StaffPoolPage() {
              </table>
          </div>
       </div>
+
+      {/* Invite Modal */}
+      {showInviteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0b3828]/40 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-8">
+              <div className="w-16 h-16 bg-[#edf7f3] text-[#157354] rounded-2xl flex items-center justify-center mb-6 shadow-inner">
+                <Mail className="w-8 h-8" />
+              </div>
+              <h2 className="text-2xl font-black text-[#0b3828] mb-2 tracking-tight">Invite Staff</h2>
+              <p className="text-[#6b7a73] font-medium mb-8 leading-relaxed">
+                Send an email invitation directly to an educator so they can join your pool.
+              </p>
+              
+              <form onSubmit={handleSendEmailInvite}>
+                <div className="mb-6">
+                  <label className="block text-xs font-black text-[#0b3828] uppercase tracking-widest mb-2">
+                    Email Address
+                  </label>
+                  <input 
+                    type="email" 
+                    required
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    placeholder="educator@example.com"
+                    className="w-full px-5 py-4 rounded-xl border-2 border-[#f0f4f2] focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all font-medium text-[#1a2e25]"
+                  />
+                </div>
+                
+                <div className="flex gap-3">
+                  <button 
+                    type="button"
+                    onClick={() => setShowInviteModal(false)}
+                    className="flex-1 px-5 py-4 rounded-xl font-black text-xs uppercase tracking-widest text-[#6b7a73] bg-[#f8faf9] border border-[#e2e8e4] hover:bg-[#f0f4f2] transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit"
+                    disabled={!inviteEmail}
+                    className="flex-1 px-5 py-4 rounded-xl font-black text-xs uppercase tracking-widest text-white bg-[#157354] hover:bg-[#0f4a36] shadow-lg shadow-[#157354]/20 transition-all disabled:opacity-50"
+                  >
+                    Open Email
+                  </button>
+                </div>
+              </form>
+
+              <div className="mt-8 pt-6 border-t border-[#f0f4f2] text-center">
+                <p className="text-xs font-bold text-[#6b7a73] uppercase tracking-wider mb-3">Or share the link directly</p>
+                <button 
+                  type="button"
+                  onClick={copyInviteLink}
+                  disabled={copied}
+                  className={`w-full px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest border transition-colors flex items-center justify-center gap-2 ${
+                    copied 
+                      ? 'bg-[#f0fdf4] text-[#157354] border-[#dcfce7]' 
+                      : 'text-[#157354] border-[#157354]/20 bg-white hover:bg-[#edf7f3]'
+                  }`}
+                >
+                  {copied ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" /> Copied!
+                    </>
+                  ) : (
+                    <>
+                      <ArrowRight className="w-4 h-4" /> Copy Invite Link
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

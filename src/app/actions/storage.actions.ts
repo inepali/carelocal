@@ -4,7 +4,7 @@ import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { r2 } from '@/lib/r2'
 
-export async function getPresignedUploadUrl(fileName: string, contentType: string, bucketType: 'employee' | 'center' = 'employee') {
+export async function getPresignedUploadUrl(fileName: string, contentType: string, bucketType: 'employee' | 'center' | 'center_internal' = 'employee') {
   try {
     // Log env var presence (values redacted) to help debug production issues
     console.log('[R2 Upload] env check:', {
@@ -18,10 +18,12 @@ export async function getPresignedUploadUrl(fileName: string, contentType: strin
 
     const bucketName = bucketType === 'employee'
       ? process.env.R2_EMPLOYEE_BUCKET
-      : process.env.R2_CENTER_BUCKET
+      : bucketType === 'center_internal'
+        ? process.env.R2_CENTER_BUCKET_INTERNAL
+        : process.env.R2_CENTER_BUCKET
 
     if (!bucketName) {
-      throw new Error(`R2_${bucketType === 'employee' ? 'EMPLOYEE' : 'CENTER'}_BUCKET env var is not set on this server`)
+      throw new Error(`R2_${bucketType.toUpperCase()}_BUCKET env var is not set on this server`)
     }
 
     // Generate a unique file path

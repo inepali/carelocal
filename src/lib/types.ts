@@ -3,7 +3,7 @@ export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled'
 export type StaffType = string  // Open-ended — values are now stored in staff_role_types table
 export type AgeGroup = 'infant' | 'toddler' | 'preschool' | 'school_age' | 'mixed'
 export type CenterStaffStatus = 'invited' | 'applying' | 'active' | 'inactive' | 'removed'
-export type DocumentCategory = 'identity' | 'certification' | 'background' | 'training' | 'medical' | 'other'
+export type DocumentCategory = 'identity' | 'certification' | 'background' | 'training' | 'medical' | 'documentation' | 'academic_qualification' | 'other'
 export type DocReviewStatus = 'missing' | 'pending_review' | 'accepted' | 'rejected' | 'expired'
 export type ShiftStatus = 'open' | 'filled' | 'cancelled' | 'unfilled'
 export type ClaimStatus = 'pending' | 'confirmed' | 'cancelled'
@@ -145,6 +145,7 @@ export interface CenterDocumentRequirement {
   document_name: string
   document_category: DocumentCategory
   is_required: boolean
+  is_internal?: boolean
   applies_to?: StaffType[]
   notes?: string
   sort_order: number
@@ -238,6 +239,8 @@ export const DOCUMENT_CATEGORY_LABELS: Record<DocumentCategory, string> = {
   background: 'Background Check',
   training: 'Training',
   medical: 'Medical/Health',
+  documentation: 'Documentation',
+  academic_qualification: 'Academic Qualification',
   other: 'Other'
 }
 

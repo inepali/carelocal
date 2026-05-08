@@ -14,6 +14,8 @@ const CATEGORIES: { label: string; value: DocumentCategory }[] = [
   { label: 'Background Check', value: 'background' },
   { label: 'Training', value: 'training' },
   { label: 'Medical/Health', value: 'medical' },
+  { label: 'Documentation', value: 'documentation' },
+  { label: 'Academic Qualification', value: 'academic_qualification' },
   { label: 'Other', value: 'other' },
 ]
 
@@ -38,7 +40,7 @@ function DocumentsContent() {
   // Form State
   const [showUpload, setShowUpload] = useState(false)
   const [docName, setDocName] = useState('')
-  const [docCategory, setDocCategory] = useState<DocumentCategory>('other')
+  const [docCategory, setDocCategory] = useState<DocumentCategory | ''>('')
   const [expiryDate, setExpiryDate] = useState('')
 
   useEffect(() => {
@@ -155,6 +157,7 @@ function DocumentsContent() {
 
       if (!error) {
         setDocName('')
+        setDocCategory('')
         setExpiryDate('')
         setSelectedFile(null)
         setShowUpload(false)
@@ -270,9 +273,11 @@ function DocumentsContent() {
               <label className="block text-sm font-bold text-[#0b3828] mb-2 uppercase tracking-widest text-[10px]">Category</label>
               <select 
                 value={docCategory}
+                required
                 onChange={(e) => setDocCategory(e.target.value as DocumentCategory)}
                 className="w-full px-5 py-4 rounded-2xl border-2 border-[#f0f4f2] bg-white focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all font-medium text-[#0b3828]"
               >
+                <option value="" disabled>--Select--</option>
                 {CATEGORIES.map(cat => <option key={cat.value} value={cat.value}>{cat.label}</option>)}
               </select>
             </div>
@@ -288,7 +293,7 @@ function DocumentsContent() {
             <div className="sm:col-span-2 pt-2">
               <button 
                 type="submit"
-                disabled={uploading || !docName}
+                disabled={uploading || !docName || !docCategory}
                 className="w-full flex items-center justify-center gap-2 bg-[#157354] text-white font-semibold py-3 rounded-xl hover:bg-[#0f4a36] disabled:opacity-50"
               >
                 {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Save Document'}
