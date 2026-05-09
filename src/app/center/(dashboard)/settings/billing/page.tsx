@@ -14,6 +14,7 @@ const STRIPE_PRICES = {
 export default function BillingPage() {
   const [loading, setLoading] = useState<SubscriptionTier | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly')
 
   async function handleSubscribe(tier: SubscriptionTier) {
     if (tier === 'enterprise') {
@@ -30,7 +31,7 @@ export default function BillingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tierId: tier,
-          priceId: STRIPE_PRICES[tier as keyof typeof STRIPE_PRICES]
+          billingCycle
         })
       })
 
@@ -77,7 +78,33 @@ export default function BillingPage() {
     <div className="max-w-5xl mx-auto pb-24 px-6 md:px-10">
       <div className="mb-12 text-center max-w-2xl mx-auto">
         <h1 className="text-4xl font-extrabold text-[#0b3828] mb-4">Choose Your Plan</h1>
-        <p className="text-[#6b7a73] text-lg">Select the right plan to manage your staff, compliance, and shifts effectively.</p>
+        <p className="text-[#6b7a73] text-lg mb-8">Select the right plan to manage your staff, compliance, and shifts effectively.</p>
+        
+        <div className="inline-flex items-center p-1 bg-[#f0f4f2] rounded-xl relative">
+          <button
+            onClick={() => setBillingCycle('monthly')}
+            className={`relative w-32 py-2.5 text-sm font-bold rounded-lg transition-all z-10 ${
+              billingCycle === 'monthly' ? 'text-[#0b3828]' : 'text-[#6b7a73] hover:text-[#1a2e25]'
+            }`}
+          >
+            Monthly
+          </button>
+          <button
+            onClick={() => setBillingCycle('yearly')}
+            className={`relative w-40 py-2.5 text-sm font-bold rounded-lg transition-all z-10 flex items-center justify-center gap-1.5 ${
+              billingCycle === 'yearly' ? 'text-[#0b3828]' : 'text-[#6b7a73] hover:text-[#1a2e25]'
+            }`}
+          >
+            Yearly <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full uppercase tracking-tighter">2 Months Free</span>
+          </button>
+          <div 
+            className="absolute top-1 bottom-1 w-32 bg-white rounded-lg shadow-sm border border-slate-200/50 transition-transform duration-300 ease-out"
+            style={{ 
+              transform: `translateX(${billingCycle === 'monthly' ? '0' : '100%'})`,
+              width: billingCycle === 'yearly' ? '160px' : '128px'
+            }}
+          />
+        </div>
       </div>
 
       {error && (
@@ -95,8 +122,13 @@ export default function BillingPage() {
             </div>
             
             <div className="mb-8">
-              <span className="text-4xl font-black text-[#0b3828]">${TIER_LIMITS[tier.id].pricePerMonth}</span>
-              <span className="text-[#a8b5ae] font-bold">/mo</span>
+              <span className="text-4xl font-black text-[#0b3828]">
+                ${billingCycle === 'monthly' ? TIER_LIMITS[tier.id].pricePerMonth : (TIER_LIMITS[tier.id].pricePerMonth * 10)}
+              </span>
+              <span className="text-[#a8b5ae] font-bold">/{billingCycle === 'monthly' ? 'mo' : 'yr'}</span>
+              {billingCycle === 'yearly' && (
+                <div className="text-xs text-[#157354] font-bold mt-1">Billed annually</div>
+              )}
             </div>
 
             <ul className="space-y-4 mb-8 flex-1">

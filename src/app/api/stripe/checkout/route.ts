@@ -24,16 +24,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { tierId } = await req.json()
+    const { tierId, billingCycle = 'monthly' } = await req.json()
 
     if (!tierId) {
       return NextResponse.json({ error: 'Missing tierId' }, { status: 400 })
     }
 
     let priceId = ''
-    if (tierId === 'starter') priceId = process.env.STRIPE_PRICE_STARTER || process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER || ''
-    if (tierId === 'growth') priceId = process.env.STRIPE_PRICE_GROWTH || process.env.NEXT_PUBLIC_STRIPE_PRICE_GROWTH || ''
-    if (tierId === 'network') priceId = process.env.STRIPE_PRICE_NETWORK || process.env.NEXT_PUBLIC_STRIPE_PRICE_NETWORK || ''
+    if (billingCycle === 'yearly') {
+      if (tierId === 'starter') priceId = process.env.STRIPE_PRICE_STARTER_YEARLY || process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER_YEARLY || ''
+      if (tierId === 'growth') priceId = process.env.STRIPE_PRICE_GROWTH_YEARLY || process.env.NEXT_PUBLIC_STRIPE_PRICE_GROWTH_YEARLY || ''
+      if (tierId === 'network') priceId = process.env.STRIPE_PRICE_NETWORK_YEARLY || process.env.NEXT_PUBLIC_STRIPE_PRICE_NETWORK_YEARLY || ''
+    } else {
+      if (tierId === 'starter') priceId = process.env.STRIPE_PRICE_STARTER || process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER || ''
+      if (tierId === 'growth') priceId = process.env.STRIPE_PRICE_GROWTH || process.env.NEXT_PUBLIC_STRIPE_PRICE_GROWTH || ''
+      if (tierId === 'network') priceId = process.env.STRIPE_PRICE_NETWORK || process.env.NEXT_PUBLIC_STRIPE_PRICE_NETWORK || ''
+    }
 
     if (!priceId || priceId.includes('placeholder')) {
       return NextResponse.json(
@@ -95,6 +101,7 @@ export async function POST(req: NextRequest) {
       metadata: {
         center_id: admin.center_id,
         tier: tierId,
+        billingCycle
       },
     })
 
