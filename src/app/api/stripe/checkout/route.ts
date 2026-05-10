@@ -67,6 +67,20 @@ export async function POST(req: NextRequest) {
 
     let customerId = center?.stripe_customer_id
 
+    // Check if the customer actually exists in Stripe (handles cases where you delete it in Stripe Dashboard)
+    if (customerId) {
+      try {
+        const existingCustomer = await stripe.customers.retrieve(customerId)
+        if (existingCustomer.deleted) {
+          customerId = null
+        }
+      } catch (err: any) {
+        if (err.code === 'resource_missing') {
+          customerId = null
+        }
+      }
+    }
+
     if (!customerId) {
       // Create Stripe customer
       const customer = await stripe.customers.create({
@@ -85,7 +99,8 @@ export async function POST(req: NextRequest) {
         .eq('id', admin.center_id)
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const origin = req.headers.get('origin')
+    const appUrl = origin || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: 'subscription',
