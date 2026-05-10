@@ -38,7 +38,7 @@ export default function DashboardOverview() {
 
       const { data: centerData } = await supabase
         .from('centers')
-        .select('created_at, trial_months, subscriptions(status)')
+        .select('created_at, trial_months, subscription_status, subscriptions(status)')
         .eq('id', centerId)
         .single()
 
@@ -46,7 +46,9 @@ export default function DashboardOverview() {
       let isTrialing = false;
       if (centerData) {
         const sub = centerData.subscriptions?.[0]
-        if (!sub || sub.status !== 'active') {
+        const isActive = centerData.subscription_status === 'active' || (sub && sub.status === 'active')
+        
+        if (!isActive) {
           const trialMonths = centerData.trial_months || 6
           const trialEnd = new Date(centerData.created_at)
           trialEnd.setMonth(trialEnd.getMonth() + trialMonths)
