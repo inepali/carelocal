@@ -10,6 +10,17 @@ const stripe = new Stripe(stripeSecret, {
   apiVersion: '2026-04-22.dahlia',
 })
 
+// Helper to map Stripe status to DB Enum
+function mapSubscriptionStatus(status: string): string {
+  if (['active', 'trialing', 'past_due', 'canceled', 'paused'].includes(status)) {
+    return status;
+  }
+  if (status === 'incomplete' || status === 'incomplete_expired' || status === 'unpaid') {
+    return 'past_due';
+  }
+  return 'past_due'; // fallback
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.text()
@@ -44,29 +55,22 @@ export async function POST(req: NextRequest) {
           
           if (centerId && tier) {
             const subscription = await stripe.subscriptions.retrieve(session.subscription as string)
+            const mappedStatus = mapSubscriptionStatus(subscription.status)
             
-            // Upsert subscription record
-            // Using a service key approach or trusting RLS if webhooks have bypassing roles
-            await supabase
-              .from('subscriptions')
-              .upsert({
-                center_id: centerId,
-                stripe_subscription_id: subscription.id,
-                status: subscription.status,
-                tier: tier,
-                current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
-                cancel_at_period_end: (subscription as any).cancel_at_period_end,
-                updated_at: new Date().toISOString()
-              }, { onConflict: 'center_id' })
-              
             // Update center status
-            await supabase
+            const { error: updateCenterError } = await supabase
               .from('centers')
               .update({ 
                 subscription_tier: tier,
-                subscription_status: subscription.status
+                subscription_status: mappedStatus
               })
               .eq('id', centerId)
+
+            if (updateCenterError) {
+              console.error('Error updating center status:', updateCenterError)
+            } else {
+              console.log('Successfully updated center status', { centerId, tier, status: mappedStatus })
+            }
           }
         }
         break;
@@ -76,6 +80,8 @@ export async function POST(req: NextRequest) {
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription
         
+        const mappedStatus = mapSubscriptionStatus(subscription.status)
+        
         const { data: centerRecord } = await supabase
           .from('centers')
           .select('id')
@@ -83,22 +89,18 @@ export async function POST(req: NextRequest) {
           .single()
           
         if (centerRecord) {
-          await supabase
-            .from('subscriptions')
-            .update({
-              status: subscription.status,
-              current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
-              cancel_at_period_end: (subscription as any).cancel_at_period_end,
-              updated_at: new Date().toISOString()
-            })
-            .eq('center_id', centerRecord.id)
-            
-          await supabase
+          const { error: centerUpdateError } = await supabase
             .from('centers')
             .update({ 
-              subscription_status: subscription.status 
+              subscription_status: mappedStatus 
             })
             .eq('id', centerRecord.id)
+
+          if (centerUpdateError) {
+            console.error('Error updating center in customer.subscription.updated:', centerUpdateError)
+          } else {
+            console.log('Successfully updated center from customer.subscription', { centerId: centerRecord.id, status: mappedStatus })
+          }
         }
         break;
       }
