@@ -17,7 +17,7 @@ import {
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { getPresignedViewUrl } from '@/app/actions/storage.actions'
-import { useCenterContext } from '../context'
+import { useCenterContext } from '../../context'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
