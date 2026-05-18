@@ -6,6 +6,7 @@ import { CenterDocumentRequirement, DOCUMENT_CATEGORY_LABELS, DocumentCategory }
 import { useStaffRoles } from '@/lib/hooks/useStaffRoles'
 import { FileText, Plus, Trash2, Settings2, Info, CheckCircle2, Loader2, AlertCircle, FileStack, Upload, X, Download, ShieldCheck } from 'lucide-react'
 import { getPresignedUploadUrl, deleteFile, getPresignedViewUrl } from '@/app/actions/storage.actions'
+import { useLookups } from '@/hooks/use-lookups'
 
 
 export default function CenterDocumentsConfigPage() {
@@ -15,6 +16,17 @@ export default function CenterDocumentsConfigPage() {
   const [requirements, setRequirements] = useState<CenterDocumentRequirement[]>([])
   const [centerId, setCenterId] = useState<string | null>(null)
   const { roles: staffRoles } = useStaffRoles(centerId)
+  
+  const { data: lookupDocTypesRaw } = useLookups('Document Type')
+  const lookupDocTypes = lookupDocTypesRaw.filter(l => l.is_active !== false)
+  const defaultDocTypes = Object.entries(DOCUMENT_CATEGORY_LABELS).map(([val, label]) => ({ value: val, label: label as string }))
+  const activeDocTypes = lookupDocTypes.length > 0 ? lookupDocTypes : defaultDocTypes
+
+  const getDocTypeLabel = (val: string) => {
+    const found = lookupDocTypesRaw.find(l => l.value === val)
+    if (found) return found.label
+    return DOCUMENT_CATEGORY_LABELS[val as keyof typeof DOCUMENT_CATEGORY_LABELS] || val
+  }
 
   // Form State
   const [showAdd, setShowAdd] = useState(false)
@@ -329,8 +341,8 @@ export default function CenterDocumentsConfigPage() {
                     className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 font-bold text-sm"
                   >
                     <option value="" disabled>-- Select --</option>
-                    {Object.entries(DOCUMENT_CATEGORY_LABELS).map(([val, label]) => (
-                      <option key={val} value={val}>{label}</option>
+                    {activeDocTypes.map(type => (
+                      <option key={type.value} value={type.value}>{type.label}</option>
                     ))}
                   </select>
                   <p className="text-[10px] text-[#a8b5ae] mt-2 italic">The category helps staff filter their vault to find the right document for this requirement.</p>
@@ -529,7 +541,7 @@ export default function CenterDocumentsConfigPage() {
                       </h3>
                       <div className="flex items-center gap-3 mt-1 text-[#6b7a73]">
                         <span className="text-[10px] font-black uppercase tracking-widest bg-[#f8faf9] px-2 py-0.5 rounded border border-[#e2e8e4] text-[#a8b5ae]">
-                          {DOCUMENT_CATEGORY_LABELS[req.document_category]}
+                          {getDocTypeLabel(req.document_category)}
                         </span>
                         <span className="text-xs">
                           {req.applies_to ? `Applies to: ${req.applies_to.join(', ')}` : 'Applies to all staff'}

@@ -7,8 +7,11 @@ import Link from 'next/link'
 import { submitReview } from '@/app/actions/reviews.actions'
 import { checkInStaff, checkOutStaff } from '@/app/actions/timeclock.actions'
 import { ReviewModal } from '@/components/ReviewModal'
+import { useLookups } from '@/hooks/use-lookups'
+import { useCenterContext } from '../context'
 
 export default function CenterShiftsPage() {
+  const { staffTerm, classroomTerm } = useCenterContext()
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
   const [shifts, setShifts] = useState<any[]>([])
@@ -16,6 +19,8 @@ export default function CenterShiftsPage() {
   const [reviewingShift, setReviewingShift] = useState<any>(null)
   const [reviewingStaffId, setReviewingStaffId] = useState<string | null>(null)
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
+  
+  const { data: lookupRoles } = useLookups('Role')
 
   useEffect(() => {
     async function loadShifts() {
@@ -201,7 +206,7 @@ export default function CenterShiftsPage() {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold text-[#0b3828] mb-1">Shifts</h1>
-          <p className="text-[#6b7a73]">Manage your open shifts and view assigned staff.</p>
+          <p className="text-[#6b7a73]">Manage your open shifts and view assigned {staffTerm.toLowerCase()}.</p>
         </div>
         <Link
           href="/center/shifts/new"
@@ -217,12 +222,12 @@ export default function CenterShiftsPage() {
             <thead>
               <tr className="bg-[#f8faf9] border-b border-[#e2e8e4] text-[#6b7a73] font-medium">
                 <th className="px-6 py-4">Date &amp; Time</th>
-                <th className="px-6 py-4">Classroom</th>
-                <th className="px-6 py-4">Role Needed</th>
+                <th className="px-6 py-4">{classroomTerm}</th>
+                <th className="px-6 py-4">{staffTerm} Role</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Rate</th>
                 <th className="px-6 py-4">Interested</th>
-                <th className="px-6 py-4">Staff Assigned</th>
+                <th className="px-6 py-4">{staffTerm} Assigned</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
@@ -269,7 +274,7 @@ export default function CenterShiftsPage() {
                       {/* Role */}
                       <td className="px-6 py-4">
                         <div className="inline-flex bg-[#edf7f3] text-[#157354] px-2 py-1 rounded-md text-xs font-semibold">
-                          {shift.staff_type_needed || 'Any'}
+                          {lookupRoles.find(r => r.value === shift.staff_type_needed)?.label || shift.staff_type_needed || 'Any'}
                         </div>
                       </td>
 

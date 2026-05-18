@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { TIER_LIMITS, SubscriptionTier } from '@/lib/types'
 import { CheckCircle2, ShieldCheck, CreditCard, Loader2 } from 'lucide-react'
 
@@ -15,6 +16,57 @@ export default function BillingPage() {
   const [loading, setLoading] = useState<SubscriptionTier | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly')
+  const [currentTier, setCurrentTier] = useState<SubscriptionTier | null>(null)
+  const [isActive, setIsActive] = useState(false)
+  const [pageLoading, setPageLoading] = useState(true)
+  const [portalLoading, setPortalLoading] = useState(false)
+  const supabase = createClient()
+
+  useEffect(() => {
+    async function loadSubscription() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: admin } = await supabase
+        .from('center_admins')
+        .select('center_id')
+        .eq('user_id', user.id)
+        .single()
+
+      if (admin) {
+        const { data: center } = await supabase
+          .from('centers')
+          .select('subscription_tier, subscription_status')
+          .eq('id', admin.center_id)
+          .single()
+
+        if (center) {
+          setCurrentTier(center.subscription_tier as SubscriptionTier)
+          setIsActive(center.subscription_status === 'active' || center.subscription_status === 'trialing')
+        }
+      }
+      setPageLoading(false)
+    }
+    loadSubscription()
+  }, [])
+
+  async function handleManageSubscription() {
+    setPortalLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/stripe/portal', { method: 'POST' })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        throw new Error(data.error || 'Failed to open portal')
+      }
+    } catch (err: any) {
+      console.error(err)
+      setError(err.message)
+      setPortalLoading(false)
+    }
+  }
 
   async function handleSubscribe(tier: SubscriptionTier) {
     if (tier === 'enterprise') {
@@ -73,6 +125,8 @@ export default function BillingPage() {
       features: ['Up to 300 Active Staff', 'Up to 10 Facility Locations', 'Dedicated Account Manager', 'Custom API Access']
     }
   ]
+
+  const tierOrder: SubscriptionTier[] = ['starter', 'growth', 'network']
 
   return (
     <div className="max-w-5xl mx-auto pb-24 px-6 md:px-10">
@@ -140,23 +194,67 @@ export default function BillingPage() {
               ))}
             </ul>
 
-            <button
-              onClick={() => handleSubscribe(tier.id)}
-              disabled={loading !== null}
-              className={`w-full py-4 rounded-xl font-black flex items-center justify-center gap-2 transition-all ${
-                tier.id === 'growth' 
-                  ? 'bg-[#157354] text-white hover:bg-[#0f4a36] shadow-md' 
-                  : 'bg-[#edf7f3] text-[#157354] hover:bg-[#d4ede4]'
-              }`}
-            >
-              {loading === tier.id ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+            <div className="mt-auto">
+              {pageLoading ? (
+                <div className="w-full py-4 rounded-xl bg-slate-100 animate-pulse"></div>
+              ) : isActive && currentTier === tier.id ? (
+                <div className="flex flex-col gap-3">
+                  <button
+                    disabled
+                    className="w-full py-4 rounded-xl font-black flex items-center justify-center gap-2 bg-[#edf7f3] text-[#157354] opacity-80 cursor-not-allowed"
+                  >
+                    <CheckCircle2 className="w-5 h-5" /> Current Plan
+                  </button>
+                  <button
+                    onClick={handleManageSubscription}
+                    disabled={portalLoading}
+                    className="text-xs font-bold text-red-600 hover:text-red-700 hover:underline text-center w-full transition-colors"
+                  >
+                    {portalLoading ? 'Loading...' : 'Cancel Subscription'}
+                  </button>
+                </div>
+              ) : isActive ? (
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={handleManageSubscription}
+                    disabled={portalLoading}
+                    className={`w-full py-4 rounded-xl font-black flex items-center justify-center gap-2 transition-all ${
+                      tier.id === 'growth' 
+                        ? 'bg-[#157354] text-white hover:bg-[#0f4a36] shadow-md' 
+                        : 'bg-[#edf7f3] text-[#157354] hover:bg-[#d4ede4]'
+                    }`}
+                  >
+                    {portalLoading ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <>
+                        <CreditCard className="w-5 h-5" /> {(tierOrder.indexOf(tier.id) > tierOrder.indexOf(currentTier as any)) ? 'Upgrade to ' + tier.name : 'Downgrade to ' + tier.name}
+                      </>
+                    )}
+                  </button>
+                  {/* Keep spacing aligned with Current Plan card */}
+                  <div className="h-[18px]"></div>
+                </div>
               ) : (
-                <>
-                  <CreditCard className="w-5 h-5" /> Subscribe
-                </>
+                <button
+                  onClick={() => handleSubscribe(tier.id)}
+                  disabled={loading !== null}
+                  className={`w-full py-4 rounded-xl font-black flex items-center justify-center gap-2 transition-all ${
+                    tier.id === 'growth' 
+                      ? 'bg-[#157354] text-white hover:bg-[#0f4a36] shadow-md' 
+                      : 'bg-[#edf7f3] text-[#157354] hover:bg-[#d4ede4]'
+                  }`}
+                >
+                  {loading === tier.id ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <>
+                      <CreditCard className="w-5 h-5" /> Subscribe
+                    </>
+                  )}
+                </button>
               )}
-            </button>
+            </div>
           </div>
         ))}
       </div>

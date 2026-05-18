@@ -5,8 +5,10 @@ import { createClient } from '@/lib/supabase/client'
 import { Classroom } from '@/lib/types'
 import { Plus, Edit2, Trash2, Users, Loader2, Home, Info } from 'lucide-react'
 import Link from 'next/link'
+import { useCenterContext } from '../context'
 
-export default function ClassroomsPage() {
+export default function SectionsPage() {
+  const { classroomTerm } = useCenterContext()
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
   const [classrooms, setClassrooms] = useState<Classroom[]>([])
@@ -127,14 +129,14 @@ export default function ClassroomsPage() {
     <div className="max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
         <div>
-          <h1 className="text-3xl font-extrabold text-[#0b3828] mb-1">Classrooms</h1>
-          <p className="text-[#6b7a73]">Manage your center's rooms and age groups for shift assignments.</p>
+          <h1 className="text-3xl font-extrabold text-[#0b3828] mb-1">{classroomTerm}</h1>
+          <p className="text-[#6b7a73]">Manage your center's {classroomTerm.toLowerCase()} and age groups for shift assignments.</p>
         </div>
         <button 
           onClick={() => openModal()}
           className="inline-flex items-center justify-center gap-2 bg-[#fbbf24] text-[#0b3828] font-bold px-6 py-3 rounded-xl hover:bg-[#f59e0b] shadow-sm transition-all active:scale-95"
         >
-          <Plus className="w-5 h-5" /> Add Classroom
+          <Plus className="w-5 h-5" /> Add {classroomTerm}
         </button>
       </div>
 
@@ -142,9 +144,9 @@ export default function ClassroomsPage() {
         {classrooms.length === 0 ? (
           <div className="col-span-full py-20 bg-white border border-dashed border-[#a9dac9] rounded-[2.5rem] text-center">
             <Home className="w-16 h-16 text-[#e2e8e4] mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-[#0b3828] mb-2">No classrooms defined</h3>
-            <p className="text-[#6b7a73] max-w-sm mx-auto mb-6">Create your rooms to start assigning staff to specific age groups.</p>
-            <button onClick={() => openModal()} className="text-[#157354] font-bold hover:underline">Add your first room →</button>
+            <h3 className="text-xl font-bold text-[#0b3828] mb-2">No {classroomTerm.toLowerCase()} defined</h3>
+            <p className="text-[#6b7a73] max-w-sm mx-auto mb-6">Create your {classroomTerm.toLowerCase()} to start assigning staff to specific age groups.</p>
+            <button onClick={() => openModal()} className="text-[#157354] font-bold hover:underline">Add your first {classroomTerm.toLowerCase()} →</button>
           </div>
         ) : (
           classrooms.map((room) => (
@@ -185,13 +187,13 @@ export default function ClassroomsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0b3828]/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-8 border-b border-[#e2e8e4] flex items-center justify-between bg-[#f8faf9]">
-              <h2 className="text-2xl font-black text-[#0b3828] tracking-tight">{editingRoom ? 'Edit Classroom' : 'New Classroom'}</h2>
+              <h2 className="text-2xl font-black text-[#0b3828] tracking-tight">{editingRoom ? `Edit ${classroomTerm}` : `New ${classroomTerm}`}</h2>
               <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-[#e2e8e4] rounded-full transition-colors"><Trash2 className="w-5 h-5 text-[#6b7a73]" /></button>
             </div>
             
             <form onSubmit={handleSave} className="p-8 space-y-6">
               <div>
-                <label className="block text-sm font-bold text-[#1a2e25] mb-2 uppercase tracking-widest text-[10px]">Room Name</label>
+                <label className="block text-sm font-bold text-[#1a2e25] mb-2 uppercase tracking-widest text-[10px]">{classroomTerm} Name</label>
                 <input 
                   autoFocus
                   required

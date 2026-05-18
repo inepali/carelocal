@@ -17,6 +17,7 @@ import {
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { getPresignedViewUrl } from '@/app/actions/storage.actions'
+import { useCenterContext } from '../context'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -56,6 +57,7 @@ type TabId = 'overview' | 'experience' | 'credentials' | 'availability' | 'docum
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function StaffReviewPage() {
+  const { staffTerm } = useCenterContext()
   const { id: staffId } = useParams()
   const supabase = createClient()
 
@@ -282,7 +284,7 @@ export default function StaffReviewPage() {
       <div className="h-72 bg-white rounded-3xl border border-[#e2e8e4]" />
     </div>
   )
-  if (!profile) return <div className="p-8 text-[#6b7a73] font-medium">Staff member not found.</div>
+  if (!profile) return <div className="p-8 text-[#6b7a73] font-medium">{staffTerm} member not found.</div>
 
   const TABS: { id: TabId; label: string; Icon: any }[] = [
     { id: 'overview',     label: 'Overview',     Icon: User },
@@ -302,8 +304,8 @@ export default function StaffReviewPage() {
     <div className="max-w-5xl mx-auto pb-20 px-4">
       {/* Back */}
       <div className="mb-8">
-        <Link href="/center/staff" className="inline-flex items-center gap-2 text-sm text-[#6b7a73] hover:text-[#157354] transition-colors font-bold">
-          <ArrowLeft className="w-4 h-4" /> Back to Staff Pool
+        <Link href="/center/team_member" className="inline-flex items-center gap-2 text-sm text-[#6b7a73] hover:text-[#157354] transition-colors font-bold">
+          <ArrowLeft className="w-4 h-4" /> Back to {staffTerm} Pool
         </Link>
       </div>
 

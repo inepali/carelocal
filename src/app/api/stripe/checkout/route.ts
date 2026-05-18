@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
           quantity: 1,
         },
       ],
-      success_url: `${appUrl}/center/settings?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${appUrl}/center/dashboard?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/center/settings/billing`,
       metadata: {
         center_id: admin.center_id,

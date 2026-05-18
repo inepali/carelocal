@@ -14,7 +14,7 @@ import { StaffRoleType } from '@/lib/types'
  * when centerId changes.
  */
 export function useStaffRoles(centerId: string | null | undefined) {
-  const [roles, setRoles] = useState<StaffRoleType[]>([])
+  const [roles, setRoles] = useState<{ value: string; label: string; is_active: boolean }[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -27,19 +27,14 @@ export function useStaffRoles(centerId: string | null | undefined) {
     setLoading(true)
 
     supabase
-      .from('staff_role_types')
+      .from('center_lookups')
       .select('*')
-      .or(`center_id.is.null,center_id.eq.${centerId}`)
-      .eq('is_active', true)
+      .eq('center_id', centerId)
+      .eq('group_name', 'Role')
       .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true })
       .then(({ data }) => {
-        // Platform defaults first (center_id null), then center-custom
-        const sorted = (data || []).sort((a, b) => {
-          if (a.center_id === null && b.center_id !== null) return -1
-          if (a.center_id !== null && b.center_id === null) return 1
-          return a.sort_order - b.sort_order
-        })
-        setRoles(sorted)
+        setRoles(data || [])
         setLoading(false)
       })
   }, [centerId])

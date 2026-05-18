@@ -2,29 +2,32 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, LayoutDashboard, Users, UserPlus, FileText, Settings, Calendar, Plus, Home, Tags } from 'lucide-react'
+import { LogOut, LayoutDashboard, Users, UserPlus, FileText, Settings, Calendar, Plus, Home, Tags, CreditCard, Database } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
+import { CenterContext } from './context'
 
 export default function CenterDashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const supabase = createClient()
-  const [centerName, setCenterName] = useState('Loading...')
   const [loading, setLoading] = useState(true)
+  const [centerName, setCenterName] = useState('Loading...')
+  const [staffTerm, setStaffTerm] = useState('Staffs')
+  const [classroomTerm, setClassroomTerm] = useState('Classrooms')
 
   useEffect(() => {
     async function loadCenter() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return router.push('/login')
 
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('center_admins')
         .select(`
-          center_id,
           centers (
             name,
-            slug
+            staff_term,
+            classroom_term
           )
         `)
         .eq('user_id', user.id)
@@ -33,6 +36,10 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
       if (data && data.centers) {
         // @ts-ignore - Supabase type inference limitation with joins
         setCenterName(data.centers.name)
+        // @ts-ignore
+        if (data.centers.staff_term) setStaffTerm(data.centers.staff_term)
+        // @ts-ignore
+        if (data.centers.classroom_term) setClassroomTerm(data.centers.classroom_term)
       }
       setLoading(false)
     }
@@ -48,10 +55,11 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
   const NAVIGATION = [
     { name: 'Dashboard', href: '/center/dashboard', icon: LayoutDashboard },
     { name: 'Shifts', href: '/center/shifts', icon: Calendar },
-    { name: 'Staffs', href: '/center/staff', icon: Users },
-    { name: 'Classrooms', href: '/center/classrooms', icon: Home },
+    { name: staffTerm, href: '/center/team_member', icon: Users },
+    { name: classroomTerm, href: '/center/sections', icon: Home },
     { name: 'Documents', href: '/center/documents', icon: FileText },
-    { name: 'Roles', href: '/center/roles', icon: Tags },
+    { name: 'Manage Data', href: '/center/settings/data', icon: Database },
+    { name: 'Subscription', href: '/center/subscription', icon: CreditCard },
     { name: 'Settings', href: '/center/settings', icon: Settings },
   ]
 
@@ -60,7 +68,8 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="center-shell min-h-screen bg-[#f8faf9] flex font-sans">
+    <CenterContext.Provider value={{ staffTerm, classroomTerm }}>
+      <div className="center-shell min-h-screen bg-[#f8faf9] flex font-sans">
       {/* ── Sidebar ── */}
       <aside className="w-64 bg-[#0b3828] text-white flex flex-col fixed inset-y-0 z-10">
         <div className="h-16 flex items-center px-6 border-b border-white/10 shrink-0">
@@ -124,5 +133,6 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
         </div>
       </main>
     </div>
+    </CenterContext.Provider>
   )
 }

@@ -4,18 +4,30 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Classroom } from '@/lib/types'
-import { useStaffRoles } from '@/lib/hooks/useStaffRoles'
+import { useLookups } from '@/hooks/use-lookups'
 import { Calendar, Clock, Loader2, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
+import { useCenterContext } from '../../context'
 
 export default function PostShiftPage() {
+  const { staffTerm, classroomTerm } = useCenterContext()
   const router = useRouter()
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [classrooms, setClassrooms] = useState<Classroom[]>([])
   const [centerId, setCenterId] = useState<string | null>(null)
-  const { roles: staffRoles } = useStaffRoles(centerId)
+  const { data: staffRoles } = useLookups('Role')
+  const { data: paymentMethodsRaw } = useLookups('Payment Method')
+  
+  const paymentMethods = paymentMethodsRaw.filter(p => p.is_active !== false)
+  const DEFAULT_PAYMENT_METHODS = [
+    { value: 'payroll', label: 'Corporate Payroll' },
+    { value: 'venmo', label: 'Venmo' },
+    { value: 'cash', label: 'Cash' },
+    { value: 'check', label: 'Check' },
+    { value: 'zelle', label: 'Zelle' }
+  ]
 
   // Form State
   const [shiftDate, setShiftDate] = useState('')
@@ -183,14 +195,14 @@ export default function PostShiftPage() {
                             className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
                         >
                             <option value="any">Any Role</option>
-                            {staffRoles.map(role => (
+                            {staffRoles.filter(r => r.is_active !== false).map(role => (
                                 <option key={role.value} value={role.value}>{role.label}</option>
                             ))}
                         </select>
                     </div>
 
                     <div className="flex-1">
-                        <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Classroom (Optional)</label>
+                        <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">{classroomTerm} (Optional)</label>
                         <select
                             value={classroomId}
                             onChange={(e) => setClassroomId(e.target.value)}
@@ -205,7 +217,7 @@ export default function PostShiftPage() {
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Notes for Staff (Optional)</label>
+                    <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Notes for {staffTerm} (Optional)</label>
                     <textarea 
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
@@ -245,16 +257,14 @@ export default function PostShiftPage() {
                             onChange={(e) => setPaymentMode(e.target.value)}
                             className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25] font-semibold"
                         >
-                            <option value="payroll">Corporate Payroll</option>
-                            <option value="venmo">Venmo</option>
-                            <option value="cash">Cash</option>
-                            <option value="check">Check</option>
-                            <option value="zelle">Zelle</option>
+                            {(paymentMethods.length > 0 ? paymentMethods : DEFAULT_PAYMENT_METHODS).map(p => (
+                                <option key={p.value} value={p.value}>{p.label}</option>
+                            ))}
                         </select>
                     </div>
                 </div>
                 <p className="text-[11px] text-[#6b7a73] italic">
-                    Transparency on pay and payment methods helps attract the best educators to your center.
+                    Transparency on pay and payment methods helps attract the best {staffTerm.toLowerCase()} to your center.
                 </p>
             </div>
 
@@ -272,7 +282,7 @@ export default function PostShiftPage() {
                     disabled={loading || !shiftDate || !startTime || !endTime}
                     className="flex items-center justify-center gap-2 bg-[#157354] text-white font-semibold px-8 py-3 rounded-xl hover:bg-[#0f4a36] transition-colors disabled:opacity-60 shadow-sm"
                 >
-                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Post & Notify Staff'}
+                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : `Post & Notify ${staffTerm}`}
                 </button>
             </div>
         </form>

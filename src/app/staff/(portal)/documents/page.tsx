@@ -6,6 +6,7 @@ import { StaffDocument, DOCUMENT_CATEGORY_LABELS, DocumentCategory, Center, Cent
 import { FileText, Plus, Trash2, ArrowRight, Upload, Info, CheckCircle2, Loader2, AlertCircle, ShieldCheck, ChevronRight, X, Calendar, ExternalLink, Globe, Sparkles, Download, Eye } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { getPresignedUploadUrl, getPresignedViewUrl } from '@/app/actions/storage.actions'
+import { useLookups } from '@/hooks/use-lookups'
 
 // Mock categories if types aren't fully exporting them yet
 const CATEGORIES: { label: string; value: DocumentCategory }[] = [
@@ -42,6 +43,9 @@ function DocumentsContent() {
   const [docName, setDocName] = useState('')
   const [docCategory, setDocCategory] = useState<DocumentCategory | ''>('')
   const [expiryDate, setExpiryDate] = useState('')
+
+  const { data: lookupDocTypesRaw } = useLookups('Document Type')
+  const lookupDocTypes = lookupDocTypesRaw.filter(l => l.is_active !== false)
 
   useEffect(() => {
     loadDocuments()
@@ -271,15 +275,17 @@ function DocumentsContent() {
             </div>
             <div>
               <label className="block text-sm font-bold text-[#0b3828] mb-2 uppercase tracking-widest text-[10px]">Category</label>
-              <select 
-                value={docCategory}
-                required
-                onChange={(e) => setDocCategory(e.target.value as DocumentCategory)}
-                className="w-full px-5 py-4 rounded-2xl border-2 border-[#f0f4f2] bg-white focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all font-medium text-[#0b3828]"
-              >
-                <option value="" disabled>--Select--</option>
-                {CATEGORIES.map(cat => <option key={cat.value} value={cat.value}>{cat.label}</option>)}
-              </select>
+                    <select
+                      required
+                      value={docCategory}
+                      onChange={(e) => setDocCategory(e.target.value as any)}
+                      className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30"
+                    >
+                      <option value="" disabled>Select Type</option>
+                      {(lookupDocTypes.length > 0 ? lookupDocTypes : CATEGORIES).map(c => (
+                        <option key={c.value} value={c.value}>{c.label}</option>
+                      ))}
+                    </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Expiry Date (Optional)</label>

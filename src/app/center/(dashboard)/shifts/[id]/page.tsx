@@ -11,8 +11,11 @@ import {
   Trash2, User, Phone, Mail, ShieldCheck, Edit3, AlertTriangle, X
 } from 'lucide-react'
 import Link from 'next/link'
+import { useLookups } from '@/hooks/use-lookups'
+import { useCenterContext } from '../../context'
 
 export default function ShiftDetailPage() {
+  const { staffTerm, classroomTerm } = useCenterContext()
   const { id } = useParams()
   const router = useRouter()
   const supabase = createClient()
@@ -27,7 +30,16 @@ export default function ShiftDetailPage() {
   const [classrooms, setClassrooms] = useState<Classroom[]>([])
   const [claims, setClaims] = useState<any[]>([])
   const [centerId, setCenterId] = useState<string | null>(null)
-  const { roles: staffRoles } = useStaffRoles(centerId)
+  const { data: staffRoles } = useLookups('Role')
+  const { data: paymentMethodsRaw } = useLookups('Payment Method')
+  const paymentMethods = paymentMethodsRaw.filter(p => p.is_active !== false)
+  const DEFAULT_PAYMENT_METHODS = [
+    { value: 'payroll', label: 'Corporate Payroll' },
+    { value: 'venmo', label: 'Venmo' },
+    { value: 'cash', label: 'Cash' },
+    { value: 'check', label: 'Check' },
+    { value: 'zelle', label: 'Zelle' }
+  ]
 
   // Form State (for Edit)
   const [editDate, setEditDate] = useState('')
@@ -36,6 +48,7 @@ export default function ShiftDetailPage() {
   const [editRate, setEditRate] = useState('')
   const [editMode, setEditMode] = useState('')
   const [editNotes, setEditNotes] = useState('')
+  const [editRole, setEditRole] = useState('')
   const [editClassroom, setEditClassroom] = useState('')
 
   const [cancelModalOpen, setCancelModalOpen] = useState(false)
@@ -71,9 +84,10 @@ export default function ShiftDetailPage() {
       setEditDate(shiftData.shift_date)
       setEditStart(shiftData.start_time.substring(0, 5))
       setEditEnd(shiftData.end_time.substring(0, 5))
-      setEditRate(shiftData.hourly_rate?.toString() || '20.00')
+      setEditRate(shiftData.hourly_rate ? shiftData.hourly_rate.toString() : '')
       setEditMode(shiftData.payment_mode || 'payroll')
       setEditNotes(shiftData.notes || '')
+      setEditRole(shiftData.staff_type_needed || 'any')
       setEditClassroom(shiftData.classroom_id || 'any')
 
       // 2. Fetch Claims
@@ -115,7 +129,8 @@ export default function ShiftDetailPage() {
           hourly_rate: parseFloat(editRate),
           payment_mode: editMode,
           notes: editNotes,
-          classroom_id: editClassroom === 'any' ? null : editClassroom
+          classroom_id: editClassroom === 'any' ? null : editClassroom,
+          staff_type_needed: editRole === 'any' ? null : editRole
         })
         .eq('id', shiftId)
 
@@ -266,7 +281,7 @@ export default function ShiftDetailPage() {
             
             {isEditing ? (
               <div className="space-y-8 relative z-10">
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Shift Date</label>
                        <input 
@@ -277,7 +292,20 @@ export default function ShiftDetailPage() {
                        />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Classroom</label>
+                      <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">{staffTerm} Role</label>
+                       <select 
+                         value={editRole}
+                         onChange={(e) => setEditRole(e.target.value)}
+                         className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
+                       >
+                         <option value="any">Any Role</option>
+                         {staffRoles.filter(r => r.is_active !== false).map(role => (
+                            <option key={role.value} value={role.value}>{role.label}</option>
+                         ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">{classroomTerm}</label>
                        <select 
                          value={editClassroom}
                          onChange={(e) => setEditClassroom(e.target.value)}
@@ -305,17 +333,15 @@ export default function ShiftDetailPage() {
                     <div>
                       <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Mode</label>
                        <select value={editMode} onChange={(e) => setEditMode(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]">
-                         <option value="payroll">Payroll</option>
-                         <option value="venmo">Venmo</option>
-                         <option value="cash">Cash</option>
-                         <option value="check">Check</option>
-                         <option value="zelle">Zelle</option>
+                          {(paymentMethods.length > 0 ? paymentMethods : DEFAULT_PAYMENT_METHODS).map(p => (
+                            <option key={p.value} value={p.value}>{p.label}</option>
+                          ))}
                       </select>
                     </div>
                  </div>
 
                  <div>
-                     <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Notes for Staff</label>
+                     <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Notes for {staffTerm}</label>
                      <textarea 
                        value={editNotes} 
                        onChange={(e) => setEditNotes(e.target.value)} 
@@ -336,12 +362,20 @@ export default function ShiftDetailPage() {
                       <div className="text-xl font-black text-[#1a2e25]">{shift.start_time.substring(0,5)} - {shift.end_time.substring(0,5)}</div>
                    </div>
                    <div className="space-y-2">
+                      <div className="text-[10px] font-black uppercase tracking-widest text-[#a8b5ae]">Role Needed</div>
+                      <div className="text-xl font-black text-[#1a2e25] capitalize">
+                        {staffRoles.find(r => r.value === shift.staff_type_needed)?.label || shift.staff_type_needed || 'Any Role'}
+                      </div>
+                   </div>
+                   <div className="space-y-2">
                       <div className="text-[10px] font-black uppercase tracking-widest text-[#a8b5ae]">Pay Rate</div>
                       <div className="text-xl font-black text-[#157354]">${shift.hourly_rate || '0.00'} / hr</div>
                    </div>
                    <div className="space-y-2">
                       <div className="text-[10px] font-black uppercase tracking-widest text-[#a8b5ae]">Method</div>
-                      <div className="text-xl font-black text-[#1a2e25] capitalize">{shift.payment_mode || 'Payroll'}</div>
+                      <div className="text-xl font-black text-[#1a2e25] capitalize">
+                        {paymentMethodsRaw.find(p => p.value === shift.payment_mode)?.label || shift.payment_mode || 'Payroll'}
+                      </div>
                    </div>
                 </div>
 
@@ -358,7 +392,7 @@ export default function ShiftDetailPage() {
           {/* Claims section */}
           <div className="bg-white border border-[#e2e8e4] rounded-2xl p-8 shadow-sm">
              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-xl font-bold text-[#0b3828] tracking-tight">Educator Claims</h2>
+                <h2 className="text-xl font-bold text-[#0b3828] tracking-tight">{staffTerm} Claims</h2>
                 <div className="px-4 py-1.5 bg-[#edf7f3] text-[#157354] rounded-xl text-[10px] font-black uppercase tracking-widest">
                    {claims.length} Interested
                 </div>
@@ -407,7 +441,7 @@ export default function ShiftDetailPage() {
                                  onClick={() => handleClaimAction(claim.id, 'confirmed')}
                                  className="px-6 py-2.5 bg-[#157354] text-white rounded-xl font-bold shadow-md hover:scale-105 transition-all active:scale-95 text-xs flex items-center gap-2"
                                >
-                                  <ShieldCheck className="w-4 h-4" /> Confirm Staff
+                                  <ShieldCheck className="w-4 h-4" /> Confirm {staffTerm}
                                </button>
                              </>
                           )}
@@ -440,7 +474,7 @@ export default function ShiftDetailPage() {
                          {confirmedClaim.staff_profiles?.first_name}<br/>
                          {confirmedClaim.staff_profiles?.last_name}
                       </div>
-                      <div className="text-[#a9dac9] text-sm font-medium mt-1 uppercase tracking-widest text-[10px]">VERIFIED EDUCATOR</div>
+                      <div className="text-[#a9dac9] text-sm font-medium mt-1 uppercase tracking-widest text-[10px]">VERIFIED {staffTerm.toUpperCase()}</div>
                    </div>
                 </div>
                 <div className="space-y-4 pt-6 border-t border-white/10">
@@ -458,7 +492,7 @@ export default function ShiftDetailPage() {
                    </div>
                 </div>
                 <button className="w-full mt-10 bg-white text-[#157354] py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-[#f8faf9] transition-all active:scale-95">
-                   Message Educator
+                   Message {staffTerm}
                 </button>
              </div>
            ) : (
@@ -468,7 +502,7 @@ export default function ShiftDetailPage() {
                 </div>
                 <h3 className="text-xl font-black text-[#0b3828] mb-2 tracking-tight leading-none">Awaiting Claims</h3>
                 <p className="text-[#6b7a73] font-medium text-sm leading-relaxed px-2">
-                   This shift is currently live in the expansion marketplace. You'll be notified as soon as a professional educator claims it.
+                   This shift is currently live in the expansion marketplace. You'll be notified as soon as a professional {staffTerm.toLowerCase()} claims it.
                 </p>
                 <div className="mt-8 pt-6 border-t border-[#157354]/5">
                    <div className="font-black text-[#157354] text-[10px] uppercase tracking-widest mb-4">Discovery Status</div>
@@ -492,7 +526,7 @@ export default function ShiftDetailPage() {
                   <div>
                     <p className="font-black text-red-900 uppercase tracking-wide text-xs mb-1">Shift cancelled</p>
                     <p className="text-red-800/90 font-medium leading-relaxed">
-                      This shift is no longer active. Staff who had shown interest may still see it as closed in their history.
+                      This shift is no longer active. {staffTerm} who had shown interest may still see it as closed in their history.
                     </p>
                   </div>
                 </div>
@@ -550,7 +584,7 @@ export default function ShiftDetailPage() {
                 {claims.length > 0 && (
                   <span className="block mt-3 pt-3 border-t border-[#f0f4f2] text-amber-900">
                     <span className="font-black text-xs uppercase tracking-widest text-amber-800">Heads up:</span>{' '}
-                    {claims.length} educator{claims.length === 1 ? ' has' : 's have'} already submitted interest or claims — consider messaging them from your roster if needed.
+                    {claims.length} {staffTerm.toLowerCase()}{claims.length === 1 ? ' has' : 's have'} already submitted interest or claims — consider messaging them from your roster if needed.
                   </span>
                 )}
               </p>

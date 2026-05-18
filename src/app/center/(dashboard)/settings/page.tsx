@@ -75,7 +75,9 @@ export default function CenterSettingsPage() {
         zip: center.zip,
         license_number: center.license_number,
         metro_area_id: center.metro_area_id,
-        timezone: center.timezone
+        timezone: center.timezone,
+        staff_term: center.staff_term,
+        classroom_term: center.classroom_term
       })
       .eq('id', center.id)
 
@@ -234,9 +236,38 @@ export default function CenterSettingsPage() {
                     className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white text-[#1a2e25] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition"
                   />
                 </div>
+
+                <div className="pt-8 border-t border-[#e2e8e4]">
+                  <h3 className="text-lg font-bold text-[#1a2e25] mb-4">Navigation Terminology</h3>
+                  <div className="grid sm:grid-cols-2 gap-8">
+                    <div>
+                      <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Staff Menu Label</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. Staffs, Employees, Team"
+                        value={center.staff_term || ''}
+                        onChange={(e) => setCenter({...center, staff_term: e.target.value})}
+                        className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white text-[#1a2e25] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Classrooms Menu Label</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. Classrooms, Rooms, Departments"
+                        value={center.classroom_term || ''}
+                        onChange={(e) => setCenter({...center, classroom_term: e.target.value})}
+                        className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white text-[#1a2e25] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition"
+                      />
+                    </div>
+                  </div>
+                  <p className="mt-3 text-xs text-[#6b7a73]">
+                    Customize how these terms appear in your left navigation menu. They will default to "Staffs" and "Classrooms" if left blank.
+                  </p>
+                </div>
               </div>
 
-              <div className="pt-6 flex justify-end">
+              <div className="pt-8 border-t border-[#e2e8e4]">
                 <button
                   type="submit"
                   disabled={saving}

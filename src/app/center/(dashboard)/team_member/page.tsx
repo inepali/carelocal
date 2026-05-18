@@ -6,8 +6,10 @@ import { StaffProfile, CenterStaff, STAFF_TYPE_LABELS, StaffType } from '@/lib/t
 import { Users, Search, Filter, ShieldCheck, Mail, Phone, ArrowRight, CheckCircle2, Clock, Loader2, Sparkles, UserPlus } from 'lucide-react'
 import { getStaffInviteLink } from '@/lib/api/invites'
 import Link from 'next/link'
+import { useCenterContext } from '../context'
 
 export default function StaffPoolPage() {
+  const { staffTerm } = useCenterContext()
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
   const [staff, setStaff] = useState<any[]>([])
@@ -165,8 +167,8 @@ export default function StaffPoolPage() {
     <div className="max-w-6xl mx-auto pb-20">
       <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6 mb-10">
         <div>
-          <h1 className="text-4xl font-black text-[#0b3828] mb-2 tracking-tight">Staffing Dashboard</h1>
-          <p className="text-[#6b7a73] font-medium text-lg">Manage your educators and review incoming onboarding requests.</p>
+          <h1 className="text-4xl font-black text-[#0b3828] mb-2 tracking-tight">{staffTerm} Dashboard</h1>
+          <p className="text-[#6b7a73] font-medium text-lg">Manage your {staffTerm.toLowerCase()} and review incoming onboarding requests.</p>
         </div>
         <div className="flex flex-wrap gap-4">
           <div className="bg-[#edf7f3] p-1.5 rounded-2xl border border-[#a9dac9] flex shadow-sm">
@@ -198,7 +200,7 @@ export default function StaffPoolPage() {
              onClick={() => setShowInviteModal(true)}
              className="inline-flex items-center justify-center bg-white border-2 border-[#157354]/10 text-[#157354] font-black px-8 py-3 rounded-2xl hover:bg-[#f8faf9] hover:border-[#157354] shadow-sm transition-all active:scale-95"
           >
-             Invite Staff
+             Invite {staffTerm}
           </button>
         </div>
       </div>
@@ -209,7 +211,7 @@ export default function StaffPoolPage() {
                <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-[#a8b5ae]" />
                <input 
                   type="text" 
-                  placeholder={`Search ${activeTab === 'discover' ? 'local educators' : 'your staff'}...`}
+                  placeholder={`Search ${activeTab === 'discover' ? `local ${staffTerm.toLowerCase()}` : `your ${staffTerm.toLowerCase()}`}...`}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-12 pr-6 py-4 rounded-[1.25rem] border-2 border-[#f0f4f2] bg-white text-[#1a2e25] font-medium focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all"
@@ -221,7 +223,7 @@ export default function StaffPoolPage() {
              <table className="w-full text-left border-collapse">
                <thead>
                  <tr className="border-b border-[#f0f4f2] text-[#6b7a73] font-black uppercase tracking-widest text-[10px]">
-                   <th className="px-8 py-5">Staff Member</th>
+                   <th className="px-8 py-5">{staffTerm} Member</th>
                    <th className="px-8 py-5">Specialization</th>
                    <th className="px-8 py-5">Onboarding Status</th>
                    <th className="px-8 py-5">Action</th>
@@ -236,7 +238,7 @@ export default function StaffPoolPage() {
                         </div>
                         <h3 className="text-2xl font-black text-[#0b3828] mb-2 tracking-tight">No results found</h3>
                         <p className="text-[#6b7a73] max-w-xs mx-auto text-lg mb-8">
-                          {activeTab === 'onboarding' ? "You don't have any pending onboarding requests at the moment." : "Spread the word to get more educators into your pool!"}
+                          {activeTab === 'onboarding' ? "You don't have any pending onboarding requests at the moment." : `Spread the word to get more ${staffTerm.toLowerCase()} into your pool!`}
                         </p>
                         <button onClick={copyInviteLink} disabled={copied} className="flex items-center justify-center gap-2 mx-auto bg-[#fbbf24] text-[#0b3828] font-black px-10 py-4 rounded-2xl hover:bg-[#f59e0b] shadow-lg shadow-[#fbbf24]/20 transition-all disabled:opacity-80">
                            {copied ? <><CheckCircle2 className="w-5 h-5" /> Copied!</> : 'Copy Invite Link'}
@@ -294,7 +296,7 @@ export default function StaffPoolPage() {
                                  </button>
                                ) : (
                                  <Link 
-                                   href={`/center/staff/${profile.id}`}
+                                   href={`/center/team_member/${profile.id}`}
                                    className="inline-flex items-center gap-2 text-[#157354] font-black hover:text-[#0b3828] text-sm group/link"
                                  >
                                     Review Paperwork <ArrowRight className="w-4 h-4 group-hover/link:translate-x-1 transition-transform" />
@@ -318,9 +320,9 @@ export default function StaffPoolPage() {
               <div className="w-16 h-16 bg-[#edf7f3] text-[#157354] rounded-2xl flex items-center justify-center mb-6 shadow-inner">
                 <Mail className="w-8 h-8" />
               </div>
-              <h2 className="text-2xl font-black text-[#0b3828] mb-2 tracking-tight">Invite Staff</h2>
+              <h2 className="text-2xl font-black text-[#0b3828] mb-2 tracking-tight">Invite {staffTerm}</h2>
               <p className="text-[#6b7a73] font-medium mb-8 leading-relaxed">
-                Send an email invitation directly to an educator so they can join your pool.
+                Send an email invitation directly to a {staffTerm.toLowerCase()} member so they can join your pool.
               </p>
               
               <form onSubmit={handleSendEmailInvite}>

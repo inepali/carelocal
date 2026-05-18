@@ -5,8 +5,10 @@ import { createClient } from '@/lib/supabase/client'
 import { Shift, StaffProfile } from '@/lib/types'
 import Link from 'next/link'
 import { Calendar, Users, AlertCircle, FileText, ArrowRight, CheckCircle2, Clock, Plus, UserPlus, Globe, Star } from 'lucide-react'
+import { useCenterContext } from '../context'
 
 export default function DashboardOverview() {
+  const { staffTerm } = useCenterContext()
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({
@@ -24,6 +26,18 @@ export default function DashboardOverview() {
 
   useEffect(() => {
     async function fetchDashboardData() {
+      // Check for Stripe checkout session
+      const params = new URLSearchParams(window.location.search);
+      const sessionId = params.get('session_id');
+      if (sessionId) {
+        try {
+          await fetch(`/api/stripe/verify?session_id=${sessionId}`);
+          window.history.replaceState(null, '', window.location.pathname);
+        } catch (e) {
+          console.error('Error verifying session:', e);
+        }
+      }
+
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
@@ -195,7 +209,7 @@ export default function DashboardOverview() {
           </div>
           <div>
             <div className="text-4xl font-black text-[#0b3828] mb-1">{stats.activeStaff}</div>
-            <div className="text-sm font-bold text-[#6b7a73]">Verified Educators</div>
+            <div className="text-sm font-bold text-[#6b7a73]">Verified {staffTerm}</div>
           </div>
         </div>
 
@@ -224,7 +238,7 @@ export default function DashboardOverview() {
               {stats.avgRating > 0 ? stats.avgRating.toFixed(1) : '—'}
               <Star className="w-5 h-5 text-[#fbbf24] fill-[#fbbf24]" />
             </div>
-            <div className="text-sm font-bold text-[#6b7a73]">{stats.totalReviews} Staff Review{stats.totalReviews !== 1 ? 's' : ''}</div>
+            <div className="text-sm font-bold text-[#6b7a73]">{stats.totalReviews} {staffTerm} Review{stats.totalReviews !== 1 ? 's' : ''}</div>
           </div>
         </div>
       </div>
@@ -313,10 +327,10 @@ export default function DashboardOverview() {
             You can't post a shift until you invite staff to your center. Invite your existing subs, floaters, and teachers to get started.
           </p>
           <Link 
-            href="/center/staff" 
+            href="/center/team_member" 
             className="inline-flex items-center gap-2 bg-[#157354] text-white font-black px-8 py-4 rounded-2xl hover:bg-[#0f4a36] transition-all shadow-lg active:scale-95"
           >
-            Invite Staff <ArrowRight className="w-5 h-5" />
+            Invite {staffTerm} <ArrowRight className="w-5 h-5" />
           </Link>
         </div>
       )}

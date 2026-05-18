@@ -39,6 +39,8 @@ export interface Center {
   stripe_customer_id?: string
   trial_ends_at?: string
   trial_months?: number
+  staff_term?: string
+  classroom_term?: string
   created_at: string
   updated_at: string
 }
