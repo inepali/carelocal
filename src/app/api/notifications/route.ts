@@ -74,7 +74,7 @@ export async function POST(req: Request) {
 
       // 4. Dispatch Notifications
       for (const staff of eligibleStaff) {
-        const profile = staff.staff_profiles
+        const profile: any = staff.staff_profiles
         if (!profile) continue
 
         const prefs = prefMap.get(staff.staff_id) || {

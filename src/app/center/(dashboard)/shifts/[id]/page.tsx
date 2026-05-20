@@ -8,7 +8,7 @@ import { useStaffRoles } from '@/lib/hooks/useStaffRoles'
 import { 
   Calendar, Clock, MapPin, ArrowLeft, 
   CheckCircle2, AlertCircle, Loader2, Save, 
-  Trash2, User, Phone, Mail, ShieldCheck, Edit3, AlertTriangle, X
+  Trash2, User, Phone, Mail, ShieldCheck, Edit3, AlertTriangle, X, Archive
 } from 'lucide-react'
 import Link from 'next/link'
 import { useLookups } from '@/hooks/use-lookups'
@@ -54,6 +54,10 @@ export default function ShiftDetailPage() {
   const [cancelModalOpen, setCancelModalOpen] = useState(false)
   const [cancelSubmitting, setCancelSubmitting] = useState(false)
   const [cancelModalError, setCancelModalError] = useState<string | null>(null)
+
+  const [archiveModalOpen, setArchiveModalOpen] = useState(false)
+  const [archiveSubmitting, setArchiveSubmitting] = useState(false)
+  const [archiveModalError, setArchiveModalError] = useState<string | null>(null)
 
   useEffect(() => {
     loadShiftData()
@@ -189,6 +193,30 @@ export default function ShiftDetailPage() {
       return
     }
     setCancelModalOpen(false)
+    loadShiftData()
+  }
+
+  function openArchiveShiftModal() {
+    setArchiveModalError(null)
+    setArchiveModalOpen(true)
+  }
+
+  function closeArchiveShiftModal() {
+    if (archiveSubmitting) return
+    setArchiveModalOpen(false)
+    setArchiveModalError(null)
+  }
+
+  async function confirmArchiveShift() {
+    setArchiveSubmitting(true)
+    setArchiveModalError(null)
+    const { error } = await supabase.from('shifts').update({ is_archived: true }).eq('id', shiftId)
+    setArchiveSubmitting(false)
+    if (error) {
+      setArchiveModalError(error.message)
+      return
+    }
+    setArchiveModalOpen(false)
     router.push('/center/shifts')
   }
 
@@ -237,6 +265,11 @@ export default function ShiftDetailPage() {
               }`}>
                 {shift.status}
               </span>
+              {shift.is_archived && (
+                <span className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-2 bg-slate-100 text-slate-600 border-slate-200">
+                  Archived
+                </span>
+              )}
               <span className="text-[#a8b5ae] font-bold text-xs">ID: {shift.id.substring(0,8)}</span>
             </div>
             <h1 className="text-3xl font-extrabold text-[#0b3828]">
@@ -515,8 +548,32 @@ export default function ShiftDetailPage() {
              </div>
            )}
            
-           <div className="bg-[#f8faf9] border border-[#e2e8e4] rounded-2xl p-8">
-              <h4 className="font-black text-[#1a2e25] mb-6 uppercase tracking-widest text-xs">Danger Zone</h4>
+           <div className="bg-[#f8faf9] border border-[#e2e8e4] rounded-2xl p-8 space-y-4">
+              <h4 className="font-black text-[#1a2e25] mb-2 uppercase tracking-widest text-xs">Danger Zone</h4>
+              
+              {shift.is_archived ? (
+                <div
+                  role="status"
+                  className="flex items-start gap-3 rounded-2xl border-2 border-slate-100 bg-slate-50 px-5 py-4 text-sm text-slate-800"
+                >
+                  <Archive className="w-5 h-5 shrink-0 text-slate-650 mt-0.5" />
+                  <div>
+                    <p className="font-black text-slate-900 uppercase tracking-wide text-xs mb-1">Shift archived</p>
+                    <p className="text-slate-800/90 font-medium leading-relaxed">
+                      This shift has been archived. It will no longer display in the shifts grid.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={openArchiveShiftModal}
+                  className="w-full flex items-center justify-center gap-2 bg-white text-slate-600 border-2 border-slate-200 px-6 py-4 rounded-2xl font-bold hover:bg-slate-50 hover:border-slate-350 transition-all text-sm shadow-sm"
+                >
+                  <Archive className="w-4 h-4" /> Archive shift
+                </button>
+              )}
+
               {shift.status === 'cancelled' ? (
                 <div
                   role="status"
@@ -531,13 +588,15 @@ export default function ShiftDetailPage() {
                   </div>
                 </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={openCancelShiftModal}
-                  className="w-full flex items-center justify-center gap-2 bg-white text-red-600 border-2 border-red-100 px-6 py-4 rounded-2xl font-bold hover:bg-red-50 hover:border-red-200 transition-all text-sm shadow-sm"
-                >
-                  <Trash2 className="w-4 h-4" /> Cancel shift
-                </button>
+                !shift.is_archived && (
+                  <button
+                    type="button"
+                    onClick={openCancelShiftModal}
+                    className="w-full flex items-center justify-center gap-2 bg-white text-red-600 border-2 border-red-100 px-6 py-4 rounded-2xl font-bold hover:bg-red-50 hover:border-red-200 transition-all text-sm shadow-sm"
+                  >
+                    <Trash2 className="w-4 h-4" /> Cancel shift
+                  </button>
+                )
               )}
            </div>
         </div>
@@ -623,6 +682,89 @@ export default function ShiftDetailPage() {
                 ) : (
                   <>
                     <Trash2 className="w-4 h-4" /> Yes, cancel shift
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {archiveModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0b3828]/50 backdrop-blur-sm animate-in fade-in duration-200"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="archive-shift-title"
+          aria-describedby="archive-shift-desc"
+          onClick={archiveSubmitting ? undefined : closeArchiveShiftModal}
+        >
+          <div
+            className="bg-white w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative bg-gradient-to-br from-slate-50 to-slate-100/40 px-8 pt-10 pb-6 border-b border-slate-100">
+              <button
+                type="button"
+                onClick={closeArchiveShiftModal}
+                disabled={archiveSubmitting}
+                className="absolute right-5 top-5 p-2 rounded-full text-[#6b7a73] hover:bg-white/80 hover:text-[#0b3828] transition-colors disabled:opacity-40"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-800 flex items-center justify-center shadow-lg shadow-slate-200/50 shrink-0 border border-slate-200">
+                  <Archive className="w-7 h-7 text-slate-700" strokeWidth={2.25} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">Clean up grid</p>
+                  <h2 id="archive-shift-title" className="text-2xl font-black text-[#0b3828] tracking-tight leading-tight">
+                    Archive this shift?
+                  </h2>
+                </div>
+              </div>
+            </div>
+            <div className="px-8 py-6 space-y-4">
+              <p id="archive-shift-desc" className="text-[#3d5a4f] font-medium leading-relaxed text-sm">
+                This shift will be hidden from the shifts grid at <span className="font-bold">/center/shifts</span>. 
+                You can still access it directly via its URL if needed.
+              </p>
+              {archiveModalError && (
+                <div
+                  role="alert"
+                  className="flex items-start gap-3 rounded-xl border-2 border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
+                >
+                  <AlertCircle className="w-5 h-5 shrink-0 text-red-600 mt-0.5" />
+                  <div>
+                    <p className="font-black text-xs uppercase tracking-wide text-red-800 mb-0.5">Could not archive</p>
+                    <p className="text-red-900/90 font-medium break-words">{archiveModalError}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="px-8 pb-8 flex flex-col-reverse sm:flex-row gap-3">
+              <button
+                type="button"
+                onClick={closeArchiveShiftModal}
+                disabled={archiveSubmitting}
+                className="flex-1 py-4 px-6 rounded-2xl border-2 border-[#e2e8e4] font-black text-xs text-[#3d5a4f] hover:bg-[#f8faf9] transition-all disabled:opacity-50 uppercase tracking-widest"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmArchiveShift}
+                disabled={archiveSubmitting}
+                className="flex-1 py-4 px-6 rounded-2xl bg-slate-800 text-white font-black text-xs uppercase tracking-widest hover:bg-slate-900 shadow-lg shadow-slate-800/25 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {archiveSubmitting ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" /> Archiving…
+                  </>
+                ) : (
+                  <>
+                    <Archive className="w-4 h-4" /> Yes, archive shift
                   </>
                 )}
               </button>

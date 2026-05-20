@@ -200,6 +200,7 @@ export interface Shift {
   created_by?: string
   created_at: string
   updated_at: string
+  is_archived?: boolean
   // Joined
   classroom?: Classroom
   shift_claims?: ShiftClaim[]

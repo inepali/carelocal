@@ -35,8 +35,8 @@ export default function AdminDashboardPage() {
       ] = await Promise.all([
         supabase.from('centers').select('*', { count: 'exact', head: true }),
         supabase.from('staff_profiles').select('*', { count: 'exact', head: true }),
-        supabase.from('shifts').select('*', { count: 'exact', head: true }).eq('status', 'open'),
-        supabase.from('shifts').select('*', { count: 'exact', head: true }).eq('status', 'filled')
+        supabase.from('shifts').select('*', { count: 'exact', head: true }).eq('status', 'open').neq('is_archived', true),
+        supabase.from('shifts').select('*', { count: 'exact', head: true }).eq('status', 'filled').neq('is_archived', true)
       ])
 
       setStats({

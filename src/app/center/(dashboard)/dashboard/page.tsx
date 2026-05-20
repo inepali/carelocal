@@ -84,9 +84,9 @@ export default function DashboardOverview() {
         { data: reviewsData }
       ] = await Promise.all([
         supabase.from('center_staff').select('*', { count: 'exact', head: true }).eq('center_id', centerId).eq('status', 'active'),
-        supabase.from('shifts').select('*', { count: 'exact', head: true }).eq('center_id', centerId).eq('status', 'open').gte('shift_date', today),
+        supabase.from('shifts').select('*', { count: 'exact', head: true }).eq('center_id', centerId).eq('status', 'open').neq('is_archived', true).gte('shift_date', today),
         supabase.from('center_staff_document_status').select('*', { count: 'exact', head: true }).eq('center_id', centerId).eq('status', 'pending_review'),
-        supabase.from('shifts').select('*, classrooms(name)').eq('center_id', centerId).eq('status', 'open').gte('shift_date', today).order('shift_date', { ascending: true }).limit(3),
+        supabase.from('shifts').select('*, classrooms(name)').eq('center_id', centerId).eq('status', 'open').neq('is_archived', true).gte('shift_date', today).order('shift_date', { ascending: true }).limit(3),
         supabase.from('shift_claims').select('*, staff_profiles(first_name, last_name), shifts(shift_date, start_time, classroom_id, classrooms(name))').eq('status', 'pending').order('claimed_at', { ascending: false }).limit(3),
         supabase.from('center_staff').select('*, staff_profiles(first_name, last_name)').eq('center_id', centerId).order('added_at', { ascending: false }).limit(3),
         supabase.from('shift_reviews').select('rating').eq('reviewee_id', centerId).eq('reviewer_type', 'staff')

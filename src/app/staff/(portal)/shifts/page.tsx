@@ -64,6 +64,7 @@ export default function StaffShiftsPage() {
             classrooms (name, age_group)
         `)
         .eq('status', 'open')
+        .neq('is_archived', true)
         .gte('shift_date', today)
         .order('shift_date', { ascending: true })
         

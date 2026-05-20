@@ -59,6 +59,7 @@ export default function CenterShiftsPage() {
           .from('shifts')
           .select(`*, classrooms (name, age_group)`)
           .in('center_id', centerIds)
+          .neq('is_archived', true)
           .order('shift_date', { ascending: false })
 
         if (shiftsError) {
