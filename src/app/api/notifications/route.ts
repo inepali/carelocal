@@ -1,0 +1,139 @@
+import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+import { Resend } from 'resend'
+import twilio from 'twilio'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabase = createClient(supabaseUrl, supabaseServiceRole)
+
+// Initialize optional providers
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
+const twilioClient = (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN)
+  ? twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
+  : null
+
+export async function POST(req: Request) {
+  try {
+    const { centerId, shiftId, staffTypeNeeded, action, shiftDate, startTime, endTime } = await req.json()
+
+    if (action === 'shift_posted') {
+      // 1. Fetch the center name
+      const { data: center } = await supabase
+        .from('centers')
+        .select('name')
+        .eq('id', centerId)
+        .single()
+      
+      const centerName = center?.name || 'A CareLocal Center'
+
+      // 2. Fetch all active staff connected to this center
+      const { data: centerStaff } = await supabase
+        .from('center_staff')
+        .select(`
+          staff_id,
+          staff_profiles (
+            email,
+            phone,
+            staff_type
+          )
+        `)
+        .eq('center_id', centerId)
+        .eq('status', 'active')
+
+      if (!centerStaff || centerStaff.length === 0) {
+        return NextResponse.json({ success: true, message: 'No active staff to notify.' })
+      }
+
+      // Filter staff by role if a specific role is needed (and not 'any')
+      let eligibleStaff = centerStaff
+      if (staffTypeNeeded && staffTypeNeeded !== 'any') {
+        eligibleStaff = centerStaff.filter((s: any) => {
+          const profile = s.staff_profiles
+          if (!profile || !profile.staff_type) return false
+          // Check if profile.staff_type includes the needed role
+          return profile.staff_type.includes(staffTypeNeeded) || profile.staff_type === staffTypeNeeded
+        })
+      }
+
+      if (eligibleStaff.length === 0) {
+        return NextResponse.json({ success: true, message: 'No eligible staff with the required role.' })
+      }
+
+      // 3. Fetch notification preferences for eligible staff
+      const staffIds = eligibleStaff.map(s => s.staff_id)
+      const { data: preferences } = await supabase
+        .from('user_notification_settings')
+        .select('*')
+        .in('user_id', staffIds)
+      
+      const prefMap = new Map(preferences?.map(p => [p.user_id, p]))
+
+      const notificationTitle = `New Shift Available at ${centerName}`
+      const notificationMessage = `A new shift is available on ${new Date(shiftDate).toLocaleDateString()} from ${startTime.substring(0,5)} to ${endTime.substring(0,5)}.`
+
+      // 4. Dispatch Notifications
+      for (const staff of eligibleStaff) {
+        const profile = staff.staff_profiles
+        if (!profile) continue
+
+        const prefs = prefMap.get(staff.staff_id) || {
+          app_enabled: true,
+          email_enabled: true,
+          sms_enabled: false
+        } // default fallback
+
+        // A. App Notification
+        if (prefs.app_enabled !== false) {
+          await supabase.from('app_notifications').insert({
+            user_id: staff.staff_id,
+            title: notificationTitle,
+            message: notificationMessage,
+            type: 'shift_posted',
+            reference_id: shiftId
+          })
+        }
+
+        // B. Email Notification
+        if (prefs.email_enabled !== false && profile.email && resend) {
+          try {
+            await resend.emails.send({
+              from: 'CareLocal <updates@carelocal.co>', // Replace with verified domain
+              to: profile.email,
+              subject: notificationTitle,
+              html: `
+                <div style="font-family: sans-serif; max-w: 600px; margin: 0 auto;">
+                  <h2>${notificationTitle}</h2>
+                  <p>${notificationMessage}</p>
+                  <a href="${process.env.NEXT_PUBLIC_APP_URL}/staff/shifts" style="display: inline-block; padding: 12px 24px; background-color: #157354; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 16px;">View Shift</a>
+                </div>
+              `
+            })
+          } catch (e) {
+            console.error(`Email failed for ${profile.email}`, e)
+          }
+        }
+
+        // C. SMS Notification
+        if (prefs.sms_enabled === true && profile.phone && twilioClient) {
+          try {
+            await twilioClient.messages.create({
+              body: `CareLocal: ${notificationTitle}. ${notificationMessage} View it here: ${process.env.NEXT_PUBLIC_APP_URL}/staff/shifts`,
+              from: process.env.TWILIO_PHONE_NUMBER,
+              to: profile.phone
+            })
+          } catch (e) {
+            console.error(`SMS failed for ${profile.phone}`, e)
+          }
+        }
+      }
+
+      return NextResponse.json({ success: true, notifiedCount: eligibleStaff.length })
+    }
+
+    return NextResponse.json({ success: false, message: 'Invalid action' }, { status: 400 })
+  } catch (error: any) {
+    console.error('Notification Error:', error)
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+  }
+}

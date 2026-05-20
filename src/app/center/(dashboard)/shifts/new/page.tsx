@@ -102,9 +102,11 @@ export default function PostShiftPage() {
         created_by: user.id
     }
 
-    const { error: insertError } = await supabase
+    const { data: insertedShift, error: insertError } = await supabase
         .from('shifts')
         .insert(payload)
+        .select('id')
+        .single()
 
     if (insertError) {
         console.error(insertError)
@@ -112,6 +114,21 @@ export default function PostShiftPage() {
         setLoading(false)
         return
     }
+
+    // Trigger Notifications in the background
+    fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            action: 'shift_posted',
+            shiftId: insertedShift.id,
+            centerId: adminData.center_id,
+            staffTypeNeeded: payload.staff_type_needed,
+            shiftDate: payload.shift_date,
+            startTime: payload.start_time,
+            endTime: payload.end_time
+        })
+    }).catch(err => console.error('Failed to trigger notifications', err))
 
     // Redirect back to shifts list
     router.push('/center/shifts')
