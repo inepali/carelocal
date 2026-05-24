@@ -178,8 +178,8 @@ export default function ContactPage() {
                       <Mail className="w-6 h-6 text-[#74c3a8] shrink-0 mt-0.5" />
                       <div>
                         <p className="text-xs text-[#a9dac9] font-bold uppercase tracking-wider">Email Us</p>
-                        <a href="mailto:support@carelocal.io" className="text-white font-semibold hover:text-[#74c3a8] transition-colors">
-                          support@carelocal.io
+                        <a href="mailto:support@carelocal.co" className="text-white font-semibold hover:text-[#74c3a8] transition-colors">
+                          support@carelocal.co
                         </a>
                       </div>
                     </div>

@@ -20,7 +20,7 @@ export async function submitContactForm(data: {
     const { error } = await resend.emails.send({
       // Sandbox domains require sending from onboarding@resend.dev
       from: 'CareLocal Contact <onboarding@resend.dev>',
-      to: 'support@carelocal.io',
+      to: 'sanjayaghimire@gmail.com',
       replyTo: data.email,
       subject: `[${data.contactType}] ${data.subject}`,
       html: `

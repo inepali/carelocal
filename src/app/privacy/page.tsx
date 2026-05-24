@@ -183,7 +183,7 @@ export default function PrivacyPage() {
                 If you have any questions, concerns, or requests regarding this Privacy Policy or your data, please contact us at:
                 <br /><br />
                 <strong className="text-[#0b3828]">Carelocal Privacy Team</strong><br />
-                Email: <a href="mailto:privacy@carelocal.io" className="text-[#157354] hover:underline font-semibold">privacy@carelocal.io</a>
+                Email: <a href="mailto:privacy@carelocal.co" className="text-[#157354] hover:underline font-semibold">privacy@carelocal.co</a>
               </p>
 
             </div>
