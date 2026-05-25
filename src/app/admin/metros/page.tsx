@@ -18,7 +18,8 @@ export default function AdminMetrosPage() {
     city: '',
     state_code: '',
     timezone: '',
-    is_active: true
+    is_active: true,
+    staff_maintenance_fee: 0.00
   })
 
   useEffect(() => {
@@ -44,7 +45,7 @@ export default function AdminMetrosPage() {
   const cancelEdit = () => {
     setEditingId(null)
     setIsAdding(false)
-    setFormData({ name: '', slug: '', city: '', state_code: '', timezone: '', is_active: true })
+    setFormData({ name: '', slug: '', city: '', state_code: '', timezone: '', is_active: true, staff_maintenance_fee: 0.00 })
   }
 
   const saveMetro = async () => {
@@ -58,7 +59,8 @@ export default function AdminMetrosPage() {
           city: formData.city,
           state_code: formData.state_code, 
           timezone: formData.timezone,
-          is_active: formData.is_active 
+          is_active: formData.is_active,
+          staff_maintenance_fee: formData.staff_maintenance_fee || 0.00
         }
       ])
       if (error) alert(error.message)
@@ -69,7 +71,8 @@ export default function AdminMetrosPage() {
           city: formData.city,
           state_code: formData.state_code, 
           timezone: formData.timezone,
-          is_active: formData.is_active 
+          is_active: formData.is_active,
+          staff_maintenance_fee: formData.staff_maintenance_fee || 0.00
       }).eq('id', editingId)
       if (error) alert(error.message)
     }
@@ -87,7 +90,7 @@ export default function AdminMetrosPage() {
         </div>
         {!isAdding && !editingId && (
           <button 
-            onClick={() => { setIsAdding(true); setFormData({ name: '', slug: '', state_code: '', timezone: '', is_active: true }) }}
+            onClick={() => { setIsAdding(true); setFormData({ name: '', slug: '', state_code: '', timezone: '', is_active: true, staff_maintenance_fee: 0.00 }) }}
             className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-semibold flex items-center gap-2 transition-colors"
           >
             <Plus className="w-5 h-5" /> Add Metro
@@ -111,6 +114,7 @@ export default function AdminMetrosPage() {
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">State</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Timezone</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Maint. Fee</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
               </tr>
             </thead>
@@ -147,6 +151,12 @@ export default function AdminMetrosPage() {
                       <input type="checkbox" checked={formData.is_active} onChange={e => setFormData({...formData, is_active: e.target.checked})} className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4" />
                       Active
                     </label>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-1">
+                      <span className="text-slate-400 text-sm">$</span>
+                      <input type="number" min="0" max="10" step="0.50" placeholder="0.00" className="w-20 px-2 py-1.5 text-sm border rounded-lg" value={formData.staff_maintenance_fee !== undefined ? formData.staff_maintenance_fee : ''} onChange={e => setFormData({...formData, staff_maintenance_fee: parseFloat(e.target.value) || 0})} />
+                    </div>
                   </td>
                   <td className="px-6 py-4 flex items-center justify-end gap-2">
                     <button onClick={saveMetro} className="p-2 text-green-600 hover:bg-green-50 rounded-lg"><Check className="w-4 h-4" /></button>
@@ -193,6 +203,12 @@ export default function AdminMetrosPage() {
                         Active
                       </label>
                     </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-1">
+                        <span className="text-slate-400 text-sm">$</span>
+                        <input type="number" min="0" max="10" step="0.50" placeholder="0.00" className="w-20 px-2 py-1.5 text-sm border rounded-lg" value={formData.staff_maintenance_fee !== undefined ? formData.staff_maintenance_fee : ''} onChange={e => setFormData({...formData, staff_maintenance_fee: parseFloat(e.target.value) || 0})} />
+                      </div>
+                    </td>
                     <td className="px-6 py-4 flex items-center justify-end gap-2">
                       <button onClick={saveMetro} className="p-2 text-green-600 hover:bg-green-50 rounded-lg"><Check className="w-4 h-4" /></button>
                       <button onClick={cancelEdit} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg"><X className="w-4 h-4" /></button>
@@ -215,6 +231,9 @@ export default function AdminMetrosPage() {
                       <span className={`px-2.5 py-1 text-xs font-bold rounded-full border ${metro.is_active ? 'bg-green-50 text-green-700 border-green-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
                         {metro.is_active ? 'ACTIVE' : 'INACTIVE'}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-slate-700 font-semibold text-sm">
+                      ${(metro.staff_maintenance_fee || 0).toFixed(2)}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <button 

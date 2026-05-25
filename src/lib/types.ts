@@ -16,6 +16,7 @@ export type MetroArea = {
   timezone?: string
   is_active: boolean
   created_at: string
+  staff_maintenance_fee?: number
 }
 
 export interface Center {
@@ -67,6 +68,7 @@ export interface StaffProfile {
   is_active: boolean
   created_at: string
   updated_at: string
+  balance_due?: number
 }
 
 /** A staff role type row from the staff_role_types table */

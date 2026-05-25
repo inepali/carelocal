@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { MapPin, CheckCircle2, Loader2, ArrowRight, ShieldCheck, Globe, Sparkles, Heart, Calendar, Clock } from 'lucide-react'
+import { MapPin, CheckCircle2, Loader2, ArrowRight, ShieldCheck, Globe, Sparkles, Heart, Calendar, Clock, CreditCard, AlertCircle, X } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { payStaffBalance } from '@/app/actions/staff-billing.actions'
 
 export default function StaffShiftsPage() {
   const supabase = createClient()
@@ -20,6 +21,13 @@ export default function StaffShiftsPage() {
   const [interestedShiftIds, setInterestedShiftIds] = useState<Set<string>>(new Set())
   const [claimingShiftId, setClaimingShiftId] = useState<string | null>(null)
   const [expressingInterestId, setExpressingInterestId] = useState<string | null>(null)
+
+  // Maintenance fee payment states
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
+  const [isDueAlertOpen, setIsDueAlertOpen] = useState(false)
+  const [activeAlertShiftId, setActiveAlertShiftId] = useState<string | null>(null)
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false)
+  const [paymentSuccessMessage, setPaymentSuccessMessage] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadData() {
@@ -141,6 +149,14 @@ export default function StaffShiftsPage() {
 
   const handleClaim = async (shiftId: string) => {
     if (!myProfile || claimingShiftId) return
+
+    // Restriction: Staff must clear outstanding balance_due before claiming a shift
+    if (myProfile.balance_due && parseFloat(myProfile.balance_due.toString()) > 0) {
+      setActiveAlertShiftId(shiftId)
+      setIsDueAlertOpen(true)
+      return
+    }
+
     setClaimingShiftId(shiftId)
     const isAlreadyInterested = interestedShiftIds.has(shiftId)
 
@@ -164,6 +180,26 @@ export default function StaffShiftsPage() {
     setClaimingShiftId(null)
   }
 
+  const handlePayBalance = async () => {
+    if (!myProfile) return
+    setIsProcessingPayment(true)
+    try {
+      const result = await payStaffBalance(myProfile.id)
+      if (result.error) {
+        alert('Payment failed: ' + result.error)
+      } else {
+        setMyProfile((prev: any) => ({ ...prev, balance_due: 0.00 }))
+        setPaymentSuccessMessage('Your balance has been successfully cleared! You can now claim shifts.')
+        setTimeout(() => setPaymentSuccessMessage(null), 4000)
+        setIsPaymentModalOpen(false)
+      }
+    } catch (err: any) {
+      alert('An error occurred during payment processing: ' + err.message)
+    } finally {
+      setIsProcessingPayment(false)
+    }
+  }
+
   // Matching Logic: Exclude already claimed/interested shifts
   const filteredShifts = shifts.filter(shift => {
     // Hide shifts that appear in "My Shifts" (already booked, pending, or interested)
@@ -182,6 +218,37 @@ export default function StaffShiftsPage() {
 
   return (
     <div className="max-w-5xl pb-32">
+      {/* Toast notifications */}
+      {paymentSuccessMessage && (
+        <div className="fixed bottom-6 right-6 z-50 p-4 bg-[#157354] text-white font-bold rounded-2xl shadow-xl flex items-center gap-2 animate-bounce">
+          <CheckCircle2 className="w-5 h-5 shrink-0" />
+          <span>{paymentSuccessMessage}</span>
+        </div>
+      )}
+
+      {/* Warning banner for outstanding balance */}
+      {myProfile?.balance_due && parseFloat(myProfile.balance_due.toString()) > 0 && (
+        <div className="mb-8 p-6 bg-yellow-50 border-2 border-yellow-200 rounded-[1.5rem] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-center gap-4 text-center sm:text-left">
+            <div className="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center shrink-0">
+              <AlertCircle className="w-6 h-6 text-yellow-800" />
+            </div>
+            <div>
+              <h4 className="font-black text-[#0b3828] text-lg">Staff Maintenance Fee Outstanding</h4>
+              <p className="text-yellow-900 text-sm font-medium mt-0.5">
+                You have a pending balance due of <strong className="text-yellow-950">${parseFloat(myProfile.balance_due.toString()).toFixed(2)}</strong>. Please pay this balance to claim new shifts.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setIsPaymentModalOpen(true)}
+            className="w-full sm:w-auto px-6 py-3 bg-[#157354] hover:bg-[#0f4a36] text-white font-black text-xs uppercase tracking-widest rounded-xl shadow-md transition-colors shrink-0"
+          >
+            Pay Fee Balance
+          </button>
+        </div>
+      )}
+
       <div className="mb-10">
         <div className="flex items-center gap-2 text-[#157354] font-black tracking-[0.12em] text-[10px] uppercase mb-2">
           <Sparkles className="w-4 h-4" /> Expansion Marketplace
@@ -381,6 +448,145 @@ export default function StaffShiftsPage() {
               </div>
             )
           })}
+        </div>
+      )}
+      {/* ── Outstanding Due Warning Alert Dialog ── */}
+      {isDueAlertOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-[2rem] border-2 border-[#e6ece9] max-w-md w-full p-8 shadow-2xl relative animate-slide-up">
+            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-6">
+              <AlertCircle className="w-6 h-6 text-red-600" />
+            </div>
+            <h3 className="text-2xl font-black text-[#0b3828] mb-3">Clear Outstanding Due</h3>
+            <p className="text-[#3d5a4f] text-sm leading-relaxed mb-6">
+              You cannot claim this shift because you have an outstanding Staff Maintenance Fee balance of <strong className="text-[#0b3828]">${myProfile?.balance_due ? parseFloat(myProfile.balance_due.toString()).toFixed(2) : '0.00'}</strong>. You must pay your balance before you can claim new shifts. 
+              <br /><br />
+              However, you can still **express interest** in this shift to alert the center!
+            </p>
+            <div className="flex flex-col gap-2.5">
+              <button
+                onClick={() => {
+                  setIsDueAlertOpen(false)
+                  setIsPaymentModalOpen(true)
+                }}
+                className="w-full bg-[#157354] text-white font-bold py-3 px-4 rounded-xl hover:bg-[#0f4a36] transition-colors text-sm cursor-pointer"
+              >
+                Pay Outstanding Balance
+              </button>
+              <button
+                onClick={() => {
+                  if (activeAlertShiftId) {
+                    handleExpressInterest(activeAlertShiftId)
+                  }
+                  setIsDueAlertOpen(false)
+                }}
+                className="w-full border border-[#a9dac9] bg-[#edf7f3] text-[#157354] font-bold py-3 px-4 rounded-xl hover:bg-[#d4ede4] transition-colors text-sm cursor-pointer"
+              >
+                Express Interest
+              </button>
+              <button
+                onClick={() => {
+                  setIsDueAlertOpen(false)
+                  setActiveAlertShiftId(null)
+                }}
+                className="w-full text-[#6b7a73] font-bold py-2 text-sm hover:text-[#0b3828] transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Payment Sandbox Modal ── */}
+      {isPaymentModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-[2rem] border-2 border-[#e6ece9] max-w-md w-full p-8 shadow-2xl relative animate-slide-up text-left">
+            <button 
+              onClick={() => setIsPaymentModalOpen(false)}
+              className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="flex items-center gap-3 mb-6">
+              <CreditCard className="w-6 h-6 text-[#157354]" />
+              <h3 className="text-2xl font-black text-[#0b3828]">Pay Balance Due</h3>
+            </div>
+
+            <div className="bg-[#f8faf9] rounded-2xl p-4 border border-[#e6ece9] mb-6 flex justify-between items-center">
+              <span className="text-[#3d5a4f] text-sm font-semibold">Amount to Pay</span>
+              <span className="text-2xl font-black text-[#157354]">
+                ${myProfile?.balance_due ? parseFloat(myProfile.balance_due.toString()).toFixed(2) : '0.00'}
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-[#0b3828] mb-1">Cardholder Name</label>
+                <input 
+                  type="text" 
+                  disabled={isProcessingPayment} 
+                  defaultValue={myProfile ? `${myProfile.first_name} ${myProfile.last_name}` : ''}
+                  className="w-full px-3.5 py-2.5 text-sm border border-[#e6ece9] rounded-xl bg-[#f8faf9] outline-none focus:border-[#157354]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#0b3828] mb-1">Card Number (Sandbox)</label>
+                <div className="relative">
+                  <input 
+                    type="text" 
+                    disabled={isProcessingPayment} 
+                    placeholder="4242 4242 4242 4242"
+                    maxLength={19}
+                    className="w-full pl-10 pr-3.5 py-2.5 text-sm border border-[#e6ece9] rounded-xl bg-[#f8faf9] outline-none focus:border-[#157354]"
+                  />
+                  <CreditCard className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#0b3828] mb-1">Expiration</label>
+                  <input 
+                    type="text" 
+                    disabled={isProcessingPayment} 
+                    placeholder="MM/YY"
+                    maxLength={5}
+                    className="w-full px-3.5 py-2.5 text-sm border border-[#e6ece9] rounded-xl bg-[#f8faf9] outline-none focus:border-[#157354]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#0b3828] mb-1">CVC</label>
+                  <input 
+                    type="password" 
+                    disabled={isProcessingPayment} 
+                    placeholder="•••"
+                    maxLength={3}
+                    className="w-full px-3.5 py-2.5 text-sm border border-[#e6ece9] rounded-xl bg-[#f8faf9] outline-none focus:border-[#157354]"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <button
+                  onClick={handlePayBalance}
+                  disabled={isProcessingPayment}
+                  className="w-full bg-[#157354] hover:bg-[#0f4a36] text-white font-bold py-3.5 px-4 rounded-xl transition-all disabled:opacity-75 flex items-center justify-center gap-2 text-sm cursor-pointer"
+                >
+                  {isProcessingPayment ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Processing Sandbox Payment...
+                    </>
+                  ) : (
+                    `Pay $${myProfile?.balance_due ? parseFloat(myProfile.balance_due.toString()).toFixed(2) : '0.00'} Now`
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
