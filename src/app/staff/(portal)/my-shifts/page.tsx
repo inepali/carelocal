@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { MapPin, CheckCircle2, Loader2, ArrowRight, ShieldCheck, Globe, Sparkles, Heart, Calendar, Clock, Star, LogIn, LogOut, X } from 'lucide-react'
+import { MapPin, CheckCircle2, Loader2, ArrowRight, ShieldCheck, Globe, Sparkles, Heart, Calendar, Clock, Star, LogIn, LogOut, X, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { getMyShiftsBypassingRLS } from '@/app/actions/my-shifts.actions'
@@ -27,6 +27,7 @@ export default function MyShiftsPage() {
   const [withdrawingShiftId, setWithdrawingShiftId] = useState<string | null>(null)
   const [reviewingShift, setReviewingShift] = useState<any>(null)
   const [reviewedCenterIds, setReviewedCenterIds] = useState<Set<string>>(new Set())
+  const [showBalanceModal, setShowBalanceModal] = useState(false)
 
   useEffect(() => {
     async function loadData() {
@@ -157,6 +158,13 @@ export default function MyShiftsPage() {
 
   const handleClaim = async (shiftId: string) => {
     if (!myProfile || claimingShiftId) return
+
+    // Restriction: Staff must clear outstanding balance_due before claiming a shift
+    if (myProfile.balance_due && parseFloat(myProfile.balance_due.toString()) > 0) {
+      setShowBalanceModal(true)
+      return
+    }
+
     setClaimingShiftId(shiftId)
     const isAlreadyInterested = interestedShiftIds.has(shiftId)
 
@@ -448,6 +456,44 @@ export default function MyShiftsPage() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* ── Outstanding Balance Warning Modal ── */}
+      {showBalanceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-[2rem] border-2 border-[#e6ece9] max-w-md w-full p-8 shadow-2xl relative animate-slide-up text-left">
+            <button 
+              onClick={() => setShowBalanceModal(false)}
+              className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-6">
+              <AlertCircle className="w-6 h-6 text-red-600" />
+            </div>
+            <h3 className="text-2xl font-black text-[#0b3828] mb-3">Clear Outstanding Due</h3>
+            <p className="text-[#3d5a4f] text-sm leading-relaxed mb-6">
+              You cannot claim this shift because you have an outstanding Staff Maintenance Fee balance of <strong className="text-[#0b3828]">${myProfile?.balance_due ? parseFloat(myProfile.balance_due.toString()).toFixed(2) : '0.00'}</strong>. You must pay your balance on the Account page before you can claim new shifts.
+            </p>
+            <div className="flex flex-col gap-2.5">
+              <button
+                onClick={() => {
+                  setShowBalanceModal(false)
+                  router.push('/staff/account')
+                }}
+                className="w-full bg-[#157354] text-white font-bold py-3.5 px-4 rounded-xl hover:bg-[#0f4a36] transition-colors text-sm cursor-pointer text-center"
+              >
+                Go to Account & Pay
+              </button>
+              <button
+                onClick={() => setShowBalanceModal(false)}
+                className="w-full text-[#6b7a73] font-bold py-2 text-sm hover:text-[#0b3828] transition-colors cursor-pointer text-center"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

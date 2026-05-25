@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, Calendar, FileText, UserCircle, Globe, Search } from 'lucide-react'
+import { LogOut, Calendar, FileText, UserCircle, Globe, Search, CreditCard } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 
@@ -45,6 +45,7 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
     { name: 'My Shifts', href: '/staff/my-shifts', icon: Calendar },
     { name: 'My Documents', href: '/staff/documents', icon: FileText },
     { name: 'My Profile', href: '/staff/profile', icon: UserCircle },
+    { name: 'My Account', href: '/staff/account', icon: CreditCard },
   ]
 
   if (loading) {

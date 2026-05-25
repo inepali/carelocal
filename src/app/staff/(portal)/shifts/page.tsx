@@ -24,7 +24,7 @@ export default function StaffShiftsPage() {
 
   // Maintenance fee payment states
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
-  const [isDueAlertOpen, setIsDueAlertOpen] = useState(false)
+  const [showBalanceModal, setShowBalanceModal] = useState(false)
   const [activeAlertShiftId, setActiveAlertShiftId] = useState<string | null>(null)
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
   const [paymentSuccessMessage, setPaymentSuccessMessage] = useState<string | null>(null)
@@ -149,13 +149,12 @@ export default function StaffShiftsPage() {
 
   const handleClaim = async (shiftId: string) => {
     if (!myProfile || claimingShiftId) return
-
-    // Restriction: Staff must clear outstanding balance_due before claiming a shift
-    if (myProfile.balance_due && parseFloat(myProfile.balance_due.toString()) > 0) {
-      setActiveAlertShiftId(shiftId)
-      setIsDueAlertOpen(true)
-      return
-    }
+ 
+     // Restriction: Staff must clear outstanding balance_due before claiming a shift
+     if (myProfile.balance_due && parseFloat(myProfile.balance_due.toString()) > 0) {
+       setShowBalanceModal(true)
+       return
+     }
 
     setClaimingShiftId(shiftId)
     const isAlreadyInterested = interestedShiftIds.has(shiftId)
@@ -450,46 +449,36 @@ export default function StaffShiftsPage() {
           })}
         </div>
       )}
-      {/* ── Outstanding Due Warning Alert Dialog ── */}
-      {isDueAlertOpen && (
+      {/* ── Outstanding Balance Warning Modal ── */}
+      {showBalanceModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-[2rem] border-2 border-[#e6ece9] max-w-md w-full p-8 shadow-2xl relative animate-slide-up">
+          <div className="bg-white rounded-[2rem] border-2 border-[#e6ece9] max-w-md w-full p-8 shadow-2xl relative animate-slide-up text-left">
+            <button 
+              onClick={() => setShowBalanceModal(false)}
+              className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
             <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-6">
               <AlertCircle className="w-6 h-6 text-red-600" />
             </div>
             <h3 className="text-2xl font-black text-[#0b3828] mb-3">Clear Outstanding Due</h3>
             <p className="text-[#3d5a4f] text-sm leading-relaxed mb-6">
-              You cannot claim this shift because you have an outstanding Staff Maintenance Fee balance of <strong className="text-[#0b3828]">${myProfile?.balance_due ? parseFloat(myProfile.balance_due.toString()).toFixed(2) : '0.00'}</strong>. You must pay your balance before you can claim new shifts. 
-              <br /><br />
-              However, you can still **express interest** in this shift to alert the center!
+              You cannot claim this shift because you have an outstanding Staff Maintenance Fee balance of <strong className="text-[#0b3828]">${myProfile?.balance_due ? parseFloat(myProfile.balance_due.toString()).toFixed(2) : '0.00'}</strong>. You must pay your balance on the Account page before you can claim new shifts.
             </p>
             <div className="flex flex-col gap-2.5">
               <button
                 onClick={() => {
-                  setIsDueAlertOpen(false)
-                  setIsPaymentModalOpen(true)
+                  setShowBalanceModal(false)
+                  router.push('/staff/account')
                 }}
-                className="w-full bg-[#157354] text-white font-bold py-3 px-4 rounded-xl hover:bg-[#0f4a36] transition-colors text-sm cursor-pointer"
+                className="w-full bg-[#157354] text-white font-bold py-3.5 px-4 rounded-xl hover:bg-[#0f4a36] transition-colors text-sm cursor-pointer text-center"
               >
-                Pay Outstanding Balance
+                Go to Account & Pay
               </button>
               <button
-                onClick={() => {
-                  if (activeAlertShiftId) {
-                    handleExpressInterest(activeAlertShiftId)
-                  }
-                  setIsDueAlertOpen(false)
-                }}
-                className="w-full border border-[#a9dac9] bg-[#edf7f3] text-[#157354] font-bold py-3 px-4 rounded-xl hover:bg-[#d4ede4] transition-colors text-sm cursor-pointer"
-              >
-                Express Interest
-              </button>
-              <button
-                onClick={() => {
-                  setIsDueAlertOpen(false)
-                  setActiveAlertShiftId(null)
-                }}
-                className="w-full text-[#6b7a73] font-bold py-2 text-sm hover:text-[#0b3828] transition-colors cursor-pointer"
+                onClick={() => setShowBalanceModal(false)}
+                className="w-full text-[#6b7a73] font-bold py-2 text-sm hover:text-[#0b3828] transition-colors cursor-pointer text-center"
               >
                 Cancel
               </button>
