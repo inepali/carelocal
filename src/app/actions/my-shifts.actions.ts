@@ -35,7 +35,21 @@ export async function getMyShiftsBypassingRLS(staffId: string) {
      return { shifts: [], claims: claims, reviews: [] }
   }
   
-  const centerIds = Array.from(new Set((shifts || []).map(s => s.center_id)))
+  // Filter shifts to match visibility: 
+  // 1. Assigned (confirmed) to the logged staff
+  // 2. OR open shifts (not assigned to anyone) in the future (shift_date >= today)
+  const todayStr = new Date().toISOString().split('T')[0]
+  const allowedShifts = (shifts || []).filter(s => {
+    const claim = claims.find(c => c.shift_id === s.id)
+    if (!claim) return false
+    if (claim.status === 'confirmed') return true
+    return s.status === 'open' && s.shift_date >= todayStr
+  })
+
+  const allowedShiftIds = new Set(allowedShifts.map(s => s.id))
+  const allowedClaims = claims.filter(c => allowedShiftIds.has(c.shift_id))
+
+  const centerIds = Array.from(new Set((allowedShifts || []).map(s => s.center_id)))
   const { data: reviews } = await supabase
     .from('shift_reviews')
     .select('reviewee_id')
@@ -43,5 +57,5 @@ export async function getMyShiftsBypassingRLS(staffId: string) {
     .eq('reviewer_id', staffId)
     .eq('reviewer_type', 'staff')
   
-  return { shifts: shifts || [], claims: claims, reviews: reviews || [] }
+  return { shifts: allowedShifts, claims: allowedClaims, reviews: reviews || [] }
 }

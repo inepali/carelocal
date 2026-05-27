@@ -130,6 +130,13 @@ export default function TermsPage() {
                     <span className="leading-relaxed">Staff must provide reasonable notice if unable to attend a confirmed shift. Frequent or sudden cancellations severely impact center operations and may result in account suspension.</span>
                   </div>
                 </li>
+                <li className="flex gap-4">
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-[#fefce8] text-[#854d0e] flex items-center justify-center font-black text-xs">E</span>
+                  <div>
+                    <strong className="text-[#0b3828] block mb-1">Platform Maintenance Fee</strong>
+                    <span className="leading-relaxed">A platform maintenance fee is charged to the Staff member's account balance for each approved and assigned shift. This fee is determined by the center's Metro Area settings and is applied automatically upon assignment. Once a shift is assigned, this maintenance fee remains outstanding and due, regardless of whether the shift is completed, cancelled, or missed after assignment.</span>
+                  </div>
+                </li>
               </ul>
 
               <div className="flex items-center gap-3 mb-4">
