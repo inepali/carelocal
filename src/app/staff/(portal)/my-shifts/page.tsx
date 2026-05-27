@@ -17,7 +17,7 @@ export default function MyShiftsPage() {
   const [myProfile, setMyProfile] = useState<any>(null)
   const [myConnections, setMyConnections] = useState<Record<string, string>>({}) // center_id -> status
   const [joiningCenterId, setJoiningCenterId] = useState<string | null>(null)
-  const [filterType, setFilterType] = useState<'metro' | 'all'>('metro')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'assigned' | 'completed'>('all')
   const [metros, setMetros] = useState<any[]>([])
   const [claimedShiftIds, setClaimedShiftIds] = useState<Set<string>>(new Set())
   const [confirmedShiftIds, setConfirmedShiftIds] = useState<Set<string>>(new Set())
@@ -212,6 +212,19 @@ export default function MyShiftsPage() {
      )
   }
 
+  // Status Filtering Logic
+  const filteredShifts = shifts.filter(shift => {
+    const myClaim = shift.my_claim
+    const isCompleted = shift.status === 'completed' || !!myClaim?.check_out_time
+    const isConfirmed = confirmedShiftIds.has(shift.id)
+    
+    if (statusFilter === 'all') return true
+    if (statusFilter === 'completed') return isCompleted
+    if (statusFilter === 'assigned') return isConfirmed && !isCompleted
+    if (statusFilter === 'open') return !isConfirmed && !isCompleted
+    return true
+  })
+
   return (
     <div className="max-w-5xl pb-32">
       <div className="mb-10">
@@ -231,8 +244,41 @@ export default function MyShiftsPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          <h2 className="text-2xl font-black text-[#0b3828] mb-6 px-2">Booked & Pending Shifts</h2>
-          {shifts.map((shift) => {
+          <div className="flex flex-wrap gap-2 mb-8 px-2">
+            {[
+              { value: 'all', label: 'All Statuses' },
+              { value: 'open', label: 'Open' },
+              { value: 'assigned', label: 'Assigned' },
+              { value: 'completed', label: 'Completed' },
+            ].map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setStatusFilter(tab.value as any)}
+                className={`px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                  statusFilter === tab.value
+                    ? 'bg-[#157354] text-white shadow-md'
+                    : 'bg-white text-[#6b7a73] border border-[#e2e8e4] hover:bg-[#edf7f3] hover:text-[#157354]'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <h2 className="text-2xl font-black text-[#0b3828] mb-6 px-2 capitalize">
+            {statusFilter === 'all' ? 'Booked & Pending' : statusFilter} Shifts
+          </h2>
+
+          {filteredShifts.length === 0 ? (
+            <div className="text-center py-16 bg-white rounded-[2rem] border-2 border-dashed border-[#e2e8e4] px-4">
+              <Calendar className="w-12 h-12 text-[#a8b5ae] mx-auto mb-4" />
+              <h3 className="text-xl font-black text-[#0b3828] mb-2">No shifts found</h3>
+              <p className="text-[#6b7a73] font-medium max-w-sm mx-auto">
+                There are no {statusFilter !== 'all' ? statusFilter : ''} shifts matching your selection.
+              </p>
+            </div>
+          ) : (
+            filteredShifts.map((shift) => {
             const connectionStatus = myConnections[shift.center_id]
             const isActive = connectionStatus === 'active'
             const isPending = connectionStatus === 'invited'
@@ -455,7 +501,7 @@ export default function MyShiftsPage() {
                 </div>
               </div>
             )
-          })}
+          }))}
         </div>
       )}
 
