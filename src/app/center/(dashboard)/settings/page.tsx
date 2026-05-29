@@ -4,15 +4,21 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Center, SubscriptionTier, TIER_LIMITS, MetroArea } from '@/lib/types'
 import { Building2, Save, MapPin, Phone, Mail, User, ShieldCheck, Loader2, ExternalLink, Clock, Globe, ArrowRight } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 export default function CenterSettingsPage() {
   const supabase = createClient()
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [center, setCenter] = useState<Partial<Center>>({})
-  const [subscription, setSubscription] = useState<any>(null)
   const [metros, setMetros] = useState<MetroArea[]>([])
+  
+  // Tracking actual usage stats
+  const [activeStaffCount, setActiveStaffCount] = useState(0)
+  const [activeLocationCount, setActiveLocationCount] = useState(0)
+  const [portalLoading, setPortalLoading] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -38,13 +44,7 @@ export default function CenterSettingsPage() {
       
       setCenter(centerData || {})
 
-      const { data: subData } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('center_id', admin.center_id)
-        .single()
-      
-      setSubscription(subData)
+
 
       // Fetch Metro Areas for Expansion
       const { data: metroData } = await supabase
@@ -54,6 +54,27 @@ export default function CenterSettingsPage() {
         .order('name', { ascending: true })
       
       setMetros(metroData || [])
+
+      // Fetch active staff count (exact match)
+      const { count: staffCount, error: staffCountErr } = await supabase
+        .from('center_staff')
+        .select('*', { count: 'exact', head: true })
+        .eq('center_id', admin.center_id)
+        .eq('status', 'active')
+      
+      if (!staffCountErr && staffCount !== null) {
+        setActiveStaffCount(staffCount)
+      }
+
+      // Fetch active location count (managed centers by this user)
+      const { count: locationCount, error: locationCountErr } = await supabase
+        .from('center_admins')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+
+      if (!locationCountErr && locationCount !== null) {
+        setActiveLocationCount(locationCount)
+      }
     }
     setLoading(false)
   }
@@ -90,10 +111,43 @@ export default function CenterSettingsPage() {
     setSaving(false)
   }
 
+  const handleManageCredits = async () => {
+    if (!center?.stripe_customer_id) {
+      router.push('/center/subscription')
+      return
+    }
+    
+    setPortalLoading(true)
+    try {
+      const res = await fetch('/api/stripe/portal', {
+        method: 'POST',
+      })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        alert(data.error || 'Failed to open subscription portal')
+      }
+    } catch (err) {
+      console.error(err)
+      alert('An error occurred while opening the portal')
+    } finally {
+      setPortalLoading(false)
+    }
+  }
+
   if (loading) return <div className="p-12 animate-pulse font-black text-slate-300">Loading Expansion Data...</div>
 
-  const tier = (subscription?.tier as SubscriptionTier) || 'starter'
+  const tier = (center.subscription_tier as SubscriptionTier) || 'starter'
   const limits = TIER_LIMITS[tier]
+
+  const staffPercentage = limits.maxStaff === Infinity 
+    ? 0 
+    : Math.min(100, (activeStaffCount / limits.maxStaff) * 100)
+
+  const locationPercentage = limits.maxLocations === Infinity 
+    ? 0 
+    : Math.min(100, (activeLocationCount / limits.maxLocations) * 100)
 
   return (
     <div className="max-w-6xl mx-auto pb-24 px-6 md:px-10">
@@ -296,7 +350,7 @@ export default function CenterSettingsPage() {
               <div className="text-5xl font-black capitalize tracking-tighter">{tier}</div>
               <div className="text-xs text-[#a9dac9] mt-4 flex items-center gap-1.5 font-bold uppercase tracking-widest">
                 <Clock className="w-4 h-4" /> 
-                {subscription?.status === 'trialing' ? 'Expansion Active' : 'Premium Region'}
+                {center.subscription_status === 'trialing' ? 'Expansion Active' : 'Premium Region'}
               </div>
             </div>
 
@@ -304,26 +358,44 @@ export default function CenterSettingsPage() {
                <div className="space-y-3">
                  <div className="flex justify-between items-center text-[10px] uppercase font-black tracking-widest text-[#74c3a8]">
                     <span>Regional Staff Capacity</span>
-                    <span className="font-mono">12 / {limits.maxStaff === Infinity ? '∞' : limits.maxStaff}</span>
+                    <span className="font-mono">{activeStaffCount} / {limits.maxStaff === Infinity ? '∞' : limits.maxStaff}</span>
                  </div>
                  <div className="w-full h-2.5 bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-[#fbbf24] w-[40%] rounded-full shadow-[0_0_15px_rgba(251,191,36,0.5)]" />
+                    <div 
+                      className="h-full bg-[#fbbf24] rounded-full shadow-[0_0_15px_rgba(251,191,36,0.5)] transition-all duration-500 ease-out" 
+                      style={{ width: `${staffPercentage}%` }}
+                    />
                  </div>
                </div>
                
                <div className="space-y-3">
                  <div className="flex justify-between items-center text-[10px] uppercase font-black tracking-widest text-[#74c3a8]">
                     <span>Facility Locations</span>
-                    <span className="font-mono">1 / {limits.maxLocations === Infinity ? '∞' : limits.maxLocations}</span>
+                    <span className="font-mono">{activeLocationCount} / {limits.maxLocations === Infinity ? '∞' : limits.maxLocations}</span>
                  </div>
                  <div className="w-full h-2.5 bg-white/10 rounded-full overflow-hidden shadow-inner">
-                    <div className="h-full bg-white/40 w-[10%]" />
+                    <div 
+                      className="h-full bg-white/40 rounded-full transition-all duration-500 ease-out" 
+                      style={{ width: `${locationPercentage}%` }}
+                    />
                  </div>
                </div>
             </div>
 
-            <button className="w-full flex items-center justify-center gap-3 bg-white/10 hover:bg-white/20 text-white font-black py-5 rounded-[1.5rem] transition-all border-2 border-white/5 text-sm uppercase tracking-widest relative z-10">
-              Manage Credits <ExternalLink className="w-4 h-4 opacity-60" />
+            <button 
+              onClick={handleManageCredits}
+              disabled={portalLoading}
+              className="w-full flex items-center justify-center gap-3 bg-white/10 hover:bg-white/20 text-white font-black py-5 rounded-[1.5rem] transition-all border-2 border-white/5 text-sm uppercase tracking-widest relative z-10 disabled:opacity-60 cursor-pointer"
+            >
+              {portalLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Managing Credits...
+                </>
+              ) : (
+                <>
+                  Manage Credits <ExternalLink className="w-4 h-4 opacity-60" />
+                </>
+              )}
             </button>
           </div>
 
