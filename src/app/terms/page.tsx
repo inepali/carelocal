@@ -1,9 +1,10 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ShieldCheck, Scale, Users, HeartHandshake, AlertTriangle, FileText } from 'lucide-react'
 
-export const metadata = {
-  title: 'Terms & Conditions | Carelocal',
-  description: 'Carelocal Terms & Conditions for Centers and Staff',
+export const metadata: Metadata = {
+  title: 'Terms & Conditions | CareLocal Childcare Staffing',
+  description: 'Terms and Conditions governing the use of CareLocal, the childcare substitute placement and staff coordination platform.',
 }
 
 export default function TermsPage() {

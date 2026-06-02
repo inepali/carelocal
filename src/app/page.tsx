@@ -1,8 +1,14 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import {
   CheckCircle, Zap, FileText, Users, ArrowRight,
-  Star, MessageSquare, Clock, ShieldCheck
+  Star, MessageSquare, Clock, ShieldCheck, ChevronDown
 } from 'lucide-react'
+
+export const metadata: Metadata = {
+  title: 'CareLocal — Childcare Staffing Software & Daycare Substitute Scheduling',
+  description: 'Post open shifts, SMS blast your pre-approved daycare substitute teacher pool, and manage teacher credentials in one place. Try CareLocal for free today.',
+}
 
 const HOW_IT_WORKS = [
   {
@@ -325,6 +331,54 @@ export default function HomePage() {
             "We used to spend 45 minutes calling substitutes every morning. Now I post a shift and my phone buzzes with a confirmation before I finish setting up the classroom."
           </blockquote>
           <p className="text-[#6b7a73] text-sm">— Center Director, Charlotte, NC</p>
+        </div>
+      </section>
+
+      {/* ── FAQ Section ── */}
+      <section id="faq" className="py-24 px-6 bg-white border-t border-[#e2e8e4]">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-[#0b3828] mb-4">Frequently Asked Questions</h2>
+            <p className="text-[#6b7a73] text-lg max-w-xl mx-auto">
+              Got questions about CareLocal's childcare scheduling software? We have answers.
+            </p>
+          </div>
+          <div className="space-y-2 divide-y divide-[#e2e8e4]">
+            {[
+              {
+                q: "How does the SMS shift blast work?",
+                a: "With CareLocal's childcare staff scheduling software, posting a shift takes under 30 seconds. The platform instantly broadcasts an SMS text notification to your pre-approved substitute pool. The first eligible teacher to claim it gets the shift. No phone tag, no manual group messages."
+              },
+              {
+                q: "Is CareLocal a childcare staffing agency?",
+                a: "No. CareLocal is a software platform and a direct alternative to expensive daycare staffing agencies. We provide the tools for childcare centers to build, organize, and dispatch their own private substitute pools, saving thousands in agency markups and placement fees."
+              },
+              {
+                q: "How does CareLocal help with state licensing compliance?",
+                a: "We serve as your central database for teacher credentials. Staff upload background checks, CPR cards, and training certifications once. Center directors can review, approve, and track expiration dates in real-time, ensuring only compliant subs are allowed to claim open shifts."
+              },
+              {
+                q: "Is CareLocal free for daycare teachers and substitutes?",
+                a: "Yes! Teacher, floater, and substitute accounts are 100% free. Childcare staff can create profiles, upload certifications, and claim shifts from any mobile browser without paying any fees or subscriptions."
+              },
+              {
+                q: "How does the 6-month free trial work?",
+                a: "We want center directors to experience the benefits risk-free. You get full access to CareLocal's staff scheduling features, SMS blasting, and document management for 6 months. No credit card is required to sign up, and you can cancel anytime."
+              }
+            ].map((faq, index) => (
+              <details key={index} className="group py-6 [&_summary::-webkit-details-marker]:hidden">
+                <summary className="flex items-center justify-between cursor-pointer focus:outline-none">
+                  <h3 className="text-lg font-bold text-[#0b3828] pr-4">{faq.q}</h3>
+                  <span className="shrink-0 transition duration-300 group-open:-rotate-180">
+                    <ChevronDown className="w-5 h-5 text-[#157354]" />
+                  </span>
+                </summary>
+                <p className="mt-4 text-base text-[#3d5a4f] leading-relaxed">
+                  {faq.a}
+                </p>
+              </details>
+            ))}
+          </div>
         </div>
       </section>
 

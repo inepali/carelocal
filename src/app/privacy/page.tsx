@@ -1,9 +1,10 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Lock, FileText, Database, Eye, Users, ShieldAlert, UserCheck, Mail } from 'lucide-react'
 
-export const metadata = {
-  title: 'Privacy Policy | Carelocal',
-  description: 'Carelocal Privacy Policy for Childcare Centers and Staff',
+export const metadata: Metadata = {
+  title: 'Privacy Policy | CareLocal Childcare Staffing',
+  description: 'Privacy Policy for CareLocal childcare staffing platform, describing how we safeguard credentials and data for daycare centers and staff.',
 }
 
 export default function PrivacyPage() {
