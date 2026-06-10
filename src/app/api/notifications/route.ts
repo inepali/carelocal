@@ -7,6 +7,17 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY!
 const supabase = createClient(supabaseUrl, supabaseServiceRole)
 
+interface StaffProfileRow {
+  email: string
+  phone: string | null
+  staff_type: string | string[] | null
+}
+
+interface CenterStaffRow {
+  staff_id: string
+  staff_profiles: StaffProfileRow | null
+}
+
 // Initialize optional providers
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 const twilioClient = (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN)
@@ -45,10 +56,9 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true, message: 'No active staff to notify.' })
       }
 
-      // Filter staff by role if a specific role is needed (and not 'any')
-      let eligibleStaff = centerStaff
+      let eligibleStaff = centerStaff as unknown as CenterStaffRow[]
       if (staffTypeNeeded && staffTypeNeeded !== 'any') {
-        eligibleStaff = centerStaff.filter((s: any) => {
+        eligibleStaff = (centerStaff as unknown as CenterStaffRow[]).filter((s) => {
           const profile = s.staff_profiles
           if (!profile || !profile.staff_type) return false
           // Check if profile.staff_type includes the needed role
@@ -63,7 +73,7 @@ export async function POST(req: Request) {
       // 3. Fetch notification preferences for eligible staff
       const staffIds = eligibleStaff.map(s => s.staff_id)
       const { data: preferences } = await supabase
-        .from('user_notification_settings')
+        .from('notification_preferences')
         .select('*')
         .in('user_id', staffIds)
       
@@ -72,9 +82,8 @@ export async function POST(req: Request) {
       const notificationTitle = `New Shift Available at ${centerName}`
       const notificationMessage = `A new shift is available on ${new Date(shiftDate).toLocaleDateString()} from ${startTime.substring(0,5)} to ${endTime.substring(0,5)}.`
 
-      // 4. Dispatch Notifications
       for (const staff of eligibleStaff) {
-        const profile: any = staff.staff_profiles
+        const profile = staff.staff_profiles
         if (!profile) continue
 
         const prefs = prefMap.get(staff.staff_id) || {
@@ -132,8 +141,8 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ success: false, message: 'Invalid action' }, { status: 400 })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Notification Error:', error)
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : String(error) }, { status: 500 })
   }
 }

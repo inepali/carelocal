@@ -1,5 +1,5 @@
 -- Notifications table for in-app alerts
-create table if not exists public.notifications (
+create table if not exists public.app_notifications (
     id uuid default gen_random_uuid() primary key,
     user_id uuid references auth.users(id) on delete cascade not null,
     title text not null,
@@ -20,7 +20,7 @@ create table if not exists public.notification_preferences (
 );
 
 -- Function to automatically create preferences when a user signs up
-create or function public.handle_new_user_preferences()
+create or replace function public.handle_new_user_preferences()
 returns trigger as $$
 begin
   insert into public.notification_preferences (user_id)
@@ -36,17 +36,17 @@ create trigger on_auth_user_created_preferences
   for each row execute procedure public.handle_new_user_preferences();
 
 -- RLS
-alter table public.notifications enable row level security;
+alter table public.app_notifications enable row level security;
 alter table public.notification_preferences enable row level security;
 
 -- Users can read their own notifications
 create policy "Users can view own notifications"
-    on public.notifications for select
+    on public.app_notifications for select
     using (auth.uid() = user_id);
 
 -- Users can update (mark as read) their own notifications
 create policy "Users can update own notifications"
-    on public.notifications for update
+    on public.app_notifications for update
     using (auth.uid() = user_id);
 
 -- Users can view their own preferences
@@ -61,7 +61,7 @@ create policy "Users can update own preferences"
 
 -- Service role can do anything
 create policy "Service role has full access to notifications"
-    on public.notifications for all
+    on public.app_notifications for all
     using (true)
     with check (true);
 

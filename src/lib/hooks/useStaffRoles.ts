@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { StaffRoleType } from '@/lib/types'
 
 /**
  * Fetches the merged list of staff role types for a given center:
@@ -15,16 +14,21 @@ import { StaffRoleType } from '@/lib/types'
  */
 export function useStaffRoles(centerId: string | null | undefined) {
   const [roles, setRoles] = useState<{ value: string; label: string; is_active: boolean }[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!!centerId)
+  const [prevCenterId, setPrevCenterId] = useState(centerId)
+
+  if (centerId !== prevCenterId) {
+    setPrevCenterId(centerId)
+    setLoading(!!centerId)
+    if (!centerId) {
+      setRoles([])
+    }
+  }
 
   useEffect(() => {
-    if (!centerId) {
-      setLoading(false)
-      return
-    }
+    if (!centerId) return
 
     const supabase = createClient()
-    setLoading(true)
 
     supabase
       .from('center_lookups')

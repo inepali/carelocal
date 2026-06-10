@@ -1,0 +1,2 @@
+ALTER TABLE public.shift_reviews DROP CONSTRAINT IF EXISTS shift_reviews_shift_id_reviewer_id_reviewer_type_key;
+ALTER TABLE public.shift_reviews ADD CONSTRAINT shift_reviews_reviewer_id_reviewee_id_reviewer_type_key UNIQUE (reviewer_id, reviewee_id, reviewer_type);
