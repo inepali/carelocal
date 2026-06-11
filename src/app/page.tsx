@@ -359,7 +359,7 @@ export default function HomePage() {
               },
               {
                 q: "Is CareLocal free for daycare teachers and substitutes?",
-                a: "Yes! Teacher, floater, and substitute accounts are 100% free. Childcare staff can create profiles, upload certifications, and claim shifts from any mobile browser without paying any fees or subscriptions."
+                a: "Yes! Teacher, floater, and substitute accounts are 100% free. Childcare staff can create profiles, upload certifications, and claim shifts from any mobile browser without paying any fees or subscriptions. While account usage has no limits, a small platform maintenance fee is applied to the staff member's balance for each assigned shift."
               },
               {
                 q: "How does the 6-month free trial work?",
