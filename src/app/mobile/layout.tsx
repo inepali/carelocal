@@ -27,6 +27,12 @@ export default function MobileLayout({ children }: { children: React.ReactNode }
       setLoading(false)
     }
 
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then((reg) => console.log('Service Worker registered scope:', reg.scope))
+        .catch((err) => console.error('Service Worker registration error:', err))
+    }
+
     checkAuth()
   }, [pathname, router])
 

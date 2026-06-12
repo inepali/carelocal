@@ -20,6 +20,7 @@ export const metadata: Metadata = {
   description:
     'CareLocal is the childcare staff scheduling software built exclusively for early learning centers and daycares. Post shifts, SMS blast your substitute pool, and organize teacher certifications, background checks, and compliance logs in one dashboard.',
   metadataBase: new URL('https://carelocal.io'),
+  manifest: '/manifest.json',
   keywords: [
     'childcare staff scheduling software',
     'daycare substitute management',

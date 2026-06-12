@@ -14,7 +14,9 @@ import {
   Mail, 
   ShieldCheck, 
   LogOut,
-  Info
+  Info,
+  Download,
+  Share
 } from 'lucide-react'
 
 interface StaffProfile {
@@ -25,6 +27,15 @@ interface StaffProfile {
   email: string
   balance_due: number | null
   staff_type: string
+}
+
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed';
+    platform: string;
+  }>;
+  prompt(): Promise<void>;
 }
 
 export default function MobileAccountPage() {
@@ -39,6 +50,48 @@ export default function MobileAccountPage() {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
   const [paymentSuccessMessage, setPaymentSuccessMessage] = useState<string | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  // PWA Install State
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
+  const [isInstallable, setIsInstallable] = useState(false)
+  const [isIOS, setIsIOS] = useState(false)
+  const [isStandalone, setIsStandalone] = useState(false)
+
+  useEffect(() => {
+    // Check if running as standalone
+    if (typeof window !== 'undefined') {
+      const standalone = window.matchMedia('(display-mode: standalone)').matches || 
+                         ('standalone' in window.navigator && (window.navigator as unknown as { standalone: boolean }).standalone === true)
+      setIsStandalone(standalone)
+
+      // Detect iOS
+      const userAgent = window.navigator.userAgent.toLowerCase()
+      const ios = /iphone|ipad|ipod/.test(userAgent)
+      setIsIOS(ios)
+
+      const handleBeforeInstallPrompt = (e: Event) => {
+        e.preventDefault()
+        setDeferredPrompt(e as BeforeInstallPromptEvent)
+        setIsInstallable(true)
+      }
+
+      window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+
+      return () => {
+        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+      }
+    }
+  }, [])
+
+  const handleInstallApp = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt()
+      const { outcome } = await deferredPrompt.userChoice
+      console.log(`User response to install: ${outcome}`)
+      setDeferredPrompt(null)
+      setIsInstallable(false)
+    }
+  }
 
   useEffect(() => {
     async function loadData() {
@@ -165,6 +218,52 @@ export default function MobileAccountPage() {
           </div>
         )}
       </div>
+
+      {/* PWA Download & Install Box */}
+      {!isStandalone && (
+        <div className="bg-white rounded-2xl border border-[#e6ece9] p-5 shadow-sm space-y-4">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="text-xs font-black text-[#0b3828] uppercase tracking-wider">Install App</h3>
+              <p className="text-[10px] text-[#6b7a73] font-semibold uppercase tracking-wider mt-0.5">Offline Access & Alerts</p>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-[#edf7f3] flex items-center justify-center">
+              <Download className="w-4 h-4 text-[#157354]" />
+            </div>
+          </div>
+
+          <div className="text-xs text-[#3d5a4f] leading-relaxed">
+            {isInstallable ? (
+              <p>
+                Add CareLocal to your mobile home screen to get instant notifications and access open shifts instantly.
+              </p>
+            ) : isIOS ? (
+              <div className="space-y-2">
+                <p>
+                  To install CareLocal on your iPhone/iPad:
+                </p>
+                <ol className="list-decimal pl-4 space-y-1 text-slate-500">
+                  <li>Tap the <strong>Share</strong> button <Share className="w-3 h-3 inline align-middle mx-1 text-[#157354]" /> in Safari.</li>
+                  <li>Scroll down and select <strong>Add to Home Screen</strong>.</li>
+                </ol>
+              </div>
+            ) : (
+              <p>
+                To install CareLocal as a mobile app, open this page in Chrome or Safari on your phone, then click &quot;Add to Home screen&quot; or use the browser menu.
+              </p>
+            )}
+          </div>
+
+          {isInstallable && (
+            <button
+              onClick={handleInstallApp}
+              className="w-full bg-[#157354] hover:bg-[#0f4a36] text-white font-bold py-3 px-4 rounded-xl shadow-sm text-xs uppercase tracking-wider transition-all cursor-pointer text-center"
+            >
+              Install CareLocal App
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Account Info Details */}
       <div className="bg-white rounded-2xl border border-[#e6ece9] p-5 shadow-sm space-y-4">
