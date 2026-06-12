@@ -42,3 +42,58 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
+// Handle PWA Web Push notification receipt
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+  
+  let title = 'CareLocal Alert';
+  let body = 'New alert from CareLocal.';
+  let url = '/mobile/shifts';
+
+  try {
+    const data = event.data.json();
+    title = data.title || title;
+    body = data.body || body;
+    url = data.url || url;
+  } catch (err) {
+    // If not JSON, use the raw text as the body
+    body = event.data.text() || body;
+  }
+
+  const options = {
+    body: body,
+    icon: '/icon-192.png',
+    badge: '/favicon.ico',
+    data: {
+      url: url
+    }
+  };
+  
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+  );
+});
+
+// Handle notification interaction click
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  
+  const urlToOpen = event.notification.data?.url || '/mobile/shifts';
+  
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Direct to existing mobile window if active
+      for (let i = 0; i < windowClients.length; i++) {
+        const client = windowClients[i];
+        if (client.url.includes('/mobile') && 'focus' in client) {
+          return client.navigate(urlToOpen).then((c) => c ? c.focus() : null);
+        }
+      }
+      // Or open a fresh mobile PWA frame
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
+});

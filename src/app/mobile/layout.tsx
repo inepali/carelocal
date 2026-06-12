@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, usePathname } from 'next/navigation'
 import { X, Smartphone, Share, CheckCircle } from 'lucide-react'
+import { SupabaseClient } from '@supabase/supabase-js'
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -12,6 +13,77 @@ interface BeforeInstallPromptEvent extends Event {
     platform: string;
   }>;
   prompt(): Promise<void>;
+}
+
+async function subscribeUserToPush(user: { id: string }, supabase: SupabaseClient) {
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+    return
+  }
+
+  try {
+    const reg = await navigator.serviceWorker.ready
+    
+    // Check if subscription already exists
+    let subscription = await reg.pushManager.getSubscription()
+    
+    // Request permission if default
+    if (Notification.permission === 'default') {
+      const permission = await Notification.requestPermission()
+      if (permission !== 'granted') {
+        console.log('Notification permission not granted.')
+        return
+      }
+    }
+
+    if (Notification.permission !== 'granted') return
+
+    // If subscription doesn't exist, create it
+    if (!subscription) {
+      const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+      if (!publicKey) {
+        console.error('VAPID public key not found in environment.')
+        return
+      }
+
+      // Convert VAPID public key to Uint8Array
+      const padding = '='.repeat((4 - (publicKey.length % 4)) % 4)
+      const base64 = (publicKey + padding).replace(/\-/g, '+').replace(/_/g, '/')
+      const rawData = window.atob(base64)
+      const outputArray = new Uint8Array(rawData.length)
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i)
+      }
+
+      subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: outputArray,
+      })
+    }
+
+    const subscriptionJson = subscription.toJSON()
+    if (!subscriptionJson.endpoint || !subscriptionJson.keys?.p256dh || !subscriptionJson.keys?.auth) {
+      console.error('Invalid push subscription structure.')
+      return
+    }
+
+    // Upsert subscription
+    const { error } = await supabase
+      .from('push_subscriptions')
+      .upsert({
+        user_id: user.id,
+        endpoint: subscriptionJson.endpoint,
+        p256dh: subscriptionJson.keys.p256dh,
+        auth: subscriptionJson.keys.auth,
+      }, { onConflict: 'endpoint' })
+
+    if (error) {
+      console.error('Failed to save push subscription:', error)
+    } else {
+      console.log('Push subscription successfully stored in DB.')
+    }
+  } catch (err) {
+    console.error('Error during Web Push registration:', err)
+  }
 }
 
 export default function MobileLayout({ children }: { children: React.ReactNode }) {
@@ -78,6 +150,7 @@ export default function MobileLayout({ children }: { children: React.ReactNode }
         if (isLoginRoute) {
           router.replace('/mobile/shifts')
         }
+        await subscribeUserToPush(user, supabase)
       }
       setLoading(false)
     }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Calendar, Clock, AlertCircle, Loader2, Heart, Plus, Star, LogIn, LogOut, CheckCircle2 } from 'lucide-react'
+import { Calendar, Clock, AlertCircle, Loader2, Heart, Plus, Star, LogIn, LogOut, CheckCircle2, Bell } from 'lucide-react'
 import Link from 'next/link'
 import { submitReview } from '@/app/actions/reviews.actions'
 import { checkInStaff, checkOutStaff } from '@/app/actions/timeclock.actions'
@@ -19,6 +19,7 @@ export default function CenterShiftsPage() {
   const [reviewingShift, setReviewingShift] = useState<any>(null)
   const [reviewingStaffId, setReviewingStaffId] = useState<string | null>(null)
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
+  const [notifyingShiftId, setNotifyingShiftId] = useState<string | null>(null)
   
   const { data: lookupRoles } = useLookups('Role')
 
@@ -173,6 +174,36 @@ export default function CenterShiftsPage() {
     setActionLoadingId(shiftId)
     await checkOutStaff(shiftId, staffId)
     window.location.reload()
+  }
+
+  const handleNotifyStaff = async (shift: any) => {
+    setNotifyingShiftId(shift.id)
+    try {
+      const response = await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'shift_posted',
+          shiftId: shift.id,
+          centerId: shift.center_id,
+          staffTypeNeeded: shift.staff_type_needed,
+          shiftDate: shift.shift_date,
+          startTime: shift.start_time,
+          endTime: shift.end_time
+        })
+      })
+      const data = await response.json()
+      if (data.success) {
+        alert(`Success! Notified ${data.notifiedCount || 0} eligible staff members.`)
+      } else {
+        alert(`Failed to notify: ${data.message || data.error || 'Unknown error'}`)
+      }
+    } catch (err: any) {
+      console.error(err)
+      alert(`Error: ${err.message || String(err)}`)
+    } finally {
+      setNotifyingShiftId(null)
+    }
   }
 
   if (loading) {
@@ -412,12 +443,27 @@ export default function CenterShiftsPage() {
                             
                             return null
                           })()}
-                          <Link
-                            href={`/center/shifts/${shift.id}`}
-                            className="text-[#157354] hover:text-[#0b3828] font-semibold bg-[#edf7f3] px-4 py-2 rounded-xl transition-all hover:scale-105 active:scale-95 inline-block text-xs text-center shadow-sm"
-                          >
-                            Manage
-                          </Link>
+                           {shift.status === 'open' && (
+                             <button
+                               type="button"
+                               disabled={notifyingShiftId === shift.id}
+                               onClick={() => handleNotifyStaff(shift)}
+                               className="text-[#0b3828] hover:text-[#157354] font-semibold bg-amber-100 hover:bg-amber-200 px-3 py-2 rounded-xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-1 text-xs text-center shadow-sm disabled:opacity-50"
+                             >
+                               {notifyingShiftId === shift.id ? (
+                                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                               ) : (
+                                 <Bell className="w-3.5 h-3.5 text-amber-600" />
+                               )}
+                               Notify (Test)
+                             </button>
+                           )}
+                           <Link
+                             href={`/center/shifts/${shift.id}`}
+                             className="text-[#157354] hover:text-[#0b3828] font-semibold bg-[#edf7f3] px-4 py-2 rounded-xl transition-all hover:scale-105 active:scale-95 inline-block text-xs text-center shadow-sm"
+                           >
+                             Manage
+                           </Link>
                         </div>
                       </td>
                     </tr>

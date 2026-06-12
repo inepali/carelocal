@@ -2,12 +2,20 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import twilio from 'twilio'
+import webpush from 'web-push'
+
+webpush.setVapidDetails(
+  process.env.VAPID_SUBJECT || 'mailto:support@carelocal.co',
+  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+  process.env.VAPID_PRIVATE_KEY!
+)
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY!
 const supabase = createClient(supabaseUrl, supabaseServiceRole)
 
 interface StaffProfileRow {
+  user_id: string
   email: string
   phone: string | null
   staff_type: string | string[] | null
@@ -44,6 +52,7 @@ export async function POST(req: Request) {
         .select(`
           staff_id,
           staff_profiles (
+            user_id,
             email,
             phone,
             staff_type
@@ -70,12 +79,15 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true, message: 'No eligible staff with the required role.' })
       }
 
-      // 3. Fetch notification preferences for eligible staff
-      const staffIds = eligibleStaff.map(s => s.staff_id)
+      // 3. Fetch notification preferences for eligible staff (using user_id from profiles)
+      const userIds = eligibleStaff
+        .map(s => s.staff_profiles?.user_id)
+        .filter((id): id is string => !!id)
+
       const { data: preferences } = await supabase
         .from('notification_preferences')
         .select('*')
-        .in('user_id', staffIds)
+        .in('user_id', userIds)
       
       const prefMap = new Map(preferences?.map(p => [p.user_id, p]))
 
@@ -84,9 +96,9 @@ export async function POST(req: Request) {
 
       for (const staff of eligibleStaff) {
         const profile = staff.staff_profiles
-        if (!profile) continue
+        if (!profile || !profile.user_id) continue
 
-        const prefs = prefMap.get(staff.staff_id) || {
+        const prefs = prefMap.get(profile.user_id) || {
           app_enabled: true,
           email_enabled: true,
           sms_enabled: false
@@ -94,13 +106,58 @@ export async function POST(req: Request) {
 
         // A. App Notification
         if (prefs.app_enabled !== false) {
-          await supabase.from('app_notifications').insert({
-            user_id: staff.staff_id,
+          const { error: appNotifError } = await supabase.from('app_notifications').insert({
+            user_id: profile.user_id,
             title: notificationTitle,
             message: notificationMessage,
             type: 'shift_posted',
             reference_id: shiftId
           })
+          if (appNotifError) {
+            console.error(`Failed to insert app notification for user ${profile.user_id}:`, appNotifError)
+          }
+
+          // Send real-time Web Push notification to PWA devices
+          try {
+            const { data: subs } = await supabase
+              .from('push_subscriptions')
+              .select('*')
+              .eq('user_id', profile.user_id)
+            
+            if (subs && subs.length > 0) {
+              const payload = JSON.stringify({
+                title: notificationTitle,
+                body: notificationMessage,
+                url: `/mobile/shifts`
+              })
+
+              for (const sub of subs) {
+                const pushSubscription = {
+                  endpoint: sub.endpoint,
+                  keys: {
+                    p256dh: sub.p256dh,
+                    auth: sub.auth
+                  }
+                }
+                try {
+                  await webpush.sendNotification(pushSubscription, payload)
+                } catch (pushSendErr: any) {
+                  console.error(`Web Push notification send failed for user ${profile.user_id} endpoint ${sub.endpoint}:`, pushSendErr)
+                  if (pushSendErr.statusCode === 410 || pushSendErr.statusCode === 404) {
+                    // Clean up/delete expired subscription from DB
+                    await supabase
+                      .from('push_subscriptions')
+                      .delete()
+                      .eq('endpoint', sub.endpoint)
+                    console.log(`Deleted expired push subscription for endpoint: ${sub.endpoint}`)
+                  }
+                }
+              }
+              console.log(`Web Push successfully processed for ${subs.length} devices of staff ${profile.user_id}`)
+            }
+          } catch (pushErr) {
+            console.error(`Web Push notification querying/sending failed for staff ${profile.user_id}:`, pushErr)
+          }
         }
 
         // B. Email Notification
