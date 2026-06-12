@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { payStaffBalance } from '@/app/actions/staff-billing.actions'
 import { useRouter } from 'next/navigation'
+import { useToast } from '../../layout'
 import { 
   CreditCard, 
   Loader2, 
@@ -125,8 +126,9 @@ export default function MobileAccountPage() {
   // Payment states
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
-  const [paymentSuccessMessage, setPaymentSuccessMessage] = useState<string | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  const { showToast } = useToast()
 
   // PWA Install State
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
@@ -213,14 +215,16 @@ export default function MobileAccountPage() {
       const result = await payStaffBalance(profile.id)
       if (result.error) {
         setErrorMsg(result.error)
+        showToast('Payment Failed', result.error, 'error')
       } else {
         setProfile((prev) => prev ? ({ ...prev, balance_due: 0.00 }) : null)
-        setPaymentSuccessMessage('Your balance has been successfully cleared!')
-        setTimeout(() => setPaymentSuccessMessage(null), 4000)
+        showToast('Success!', 'Your balance has been successfully cleared.', 'success')
         setIsPaymentModalOpen(false)
       }
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Payment processing failed')
+      const msg = err instanceof Error ? err.message : 'Payment processing failed'
+      setErrorMsg(msg)
+      showToast('Error', msg, 'error')
     } finally {
       setIsProcessingPayment(false)
     }
@@ -238,8 +242,10 @@ export default function MobileAccountPage() {
       const success = await subscribeUserToPush(user, supabase)
       if (success) {
         setPushStatus('granted')
+        showToast('Push Notifications Enabled', 'You will now receive real-time shift alerts on this device.', 'success')
       } else {
         setPushStatus(Notification.permission)
+        showToast('Subscribing Failed', 'Could not subscribe. Please check notification permissions.', 'warning')
       }
     }
     setIsSubscribing(false)
@@ -259,14 +265,6 @@ export default function MobileAccountPage() {
 
   return (
     <div className="py-2 space-y-6">
-      {/* Toast Success Notification */}
-      {paymentSuccessMessage && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 p-4 bg-[#157354] text-white font-bold rounded-2xl shadow-xl flex items-center gap-2 text-xs">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
-          <span>{paymentSuccessMessage}</span>
-        </div>
-      )}
-
       {/* Header */}
       <div>
         <h1 className="text-2xl font-black text-[#0b3828] tracking-tight">My Account</h1>

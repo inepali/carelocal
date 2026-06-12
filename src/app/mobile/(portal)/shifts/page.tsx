@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { MapPin, CheckCircle2, Loader2, ShieldCheck, Globe, Calendar, Clock, AlertCircle, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useToast } from '../../layout'
 
 interface Shift {
   id: string
@@ -43,6 +44,7 @@ interface StaffProfile {
 export default function MobileShiftsPage() {
   const supabase = createClient()
   const router = useRouter()
+  const { showToast } = useToast()
   const [loading, setLoading] = useState(true)
   const [shifts, setShifts] = useState<Shift[]>([])
   const [myProfile, setMyProfile] = useState<StaffProfile | null>(null)
@@ -135,7 +137,7 @@ export default function MobileShiftsPage() {
         })
 
       if (error) {
-        alert("Failed to start onboarding: " + error.message)
+        showToast('Onboarding Failed', error.message, 'error')
         setJoiningCenterId(null)
         return
       }
@@ -162,8 +164,9 @@ export default function MobileShiftsPage() {
     })
 
     if (error) {
-      alert('Failed to claim shift: ' + error.message)
+      showToast('Claim Failed', error.message, 'error')
     } else {
+      showToast('Shift Claimed!', 'Your request has been submitted to the center.', 'success')
       setClaimedShiftIds(prev => new Set([...prev, shiftId]))
     }
     setClaimingShiftId(null)

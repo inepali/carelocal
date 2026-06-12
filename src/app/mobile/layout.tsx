@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, createContext, useContext } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, usePathname } from 'next/navigation'
-import { X, Smartphone, Share, CheckCircle, Bell } from 'lucide-react'
+import { X, Smartphone, Share, CheckCircle, Bell, AlertCircle } from 'lucide-react'
 import { SupabaseClient } from '@supabase/supabase-js'
 
 interface BeforeInstallPromptEvent extends Event {
@@ -86,6 +86,27 @@ async function subscribeUserToPush(user: { id: string }, supabase: SupabaseClien
   }
 }
 
+export interface ToastMessage {
+  id: string
+  title: string
+  body: string
+  type?: 'success' | 'info' | 'warning' | 'error'
+}
+
+interface ToastContextType {
+  showToast: (title: string, body: string, type?: 'success' | 'info' | 'warning' | 'error') => void
+}
+
+const ToastContext = createContext<ToastContextType | null>(null)
+
+export function useToast() {
+  const context = useContext(ToastContext)
+  if (!context) {
+    throw new Error('useToast must be used within a ToastProvider')
+  }
+  return context
+}
+
 export default function MobileLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -99,6 +120,29 @@ export default function MobileLayout({ children }: { children: React.ReactNode }
   const [showBanner, setShowBanner] = useState(false)
   const [showInfoModal, setShowInfoModal] = useState(false)
   const [showPushPrompt, setShowPushPrompt] = useState(false)
+  const [toasts, setToasts] = useState<ToastMessage[]>([])
+
+  const showToast = (title: string, body: string, type: 'success' | 'info' | 'warning' | 'error' = 'info') => {
+    const id = Math.random().toString(36).substring(2, 9)
+    setToasts((prev) => [...prev, { id, title, body, type }])
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id))
+    }, 4000)
+  }
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      const handleServiceWorkerMessage = (event: MessageEvent) => {
+        if (event.data && event.data.type === 'PUSH_RECEIVED') {
+          showToast(event.data.title, event.data.body, 'info')
+        }
+      }
+      navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage)
+      return () => {
+        navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     // Check if running as standalone PWA
@@ -221,9 +265,43 @@ export default function MobileLayout({ children }: { children: React.ReactNode }
   }
 
   return (
-    <div className="flex justify-center min-h-screen bg-[#f1f5f3]">
-      <div className="w-full max-w-md bg-[#f8faf9] min-h-screen flex flex-col relative shadow-2xl border-x border-slate-100 pb-safe">
-        {showBanner && (
+    <ToastContext.Provider value={{ showToast }}>
+      <div className="flex justify-center min-h-screen bg-[#f1f5f3]">
+        <div className="w-full max-w-md bg-[#f8faf9] min-h-screen flex flex-col relative shadow-2xl border-x border-slate-100 pb-safe">
+          {/* Toast Container */}
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4 space-y-2 pointer-events-none">
+            {toasts.map((toast) => (
+              <div
+                key={toast.id}
+                className={`pointer-events-auto p-4 rounded-2xl shadow-xl border flex items-start gap-3 transition-all duration-300 transform translate-y-0 scale-100 animate-in slide-in-from-top-4 duration-300 ${
+                  toast.type === 'success' ? 'bg-[#edf7f3] border-[#d4ede4] text-[#157354]' :
+                  toast.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' :
+                  toast.type === 'warning' ? 'bg-yellow-50 border-yellow-200 text-yellow-800' :
+                  'bg-slate-900 border-slate-800 text-white'
+                }`}
+              >
+                {toast.type === 'success' ? (
+                  <CheckCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                ) : toast.type === 'error' || toast.type === 'warning' ? (
+                  <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                ) : (
+                  <Bell className="w-5 h-5 shrink-0 mt-0.5" />
+                )}
+                <div className="flex-grow min-w-0 text-left">
+                  <p className="text-xs font-black leading-tight font-sans">{toast.title}</p>
+                  <p className="text-[10px] opacity-90 mt-0.5 font-medium leading-relaxed">{toast.body}</p>
+                </div>
+                <button
+                  onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
+                  className="p-0.5 opacity-70 hover:opacity-100 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {showBanner && (
           <div className="bg-gradient-to-r from-[#0b3828] to-[#157354] text-white p-3 px-4 flex items-center justify-between shadow-md relative z-50 animate-in slide-in-from-top-4 duration-300">
             <div className="flex items-center gap-2 min-w-0">
               <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
@@ -348,5 +426,6 @@ export default function MobileLayout({ children }: { children: React.ReactNode }
         )}
       </div>
     </div>
+  </ToastContext.Provider>
   )
 }
