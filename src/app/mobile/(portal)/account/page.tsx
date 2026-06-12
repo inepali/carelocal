@@ -16,8 +16,85 @@ import {
   LogOut,
   Info,
   Download,
-  Share
+  Share,
+  Bell,
+  BellOff
 } from 'lucide-react'
+import { SupabaseClient } from '@supabase/supabase-js'
+
+async function subscribeUserToPush(user: { id: string }, supabase: SupabaseClient) {
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+    return false
+  }
+
+  try {
+    const reg = await navigator.serviceWorker.ready
+    
+    // Check if subscription already exists
+    let subscription = await reg.pushManager.getSubscription()
+    
+    // Request permission if default
+    if (Notification.permission === 'default') {
+      const permission = await Notification.requestPermission()
+      if (permission !== 'granted') {
+        console.log('Notification permission not granted.')
+        return false
+      }
+    }
+
+    if (Notification.permission !== 'granted') return false
+
+    // If subscription doesn't exist, create it
+    if (!subscription) {
+      const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+      if (!publicKey) {
+        console.error('VAPID public key not found in environment.')
+        return false
+      }
+
+      // Convert VAPID public key to Uint8Array
+      const padding = '='.repeat((4 - (publicKey.length % 4)) % 4)
+      const base64 = (publicKey + padding).replace(/\-/g, '+').replace(/_/g, '/')
+      const rawData = window.atob(base64)
+      const outputArray = new Uint8Array(rawData.length)
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i)
+      }
+
+      subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: outputArray,
+      })
+    }
+
+    const subscriptionJson = subscription.toJSON()
+    if (!subscriptionJson.endpoint || !subscriptionJson.keys?.p256dh || !subscriptionJson.keys?.auth) {
+      console.error('Invalid push subscription structure.')
+      return false
+    }
+
+    // Upsert subscription
+    const { error } = await supabase
+      .from('push_subscriptions')
+      .upsert({
+        user_id: user.id,
+        endpoint: subscriptionJson.endpoint,
+        p256dh: subscriptionJson.keys.p256dh,
+        auth: subscriptionJson.keys.auth,
+      }, { onConflict: 'endpoint' })
+
+    if (error) {
+      console.error('Failed to save push subscription:', error)
+      return false
+    } else {
+      console.log('Push subscription successfully stored in DB.')
+      return true
+    }
+  } catch (err) {
+    console.error('Error during Web Push registration:', err)
+    return false
+  }
+}
 
 interface StaffProfile {
   id: string
@@ -57,6 +134,10 @@ export default function MobileAccountPage() {
   const [isIOS, setIsIOS] = useState(false)
   const [isStandalone, setIsStandalone] = useState(false)
 
+  // Push notification states
+  const [pushStatus, setPushStatus] = useState<'granted' | 'default' | 'denied' | 'unsupported'>('default')
+  const [isSubscribing, setIsSubscribing] = useState(false)
+
   useEffect(() => {
     // Check if running as standalone
     if (typeof window !== 'undefined') {
@@ -68,6 +149,13 @@ export default function MobileAccountPage() {
       const userAgent = window.navigator.userAgent.toLowerCase()
       const ios = /iphone|ipad|ipod/.test(userAgent)
       setIsIOS(ios)
+
+      // Check push support and permissions
+      if (!('PushManager' in window) || !('serviceWorker' in navigator)) {
+        setPushStatus('unsupported')
+      } else {
+        setPushStatus(Notification.permission)
+      }
 
       const handleBeforeInstallPrompt = (e: Event) => {
         e.preventDefault()
@@ -141,6 +229,20 @@ export default function MobileAccountPage() {
   const handleLogout = async () => {
     await supabase.auth.signOut()
     router.replace('/mobile/login')
+  }
+
+  const handleTogglePush = async () => {
+    setIsSubscribing(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const success = await subscribeUserToPush(user, supabase)
+      if (success) {
+        setPushStatus('granted')
+      } else {
+        setPushStatus(Notification.permission)
+      }
+    }
+    setIsSubscribing(false)
   }
 
   if (loading) {
@@ -217,6 +319,65 @@ export default function MobileAccountPage() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Push Notification Preferences Box */}
+      <div className="bg-white rounded-2xl border border-[#e6ece9] p-5 shadow-sm space-y-4">
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="text-xs font-black text-[#0b3828] uppercase tracking-wider">Push Notifications</h3>
+            <p className="text-[10px] text-[#6b7a73] font-semibold uppercase tracking-wider mt-0.5">Status & Preferences</p>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-[#edf7f3] flex items-center justify-center">
+            {pushStatus === 'granted' ? (
+              <Bell className="w-4 h-4 text-[#157354]" />
+            ) : (
+              <BellOff className="w-4 h-4 text-slate-400" />
+            )}
+          </div>
+        </div>
+
+        <div className="text-xs text-[#3d5a4f] leading-relaxed">
+          {pushStatus === 'granted' ? (
+            <div className="p-3.5 bg-[#edf7f3] border border-[#d4ede4] rounded-xl flex gap-2.5 text-[#157354]">
+              <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+              <div>
+                <strong className="text-[#0b3828] font-bold block mb-0.5">Notifications Enabled</strong>
+                You are registered to receive real-time push alerts on this device when new shifts are posted.
+              </div>
+            </div>
+          ) : pushStatus === 'denied' ? (
+            <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl flex gap-2.5 text-red-800">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <div>
+                <strong className="text-red-950 font-bold block mb-0.5">Notifications Blocked</strong>
+                Permissions are blocked. Please enable notifications for Safari/Chrome in your iOS/Android system settings to get shift updates.
+              </div>
+            </div>
+          ) : pushStatus === 'unsupported' ? (
+            <p className="text-slate-500">
+              Push notifications are not supported on this browser or device. On iOS, you must first add CareLocal to your home screen (install PWA) to enable push alerts.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              <p>
+                Enable push notifications to receive real-time updates when center admins post new available shifts.
+              </p>
+              <button
+                disabled={isSubscribing}
+                onClick={handleTogglePush}
+                className="w-full bg-[#157354] hover:bg-[#0f4a36] text-white font-bold py-3 px-4 rounded-xl shadow-sm text-xs uppercase tracking-wider transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
+              >
+                {isSubscribing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Bell className="w-4 h-4" />
+                )}
+                Enable Push Alerts
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* PWA Download & Install Box */}

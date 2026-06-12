@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, usePathname } from 'next/navigation'
-import { X, Smartphone, Share, CheckCircle } from 'lucide-react'
+import { X, Smartphone, Share, CheckCircle, Bell } from 'lucide-react'
 import { SupabaseClient } from '@supabase/supabase-js'
 
 interface BeforeInstallPromptEvent extends Event {
@@ -98,6 +98,7 @@ export default function MobileLayout({ children }: { children: React.ReactNode }
   const [isIOS, setIsIOS] = useState(false)
   const [showBanner, setShowBanner] = useState(false)
   const [showInfoModal, setShowInfoModal] = useState(false)
+  const [showPushPrompt, setShowPushPrompt] = useState(false)
 
   useEffect(() => {
     // Check if running as standalone PWA
@@ -150,7 +151,19 @@ export default function MobileLayout({ children }: { children: React.ReactNode }
         if (isLoginRoute) {
           router.replace('/mobile/shifts')
         }
-        await subscribeUserToPush(user, supabase)
+        
+        // Auto subscribe if already granted
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+          await subscribeUserToPush(user, supabase)
+        } else if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+          // Check if push is supported by this browser
+          if ('PushManager' in window && 'serviceWorker' in navigator) {
+            const dismissed = localStorage.getItem('carelocal_push_prompt_dismissed')
+            if (!dismissed) {
+              setShowPushPrompt(true)
+            }
+          }
+        }
       }
       setLoading(false)
     }
@@ -185,6 +198,20 @@ export default function MobileLayout({ children }: { children: React.ReactNode }
     }
   }
 
+  const handleEnablePush = async () => {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      await subscribeUserToPush(user, supabase)
+    }
+    setShowPushPrompt(false)
+  }
+
+  const handleDismissPushPrompt = () => {
+    localStorage.setItem('carelocal_push_prompt_dismissed', 'true')
+    setShowPushPrompt(false)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#f8faf9]">
@@ -216,6 +243,34 @@ export default function MobileLayout({ children }: { children: React.ReactNode }
               </button>
               <button 
                 onClick={handleDismissBanner}
+                className="p-1 text-white/70 hover:text-white cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {showPushPrompt && (
+          <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white p-3 px-4 flex items-center justify-between shadow-md relative z-50 animate-in slide-in-from-top-4 duration-300">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+                <Bell className="w-4 h-4 text-white" />
+              </div>
+              <div className="min-w-0 text-left">
+                <p className="text-[11px] font-black leading-tight font-sans">Enable Push Alerts</p>
+                <p className="text-[9px] text-[#fef3c7] font-medium truncate">Get notified instantly about new open shifts</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2.5 shrink-0">
+              <button 
+                onClick={handleEnablePush}
+                className="bg-white text-amber-700 font-bold text-[9px] uppercase tracking-wider px-3 py-1.5 rounded-lg active:scale-95 transition-all cursor-pointer"
+              >
+                Enable
+              </button>
+              <button 
+                onClick={handleDismissPushPrompt}
                 className="p-1 text-white/70 hover:text-white cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
