@@ -131,6 +131,13 @@ export async function POST(req: Request) {
                 url: `/mobile/shifts`
               })
 
+              const pushOptions = {
+                headers: {
+                  'Urgency': 'high'
+                },
+                TTL: 24 * 60 * 60 // 24 hours
+              }
+
               for (const sub of subs) {
                 const pushSubscription = {
                   endpoint: sub.endpoint,
@@ -140,7 +147,7 @@ export async function POST(req: Request) {
                   }
                 }
                 try {
-                  await webpush.sendNotification(pushSubscription, payload)
+                  await webpush.sendNotification(pushSubscription, payload, pushOptions)
                 } catch (pushSendErr: any) {
                   console.error(`Web Push notification send failed for user ${profile.user_id} endpoint ${sub.endpoint}:`, pushSendErr)
                   if (pushSendErr.statusCode === 410 || pushSendErr.statusCode === 404) {

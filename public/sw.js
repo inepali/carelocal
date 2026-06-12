@@ -65,6 +65,9 @@ self.addEventListener('push', (event) => {
     body: body,
     icon: '/icon-192.png',
     badge: '/favicon.ico',
+    vibrate: [100, 50, 100], // Vibrate pattern to trigger Android heads-up popup
+    tag: 'carelocal-shift-alert', // Group tag to allow renotify override
+    renotify: true, // Force visual/audio alert on updates
     data: {
       url: url
     }
