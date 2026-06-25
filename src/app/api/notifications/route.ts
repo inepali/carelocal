@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import twilio from 'twilio'
 import webpush from 'web-push'
+import { JWT } from 'google-auth-library'
 
 webpush.setVapidDetails(
   process.env.VAPID_SUBJECT || 'mailto:support@carelocal.co',
@@ -31,6 +32,25 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 const twilioClient = (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN)
   ? twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
   : null
+
+// Initialize Google JWT client for FCM v1 API
+const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT
+let jwtClient: JWT | null = null
+let fcmProjectId = ''
+
+if (serviceAccountJson) {
+  try {
+    const creds = JSON.parse(serviceAccountJson)
+    fcmProjectId = creds.project_id
+    jwtClient = new JWT({
+      email: creds.client_email,
+      key: creds.private_key,
+      scopes: ['https://www.googleapis.com/auth/firebase.messaging'],
+    })
+  } catch (err) {
+    console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT:', err)
+  }
+}
 
 export async function POST(req: Request) {
   try {
@@ -164,6 +184,87 @@ export async function POST(req: Request) {
             }
           } catch (pushErr) {
             console.error(`Web Push notification querying/sending failed for staff ${profile.user_id}:`, pushErr)
+          }
+
+          // Send real-time Native Push notification to Capacitor devices via FCM HTTP v1
+          try {
+            const { data: nativeTokens } = await supabase
+              .from('native_push_tokens')
+              .select('*')
+              .eq('user_id', profile.user_id)
+
+            if (nativeTokens && nativeTokens.length > 0 && jwtClient && fcmProjectId) {
+              const authRes = await jwtClient.getAccessToken()
+              const accessToken = authRes.token
+
+              if (accessToken) {
+                for (const nativeToken of nativeTokens) {
+                  try {
+                    const fcmUrl = `https://fcm.googleapis.com/v1/projects/${fcmProjectId}/messages:send`
+                    const payload = {
+                      message: {
+                        token: nativeToken.token,
+                        notification: {
+                          title: notificationTitle,
+                          body: notificationMessage,
+                        },
+                        data: {
+                          url: '/mobile/shifts'
+                        },
+                        android: {
+                          notification: {
+                            sound: 'default',
+                            click_action: 'FCM_PLUGIN_ACTIVITY'
+                          }
+                        },
+                        apns: {
+                          payload: {
+                            aps: {
+                              sound: 'default',
+                              badge: 1,
+                              alert: {
+                                title: notificationTitle,
+                                body: notificationMessage
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+
+                    const response = await fetch(fcmUrl, {
+                      method: 'POST',
+                      headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify(payload),
+                    })
+
+                    const resJson = await response.json()
+                    if (!response.ok) {
+                      console.error(`FCM send failed for token ${nativeToken.token}:`, resJson)
+                      // Clean up expired/invalid token
+                      if (resJson.error?.status === 'UNREGISTERED' || resJson.error?.message?.includes('not registered') || response.status === 404 || response.status === 410) {
+                        await supabase
+                          .from('native_push_tokens')
+                          .delete()
+                          .eq('token', nativeToken.token)
+                        console.log(`Deleted unregistered/invalid native push token: ${nativeToken.token}`)
+                      }
+                    } else {
+                      console.log(`FCM send successful to token ${nativeToken.token}`)
+                    }
+                  } catch (fcmSendErr) {
+                    console.error(`FCM HTTP request failed for token ${nativeToken.token}:`, fcmSendErr)
+                  }
+                }
+              }
+            } else if (nativeTokens && nativeTokens.length > 0 && !jwtClient) {
+              console.warn('Native tokens found, but FIREBASE_SERVICE_ACCOUNT is not configured.')
+            }
+          } catch (nativePushErr) {
+            console.error(`Native push notification querying/sending failed for staff ${profile.user_id}:`, nativePushErr)
           }
         }
 

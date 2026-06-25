@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1000286838363",
+    "project_id": "carelocal-17e7b",
+    "storage_bucket": "carelocal-17e7b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1000286838363:android:a44e32c7bee5c30beb297e",
+        "android_client_info": {
+          "package_name": "com.carelocal.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAJYn7vjzWMBg7iCimzT7o9QHHpkP4zxI4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

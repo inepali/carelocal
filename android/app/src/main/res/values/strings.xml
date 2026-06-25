@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">CareLocal</string>
+    <string name="title_activity_main">CareLocal</string>
+    <string name="package_name">com.carelocal.app</string>
+    <string name="custom_url_scheme">com.carelocal.app</string>
+</resources>

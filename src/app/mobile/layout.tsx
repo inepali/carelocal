@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter, usePathname } from 'next/navigation'
 import { X, Smartphone, Share, CheckCircle, Bell, AlertCircle } from 'lucide-react'
 import { SupabaseClient } from '@supabase/supabase-js'
+import { Capacitor } from '@capacitor/core'
+import { PushNotifications } from '@capacitor/push-notifications'
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -83,6 +85,64 @@ async function subscribeUserToPush(user: { id: string }, supabase: SupabaseClien
     }
   } catch (err) {
     console.error('Error during Web Push registration:', err)
+  }
+}
+
+async function registerNativePush(user: { id: string }, supabase: SupabaseClient, showToast: any, router: any) {
+  if (!Capacitor.isNativePlatform()) return
+
+  try {
+    let permStatus = await PushNotifications.checkPermissions()
+    if (permStatus.receive === 'prompt') {
+      permStatus = await PushNotifications.requestPermissions()
+    }
+
+    if (permStatus.receive !== 'granted') {
+      console.log('Native push permission not granted.')
+      return
+    }
+
+    await PushNotifications.register()
+    await PushNotifications.removeAllListeners()
+
+    await PushNotifications.addListener('registration', async (token) => {
+      console.log('Native Push Registration Token:', token.value)
+      const platform = Capacitor.getPlatform()
+      
+      const { error } = await supabase
+        .from('native_push_tokens')
+        .upsert({
+          user_id: user.id,
+          token: token.value,
+          platform: platform === 'ios' ? 'ios' : 'android'
+        }, { onConflict: 'token' })
+
+      if (error) {
+        console.error('Failed to store native push token:', error)
+      } else {
+        console.log('Native push token stored in Supabase successfully.')
+      }
+    })
+
+    await PushNotifications.addListener('registrationError', (err) => {
+      console.error('Native Push Registration Error:', err)
+    })
+
+    await PushNotifications.addListener('pushNotificationReceived', (notification) => {
+      console.log('Native push received in foreground:', notification)
+      const title = notification.title || 'CareLocal Alert'
+      const body = notification.body || 'New update from CareLocal.'
+      showToast(title, body, 'info')
+    })
+
+    await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+      console.log('Native push action performed:', action)
+      const url = action.notification.data?.url || '/mobile/shifts'
+      router.push(url)
+    })
+
+  } catch (err) {
+    console.error('Error setting up Native Push Notifications:', err)
   }
 }
 
@@ -196,15 +256,20 @@ export default function MobileLayout({ children }: { children: React.ReactNode }
           router.replace('/mobile/shifts')
         }
         
-        // Auto subscribe if already granted
-        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-          await subscribeUserToPush(user, supabase)
-        } else if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
-          // Check if push is supported by this browser
-          if ('PushManager' in window && 'serviceWorker' in navigator) {
-            const dismissed = localStorage.getItem('carelocal_push_prompt_dismissed')
-            if (!dismissed) {
-              setShowPushPrompt(true)
+        // Register Native Push if running in native app, otherwise standard web push
+        if (Capacitor.isNativePlatform()) {
+          await registerNativePush(user, supabase, showToast, router)
+        } else {
+          // Auto subscribe if already granted
+          if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+            await subscribeUserToPush(user, supabase)
+          } else if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+            // Check if push is supported by this browser
+            if ('PushManager' in window && 'serviceWorker' in navigator) {
+              const dismissed = localStorage.getItem('carelocal_push_prompt_dismissed')
+              if (!dismissed) {
+                setShowPushPrompt(true)
+              }
             }
           }
         }
