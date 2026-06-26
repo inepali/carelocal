@@ -41,7 +41,8 @@ export interface Center {
   trial_ends_at?: string
   trial_months?: number
   staff_term?: string
-  classroom_term?: string
+  work_area_term?: string
+  domain_key?: string
   created_at: string
   updated_at: string
 }
@@ -66,6 +67,7 @@ export interface StaffProfile {
   availability_notes?: string
   avatar_url?: string
   is_active: boolean
+  domain_key?: string
   created_at: string
   updated_at: string
   balance_due?: number
@@ -175,7 +177,7 @@ export interface CenterStaffDocumentStatus {
   matched_document?: StaffDocument
 }
 
-export interface Classroom {
+export interface WorkArea {
   id: string
   center_id: string
   name: string
@@ -189,7 +191,7 @@ export interface Classroom {
 export interface Shift {
   id: string
   center_id: string
-  classroom_id?: string
+  work_area_id?: string
   shift_date: string
   start_time: string
   end_time: string
@@ -204,7 +206,7 @@ export interface Shift {
   updated_at: string
   is_archived?: boolean
   // Joined
-  classroom?: Classroom
+  work_area?: WorkArea
   shift_claims?: ShiftClaim[]
 }
 
@@ -249,9 +251,21 @@ export const DOCUMENT_CATEGORY_LABELS: Record<DocumentCategory, string> = {
   other: 'Other'
 }
 
-export const TIER_LIMITS: Record<SubscriptionTier, { maxLocations: number; maxStaff: number; pricePerMonth: number }> = {
-  starter: { maxLocations: 1, maxStaff: 30, pricePerMonth: 49 },
-  growth: { maxLocations: 3, maxStaff: 100, pricePerMonth: 129 },
-  network: { maxLocations: 10, maxStaff: 300, pricePerMonth: 279 },
-  enterprise: { maxLocations: Infinity, maxStaff: Infinity, pricePerMonth: 0 },
+export function getTierLimits(domainKey: 'childcare' | 'healthcare'): Record<SubscriptionTier, { maxLocations: number; maxStaff: number; pricePerMonth: number }> {
+  if (domainKey === 'healthcare') {
+    return {
+      starter: { maxLocations: 1, maxStaff: 30, pricePerMonth: 99 },
+      growth: { maxLocations: 3, maxStaff: 100, pricePerMonth: 249 },
+      network: { maxLocations: 10, maxStaff: 300, pricePerMonth: 499 },
+      enterprise: { maxLocations: Infinity, maxStaff: Infinity, pricePerMonth: 0 },
+    }
+  }
+  return {
+    starter: { maxLocations: 1, maxStaff: 30, pricePerMonth: 49 },
+    growth: { maxLocations: 3, maxStaff: 100, pricePerMonth: 129 },
+    network: { maxLocations: 10, maxStaff: 300, pricePerMonth: 279 },
+    enterprise: { maxLocations: Infinity, maxStaff: Infinity, pricePerMonth: 0 },
+  }
 }
+
+export const TIER_LIMITS = getTierLimits('childcare')

@@ -69,7 +69,7 @@ export default function StaffShiftsPage() {
         .select(`
             *,
             centers (id, name, address, city, state, zip, slug, metro_area_id),
-            classrooms (name, age_group)
+            work_areas (name, age_group)
         `)
         .eq('status', 'open')
         .neq('is_archived', true)
@@ -283,7 +283,7 @@ export default function StaffShiftsPage() {
               day: 'numeric',
             })
             const timeLabel = `${shift.start_time.substring(0, 5)}–${shift.end_time.substring(0, 5)}`
-            const roomLabel = [shift.classrooms?.name, shift.classrooms?.age_group].filter(Boolean).join(' · ') || null
+            const roomLabel = [shift.work_areas?.name, shift.work_areas?.age_group].filter(Boolean).join(' · ') || null
             const locationLine = [shift.centers?.city, shift.centers?.state].filter(Boolean).join(', ') || '—'
             const zipPart = shift.centers?.zip ? ` ${shift.centers.zip}` : ''
             const payLabel = (shift.payment_mode || 'Corporate payroll').replace(/_/g, ' ')

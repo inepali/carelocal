@@ -3,12 +3,12 @@ import { createContext, useContext } from 'react'
 
 type CenterContextType = {
   staffTerm: string;
-  classroomTerm: string;
+  workAreaTerm: string;
 }
 
 export const CenterContext = createContext<CenterContextType>({
   staffTerm: 'Staffs',
-  classroomTerm: 'Classrooms'
+  workAreaTerm: 'Classrooms'
 })
 
 export const useCenterContext = () => useContext(CenterContext)

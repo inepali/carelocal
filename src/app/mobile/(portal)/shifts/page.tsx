@@ -25,7 +25,7 @@ interface Shift {
     slug: string
     metro_area_id: string
   } | null
-  classrooms: {
+  work_areas: {
     name: string
     age_group: string | null
   } | null
@@ -92,7 +92,7 @@ export default function MobileShiftsPage() {
         .select(`
             *,
             centers (id, name, address, city, state, zip, slug, metro_area_id),
-            classrooms (name, age_group)
+            work_areas (name, age_group)
         `)
         .eq('status', 'open')
         .neq('is_archived', true)
@@ -262,9 +262,9 @@ export default function MobileShiftsPage() {
                     <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400" />
                     {shift.centers?.city}, {shift.centers?.state}
                   </div>
-                  {shift.classrooms && (
+                  {shift.work_areas && (
                     <div className="text-[10px] text-[#3d5a4f] bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5 w-fit">
-                      <span className="font-bold text-slate-400">Classroom:</span> {shift.classrooms.name} ({shift.classrooms.age_group})
+                      <span className="font-bold text-slate-400">Area:</span> {shift.work_areas.name} ({shift.work_areas.age_group})
                     </div>
                   )}
                 </div>

@@ -2,21 +2,20 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Classroom } from '@/lib/types'
-import { Plus, Edit2, Trash2, Users, Loader2, Home, Info } from 'lucide-react'
-import Link from 'next/link'
+import { WorkArea } from '@/lib/types'
+import { Plus, Edit2, Trash2, Users, Loader2, Home } from 'lucide-react'
 import { useCenterContext } from '../context'
 
 export default function SectionsPage() {
-  const { classroomTerm } = useCenterContext()
+  const { workAreaTerm } = useCenterContext()
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
-  const [classrooms, setClassrooms] = useState<Classroom[]>([])
+  const [workAreas, setWorkAreas] = useState<WorkArea[]>([])
   const [centerId, setCenterId] = useState<string | null>(null)
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingRoom, setEditingRoom] = useState<Classroom | null>(null)
+  const [editingRoom, setEditingRoom] = useState<WorkArea | null>(null)
   const [formName, setFormName] = useState('')
   const [formAgeGroup, setFormAgeGroup] = useState('')
   const [formCapacity, setFormCapacity] = useState('')
@@ -40,17 +39,17 @@ export default function SectionsPage() {
     if (admin) {
       setCenterId(admin.center_id)
       const { data: rooms } = await supabase
-        .from('classrooms')
+        .from('work_areas')
         .select('*')
         .eq('center_id', admin.center_id)
         .order('name', { ascending: true })
       
-      setClassrooms(rooms || [])
+      setWorkAreas(rooms || [])
     }
     setLoading(false)
   }
 
-  function openModal(room: Classroom | null = null) {
+  function openModal(room: WorkArea | null = null) {
     if (room) {
       setEditingRoom(room)
       setFormName(room.name)
@@ -81,13 +80,13 @@ export default function SectionsPage() {
     let error
     if (editingRoom) {
       const { error: err } = await supabase
-        .from('classrooms')
+        .from('work_areas')
         .update(payload)
         .eq('id', editingRoom.id)
       error = err
     } else {
       const { error: err } = await supabase
-        .from('classrooms')
+        .from('work_areas')
         .insert(payload)
       error = err
     }
@@ -96,23 +95,23 @@ export default function SectionsPage() {
       setIsModalOpen(false)
       loadData()
     } else {
-      alert("Failed to save classroom: " + error.message)
+      alert("Failed to save " + workAreaTerm.toLowerCase() + ": " + error.message)
     }
     setSaving(false)
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Are you sure you want to delete this classroom? Any associated shifts will lose their room assignment.")) return
+    if (!confirm(`Are you sure you want to delete this ${workAreaTerm.toLowerCase()}? Any associated shifts will lose their assignment.`)) return
     
     const { error } = await supabase
-      .from('classrooms')
+      .from('work_areas')
       .delete()
       .eq('id', id)
 
     if (!error) {
       loadData()
     } else {
-      alert("Failed to delete classroom. It might be in use.")
+      alert("Failed to delete " + workAreaTerm.toLowerCase() + ". It might be in use.")
     }
   }
 
@@ -129,27 +128,27 @@ export default function SectionsPage() {
     <div className="max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
         <div>
-          <h1 className="text-3xl font-extrabold text-[#0b3828] mb-1">{classroomTerm}</h1>
-          <p className="text-[#6b7a73]">Manage your center's {classroomTerm.toLowerCase()} and age groups for shift assignments.</p>
+          <h1 className="text-3xl font-extrabold text-[#0b3828] mb-1">{workAreaTerm}</h1>
+          <p className="text-[#6b7a73]">Manage your center's {workAreaTerm.toLowerCase()} and age groups for shift assignments.</p>
         </div>
         <button 
           onClick={() => openModal()}
           className="inline-flex items-center justify-center gap-2 bg-[#fbbf24] text-[#0b3828] font-bold px-6 py-3 rounded-xl hover:bg-[#f59e0b] shadow-sm transition-all active:scale-95"
         >
-          <Plus className="w-5 h-5" /> Add {classroomTerm}
+          <Plus className="w-5 h-5" /> Add {workAreaTerm}
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {classrooms.length === 0 ? (
+        {workAreas.length === 0 ? (
           <div className="col-span-full py-20 bg-white border border-dashed border-[#a9dac9] rounded-[2.5rem] text-center">
             <Home className="w-16 h-16 text-[#e2e8e4] mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-[#0b3828] mb-2">No {classroomTerm.toLowerCase()} defined</h3>
-            <p className="text-[#6b7a73] max-w-sm mx-auto mb-6">Create your {classroomTerm.toLowerCase()} to start assigning staff to specific age groups.</p>
-            <button onClick={() => openModal()} className="text-[#157354] font-bold hover:underline">Add your first {classroomTerm.toLowerCase()} →</button>
+            <h3 className="text-xl font-bold text-[#0b3828] mb-2">No {workAreaTerm.toLowerCase()} defined</h3>
+            <p className="text-[#6b7a73] max-w-sm mx-auto mb-6">Create your {workAreaTerm.toLowerCase()} to start assigning staff to specific age groups.</p>
+            <button onClick={() => openModal()} className="text-[#157354] font-bold hover:underline">Add your first {workAreaTerm.toLowerCase()} →</button>
           </div>
         ) : (
-          classrooms.map((room) => (
+          workAreas.map((room) => (
             <div key={room.id} className="bg-white border border-[#e2e8e4] rounded-[2rem] p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
               <div className="flex items-start justify-between mb-6">
                 <div className="w-12 h-12 rounded-2xl bg-[#edf7f3] text-[#157354] flex items-center justify-center shadow-sm">
@@ -187,13 +186,13 @@ export default function SectionsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0b3828]/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-8 border-b border-[#e2e8e4] flex items-center justify-between bg-[#f8faf9]">
-              <h2 className="text-2xl font-black text-[#0b3828] tracking-tight">{editingRoom ? `Edit ${classroomTerm}` : `New ${classroomTerm}`}</h2>
+              <h2 className="text-2xl font-black text-[#0b3828] tracking-tight">{editingRoom ? `Edit ${workAreaTerm}` : `New ${workAreaTerm}`}</h2>
               <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-[#e2e8e4] rounded-full transition-colors"><Trash2 className="w-5 h-5 text-[#6b7a73]" /></button>
             </div>
             
             <form onSubmit={handleSave} className="p-8 space-y-6">
               <div>
-                <label className="block text-sm font-bold text-[#1a2e25] mb-2 uppercase tracking-widest text-[10px]">{classroomTerm} Name</label>
+                <label className="block text-sm font-bold text-[#1a2e25] mb-2 uppercase tracking-widest text-[10px]">{workAreaTerm} Name</label>
                 <input 
                   autoFocus
                   required
@@ -206,11 +205,11 @@ export default function SectionsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-bold text-[#1a2e25] mb-2 uppercase tracking-widest text-[10px]">Age Group</label>
+                  <label className="block text-sm font-bold text-[#1a2e25] mb-2 uppercase tracking-widest text-[10px]">Age Group / Specialization</label>
                   <input 
                     value={formAgeGroup}
                     onChange={(e) => setFormAgeGroup(e.target.value)}
-                    placeholder="e.g. 2-3 years"
+                    placeholder="e.g. 2-3 years or ER"
                     className="w-full px-5 py-4 rounded-2xl border border-[#e2e8e4] focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all font-medium"
                   />
                 </div>

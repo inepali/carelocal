@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, Suspense, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff, ArrowRight, Loader2, Building2, User } from 'lucide-react'
+import { getDomainConfig } from '@/lib/domain-config'
 
 function RegisterForm() {
   const router = useRouter()
@@ -14,6 +15,20 @@ function RegisterForm() {
 
   const supabase = createClient()
   
+  // Resolve domain vertical configuration dynamically
+  const [domainKey, setDomainKey] = useState<'childcare' | 'healthcare'>('childcare')
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const host = window.location.host
+      if (host.includes('carelocalhealth.com') || host.includes('3001')) {
+        setDomainKey('healthcare')
+      }
+    }
+  }, [])
+
+  const config = getDomainConfig(domainKey)
+
   // New State
   const [accountType, setAccountType] = useState<'center' | 'staff' | null>(isStaffInvite ? 'staff' : null)
   const [step, setStep] = useState(isStaffInvite ? 2 : 0) // Step 0 is selection
@@ -72,8 +87,9 @@ function RegisterForm() {
           email,
           city,
           zip,
-          staff_type: 'floater', // Default
-          is_active: true
+          staff_type: config.onboarding.defaultStaffRole, // Default based on active vertical config!
+          is_active: true,
+          domain_key: domainKey
         })
 
       if (profileError) {
@@ -110,6 +126,9 @@ function RegisterForm() {
           email,
           phone,
           director_name: directorName,
+          domain_key: domainKey,
+          staff_term: domainKey === 'healthcare' ? 'Medical Staff' : 'Staff',
+          work_area_term: domainKey === 'healthcare' ? 'Care Areas' : 'Classrooms'
         })
 
       if (centerError) {
@@ -150,19 +169,19 @@ function RegisterForm() {
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
         <div className="w-full max-w-md">
            <Link href="/" className="flex items-center gap-2 mb-10">
-            <div className="w-8 h-8 rounded-lg bg-[#157354] flex items-center justify-center">
-              <span className="text-white font-bold text-sm">CL</span>
+            <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center">
+              <span className="text-white font-bold text-sm">{config.logoShort}</span>
             </div>
-            <span className="font-bold text-[#0f4a36] text-lg">CareLocal</span>
+            <span className="font-bold text-brand-900 text-lg">{config.appName}</span>
           </Link>
 
-          <h1 className="text-3xl font-extrabold text-[#0b3828] mb-2">
-            {isStaffInvite ? 'Join your center pool' : 'Create your account'}
+          <h1 className="text-3xl font-extrabold text-brand-900 mb-2">
+            {isStaffInvite ? 'Join your center pool' : config.onboarding.roleHeading}
           </h1>
           <p className="text-[#6b7a73] mb-8">
             {isStaffInvite 
               ? 'Complete your profile to start claiming shifts. Staff accounts are always free.' 
-              : 'Choose how you want to use the platform to get started.'}
+              : config.onboarding.roleSubtitle}
           </p>
 
           <form onSubmit={(e) => {
@@ -184,17 +203,17 @@ function RegisterForm() {
                   onClick={() => setAccountType('center')}
                   className={`w-full p-6 rounded-2xl border-2 text-left transition-all ${
                     accountType === 'center' 
-                      ? 'border-[#157354] bg-[#edf7f3]' 
-                      : 'border-[#e2e8e4] bg-white hover:border-[#157354]/50'
+                      ? 'border-brand-600 bg-brand-50' 
+                      : 'border-[#e2e8e4] bg-white hover:border-brand-600/50'
                   }`}
                 >
                   <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${accountType === 'center' ? 'bg-[#157354] text-white' : 'bg-[#f8faf9] text-[#6b7a73]'}`}>
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${accountType === 'center' ? 'bg-brand-600 text-white' : 'bg-[#f8faf9] text-[#6b7a73]'}`}>
                       <Building2 className="w-6 h-6" />
                     </div>
                     <div>
-                      <div className="font-bold text-[#1a2e25]">I am a Childcare Center</div>
-                      <div className="text-sm text-[#6b7a73]">I want to post shifts and find staff.</div>
+                      <div className="font-bold text-[#1a2e25]">{config.onboarding.centerSelectorLabel}</div>
+                      <div className="text-sm text-[#6b7a73]">{config.onboarding.centerSelectorDesc}</div>
                     </div>
                   </div>
                 </button>
@@ -204,17 +223,17 @@ function RegisterForm() {
                   onClick={() => setAccountType('staff')}
                   className={`w-full p-6 rounded-2xl border-2 text-left transition-all ${
                     accountType === 'staff' 
-                      ? 'border-[#157354] bg-[#edf7f3]' 
-                      : 'border-[#e2e8e4] bg-white hover:border-[#157354]/50'
+                      ? 'border-brand-600 bg-brand-50' 
+                      : 'border-[#e2e8e4] bg-white hover:border-brand-600/50'
                   }`}
                 >
                   <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${accountType === 'staff' ? 'bg-[#157354] text-white' : 'bg-[#f8faf9] text-[#6b7a73]'}`}>
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${accountType === 'staff' ? 'bg-brand-600 text-white' : 'bg-[#f8faf9] text-[#6b7a73]'}`}>
                       <User className="w-6 h-6" />
                     </div>
                     <div>
-                      <div className="font-bold text-[#1a2e25]">I am a Staff Member</div>
-                      <div className="text-sm text-[#6b7a73]">I want to find shifts at local centers.</div>
+                      <div className="font-bold text-[#1a2e25]">{config.onboarding.staffSelectorLabel}</div>
+                      <div className="text-sm text-[#6b7a73]">{config.onboarding.staffSelectorDesc}</div>
                     </div>
                   </div>
                 </button>
@@ -222,7 +241,7 @@ function RegisterForm() {
                 <button
                   type="submit"
                   disabled={!accountType}
-                  className="w-full flex items-center justify-center gap-2 bg-[#157354] text-white font-semibold py-4 rounded-xl hover:bg-[#0f4a36] transition-colors shadow-sm disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 bg-brand-600 text-white font-semibold py-4 rounded-xl hover:bg-brand-800 transition-colors shadow-sm disabled:opacity-50"
                 >
                   Next <ArrowRight className="w-4 h-4" />
                 </button>
@@ -233,7 +252,7 @@ function RegisterForm() {
               <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div>
                   <label htmlFor="centerName" className="block text-sm font-medium text-[#1a2e25] mb-1.5">
-                    Center Name
+                    {config.onboarding.centerNameLabel}
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -245,15 +264,15 @@ function RegisterForm() {
                       required
                       value={centerName}
                       onChange={(e) => setCenterName(e.target.value)}
-                      placeholder="Sunshine Early Learning"
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
+                      placeholder={config.onboarding.centerNamePlaceholder}
+                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-[#1a2e25]"
                     />
                   </div>
                 </div>
 
                 <div>
                   <label htmlFor="directorName" className="block text-sm font-medium text-[#1a2e25] mb-1.5">
-                    Your Name (Director/Admin)
+                    {config.onboarding.directorNameLabel}
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -265,15 +284,15 @@ function RegisterForm() {
                       required
                       value={directorName}
                       onChange={(e) => setDirectorName(e.target.value)}
-                      placeholder="Jane Doe"
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
+                      placeholder={config.onboarding.directorNamePlaceholder}
+                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-[#1a2e25]"
                     />
                   </div>
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full flex items-center justify-center gap-2 bg-[#157354] text-white font-semibold py-3 rounded-xl hover:bg-[#0f4a36] transition-colors shadow-sm"
+                  className="w-full flex items-center justify-center gap-2 bg-brand-600 text-white font-semibold py-3 rounded-xl hover:bg-brand-800 transition-colors shadow-sm"
                 >
                   Continue <ArrowRight className="w-4 h-4" />
                 </button>
@@ -291,7 +310,7 @@ function RegisterForm() {
                           id="firstName" type="text" required value={firstName}
                           onChange={(e) => setFirstName(e.target.value)}
                           placeholder="Jane"
-                          className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
+                          className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-[#1a2e25]"
                         />
                       </div>
                       <div>
@@ -300,7 +319,7 @@ function RegisterForm() {
                           id="lastName" type="text" required value={lastName}
                           onChange={(e) => setLastName(e.target.value)}
                           placeholder="Doe"
-                          className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
+                          className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-[#1a2e25]"
                         />
                       </div>
                     </div>
@@ -311,7 +330,7 @@ function RegisterForm() {
                           id="city" type="text" required value={city}
                           onChange={(e) => setCity(e.target.value)}
                           placeholder="Charlotte"
-                          className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
+                          className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-[#1a2e25]"
                         />
                       </div>
                       <div>
@@ -320,7 +339,7 @@ function RegisterForm() {
                           id="zip" type="text" required value={zip}
                           onChange={(e) => setZip(e.target.value)}
                           placeholder="28202"
-                          className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
+                          className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-[#1a2e25]"
                         />
                       </div>
                     </div>
@@ -336,8 +355,8 @@ function RegisterForm() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="director@sunshine.org"
-                    className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
+                    placeholder={config.onboarding.emailPlaceholder}
+                    className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-[#1a2e25]"
                   />
                 </div>
 
@@ -352,7 +371,7 @@ function RegisterForm() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="(704) 555-0123"
-                    className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
+                    className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-[#1a2e25]"
                   />
                 </div>
 
@@ -369,12 +388,12 @@ function RegisterForm() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full px-4 py-3 pr-12 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
+                      className="w-full px-4 py-3 pr-12 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-[#1a2e25]"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6b7a73] hover:text-[#157354] transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6b7a73] hover:text-brand-600 transition-colors"
                     >
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
@@ -390,7 +409,7 @@ function RegisterForm() {
                       required
                       checked={termsAccepted}
                       onChange={(e) => setTermsAccepted(e.target.checked)}
-                      className="w-4 h-4 border border-[#e2e8e4] rounded bg-white focus:ring-3 focus:ring-[#157354]/30 accent-[#157354]"
+                      className="w-4 h-4 border border-[#e2e8e4] rounded bg-white focus:ring-3 focus:ring-brand-600/30 accent-brand-600"
                     />
                   </div>
                   <label htmlFor="terms" className="text-sm font-medium text-[#6b7a73]">
@@ -398,7 +417,7 @@ function RegisterForm() {
                     <button
                       type="button"
                       onClick={() => setShowTermsModal(true)}
-                      className="text-[#157354] hover:underline"
+                      className="text-brand-600 hover:underline"
                     >
                       Terms & Conditions
                     </button>
@@ -419,7 +438,7 @@ function RegisterForm() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="flex-1 flex items-center justify-center gap-2 bg-[#157354] text-white font-semibold py-3 rounded-xl hover:bg-[#0f4a36] transition-colors disabled:opacity-60 shadow-sm"
+                    className="flex-1 flex items-center justify-center gap-2 bg-brand-600 text-white font-semibold py-3 rounded-xl hover:bg-brand-800 transition-colors disabled:opacity-60 shadow-sm"
                   >
                     {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Create Account'}
                   </button>
@@ -430,24 +449,23 @@ function RegisterForm() {
 
           <p className="text-center text-sm text-[#6b7a73] mt-8">
             Already have an account?{' '}
-            <Link href="/login" className="text-[#157354] font-semibold hover:underline">
+            <Link href="/login" className="text-brand-600 font-semibold hover:underline">
               Log in
             </Link>
           </p>
         </div>
       </div>
       
-      <div className="hidden lg:block flex-1 bg-[#d4ede4] relative overflow-hidden">
+      <div className="hidden lg:block flex-1 bg-brand-100 relative overflow-hidden">
          {/* Decorative elements or images could go here */}
          <div className="absolute inset-0 flex items-center justify-center p-12">
             <div className="bg-white/60 backdrop-blur-md border border-white/40 p-8 rounded-3xl shadow-xl max-w-md text-center">
-                <div className="w-16 h-16 bg-[#157354] rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <div className="w-16 h-16 bg-brand-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
                     <ShieldCheck className="w-8 h-8 text-white" />
                 </div>
-                <h3 className="text-2xl font-bold text-[#0b3828] mb-3">You own your compliance.</h3>
-                <p className="text-[#3d5a4f] leading-relaxed mb-6">
-                    CareLocal gives you the tools to collect, review, and organize staff documents in one secure place.
-                    Set your own requirements and manage your pool with confidence.
+                <h3 className="text-2xl font-bold text-brand-900 mb-3">{config.onboarding.complianceInfoTitle}</h3>
+                <p className="text-brand-700 leading-relaxed mb-6">
+                    {config.onboarding.complianceInfoDesc}
                 </p>
             </div>
          </div>
@@ -458,7 +476,7 @@ function RegisterForm() {
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
         <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
           <div className="p-4 border-b border-[#e6ece9] flex justify-between items-center bg-[#f8faf9]">
-            <h2 className="text-xl font-bold text-[#0b3828]">Terms & Conditions</h2>
+            <h2 className="text-xl font-bold text-brand-900">Terms & Conditions</h2>
             <button 
               onClick={() => setShowTermsModal(false)}
               className="text-[#6b7a73] hover:text-[#1a2e25] w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#e6ece9] transition-colors"
@@ -481,7 +499,7 @@ function RegisterForm() {
                 setTermsAccepted(true);
                 setShowTermsModal(false);
               }}
-              className="px-6 py-2.5 bg-[#157354] text-white font-bold rounded-xl hover:bg-[#0f4a36] transition-colors"
+              className="px-6 py-2.5 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-800 transition-colors"
             >
               Accept & Close
             </button>
@@ -497,7 +515,7 @@ export default function RegisterPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-[#f8faf9] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#157354]" />
+        <Loader2 className="w-8 h-8 animate-spin text-brand-600" />
       </div>
     }>
       <RegisterForm />

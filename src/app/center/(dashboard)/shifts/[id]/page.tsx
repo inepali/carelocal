@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useParams, useRouter } from 'next/navigation'
-import { Shift, Classroom } from '@/lib/types'
+import { Shift, WorkArea } from '@/lib/types'
 import { useStaffRoles } from '@/lib/hooks/useStaffRoles'
 import { 
   Calendar, Clock, MapPin, ArrowLeft, 
@@ -15,7 +15,7 @@ import { useLookups } from '@/hooks/use-lookups'
 import { useCenterContext } from '../../context'
 
 export default function ShiftDetailPage() {
-  const { staffTerm, classroomTerm } = useCenterContext()
+  const { staffTerm, workAreaTerm } = useCenterContext()
   const { id } = useParams()
   const router = useRouter()
   const supabase = createClient()
@@ -27,7 +27,7 @@ export default function ShiftDetailPage() {
   const [isEditing, setIsEditing] = useState(false)
   
   const [shift, setShift] = useState<any>(null)
-  const [classrooms, setClassrooms] = useState<Classroom[]>([])
+  const [workAreas, setWorkAreas] = useState<WorkArea[]>([])
   const [claims, setClaims] = useState<any[]>([])
   const [centerId, setCenterId] = useState<string | null>(null)
   const { data: staffRoles } = useLookups('Role')
@@ -49,7 +49,7 @@ export default function ShiftDetailPage() {
   const [editMode, setEditMode] = useState('')
   const [editNotes, setEditNotes] = useState('')
   const [editRole, setEditRole] = useState('')
-  const [editClassroom, setEditClassroom] = useState('')
+  const [editWorkArea, setEditWorkArea] = useState('')
 
   const [cancelModalOpen, setCancelModalOpen] = useState(false)
   const [cancelSubmitting, setCancelSubmitting] = useState(false)
@@ -75,7 +75,7 @@ export default function ShiftDetailPage() {
         .from('shifts')
         .select(`
           *,
-          classrooms (*)
+          work_areas (*)
         `)
         .eq('id', shiftId)
         .single()
@@ -92,7 +92,7 @@ export default function ShiftDetailPage() {
       setEditMode(shiftData.payment_mode || 'payroll')
       setEditNotes(shiftData.notes || '')
       setEditRole(shiftData.staff_type_needed || 'any')
-      setEditClassroom(shiftData.classroom_id || 'any')
+      setEditWorkArea(shiftData.work_area_id || 'any')
 
       // 2. Fetch Claims
       const { data: claimsData } = await supabase
@@ -106,13 +106,13 @@ export default function ShiftDetailPage() {
       
       setClaims(claimsData || [])
 
-      // 3. Fetch Classrooms for selector
+      // 3. Fetch Work Areas for selector
       const { data: rooms } = await supabase
-        .from('classrooms')
+        .from('work_areas')
         .select('*')
         .eq('center_id', shiftData.center_id)
       
-      setClassrooms(rooms || [])
+      setWorkAreas(rooms || [])
 
     } catch (err: any) {
       setError(err.message)
@@ -133,7 +133,7 @@ export default function ShiftDetailPage() {
           hourly_rate: parseFloat(editRate),
           payment_mode: editMode,
           notes: editNotes,
-          classroom_id: editClassroom === 'any' ? null : editClassroom,
+          work_area_id: editWorkArea === 'any' ? null : editWorkArea,
           staff_type_needed: editRole === 'any' ? null : editRole
         })
         .eq('id', shiftId)
@@ -273,7 +273,7 @@ export default function ShiftDetailPage() {
               <span className="text-[#a8b5ae] font-bold text-xs">ID: {shift.id.substring(0,8)}</span>
             </div>
             <h1 className="text-3xl font-extrabold text-[#0b3828]">
-               {isEditing ? "Editing Shift" : `${shift.classrooms?.name || 'Any Room'} Shift`}
+               {isEditing ? "Editing Shift" : `${shift.work_areas?.name || 'Any Room'} Shift`}
             </h1>
           </div>
           <div className="flex items-center gap-3">
@@ -338,14 +338,14 @@ export default function ShiftDetailPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">{classroomTerm}</label>
+                      <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">{workAreaTerm}</label>
                        <select 
-                         value={editClassroom}
-                         onChange={(e) => setEditClassroom(e.target.value)}
+                         value={editWorkArea}
+                         onChange={(e) => setEditWorkArea(e.target.value)}
                          className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
                        >
-                         <option value="any">Float / No specific room</option>
-                         {classrooms.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                         <option value="any">Float / No specific area</option>
+                         {workAreas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                       </select>
                     </div>
                  </div>

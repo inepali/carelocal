@@ -2,6 +2,43 @@
 
 @theme {
   /* ── Brand Colors ── */
+  --color-brand-50:  var(--color-brand-50);
+  --color-brand-100: var(--color-brand-100);
+  --color-brand-200: var(--color-brand-200);
+  --color-brand-300: var(--color-brand-300);
+  --color-brand-400: var(--color-brand-400);
+  --color-brand-500: var(--color-brand-500);
+  --color-brand-600: var(--color-brand-600);
+  --color-brand-700: var(--color-brand-700);
+  --color-brand-800: var(--color-brand-800);
+  --color-brand-900: var(--color-brand-900);
+
+  --color-amber-400: var(--color-amber-400);
+  --color-amber-500: var(--color-amber-500);
+  --color-amber-600: var(--color-amber-600);
+
+  /* ── Neutrals ── */
+  --color-surface:   var(--color-surface);
+  --color-card:      var(--color-card);
+  --color-border:    var(--color-border);
+  --color-muted:     var(--color-muted);
+
+  --color-text-main: var(--color-text-main);
+  --color-text-dark: var(--color-text-dark);
+  --color-text-muted: var(--color-text-muted);
+
+  /* ── Typography ── */
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-mono), 'JetBrains Mono', ui-monospace, monospace;
+
+  /* ── Commit-style spacing tokens ── */
+  --tracking-tight:   -0.025em;
+  --tracking-tighter: -0.04em;
+  --leading-tight:     1.25;
+  --leading-snug:      1.375;
+}
+
+:root, .theme-childcare {
   --color-brand-50:  #edf7f3;
   --color-brand-100: #d4ede4;
   --color-brand-200: #a9dac9;
@@ -17,21 +54,40 @@
   --color-amber-500: #f59e0b;
   --color-amber-600: #d97706;
 
-  /* ── Neutrals ── */
   --color-surface:   #f8faf9;
   --color-card:      #ffffff;
   --color-border:    #e2e8e4;
   --color-muted:     #6b7a73;
 
-  /* ── Typography ── */
-  --font-sans: var(--font-inter), system-ui, sans-serif;
-  --font-mono: var(--font-mono), 'JetBrains Mono', ui-monospace, monospace;
+  --color-text-main: #1a2e25;
+  --color-text-dark: #0b3828;
+  --color-text-muted: #3d5a4f;
+}
 
-  /* ── Commit-style spacing tokens ── */
-  --tracking-tight:   -0.025em;
-  --tracking-tighter: -0.04em;
-  --leading-tight:     1.25;
-  --leading-snug:      1.375;
+.theme-healthcare {
+  --color-brand-50:  #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-200: #c7d2fe;
+  --color-brand-300: #a5b4fc;
+  --color-brand-400: #818cf8;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+  --color-brand-800: #3730a3;
+  --color-brand-900: #312e81;
+
+  --color-amber-400: #f59e0b;
+  --color-amber-500: #d97706;
+  --color-amber-600: #b45309;
+
+  --color-surface:   #fcfdfd;
+  --color-card:      #ffffff;
+  --color-border:    #e0e7ff;
+  --color-muted:     #6b7280;
+
+  --color-text-main: #1e293b;
+  --color-text-dark: #0f172a;
+  --color-text-muted: #475569;
 }
 
 /* ── Base Reset ── */
@@ -42,7 +98,7 @@ html { scroll-behavior: smooth; }
 body {
   font-family: var(--font-sans);
   background-color: var(--color-surface);
-  color: #1a2e25;
+  color: var(--color-text-main);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -121,7 +177,7 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700;          /* bold, not black */
   letter-spacing: -0.02em;
   line-height: 1.2;
-  color: #0b3828;
+  color: var(--color-text-dark);
 }
 
 /* Section headings — h2 */
@@ -129,7 +185,7 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 1.05rem;
   font-weight: 600;          /* semibold */
   letter-spacing: -0.01em;
-  color: #1a2e25;
+  color: var(--color-text-main);
   text-transform: none;      /* kill rogue uppercase */
 }
 
@@ -139,7 +195,7 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
-  color: #1a2e25;
+  color: var(--color-text-main);
 }
 
 /* Eyebrow labels — the tiny uppercase things above headings */
@@ -157,7 +213,7 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 500;
   letter-spacing: 0.02em;    /* was tracking-widest = 0.1em */
   text-transform: none;
-  color: #3d5a4f;
+  color: var(--color-text-muted);
 }
 
 /* Table / list column headers */
@@ -203,7 +259,7 @@ h1, h2, h3, h4, h5, h6 {
 .center-shell select,
 .center-shell textarea {
   font-weight: 400;          /* was font-black in several pages */
-  color: #1a2e25;
+  color: var(--color-text-main);
 }
 
 /* "View All" / small action links */
@@ -227,7 +283,7 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
   letter-spacing: -0.025em;
   line-height: 1.2;
-  color: #0b3828;
+  color: var(--color-text-dark);
 }
 
 /* Section / card headings — h2 */
@@ -235,7 +291,7 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 1.1rem;
   font-weight: 600;
   letter-spacing: -0.01em;
-  color: #1a2e25;
+  color: var(--color-text-main);
   text-transform: none;
 }
 
@@ -246,7 +302,7 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.02em;
   line-height: 1.15;
   text-transform: none;
-  color: #0b3828;
+  color: var(--color-text-dark);
 }
 
 /* Eyebrow labels (the "Expansion Marketplace" type tags above headings) */
@@ -255,7 +311,7 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #157354;
+  color: var(--color-brand-600);
 }
 
 /* Form labels */
@@ -264,14 +320,14 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 500;
   letter-spacing: 0.02em;
   text-transform: none;
-  color: #3d5a4f;
+  color: var(--color-text-muted);
 }
 
 /* Descriptive / body text */
 .staff-shell p {
   font-size: 0.9rem;
   font-weight: 400;
-  color: #6b7a73;
+  color: var(--color-muted);
   line-height: 1.6;
 }
 
@@ -287,7 +343,7 @@ h1, h2, h3, h4, h5, h6 {
 .staff-shell select,
 .staff-shell textarea {
   font-weight: 400;
-  color: #1a2e25;
+  color: var(--color-text-main);
 }
 
 /* Status pill / badge tracking */
@@ -308,4 +364,69 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: 0.02em;
   text-transform: none;
   color: #a8b5ae;
+}
+
+/* ── Healthcare vertical style overrides for hardcoded green hex codes ── */
+.theme-healthcare {
+  /* Overrides for text color */
+  .text-\[\#0b3828\] { color: var(--color-brand-900) !important; }
+  .text-\[\#0f4a36\] { color: var(--color-brand-800) !important; }
+  .text-\[\#157354\] { color: var(--color-brand-600) !important; }
+  .text-\[\#74c3a8\] { color: var(--color-brand-300) !important; }
+  .text-\[\#a9dac9\] { color: var(--color-brand-200) !important; }
+  .text-\[\#d4ede4\] { color: var(--color-brand-100) !important; }
+  .text-\[\#edf7f3\] { color: var(--color-brand-50) !important; }
+  .text-\[\#1a2e25\] { color: var(--color-text-main) !important; }
+  .text-\[\#3d5a4f\] { color: var(--color-text-muted) !important; }
+  .text-\[\#6b7a73\] { color: var(--color-muted) !important; }
+  .text-\[\#a8b5ae\] { color: var(--color-muted) !important; }
+
+  /* Overrides for background color */
+  .bg-\[\#0b3828\] { background-color: var(--color-brand-900) !important; }
+  .bg-\[\#0f4a36\] { background-color: var(--color-brand-800) !important; }
+  .bg-\[\#157354\] { background-color: var(--color-brand-600) !important; }
+  .bg-\[\#74c3a8\] { background-color: var(--color-brand-300) !important; }
+  .bg-\[\#a9dac9\] { background-color: var(--color-brand-200) !important; }
+  .bg-\[\#d4ede4\] { background-color: var(--color-brand-100) !important; }
+  .bg-\[\#edf7f3\] { background-color: var(--color-brand-50) !important; }
+  .bg-\[\#1a2e25\] { background-color: var(--color-text-main) !important; }
+  .bg-\[\#3d5a4f\] { background-color: var(--color-text-muted) !important; }
+  .bg-\[\#6b7a73\] { background-color: var(--color-muted) !important; }
+  .bg-\[\#f8faf9\] { background-color: var(--color-surface) !important; }
+  .bg-\[\#f0fdf4\] { background-color: var(--color-brand-50) !important; }
+  .bg-gradient-to-r.from-\[\#0b3828\].to-\[\#157354\] {
+    background-image: linear-gradient(to right, var(--color-brand-900), var(--color-brand-600)) !important;
+  }
+
+  /* Overrides for border color */
+  .border-\[\#0b3828\] { border-color: var(--color-brand-900) !important; }
+  .border-\[\#0f4a36\] { border-color: var(--color-brand-800) !important; }
+  .border-\[\#157354\] { border-color: var(--color-brand-600) !important; }
+  .border-\[\#e2e8e4\] { border-color: var(--color-border) !important; }
+  .border-\[\#f0f4f2\] { border-color: var(--color-border) !important; }
+  .border-\[\#edf7f3\] { border-color: var(--color-brand-50) !important; }
+  .border-\[\#157354\]\/20 { border-color: rgba(79, 70, 229, 0.2) !important; }
+
+  /* Hover overrides */
+  .hover\:bg-\[\#0b3828\]:hover { background-color: var(--color-brand-900) !important; }
+  .hover\:bg-\[\#0f4a36\]:hover { background-color: var(--color-brand-800) !important; }
+  .hover\:bg-\[\#157354\]:hover { background-color: var(--color-brand-600) !important; }
+  .hover\:bg-\[\#edf7f3\]:hover { background-color: var(--color-brand-50) !important; }
+  .hover\:bg-\[\#f8faf9\]:hover { background-color: var(--color-surface) !important; }
+  
+  .hover\:text-\[\#0b3828\]:hover { color: var(--color-brand-900) !important; }
+  .hover\:text-\[\#157354\]:hover { color: var(--color-brand-600) !important; }
+  .hover\:text-\[\#edf7f3\]:hover { color: var(--color-brand-50) !important; }
+
+  .hover\:border-\[\#157354\]:hover { border-color: var(--color-brand-600) !important; }
+
+  /* Focus ring & shadow overrides */
+  .focus\:ring-\[\#157354\]\/30:focus {
+    outline-color: var(--color-brand-500) !important;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.3) !important;
+  }
+  .focus\:ring-\[\#157354\]\/10:focus {
+    outline-color: var(--color-brand-500) !important;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1) !important;
+  }
 }

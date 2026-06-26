@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Center, SubscriptionTier, TIER_LIMITS, MetroArea } from '@/lib/types'
+import { Center, SubscriptionTier, getTierLimits, MetroArea } from '@/lib/types'
 import { Building2, Save, MapPin, Phone, Mail, User, ShieldCheck, Loader2, ExternalLink, Clock, Globe, ArrowRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
@@ -98,7 +98,7 @@ export default function CenterSettingsPage() {
         metro_area_id: center.metro_area_id,
         timezone: center.timezone,
         staff_term: center.staff_term,
-        classroom_term: center.classroom_term
+        work_area_term: center.work_area_term
       })
       .eq('id', center.id)
 
@@ -139,7 +139,8 @@ export default function CenterSettingsPage() {
   if (loading) return <div className="p-12 animate-pulse font-black text-slate-300">Loading Expansion Data...</div>
 
   const tier = (center.subscription_tier as SubscriptionTier) || 'starter'
-  const limits = TIER_LIMITS[tier]
+  const domainKey = (center.domain_key as 'childcare' | 'healthcare') || 'childcare'
+  const limits = getTierLimits(domainKey)[tier]
 
   const staffPercentage = limits.maxStaff === Infinity 
     ? 0 

@@ -32,10 +32,10 @@ export function useLookups(groupName: string) {
           return
         }
 
-        // We fetch the center_id first (this could also be cached, but we'll fetch it here)
+        // We fetch the center_id and domain_key first
         const { data: admin } = await supabase
           .from('center_admins')
-          .select('center_id')
+          .select('center_id, centers ( domain_key )')
           .eq('user_id', user.id)
           .maybeSingle()
 
@@ -56,7 +56,16 @@ export function useLookups(groupName: string) {
 
         if (error) throw error
 
-        const fetchedData = lookups || []
+        // @ts-ignore
+        const domainKey = admin?.centers?.domain_key || 'childcare'
+
+        // Filter platform defaults by domainKey (for overrides or custom records, they have a non-null center_id)
+        const fetchedData = (lookups || []).filter(item => {
+          if (item.center_id === null) {
+            return item.domain_key === domainKey
+          }
+          return true
+        })
         
         // Update cache
         lookupCache[cacheKey] = {

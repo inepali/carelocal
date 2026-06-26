@@ -18,7 +18,7 @@ interface Shift {
     city: string
     state: string
   } | null
-  classrooms: {
+  work_areas: {
     name: string
   } | null
   my_claim?: {
@@ -251,9 +251,9 @@ export default function MobileMyShiftsPage() {
                     <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400" />
                     {shift.centers?.city}, {shift.centers?.state}
                   </div>
-                  {shift.classrooms && (
+                  {shift.work_areas && (
                     <div className="text-[10px] text-[#3d5a4f] bg-slate-50 border border-slate-100 rounded-lg px-2 py-1 w-fit mt-1">
-                      <span className="font-bold text-slate-400">Classroom:</span> {shift.classrooms.name}
+                      <span className="font-bold text-slate-400">Area:</span> {shift.work_areas.name}
                     </div>
                   )}
                 </div>

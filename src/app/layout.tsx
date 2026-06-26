@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
+import { headers } from 'next/headers'
+import { getDomainKey, getDomainConfig } from '@/lib/domain-config'
 import './globals.css'
 
 const inter = Inter({
@@ -15,36 +17,60 @@ const jetbrainsMono = JetBrains_Mono({
   weight: ['400', '500', '600', '700'],
 })
 
-export const metadata: Metadata = {
-  title: 'CareLocal — Childcare Staffing Software & Daycare Substitute Management',
-  description:
-    'CareLocal is the childcare staff scheduling software built exclusively for early learning centers and daycares. Post shifts, SMS blast your substitute pool, and organize teacher certifications, background checks, and compliance logs in one dashboard.',
-  metadataBase: new URL('https://carelocal.io'),
-  manifest: '/manifest.json',
-  keywords: [
-    'childcare staff scheduling software',
-    'daycare substitute management',
-    'preschool staff scheduling',
-    'daycare substitute pool',
-    'childcare shift scheduler',
-    'SMS shift blast daycare',
-    'childcare compliance software',
-    'daycare staffing agency alternative',
-    'early childhood educator staffing',
-    'substitute teacher tracker daycare'
-  ],
-  openGraph: {
-    title: 'CareLocal — Childcare Staffing Software & Daycare Substitute Management',
-    description: 'Post open shifts, SMS blast your daycare substitute teacher pool, and fill positions in minutes — not hours.',
-    url: 'https://carelocal.io',
-    siteName: 'CareLocal',
-    type: 'website',
-  },
+export async function generateMetadata(): Promise<Metadata> {
+  const headersList = await headers()
+  const host = headersList.get('host') || ''
+  const domainKey = getDomainKey(host)
+  const config = getDomainConfig(domainKey)
+  const isHealthcare = domainKey === 'healthcare'
+
+  return {
+    title: config.title,
+    description: config.description,
+    metadataBase: new URL(isHealthcare ? 'https://carelocalhealth.com' : 'https://carelocal.io'),
+    manifest: '/manifest.json',
+    keywords: isHealthcare
+      ? [
+          'healthcare staff scheduling software',
+          'hospital shift scheduling',
+          'medical staffing platform',
+          'PRN nursing pool',
+          'clinic shift scheduler',
+          'SMS shift blast nursing',
+          'clinical compliance software',
+          'nursing staffing alternative',
+          'CNA shift scheduler'
+        ]
+      : [
+          'childcare staff scheduling software',
+          'daycare substitute management',
+          'preschool staff scheduling',
+          'daycare substitute pool',
+          'childcare shift scheduler',
+          'SMS shift blast daycare',
+          'childcare compliance software',
+          'daycare staffing agency alternative',
+          'early childhood educator staffing',
+          'substitute teacher tracker daycare'
+        ],
+    openGraph: {
+      title: config.title,
+      description: config.description,
+      url: isHealthcare ? 'https://carelocalhealth.com' : 'https://carelocal.io',
+      siteName: config.appName,
+      type: 'website',
+    },
+  }
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const headersList = await headers()
+  const host = headersList.get('host') || ''
+  const domainKey = getDomainKey(host)
+  const themeClass = domainKey === 'healthcare' ? 'theme-healthcare' : 'theme-childcare'
+
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} ${themeClass}`}>
       <body className="antialiased">{children}</body>
     </html>
   )

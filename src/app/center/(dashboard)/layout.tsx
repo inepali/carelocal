@@ -14,7 +14,8 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
   const [loading, setLoading] = useState(true)
   const [centerName, setCenterName] = useState('Loading...')
   const [staffTerm, setStaffTerm] = useState('Staffs')
-  const [classroomTerm, setClassroomTerm] = useState('Classrooms')
+  const [workAreaTerm, setWorkAreaTerm] = useState('Classrooms')
+  const [domainKey, setDomainKey] = useState<'childcare' | 'healthcare'>('childcare')
 
   useEffect(() => {
     async function loadCenter() {
@@ -27,7 +28,8 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
           centers (
             name,
             staff_term,
-            classroom_term
+            work_area_term,
+            domain_key
           )
         `)
         .eq('user_id', user.id)
@@ -39,7 +41,9 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
         // @ts-ignore
         if (data.centers.staff_term) setStaffTerm(data.centers.staff_term)
         // @ts-ignore
-        if (data.centers.classroom_term) setClassroomTerm(data.centers.classroom_term)
+        if (data.centers.work_area_term) setWorkAreaTerm(data.centers.work_area_term)
+        // @ts-ignore
+        if (data.centers.domain_key) setDomainKey(data.centers.domain_key)
       }
       setLoading(false)
     }
@@ -56,7 +60,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
     { name: 'Dashboard', href: '/center/dashboard', icon: LayoutDashboard },
     { name: 'Shifts', href: '/center/shifts', icon: Calendar },
     { name: staffTerm, href: '/center/team_member', icon: Users },
-    { name: classroomTerm, href: '/center/sections', icon: Home },
+    { name: workAreaTerm, href: '/center/sections', icon: Home },
     { name: 'Documents', href: '/center/documents', icon: FileText },
     { name: 'Manage Data', href: '/center/settings/data', icon: Database },
     { name: 'Subscription', href: '/center/subscription', icon: CreditCard },
@@ -65,25 +69,29 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
   ]
 
   if (loading) {
-     return <div className="min-h-screen bg-[#f8faf9] flex items-center justify-center">Loading...</div>
+     return <div className="min-h-screen bg-surface flex items-center justify-center">Loading...</div>
   }
 
   return (
-    <CenterContext.Provider value={{ staffTerm, classroomTerm }}>
-      <div className="center-shell min-h-screen bg-[#f8faf9] flex font-sans">
+    <CenterContext.Provider value={{ staffTerm, workAreaTerm }}>
+      <div className="center-shell min-h-screen bg-surface flex font-sans">
       {/* ── Sidebar ── */}
-      <aside className="w-64 bg-[#0b3828] text-white flex flex-col fixed inset-y-0 z-10">
+      <aside className="w-64 bg-brand-900 text-white flex flex-col fixed inset-y-0 z-10">
         <div className="h-16 flex items-center px-6 border-b border-white/10 shrink-0">
           <Link href="/center/dashboard" className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md bg-[#157354] flex items-center justify-center">
-              <span className="text-white font-bold text-xs">CL</span>
+            <div className="w-7 h-7 rounded-md bg-brand-600 flex items-center justify-center">
+              <span className="text-white font-bold text-xs">{domainKey === 'healthcare' ? 'CLH' : 'CL'}</span>
             </div>
-            <span className="font-semibold text-lg tracking-tight truncate">CareLocal</span>
+            <span className="font-semibold text-lg tracking-tight truncate">
+              {domainKey === 'healthcare' ? 'CareLocal Health' : 'CareLocal'}
+            </span>
           </Link>
         </div>
 
         <div className="px-6 py-4 border-b border-white/10 shrink-0">
-          <div className="text-xs text-[#74c3a8] uppercase tracking-wider font-semibold mb-1">Center</div>
+          <div className="text-xs text-brand-300 uppercase tracking-wider font-semibold mb-1">
+            {domainKey === 'healthcare' ? 'Facility' : 'Center'}
+          </div>
           <div className="font-medium truncate">{centerName}</div>
         </div>
 
@@ -96,11 +104,11 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
                 href={item.href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                   isActive 
-                    ? 'bg-[#157354] text-white font-medium' 
-                    : 'text-[#d4ede4] hover:bg-white/5 hover:text-white'
+                    ? 'bg-brand-600 text-white font-medium' 
+                    : 'text-brand-100 hover:bg-white/5 hover:text-white'
                 }`}
               >
-                <item.icon className={`w-5 h-5 ${isActive ? 'text-[#74c3a8]' : 'text-[#a9dac9]'}`} />
+                <item.icon className={`w-5 h-5 ${isActive ? 'text-brand-300' : 'text-brand-200'}`} />
                 {item.name}
               </Link>
             )
@@ -110,13 +118,13 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
         <div className="p-4 border-t border-white/10 shrink-0">
           <Link
             href="/center/shifts/new"
-            className="flex items-center justify-center gap-2 w-full bg-[#fbbf24] text-[#0b3828] font-semibold py-2.5 rounded-lg hover:bg-[#f59e0b] mb-4 shadow-sm"
+            className="flex items-center justify-center gap-2 w-full bg-amber-400 text-brand-900 font-semibold py-2.5 rounded-lg hover:bg-amber-500 mb-4 shadow-sm"
           >
             <Plus className="w-4 h-4" /> Post New Shift
           </Link>
           <button
             onClick={handleSignOut}
-            className="flex items-center gap-3 px-3 py-2 w-full text-sm text-[#a9dac9] hover:bg-white/5 hover:text-white rounded-lg transition-colors"
+            className="flex items-center gap-3 px-3 py-2 w-full text-sm text-brand-200 hover:bg-white/5 hover:text-white rounded-lg transition-colors"
           >
             <LogOut className="w-4 h-4" />
             Sign out

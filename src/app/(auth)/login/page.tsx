@@ -1,10 +1,34 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react'
+import { getDomainConfig } from '@/lib/domain-config'
+
+const LOGIN_CONTENT = {
+  childcare: {
+    tagline: 'Fill an open shift in under 4 hours.',
+    desc: 'Post a shift, blast your staff pool by SMS, and get confirmation — all without picking up the phone.',
+    checklist: [
+      'Instant SMS blast to your entire staff pool',
+      'Staff documents organized in one place',
+      'Your center, your compliance decisions',
+    ],
+    footer: 'carelocal.io'
+  },
+  healthcare: {
+    tagline: 'Fill clinical shifts in under 15 minutes.',
+    desc: 'Broadcast open shifts to your pre-approved nurse and CNA pool by SMS, and get claims instantly.',
+    checklist: [
+      'Instant SMS broadcast to your credentialed pool',
+      'Nursing credentials organized in one vault',
+      'Your facility, your compliance standards',
+    ],
+    footer: 'carelocalhealth.com'
+  }
+}
 
 export default function LoginPage() {
   const router = useRouter()
@@ -14,6 +38,21 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Resolve domain vertical configuration dynamically
+  const [domainKey, setDomainKey] = useState<'childcare' | 'healthcare'>('childcare')
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const host = window.location.host
+      if (host.includes('carelocalhealth.com') || host.includes('3001')) {
+        setDomainKey('healthcare')
+      }
+    }
+  }, [])
+
+  const config = getDomainConfig(domainKey)
+  const content = LOGIN_CONTENT[domainKey]
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -50,19 +89,19 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8faf9] flex">
+    <div className="min-h-screen bg-surface flex">
       {/* ── Left: Form ── */}
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-md">
           <Link href="/" className="flex items-center gap-2 mb-10">
-            <div className="w-8 h-8 rounded-lg bg-[#157354] flex items-center justify-center">
-              <span className="text-white font-bold text-sm">CL</span>
+            <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center">
+              <span className="text-white font-bold text-sm">{config.logoShort}</span>
             </div>
-            <span className="font-bold text-[#0f4a36] text-lg">CareLocal</span>
+            <span className="font-bold text-brand-800 text-lg">{config.appName}</span>
           </Link>
 
-          <h1 className="text-3xl font-extrabold text-[#0b3828] mb-2">Welcome back</h1>
-          <p className="text-[#6b7a73] mb-8">Sign in to your CareLocal account</p>
+          <h1 className="text-3xl font-extrabold text-brand-900 mb-2">Welcome back</h1>
+          <p className="text-[#6b7a73] mb-8">Sign in to your {config.appName} account</p>
 
           <form onSubmit={handleLogin} className="space-y-5">
             {error && (
@@ -72,7 +111,7 @@ export default function LoginPage() {
             )}
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-[#1a2e25] mb-1.5">
+              <label htmlFor="email" className="block text-sm font-medium text-brand-900 mb-1.5">
                 Email address
               </label>
               <input
@@ -82,17 +121,17 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@yourcenter.org"
-                className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25] placeholder:text-[#a8b5ae]"
+                placeholder={config.onboarding.emailPlaceholder}
+                className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-brand-900 placeholder:text-[#a8b5ae]"
               />
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label htmlFor="password" className="block text-sm font-medium text-[#1a2e25]">
+                <label htmlFor="password" className="block text-sm font-medium text-brand-900">
                   Password
                 </label>
-                <Link href="/forgot-password" className="text-xs text-[#157354] hover:underline">
+                <Link href="/forgot-password" className="text-xs text-brand-600 hover:underline">
                   Forgot password?
                 </Link>
               </div>
@@ -105,12 +144,12 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-4 py-3 pr-12 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
+                  className="w-full px-4 py-3 pr-12 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-brand-900"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6b7a73] hover:text-[#157354] transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6b7a73] hover:text-brand-600 transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -121,7 +160,7 @@ export default function LoginPage() {
               id="login-submit"
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-[#157354] text-white font-semibold py-3 rounded-xl hover:bg-[#0f4a36] transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
+              className="w-full flex items-center justify-center gap-2 bg-brand-600 text-white font-semibold py-3 rounded-xl hover:bg-brand-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
             >
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -133,13 +172,13 @@ export default function LoginPage() {
 
           <p className="text-center text-sm text-[#6b7a73] mt-8">
             Don't have an account?{' '}
-            <Link href="/register" className="text-[#157354] font-semibold hover:underline">
+            <Link href="/register" className="text-brand-600 font-semibold hover:underline">
               Get started free
             </Link>
           </p>
           <p className="text-center text-sm text-[#6b7a73] mt-2">
             Are you a staff member with an invite?{' '}
-            <Link href="/staff/join" className="text-[#157354] font-semibold hover:underline">
+            <Link href="/staff/join" className="text-brand-600 font-semibold hover:underline">
               Join here →
             </Link>
           </p>
@@ -147,34 +186,30 @@ export default function LoginPage() {
       </div>
 
       {/* ── Right: Brand panel ── */}
-      <div className="hidden lg:flex w-[480px] bg-[#0b3828] flex-col justify-between p-12">
+      <div className="hidden lg:flex w-[480px] bg-brand-900 flex-col justify-between p-12 text-white">
         <div />
         <div>
           <div className="text-5xl mb-6">⚡</div>
           <h2 className="text-3xl font-extrabold text-white mb-4 leading-snug">
-            Fill an open shift in under 4 hours.
+            {content.tagline}
           </h2>
-          <p className="text-[#74c3a8] leading-relaxed">
-            Post a shift, blast your staff pool by SMS, and get confirmation — all without picking up the phone.
+          <p className="text-brand-300 leading-relaxed">
+            {content.desc}
           </p>
           <div className="mt-10 space-y-4">
-            {[
-              'Instant SMS blast to your entire staff pool',
-              'Staff documents organized in one place',
-              'Your center, your compliance decisions',
-            ].map((item) => (
+            {content.checklist.map((item) => (
               <div key={item} className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-[#157354] flex items-center justify-center shrink-0">
+                <div className="w-5 h-5 rounded-full bg-brand-600 flex items-center justify-center shrink-0">
                   <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
                 </div>
-                <span className="text-[#d4ede4] text-sm">{item}</span>
+                <span className="text-brand-100 text-sm">{item}</span>
               </div>
             ))}
           </div>
         </div>
-        <p className="text-[#40a884] text-sm">© {new Date().getFullYear()} CareLocal · carelocal.io</p>
+        <p className="text-brand-400 text-sm">© {new Date().getFullYear()} {config.appName} · {content.footer}</p>
       </div>
     </div>
   )

@@ -3,19 +3,19 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Classroom } from '@/lib/types'
+import { WorkArea } from '@/lib/types'
 import { useLookups } from '@/hooks/use-lookups'
 import { Calendar, Clock, Loader2, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { useCenterContext } from '../../context'
 
 export default function PostShiftPage() {
-  const { staffTerm, classroomTerm } = useCenterContext()
+  const { staffTerm, workAreaTerm } = useCenterContext()
   const router = useRouter()
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [classrooms, setClassrooms] = useState<Classroom[]>([])
+  const [workAreas, setWorkAreas] = useState<WorkArea[]>([])
   const [centerId, setCenterId] = useState<string | null>(null)
   const { data: staffRoles } = useLookups('Role')
   const { data: paymentMethodsRaw } = useLookups('Payment Method')
@@ -34,7 +34,7 @@ export default function PostShiftPage() {
   const [startTime, setStartTime] = useState('08:00')
   const [endTime, setEndTime] = useState('16:00')
   const [staffType, setStaffType] = useState<string>('any')
-  const [classroomId, setClassroomId] = useState('any')
+  const [workAreaId, setWorkAreaId] = useState('any')
   const [notes, setNotes] = useState('')
   const [hourlyRate, setHourlyRate] = useState('20.00')
   const [paymentMode, setPaymentMode] = useState('payroll')
@@ -53,11 +53,11 @@ export default function PostShiftPage() {
       if (adminData) {
         setCenterId(adminData.center_id)
         const { data: rooms } = await supabase
-          .from('classrooms')
+          .from('work_areas')
           .select('*')
           .eq('center_id', adminData.center_id)
         
-        if (rooms) setClassrooms(rooms)
+        if (rooms) setWorkAreas(rooms)
       }
     }
     loadData()
@@ -94,7 +94,7 @@ export default function PostShiftPage() {
         start_time: startTime + ':00', // ensure valid time format
         end_time: endTime + ':00',
         staff_type_needed: staffType === 'any' ? null : staffType,
-        classroom_id: classroomId === 'any' ? null : classroomId,
+        work_area_id: workAreaId === 'any' ? null : workAreaId,
         notes: notes || null,
         hourly_rate: parseFloat(hourlyRate) || 0,
         payment_mode: paymentMode,
@@ -219,14 +219,14 @@ export default function PostShiftPage() {
                     </div>
 
                     <div className="flex-1">
-                        <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">{classroomTerm} (Optional)</label>
+                        <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">{workAreaTerm} (Optional)</label>
                         <select
-                            value={classroomId}
-                            onChange={(e) => setClassroomId(e.target.value)}
+                            value={workAreaId}
+                            onChange={(e) => setWorkAreaId(e.target.value)}
                             className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
                         >
-                            <option value="any">Float / No specific room</option>
-                            {classrooms.map((room) => (
+                            <option value="any">Float / No specific area</option>
+                            {workAreas.map((room) => (
                                 <option key={room.id} value={room.id}>{room.name} ({room.age_group})</option>
                             ))}
                         </select>

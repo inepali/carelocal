@@ -26,7 +26,7 @@ export async function getMyShiftsBypassingRLS(staffId: string) {
   
   const { data: shifts, error: shiftsErr } = await supabase
     .from('shifts')
-    .select('*, centers(id, name, address, city, state, zip, slug, metro_area_id), classrooms(name, age_group)')
+    .select('*, centers(id, name, address, city, state, zip, slug, metro_area_id), work_areas(name, age_group)')
     .in('id', shiftIds)
     .order('shift_date', { ascending: true })
     

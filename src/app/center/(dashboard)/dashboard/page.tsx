@@ -86,8 +86,8 @@ export default function DashboardOverview() {
         supabase.from('center_staff').select('*', { count: 'exact', head: true }).eq('center_id', centerId).eq('status', 'active'),
         supabase.from('shifts').select('*', { count: 'exact', head: true }).eq('center_id', centerId).eq('status', 'open').neq('is_archived', true).gte('shift_date', today),
         supabase.from('center_staff_document_status').select('*', { count: 'exact', head: true }).eq('center_id', centerId).eq('status', 'pending_review'),
-        supabase.from('shifts').select('*, classrooms(name)').eq('center_id', centerId).eq('status', 'open').neq('is_archived', true).gte('shift_date', today).order('shift_date', { ascending: true }).limit(3),
-        supabase.from('shift_claims').select('*, staff_profiles(first_name, last_name), shifts(shift_date, start_time, classroom_id, classrooms(name))').eq('status', 'pending').order('claimed_at', { ascending: false }).limit(3),
+        supabase.from('shifts').select('*, work_areas(name)').eq('center_id', centerId).eq('status', 'open').neq('is_archived', true).gte('shift_date', today).order('shift_date', { ascending: true }).limit(3),
+        supabase.from('shift_claims').select('*, staff_profiles(first_name, last_name), shifts(shift_date, start_time, work_area_id, work_areas(name))').eq('status', 'pending').order('claimed_at', { ascending: false }).limit(3),
         supabase.from('center_staff').select('*, staff_profiles(first_name, last_name)').eq('center_id', centerId).order('added_at', { ascending: false }).limit(3),
         supabase.from('shift_reviews').select('rating').eq('reviewee_id', centerId).eq('reviewer_type', 'staff')
       ])
@@ -118,7 +118,7 @@ export default function DashboardOverview() {
         ...(claimsData || []).map(c => ({
           id: c.id,
           type: 'claim',
-          text: `${c.staff_profiles.first_name} claimed shift for ${c.shifts.classrooms?.name || 'Any Room'}`,
+          text: `${c.staff_profiles.first_name} claimed shift for ${c.shifts.work_areas?.name || 'Any Room'}`,
           time: c.claimed_at,
           icon: Calendar
         })),
@@ -269,7 +269,7 @@ export default function DashboardOverview() {
                   </div>
                   <div className="flex-1">
                     <div className="font-black text-[#1a2e25] text-sm group-hover:text-[#157354] transition-colors">
-                      {shift.classrooms?.name || 'Any Room'}
+                      {shift.work_areas?.name || 'Any Room'}
                     </div>
                     <div className="text-[11px] font-bold text-[#6b7a73] flex items-center gap-1.5 mt-0.5">
                       <Clock className="w-3 h-3" /> {shift.start_time.substring(0,5)} - {shift.end_time.substring(0,5)}

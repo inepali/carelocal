@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { TIER_LIMITS, SubscriptionTier } from '@/lib/types'
+import { getTierLimits, SubscriptionTier } from '@/lib/types'
 import { CheckCircle2, ShieldCheck, CreditCard, Loader2 } from 'lucide-react'
 
 // You would replace these with actual Stripe Price IDs from your Stripe Dashboard
@@ -20,6 +20,7 @@ export default function BillingPage() {
   const [isActive, setIsActive] = useState(false)
   const [pageLoading, setPageLoading] = useState(true)
   const [portalLoading, setPortalLoading] = useState(false)
+  const [domainKey, setDomainKey] = useState<'childcare' | 'healthcare'>('childcare')
   const supabase = createClient()
 
   useEffect(() => {
@@ -36,13 +37,16 @@ export default function BillingPage() {
       if (admin) {
         const { data: center } = await supabase
           .from('centers')
-          .select('subscription_tier, subscription_status')
+          .select('subscription_tier, subscription_status, domain_key')
           .eq('id', admin.center_id)
           .single()
 
         if (center) {
           setCurrentTier(center.subscription_tier as SubscriptionTier)
           setIsActive(center.subscription_status === 'active' || center.subscription_status === 'trialing')
+          if (center.domain_key) {
+            setDomainKey(center.domain_key as 'childcare' | 'healthcare')
+          }
         }
       }
       setPageLoading(false)
@@ -109,20 +113,26 @@ export default function BillingPage() {
     {
       id: 'starter',
       name: 'Starter',
-      description: 'Perfect for single-location centers.',
-      features: ['Up to 30 Active Staff', '1 Facility Location', 'Basic Compliance Tracking', 'Standard Support']
+      description: domainKey === 'healthcare' ? 'Perfect for single-location clinical practices.' : 'Perfect for single-location centers.',
+      features: domainKey === 'healthcare'
+        ? ['Up to 30 Active Medical Staff', '1 Clinic Location', 'Credential Review Vault', 'Standard Support']
+        : ['Up to 30 Active Staff', '1 Facility Location', 'Basic Compliance Tracking', 'Standard Support']
     },
     {
       id: 'growth',
       name: 'Growth',
-      description: 'For growing centers and small groups.',
-      features: ['Up to 100 Active Staff', 'Up to 3 Facility Locations', 'Advanced Compliance Workflows', 'Priority Support']
+      description: domainKey === 'healthcare' ? 'For growing clinics and medical groups.' : 'For growing centers and small groups.',
+      features: domainKey === 'healthcare'
+        ? ['Up to 100 Active Medical Staff', 'Up to 3 Clinic Locations', 'Advanced Credential Workflows', 'Priority Support']
+        : ['Up to 100 Active Staff', 'Up to 3 Facility Locations', 'Advanced Compliance Workflows', 'Priority Support']
     },
     {
       id: 'network',
       name: 'Network',
-      description: 'Ideal for established childcare networks.',
-      features: ['Up to 300 Active Staff', 'Up to 10 Facility Locations', 'Dedicated Account Manager', 'Custom API Access']
+      description: domainKey === 'healthcare' ? 'Ideal for healthcare provider networks.' : 'Ideal for established childcare networks.',
+      features: domainKey === 'healthcare'
+        ? ['Up to 300 Active Medical Staff', 'Up to 10 Clinic Locations', 'Dedicated Account Manager', 'Custom API Access']
+        : ['Up to 300 Active Staff', 'Up to 10 Facility Locations', 'Dedicated Account Manager', 'Custom API Access']
     }
   ]
 
@@ -176,12 +186,12 @@ export default function BillingPage() {
             </div>
             
             <div className="mb-8">
-              <span className="text-4xl font-black text-[#0b3828]">
-                ${billingCycle === 'monthly' ? TIER_LIMITS[tier.id].pricePerMonth : (TIER_LIMITS[tier.id].pricePerMonth * 10)}
+              <span className="text-4xl font-black text-brand-900">
+                ${billingCycle === 'monthly' ? getTierLimits(domainKey)[tier.id].pricePerMonth : (getTierLimits(domainKey)[tier.id].pricePerMonth * 10)}
               </span>
               <span className="text-[#a8b5ae] font-bold">/{billingCycle === 'monthly' ? 'mo' : 'yr'}</span>
               {billingCycle === 'yearly' && (
-                <div className="text-xs text-[#157354] font-bold mt-1">Billed annually</div>
+                <div className="text-xs text-brand-600 font-bold mt-1">Billed annually</div>
               )}
             </div>
 

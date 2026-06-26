@@ -11,7 +11,7 @@ import { useLookups } from '@/hooks/use-lookups'
 import { useCenterContext } from '../context'
 
 export default function CenterShiftsPage() {
-  const { staffTerm, classroomTerm } = useCenterContext()
+  const { staffTerm, workAreaTerm } = useCenterContext()
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
   const [shifts, setShifts] = useState<any[]>([])
@@ -55,10 +55,10 @@ export default function CenterShiftsPage() {
           return
         }
 
-        // 2. Fetch Shifts & Classrooms
+        // 2. Fetch Shifts & Work Areas
         const { data: centerShifts, error: shiftsError } = await supabase
           .from('shifts')
-          .select(`*, classrooms (name, age_group)`)
+          .select(`*, work_areas (name, age_group)`)
           .in('center_id', centerIds)
           .neq('is_archived', true)
           .order('shift_date', { ascending: false })
@@ -254,7 +254,7 @@ export default function CenterShiftsPage() {
             <thead>
               <tr className="bg-[#f8faf9] border-b border-[#e2e8e4] text-[#6b7a73] font-medium">
                 <th className="px-6 py-4">Date &amp; Time</th>
-                <th className="px-6 py-4">{classroomTerm}</th>
+                <th className="px-6 py-4">{workAreaTerm}</th>
                 <th className="px-6 py-4">{staffTerm} Role</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Rate</th>
@@ -277,7 +277,7 @@ export default function CenterShiftsPage() {
                 </tr>
               ) : (
                 shifts.map((shift) => {
-                  const classroom = shift.classrooms
+                  const classroom = shift.work_areas
                   return (
                     <tr key={shift.id} className="hover:bg-[#f8faf9] transition-colors">
                       {/* Date & Time */}
