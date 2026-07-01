@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
  */
 export function getStaffInviteLink(centerSlug: string) {
   // In production this would use the real domain
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://carelocal.io'
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://carelocal.co'
   return `${baseUrl}/register?invite=${centerSlug}`
 }
 

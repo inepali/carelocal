@@ -18,7 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function HomePage() {
   const headersList = await headers()
   const host = headersList.get('host') || ''
-  const isHealthcare = host.includes('carelocalhealth.com') || host.includes(':3001') || host.startsWith('3001')
+  const isHealthcare = host.includes('carelocal.net') || host.includes('carelocalhealth.com') || host.includes(':3001') || host.startsWith('3001')
 
   if (isHealthcare) {
     return <HealthcareHomePage />

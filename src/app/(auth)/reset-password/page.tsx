@@ -27,7 +27,7 @@ function ResetPasswordForm() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const host = window.location.host
-      if (host.includes('carelocalhealth.com') || host.includes('3001')) {
+      if (host.includes('carelocal.net') || host.includes('carelocalhealth.com') || host.includes('3001')) {
         setDomainKey('healthcare')
       }
     }
@@ -282,7 +282,7 @@ function ResetPasswordForm() {
             ))}
           </div>
         </div>
-        <p className="text-brand-400 text-sm">© {new Date().getFullYear()} {config.appName} · {isHealthcare ? 'carelocalhealth.com' : 'carelocal.io'}</p>
+        <p className="text-brand-400 text-sm">© {new Date().getFullYear()} {config.appName} · {isHealthcare ? 'carelocal.net' : 'carelocal.co'}</p>
       </div>
     </div>
   )

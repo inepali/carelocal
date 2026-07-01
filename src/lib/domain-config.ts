@@ -221,8 +221,8 @@ export const DOMAIN_CONFIGS: Record<DomainKey, DomainConfig> = {
     staffTerm: 'Medical Staff',
     workAreaTerm: 'Care Areas',
     logoShort: 'CLH',
-    supportEmail: 'support@carelocalhealth.com',
-    privacyEmail: 'privacy@carelocalhealth.com',
+    supportEmail: 'support@carelocal.net',
+    privacyEmail: 'privacy@carelocal.net',
     hero: {
       tagline: 'Healthcare Staffing Platform',
       title: 'Fill hospital & clinic shifts in ',
@@ -368,6 +368,7 @@ export function getDomainKey(host: string): DomainKey {
   
   const hostLower = host.toLowerCase()
   if (
+    hostLower.includes('carelocal.net') ||
     hostLower.includes('carelocalhealth.com') ||
     hostLower.includes(':3001') ||
     hostLower.startsWith('3001')

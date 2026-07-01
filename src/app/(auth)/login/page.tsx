@@ -16,7 +16,7 @@ const LOGIN_CONTENT = {
       'Staff documents organized in one place',
       'Your center, your compliance decisions',
     ],
-    footer: 'carelocal.io'
+    footer: 'carelocal.co'
   },
   healthcare: {
     tagline: 'Fill clinical shifts in under 15 minutes.',
@@ -26,7 +26,7 @@ const LOGIN_CONTENT = {
       'Nursing credentials organized in one vault',
       'Your facility, your compliance standards',
     ],
-    footer: 'carelocalhealth.com'
+    footer: 'carelocal.net'
   }
 }
 
@@ -45,7 +45,7 @@ export default function LoginPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const host = window.location.host
-      if (host.includes('carelocalhealth.com') || host.includes('3001')) {
+      if (host.includes('carelocal.net') || host.includes('carelocalhealth.com') || host.includes('3001')) {
         setDomainKey('healthcare')
       }
     }

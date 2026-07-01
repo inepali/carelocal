@@ -21,7 +21,7 @@ function RegisterForm() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const host = window.location.host
-      if (host.includes('carelocalhealth.com') || host.includes('3001')) {
+      if (host.includes('carelocal.net') || host.includes('carelocalhealth.com') || host.includes('3001')) {
         setDomainKey('healthcare')
       }
     }

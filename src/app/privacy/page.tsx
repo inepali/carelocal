@@ -211,7 +211,7 @@ export default async function PrivacyPage() {
                 If you have any questions, concerns, or requests regarding this Privacy Policy or your data, please contact us at:
                 <br /><br />
                 <strong className="text-brand-900">{config.appName} Privacy Team</strong><br />
-                Email: <a href="mailto:privacy@carelocal.co" className="text-brand-600 hover:underline font-semibold">privacy@carelocal.co</a>
+                Email: <a href={`mailto:${config.privacyEmail}`} className="text-brand-600 hover:underline font-semibold">{config.privacyEmail}</a>
               </p>
 
             </div>

@@ -74,7 +74,7 @@ export default function BillingPage() {
 
   async function handleSubscribe(tier: SubscriptionTier) {
     if (tier === 'enterprise') {
-      window.location.href = 'mailto:sales@carelocal.io'
+      window.location.href = `mailto:sales@carelocal.${domainKey === 'healthcare' ? 'net' : 'co'}`
       return
     }
 

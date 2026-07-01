@@ -57,14 +57,22 @@ export async function POST(req: Request) {
     const { centerId, shiftId, staffTypeNeeded, action, shiftDate, startTime, endTime } = await req.json()
 
     if (action === 'shift_posted') {
-      // 1. Fetch the center name
+      // 1. Fetch the center name and domain key
       const { data: center } = await supabase
         .from('centers')
-        .select('name')
+        .select('name, domain_key')
         .eq('id', centerId)
         .single()
       
       const centerName = center?.name || 'A CareLocal Center'
+
+      const isHealthcare = center?.domain_key === 'healthcare'
+      const senderName = isHealthcare ? 'CareLocal Health' : 'CareLocal'
+      const senderEmail = isHealthcare ? 'updates@carelocal.net' : 'updates@carelocal.co'
+      let appUrl = isHealthcare ? 'https://carelocal.net' : 'https://carelocal.co'
+      if (process.env.NEXT_PUBLIC_APP_URL && process.env.NEXT_PUBLIC_APP_URL.includes('localhost')) {
+        appUrl = isHealthcare ? 'http://localhost:3001' : 'http://localhost:3000'
+      }
 
       // 2. Fetch all active staff connected to this center
       const { data: centerStaff } = await supabase
@@ -272,14 +280,14 @@ export async function POST(req: Request) {
         if (prefs.email_enabled !== false && profile.email && resend) {
           try {
             await resend.emails.send({
-              from: 'CareLocal <updates@carelocal.co>', // Replace with verified domain
+              from: `${senderName} <${senderEmail}>`,
               to: profile.email,
               subject: notificationTitle,
               html: `
                 <div style="font-family: sans-serif; max-w: 600px; margin: 0 auto;">
                   <h2>${notificationTitle}</h2>
                   <p>${notificationMessage}</p>
-                  <a href="${process.env.NEXT_PUBLIC_APP_URL}/staff/shifts" style="display: inline-block; padding: 12px 24px; background-color: #157354; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 16px;">View Shift</a>
+                  <a href="${appUrl}/staff/shifts" style="display: inline-block; padding: 12px 24px; background-color: #157354; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 16px;">View Shift</a>
                 </div>
               `
             })
@@ -292,7 +300,7 @@ export async function POST(req: Request) {
         if (prefs.sms_enabled === true && profile.phone && twilioClient) {
           try {
             await twilioClient.messages.create({
-              body: `CareLocal: ${notificationTitle}. ${notificationMessage} View it here: ${process.env.NEXT_PUBLIC_APP_URL}/staff/shifts`,
+              body: `${senderName}: ${notificationTitle}. ${notificationMessage} View it here: ${appUrl}/staff/shifts`,
               from: process.env.TWILIO_PHONE_NUMBER,
               to: profile.phone
             })

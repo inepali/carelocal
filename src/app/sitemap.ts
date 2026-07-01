@@ -1,7 +1,11 @@
 import type { MetadataRoute } from 'next'
+import { headers } from 'next/headers'
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://carelocal.io'
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const headersList = await headers()
+  const host = headersList.get('host') || 'carelocal.co'
+  const isHealthcare = host.includes('carelocal.net') || host.includes('carelocalhealth.com') || host.includes(':3001') || host.startsWith('3001')
+  const baseUrl = isHealthcare ? 'https://carelocal.net' : 'https://carelocal.co'
   const currentDate = new Date()
   
   return [

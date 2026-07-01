@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
   const host = request.headers.get('host') || ''
-  const isHealthcare = host.includes('carelocalhealth.com') || host.includes(':3001') || host.startsWith('3001')
+  const isHealthcare = host.includes('carelocal.net') || host.includes('carelocalhealth.com') || host.includes(':3001') || host.startsWith('3001')
 
   let supabaseResponse = request.nextUrl.pathname === '/'
     ? NextResponse.rewrite(new URL(isHealthcare ? '/healthcare' : '/childcare', request.url), {

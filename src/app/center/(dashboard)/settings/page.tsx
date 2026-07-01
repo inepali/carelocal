@@ -15,13 +15,19 @@ export default function CenterSettingsPage() {
   const [center, setCenter] = useState<Partial<Center>>({})
   const [metros, setMetros] = useState<MetroArea[]>([])
   
-  // Tracking actual usage stats
   const [activeStaffCount, setActiveStaffCount] = useState(0)
   const [activeLocationCount, setActiveLocationCount] = useState(0)
   const [portalLoading, setPortalLoading] = useState(false)
+  const [isHealthcare, setIsHealthcare] = useState(false)
 
   useEffect(() => {
     loadData()
+    if (typeof window !== 'undefined') {
+      const host = window.location.host
+      if (host.includes('carelocal.net') || host.includes('carelocalhealth.com') || host.includes('3001')) {
+        setIsHealthcare(true)
+      }
+    }
   }, [])
 
   async function loadData() {
@@ -377,7 +383,7 @@ export default function CenterSettingsPage() {
              </div>
              <h3 className="font-black text-[#1a2e25] mb-3 uppercase tracking-widest text-xs">Regional Support</h3>
              <p className="text-sm text-[#6b7a73] font-medium leading-relaxed mb-6">Need to move your center to a different Metro Area or request a new region? Our expansion team is ready.</p>
-             <a href="mailto:expansion@carelocal.io" className="text-[#157354] font-black text-sm hover:underline flex items-center gap-2">
+             <a href={`mailto:expansion@carelocal.${isHealthcare ? 'net' : 'co'}`} className="text-[#157354] font-black text-sm hover:underline flex items-center gap-2">
                 Open Support Ticket <ArrowRight className="w-4 h-4" />
              </a>
           </div>

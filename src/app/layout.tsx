@@ -27,7 +27,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: config.title,
     description: config.description,
-    metadataBase: new URL(isHealthcare ? 'https://carelocalhealth.com' : 'https://carelocal.io'),
+    metadataBase: new URL(isHealthcare ? 'https://carelocal.net' : 'https://carelocal.co'),
     manifest: '/manifest.json',
     keywords: isHealthcare
       ? [
@@ -56,7 +56,7 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       title: config.title,
       description: config.description,
-      url: isHealthcare ? 'https://carelocalhealth.com' : 'https://carelocal.io',
+      url: isHealthcare ? 'https://carelocal.net' : 'https://carelocal.co',
       siteName: config.appName,
       type: 'website',
     },
