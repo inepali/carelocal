@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { MapPin, CheckCircle2, Loader2, ArrowRight, ShieldCheck, Globe, Sparkles, Heart, Calendar, Clock, Star, LogIn, LogOut, X, AlertCircle } from 'lucide-react'
+import { MapPin, CheckCircle2, Loader2, ArrowRight, ShieldCheck, Globe, Sparkles, Heart, Calendar, Clock, Star, LogIn, LogOut, X, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { getMyShiftsBypassingRLS } from '@/app/actions/my-shifts.actions'
@@ -28,6 +28,11 @@ export default function MyShiftsPage() {
   const [reviewingShift, setReviewingShift] = useState<any>(null)
   const [reviewedCenterIds, setReviewedCenterIds] = useState<Set<string>>(new Set())
   const [showBalanceModal, setShowBalanceModal] = useState(false)
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const today = new Date()
+    return new Date(today.getFullYear(), today.getMonth(), 1)
+  })
+  const [selectedShiftByDate, setSelectedShiftByDate] = useState<Record<string, string>>({})
 
   useEffect(() => {
     async function loadData() {
@@ -215,8 +220,11 @@ export default function MyShiftsPage() {
   // Status Filtering Logic
   const filteredShifts = shifts.filter(shift => {
     const myClaim = shift.my_claim
+    const hasRelevantClaim = ['interested', 'pending', 'confirmed'].includes(myClaim?.status)
     const isCompleted = shift.status === 'completed' || !!myClaim?.check_out_time
     const isConfirmed = confirmedShiftIds.has(shift.id)
+
+    if (!hasRelevantClaim) return false
     
     if (statusFilter === 'all') return true
     if (statusFilter === 'completed') return isCompleted
@@ -225,8 +233,21 @@ export default function MyShiftsPage() {
     return true
   })
 
+  const monthLabel = selectedMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  const today = new Date()
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  const firstWeekday = selectedMonth.getDay()
+  const daysInMonth = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0).getDate()
+  const calendarCellCount = firstWeekday + daysInMonth > 35 ? 42 : 35
+  const shiftsByDate = filteredShifts.reduce<Record<string, any[]>>((groups, shift) => {
+    if (!groups[shift.shift_date]) groups[shift.shift_date] = []
+    groups[shift.shift_date].push(shift)
+    return groups
+  }, {})
+  const changeMonth = (offset: number) => setSelectedMonth(current => new Date(current.getFullYear(), current.getMonth() + offset, 1))
+
   return (
-    <div className="max-w-5xl pb-32">
+    <div className="mx-auto w-full max-w-5xl pb-32">
       <div className="mb-10">
         <h1 className="text-4xl font-black text-[#0b3828] mb-2 tracking-tight">My Shifts</h1>
         <p className="text-[#6b7a73] text-lg font-medium">
@@ -234,6 +255,102 @@ export default function MyShiftsPage() {
         </p>
       </div>
 
+      <div className="mb-5 flex flex-wrap gap-2">
+        {[
+          { value: 'all', label: 'All' },
+          { value: 'open', label: 'Pending / Interested' },
+          { value: 'assigned', label: 'Assigned' },
+          { value: 'completed', label: 'Completed' },
+        ].map(tab => (
+          <button
+            key={tab.value}
+            type="button"
+            onClick={() => setStatusFilter(tab.value as typeof statusFilter)}
+            className={`rounded-full px-4 py-2 text-xs font-black uppercase tracking-wider transition-colors ${statusFilter === tab.value ? 'bg-[#157354] text-white shadow-sm' : 'border border-[#e2e8e4] bg-white text-[#6b7a73] hover:bg-[#edf7f3] hover:text-[#157354]'}`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-2xl font-black text-[#0b3828]">{monthLabel}</h2>
+        <div className="flex items-center gap-2">
+          <button type="button" aria-label="Previous month" onClick={() => changeMonth(-1)} className="rounded-xl border border-[#e2e8e4] bg-white p-2 text-[#157354] hover:bg-[#edf7f3]"><ChevronLeft className="h-5 w-5" /></button>
+          <button type="button" onClick={() => setSelectedMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1))} className="rounded-xl border border-[#e2e8e4] bg-white px-4 py-2 text-sm font-bold text-[#157354] hover:bg-[#edf7f3]">Today</button>
+          <button type="button" aria-label="Next month" onClick={() => changeMonth(1)} className="rounded-xl border border-[#e2e8e4] bg-white p-2 text-[#157354] hover:bg-[#edf7f3]"><ChevronRight className="h-5 w-5" /></button>
+        </div>
+      </div>
+
+      <div className="w-full overflow-x-auto rounded-2xl border border-[#e2e8e4] bg-white shadow-sm">
+        <div className="min-w-[760px] lg:min-w-0">
+          <div className="grid grid-cols-7 border-b border-[#e2e8e4] bg-[#f8faf9]">
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => <div key={day} className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-[#6b7a73]">{day}</div>)}
+          </div>
+          <div className="grid grid-cols-7">
+            {Array.from({ length: calendarCellCount }, (_, index) => {
+              const dayNumber = index - firstWeekday + 1
+              const isCurrentMonthDay = dayNumber >= 1 && dayNumber <= daysInMonth
+              const dateKey = isCurrentMonthDay ? `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, '0')}-${String(dayNumber).padStart(2, '0')}` : ''
+              const dayShifts = dateKey ? shiftsByDate[dateKey] || [] : []
+              const selectedId = selectedShiftByDate[dateKey] || dayShifts[0]?.id
+              const visibleShifts = dayShifts.filter(shift => dayShifts.length === 1 || shift.id === selectedId)
+              return (
+                <div key={index} className={`min-h-[230px] border-b border-r border-[#e2e8e4] p-2 ${isCurrentMonthDay ? 'bg-white' : 'bg-[#fbfcfb]'}`}>
+                  {isCurrentMonthDay && <div className={`mb-2 flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold ${dateKey === todayKey ? 'bg-[#157354] text-white' : 'text-[#1a2e25]'}`}>{dayNumber}</div>}
+                  <div className="space-y-2">
+                    {visibleShifts.map((shift: any) => {
+                      const connectionStatus = myConnections[shift.center_id]
+                      const isClaimed = claimedShiftIds.has(shift.id)
+                      const isConfirmed = confirmedShiftIds.has(shift.id)
+                      const isInterested = interestedShiftIds.has(shift.id)
+                      const myClaim = shift.my_claim
+                      const isCompleted = shift.status === 'completed' || !!myClaim?.check_out_time
+                      const isReviewed = reviewedCenterIds.has(shift.center_id)
+                      const timeLabel = `${shift.start_time.substring(0, 5)}–${shift.end_time.substring(0, 5)}`
+                      const roomLabel = [shift.work_areas?.name, shift.work_areas?.age_group].filter(Boolean).join(' · ') || 'Any room'
+                      return (
+                        <div key={shift.id} className="rounded-xl border border-[#dce8e2] bg-[#fcfefd] p-2.5 shadow-sm">
+                          <div className="space-y-1 text-[11px]">
+                            <div className="flex items-center gap-1 font-bold text-[#1a2e25]"><Clock className="h-3 w-3 text-[#157354]" />{timeLabel}</div>
+                            <div><span className={`inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-bold ${isCompleted ? 'bg-[#f8faf9] text-[#6b7a73]' : isConfirmed ? 'bg-[#f0fdf4] text-[#16a34a]' : isClaimed ? 'bg-[#fefce8] text-[#854d0e]' : 'bg-[#d4ede4] text-[#0f4a36]'}`}>{isCompleted ? 'Completed' : isConfirmed ? 'Assigned' : isClaimed ? 'Pending' : 'Open'}</span></div>
+                            <div className="truncate text-xs font-black text-[#0b3828]">{shift.centers?.name}</div>
+                            <div className="truncate text-[11px] text-[#3d5a4f]">{roomLabel}</div>
+                            <div className="font-bold text-[#157354]">${shift.hourly_rate ?? '0.00'}/hr</div>
+                          </div>
+                          <div className="mt-2 flex flex-col gap-1.5">
+                            {isCompleted ? (
+                              isReviewed ? <div className="rounded-lg bg-[#f8faf9] px-2 py-1.5 text-center text-[10px] font-bold text-[#6b7a73]">Reviewed</div> : <button type="button" onClick={() => setReviewingShift(shift)} className="flex items-center justify-center gap-1 rounded-lg bg-[#fbbf24] px-2 py-1.5 text-[10px] font-bold text-[#0b3828]"><Star className="h-3 w-3" /> Review</button>
+                            ) : isConfirmed ? (
+                              <div className="rounded-lg bg-[#f0fdf4] px-2 py-1.5 text-center text-[10px] font-bold text-[#157354]">Confirmed</div>
+                            ) : isClaimed ? (
+                              <button type="button" onClick={() => handleWithdraw(shift.id)} disabled={withdrawingShiftId === shift.id} className="flex items-center justify-center gap-1 rounded-lg bg-[#fee2e2] px-2 py-1.5 text-[10px] font-bold text-[#991b1b] disabled:opacity-50">{withdrawingShiftId === shift.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />} Withdraw</button>
+                            ) : isInterested ? (
+                              <button type="button" onClick={() => handleClaim(shift.id)} disabled={claimingShiftId === shift.id} className="flex items-center justify-center gap-1 rounded-lg bg-[#fbbf24] px-2 py-1.5 text-[10px] font-bold text-[#0b3828] disabled:opacity-50">
+                                {claimingShiftId === shift.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />} Claim shift
+                              </button>
+                            ) : connectionStatus === 'active' ? (
+                              <button type="button" onClick={() => handleExpressInterest(shift.id)} disabled={expressingInterestId === shift.id} className="flex items-center justify-center gap-1 rounded-lg border border-[#157354] px-2 py-1.5 text-[10px] font-bold text-[#157354] disabled:opacity-50">{expressingInterestId === shift.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Heart className="h-3 w-3" />} Interested</button>
+                            ) : (
+                              <button type="button" onClick={() => handleStartOnboarding(shift.center_id, shift.centers?.slug)} disabled={joiningCenterId === shift.center_id} className="flex items-center justify-center gap-1 rounded-lg bg-[#157354] px-2 py-1.5 text-[10px] font-bold text-white disabled:opacity-50">{joiningCenterId === shift.center_id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ShieldCheck className="h-3 w-3" />} Join center</button>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  {dayShifts.length > 1 && <div className="mt-2 flex justify-center gap-1.5" aria-label="Select shift">
+                    {dayShifts.map((shift: any, shiftIndex: number) => <button key={shift.id} type="button" aria-label={`Select shift ${shiftIndex + 1}`} aria-pressed={selectedId === shift.id} title={`Select shift ${shiftIndex + 1}`} onClick={() => setSelectedShiftByDate(current => ({ ...current, [dateKey]: shift.id }))} className={`h-2 w-2 rounded-full border ${selectedId === shift.id ? 'border-[#157354] bg-[#157354]' : 'border-[#9fc8b7] bg-white'}`} />)}
+                  </div>}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Legacy list markup retained below temporarily while calendar behavior is verified. */}
+      {/*
       {shifts.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-[#e2e8e4]">
           <Calendar className="w-12 h-12 text-[#a8b5ae] mx-auto mb-4" />
@@ -505,6 +622,7 @@ export default function MyShiftsPage() {
         </div>
       )}
 
+      */}
       {/* ── Outstanding Balance Warning Modal ── */}
       {showBalanceModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

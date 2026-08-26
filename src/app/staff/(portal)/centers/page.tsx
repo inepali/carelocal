@@ -241,6 +241,20 @@ function CentersContent() {
       }
    }
 
+   async function handleUnlink(statusId: string) {
+      const { error } = await supabase
+         .from('center_staff_document_status')
+         .delete()
+         .eq('id', statusId)
+
+      if (error) {
+         alert(error.message)
+         return
+      }
+
+      if (activeCenterId) loadChecklist(activeCenterId)
+   }
+
    async function handleDownloadTemplate(req: CenterDocumentRequirement) {
       if (!req.template_file_key || !req.template_bucket_name) return
       const res = await getPresignedViewUrl(req.template_file_key, req.template_bucket_name)
@@ -413,15 +427,17 @@ function CentersContent() {
                                  const assignment = centerDocStatuses.find(s => s.requirement_id === req.id)
                                  const isMet = assignment?.status === 'accepted'
                                  const isPending = assignment?.status === 'pending_review'
+                                 const matchedDocument = assignment?.matched_document
+                                 const isExpired = !!matchedDocument?.expiry_date && new Date(matchedDocument.expiry_date) < new Date()
 
                                  return (
-                                    <div key={req.id} className={`flex items-center justify-between p-5 rounded-2xl border-2 transition-all ${(isMet || isPending) ? 'bg-[#f0fdf4] border-[#dcfce7]' : 'bg-white border-[#f0f4f2]'}`}>
+                                    <div key={req.id} className={`flex items-center justify-between p-5 rounded-2xl border-2 transition-all ${((isMet && !isExpired) || isPending) ? 'bg-[#f0fdf4] border-[#dcfce7]' : 'bg-white border-[#f0f4f2]'}`}>
                                        <div className="flex items-center gap-4">
-                                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${(isMet || isPending) ? 'bg-[#157354] text-white' : 'bg-[#f8faf9] text-[#a8b5ae]'}`}>
-                                             {(isMet || isPending) ? <CheckCircle2 className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
+                                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${((isMet && !isExpired) || isPending) ? 'bg-[#157354] text-white' : 'bg-[#f8faf9] text-[#a8b5ae]'}`}>
+                                             {((isMet && !isExpired) || isPending) ? <CheckCircle2 className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
                                           </div>
                                           <div>
-                                             <div className={`font-black text-sm ${(isMet || isPending) ? 'text-[#157354]' : 'text-[#3d5a4f]'}`}>{req.document_name}</div>
+                                             <div className={`font-black text-sm ${((isMet && !isExpired) || isPending) ? 'text-[#157354]' : 'text-[#3d5a4f]'}`}>{req.document_name}</div>
                                              <div className="text-[10px] font-bold text-[#6b7a73] uppercase tracking-widest flex items-center gap-3">
                                                 {DOCUMENT_CATEGORY_LABELS[req.document_category]}
                                                 {assignment && assignment.status === 'rejected' && <span className="text-red-500">• Rejected</span>}
@@ -436,12 +452,46 @@ function CentersContent() {
                                              )}
                                           </div>
                                        </div>
-                                       {isMet ? (
+                                       {isMet && !isExpired ? (
                                           <div className="flex items-center gap-1.5 px-3 py-1 bg-[#dcfce7] rounded-lg text-[9px] font-black text-[#157354] uppercase tracking-wider">
                                              <ShieldCheck className="w-3 h-3" /> Approved
                                           </div>
+                                       ) : isExpired ? (
+                                          <button
+                                             onClick={() => setLinkingReq(req)}
+                                             className="bg-[#fbbf24] text-[#0b3828] text-[9px] font-black px-4 py-2 rounded-lg hover:bg-[#f59e0b] uppercase tracking-widest transition-all"
+                                          >
+                                             Relink Doc
+                                          </button>
                                        ) : isPending ? (
-                                          <div className="text-[9px] font-black text-yellow-600 uppercase">Pending Review</div>
+                                          <div className="flex items-center gap-2">
+                                             <div className="text-[9px] font-black text-yellow-600 uppercase">Pending Review</div>
+                                             {assignment && (
+                                                <button
+                                                   type="button"
+                                                   onClick={() => handleUnlink(assignment.id)}
+                                                   className="text-[9px] font-black uppercase tracking-wider text-red-600 hover:underline"
+                                                >
+                                                   Unlink Doc
+                                                </button>
+                                             )}
+                                          </div>
+                                       ) : assignment ? (
+                                          <div className="flex items-center gap-2">
+                                             <button
+                                                onClick={() => setLinkingReq(req)}
+                                                className="bg-[#0b3828] text-white text-[9px] font-black px-4 py-2 rounded-lg hover:bg-black uppercase tracking-widest transition-all"
+                                             >
+                                                Relink Doc
+                                             </button>
+                                             <button
+                                                type="button"
+                                                onClick={() => handleUnlink(assignment.id)}
+                                                className="text-[9px] font-black uppercase tracking-wider text-red-600 hover:underline"
+                                             >
+                                                Unlink Doc
+                                             </button>
+                                          </div>
                                        ) : (
                                           <button
                                              onClick={() => setLinkingReq(req)}

@@ -208,26 +208,31 @@ function DocumentsContent() {
     </div>
   }
 
+  const documentTypes = lookupDocTypes.length > 0 ? lookupDocTypes : CATEGORIES
+  const documentGroups = documentTypes.map((documentType) => ({
+    ...documentType,
+    documents: documents.filter((document) => document.document_category === documentType.value),
+  }))
+
   return (
     <div className="max-w-4xl">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div className="mb-8">
         <div>
           <h1 className="text-3xl font-extrabold text-[#0b3828] mb-1">My Documents</h1>
           <p className="text-[#6b7a73]">Upload and manage your credentials. These will be visible to centers you work with.</p>
         </div>
-        <button 
-          onClick={() => setShowUpload(!showUpload)}
-          className="inline-flex items-center justify-center gap-2 bg-[#157354] text-white font-semibold px-6 py-3 rounded-xl hover:bg-[#0f4a36] shadow-sm transition-colors"
-        >
-          <Upload className="w-5 h-5" /> {showUpload ? 'Cancel' : 'Upload New'}
-        </button>
       </div>
 
-
       {showUpload && (
-        <div className="bg-white border border-[#e2e8e4] rounded-2xl p-6 shadow-sm mb-8 animate-in fade-in slide-in-from-top-4">
-          <h2 className="text-lg font-bold text-[#1a2e25] mb-4">Add Document</h2>
-          <form onSubmit={handleUpload} className="grid sm:grid-cols-2 gap-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0b3828]/40 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="add-document-title">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[#e2e8e4] bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 id="add-document-title" className="text-lg font-bold text-[#1a2e25]">Add Document</h2>
+              <button type="button" onClick={() => setShowUpload(false)} className="rounded-lg p-1.5 text-[#6b7a73] hover:bg-[#f8faf9]" aria-label="Close upload form" title="Close upload form">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <form onSubmit={handleUpload} className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <label className="block text-sm font-bold text-[#0b3828] mb-2 uppercase tracking-widest text-[10px]">Select File (PDF or Image)</label>
               <label className={`
@@ -277,9 +282,10 @@ function DocumentsContent() {
               <label className="block text-sm font-bold text-[#0b3828] mb-2 uppercase tracking-widest text-[10px]">Category</label>
                     <select
                       required
+                      disabled
                       value={docCategory}
-                      onChange={(e) => setDocCategory(e.target.value as any)}
-                      className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30"
+                      aria-label="Selected document type"
+                      className="w-full px-4 py-3 rounded-xl border border-[#c9d9d1] bg-[#f8faf9] text-[#1a2e25] focus:outline-none disabled:cursor-not-allowed disabled:opacity-100"
                     >
                       <option value="" disabled>Select Type</option>
                       {(lookupDocTypes.length > 0 ? lookupDocTypes : CATEGORIES).map(c => (
@@ -305,25 +311,49 @@ function DocumentsContent() {
                 {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Save Document'}
               </button>
             </div>
-          </form>
+            </form>
+          </div>
         </div>
       )}
 
 
-      {documents.length === 0 ? (
-        <div className="bg-[#edf7f3] border border-dashed border-[#a9dac9] rounded-2xl p-12 text-center">
-          <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-            <FileText className="w-8 h-8 text-[#157354]" />
+      <div className="space-y-5">
+        {documents.length === 0 && (
+          <div className="bg-[#edf7f3] border border-dashed border-[#a9dac9] rounded-2xl p-8 text-center">
+            <FileText className="w-10 h-10 text-[#157354] mx-auto mb-3" />
+            <h2 className="text-xl font-bold text-[#0b3828] mb-2">No documents yet</h2>
+            <p className="text-[#3d5a4f] max-w-sm mx-auto">
+              Choose a document type below to upload your first credential.
+            </p>
           </div>
-          <h2 className="text-xl font-bold text-[#0b3828] mb-2">No documents yet</h2>
-          <p className="text-[#3d5a4f] max-w-sm mx-auto mb-6">
-            Upload your certifications, background checks, and IDs so centers can verify you for shifts.
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-4">
-          {documents.map((doc) => (
-            <div key={doc.id} className="bg-white border border-[#e2e8e4] rounded-2xl p-6 shadow-sm hover:border-[#74c3a8] transition-colors flex items-center justify-between group">
+        )}
+        {documentGroups.map((group) => (
+          <section key={group.value} className="overflow-hidden rounded-2xl border border-[#e2e8e4] bg-white shadow-sm">
+            <div className="flex flex-col gap-3 border-b border-[#e2e8e4] bg-[#f8faf9] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#edf7f3] text-[#157354]">
+                  <FileText className="h-5 w-5" />
+                </span>
+                <div>
+                  <h2 className="font-bold text-[#1a2e25]">{group.label}</h2>
+                  <p className="text-xs text-[#6b7a73]">{group.documents.length} document{group.documents.length === 1 ? '' : 's'}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setDocCategory(group.value)
+                  setShowUpload(true)
+                }}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#157354] px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-[#0f4a36]"
+              >
+                <Plus className="h-4 w-4" /> Add New
+              </button>
+            </div>
+            {group.documents.length > 0 ? (
+              <div className="divide-y divide-[#e2e8e4]">
+                {group.documents.map((doc) => (
+            <div key={doc.id} className="flex items-center justify-between gap-4 p-5 transition-colors hover:bg-[#fbfcfb] group">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-[#edf7f3] flex items-center justify-center shrink-0">
                   <FileText className="w-6 h-6 text-[#157354]" />
@@ -364,9 +394,14 @@ function DocumentsContent() {
                 </button>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+                ))}
+              </div>
+            ) : (
+              <div className="px-5 py-6 text-sm text-[#6b7a73]">No documents added in this category yet.</div>
+            )}
+          </section>
+        ))}
+      </div>
     </div>
   )
 }

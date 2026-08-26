@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { WorkArea } from '@/lib/types'
 import { useLookups } from '@/hooks/use-lookups'
 import { Calendar, Clock, Loader2, ArrowLeft } from 'lucide-react'
@@ -12,6 +12,7 @@ import { useCenterContext } from '../../context'
 export default function PostShiftPage() {
   const { staffTerm, workAreaTerm } = useCenterContext()
   const router = useRouter()
+    const searchParams = useSearchParams()
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -38,6 +39,11 @@ export default function PostShiftPage() {
   const [notes, setNotes] = useState('')
   const [hourlyRate, setHourlyRate] = useState('20.00')
   const [paymentMode, setPaymentMode] = useState('payroll')
+
+    useEffect(() => {
+        const date = searchParams.get('date')
+        if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) setShiftDate(date)
+    }, [searchParams])
 
   useEffect(() => {
     async function loadData() {
