@@ -352,7 +352,7 @@ function DocumentsContent() {
             </div>
             {group.documents.length > 0 ? (
               <div className="divide-y divide-[#e2e8e4]">
-                {group.documents.map((doc) => (
+                {group.documents.map((doc: StaffDocument) => (
             <div key={doc.id} className="flex items-center justify-between gap-4 p-5 transition-colors hover:bg-[#fbfcfb] group">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-[#edf7f3] flex items-center justify-center shrink-0">
