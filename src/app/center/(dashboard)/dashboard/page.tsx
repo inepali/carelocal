@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Shift, StaffProfile } from '@/lib/types'
 import Link from 'next/link'
-import { Calendar, Users, AlertCircle, FileText, ArrowRight, CheckCircle2, Clock, Plus, UserPlus, Globe, Star } from 'lucide-react'
+import { Calendar, Users, AlertCircle, FileText, ArrowRight, CheckCircle2, Clock, UserPlus, Globe, Star } from 'lucide-react'
 import { useCenterContext } from '../context'
 
 export default function DashboardOverview() {
@@ -160,12 +160,6 @@ export default function DashboardOverview() {
           <h1 className="text-4xl font-black text-[#0b3828] tracking-tight mb-2">Overview</h1>
           <p className="text-[#6b7a73] font-medium">Real-time status of your center's staffing and compliance.</p>
         </div>
-        <Link 
-          href="/center/shifts/new"
-          className="bg-[#fbbf24] text-[#0b3828] font-black px-8 py-4 rounded-2xl hover:bg-[#f59e0b] shadow-lg shadow-amber-200/50 transition-all active:scale-95 flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" /> Post New Shift
-        </Link>
       </div>
 
       {stats.isTrialing && (

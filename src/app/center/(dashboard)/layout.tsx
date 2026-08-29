@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, LayoutDashboard, Users, UserPlus, FileText, Settings, Calendar, Plus, Home, Tags, CreditCard, Database, LifeBuoy } from 'lucide-react'
+import { LogOut, LayoutDashboard, Users, UserPlus, FileText, Settings, Calendar, Home, Tags, CreditCard, Database, LifeBuoy } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { CenterContext } from './context'
@@ -116,12 +116,6 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
         </nav>
 
         <div className="p-4 border-t border-white/10 shrink-0">
-          <Link
-            href="/center/shifts/new"
-            className="flex items-center justify-center gap-2 w-full bg-amber-400 text-brand-900 font-semibold py-2.5 rounded-lg hover:bg-amber-500 mb-4 shadow-sm"
-          >
-            <Plus className="w-4 h-4" /> Post New Shift
-          </Link>
           <button
             onClick={handleSignOut}
             className="flex items-center gap-3 px-3 py-2 w-full text-sm text-brand-200 hover:bg-white/5 hover:text-white rounded-lg transition-colors"
