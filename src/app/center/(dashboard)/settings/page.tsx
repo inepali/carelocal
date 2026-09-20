@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Center, SubscriptionTier, getTierLimits, MetroArea } from '@/lib/types'
+import { getDomainKey, type DomainKey } from '@/lib/domain-config'
 import { Building2, Save, MapPin, Phone, Mail, User, ShieldCheck, Loader2, ExternalLink, Clock, Globe, ArrowRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
@@ -18,15 +19,12 @@ export default function CenterSettingsPage() {
   const [activeStaffCount, setActiveStaffCount] = useState(0)
   const [activeLocationCount, setActiveLocationCount] = useState(0)
   const [portalLoading, setPortalLoading] = useState(false)
-  const [isHealthcare, setIsHealthcare] = useState(false)
+  const [domainKey, setDomainKey] = useState<DomainKey>('childcare')
 
   useEffect(() => {
     loadData()
     if (typeof window !== 'undefined') {
-      const host = window.location.host
-      if (host.includes('carelocal.net') || host.includes('carelocalhealth.com') || host.includes('3001')) {
-        setIsHealthcare(true)
-      }
+      setDomainKey(getDomainKey(window.location.host))
     }
   }, [])
 
@@ -145,8 +143,8 @@ export default function CenterSettingsPage() {
   if (loading) return <div className="p-12 animate-pulse font-black text-slate-300">Loading Expansion Data...</div>
 
   const tier = (center.subscription_tier as SubscriptionTier) || 'starter'
-  const domainKey = (center.domain_key as 'childcare' | 'healthcare') || 'childcare'
-  const limits = getTierLimits(domainKey)[tier]
+  const centerDomainKey = (center.domain_key as import('@/lib/domain-config').DomainKey) || 'childcare'
+  const limits = getTierLimits(centerDomainKey)[tier]
 
   const staffPercentage = limits.maxStaff === Infinity 
     ? 0 
@@ -383,7 +381,7 @@ export default function CenterSettingsPage() {
              </div>
              <h3 className="font-black text-[#1a2e25] mb-3 uppercase tracking-widest text-xs">Regional Support</h3>
              <p className="text-sm text-[#6b7a73] font-medium leading-relaxed mb-6">Need to move your center to a different Metro Area or request a new region? Our expansion team is ready.</p>
-             <a href={`mailto:expansion@carelocal.${isHealthcare ? 'net' : 'co'}`} className="text-[#157354] font-black text-sm hover:underline flex items-center gap-2">
+             <a href={`mailto:expansion@${domainKey === 'healthcare' ? 'carelocal.net' : domainKey === 'senior' ? 'carelocalsenior.com' : 'carelocal.co'}`} className="text-[#157354] font-black text-sm hover:underline flex items-center gap-2"> 
                 Open Support Ticket <ArrowRight className="w-4 h-4" />
              </a>
           </div>

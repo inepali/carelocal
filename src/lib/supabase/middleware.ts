@@ -1,12 +1,14 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { getDomainKey } from '@/lib/domain-config'
 
 export async function updateSession(request: NextRequest) {
   const host = request.headers.get('host') || ''
-  const isHealthcare = host.includes('carelocal.net') || host.includes('carelocalhealth.com') || host.includes(':3001') || host.startsWith('3001')
+  const domainKey = getDomainKey(host)
+  const homePath = `/${domainKey}`
 
   let supabaseResponse = request.nextUrl.pathname === '/'
-    ? NextResponse.rewrite(new URL(isHealthcare ? '/healthcare' : '/childcare', request.url), {
+    ? NextResponse.rewrite(new URL(homePath, request.url), {
         request,
       })
     : NextResponse.next({
@@ -25,7 +27,7 @@ export async function updateSession(request: NextRequest) {
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
           supabaseResponse = request.nextUrl.pathname === '/'
-            ? NextResponse.rewrite(new URL(isHealthcare ? '/healthcare' : '/childcare', request.url), {
+            ? NextResponse.rewrite(new URL(homePath, request.url), {
                 request,
               })
             : NextResponse.next({

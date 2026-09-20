@@ -22,14 +22,14 @@ export async function generateMetadata(): Promise<Metadata> {
   const host = headersList.get('host') || ''
   const domainKey = getDomainKey(host)
   const config = getDomainConfig(domainKey)
-  const isHealthcare = domainKey === 'healthcare'
+  const siteUrl = domainKey === 'healthcare' ? 'https://carelocal.net' : domainKey === 'senior' ? 'https://carelocalsenior.com' : 'https://carelocal.co'
 
   return {
     title: config.title,
     description: config.description,
-    metadataBase: new URL(isHealthcare ? 'https://carelocal.net' : 'https://carelocal.co'),
+    metadataBase: new URL(siteUrl),
     manifest: '/manifest.json',
-    keywords: isHealthcare
+    keywords: domainKey === 'healthcare'
       ? [
           'healthcare staff scheduling software',
           'hospital shift scheduling',
@@ -41,7 +41,16 @@ export async function generateMetadata(): Promise<Metadata> {
           'nursing staffing alternative',
           'CNA shift scheduler'
         ]
-      : [
+      : domainKey === 'senior'
+        ? [
+          'senior care staffing software',
+          'caregiver scheduling software',
+          'home care agency staffing',
+          'assisted living shift scheduling',
+          'caregiver call-out coverage',
+          'senior care workforce platform'
+        ]
+        : [
           'childcare staff scheduling software',
           'daycare substitute management',
           'preschool staff scheduling',
@@ -56,7 +65,7 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       title: config.title,
       description: config.description,
-      url: isHealthcare ? 'https://carelocal.net' : 'https://carelocal.co',
+      url: siteUrl,
       siteName: config.appName,
       type: 'website',
     },
@@ -67,7 +76,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const headersList = await headers()
   const host = headersList.get('host') || ''
   const domainKey = getDomainKey(host)
-  const themeClass = domainKey === 'healthcare' ? 'theme-healthcare' : 'theme-childcare'
+  const themeClass = getDomainConfig(domainKey).themeClass
 
   return (
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} ${themeClass}`}>

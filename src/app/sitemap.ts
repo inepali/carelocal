@@ -1,11 +1,12 @@
 import type { MetadataRoute } from 'next'
 import { headers } from 'next/headers'
+import { getDomainKey } from '@/lib/domain-config'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const headersList = await headers()
   const host = headersList.get('host') || 'carelocal.co'
-  const isHealthcare = host.includes('carelocal.net') || host.includes('carelocalhealth.com') || host.includes(':3001') || host.startsWith('3001')
-  const baseUrl = isHealthcare ? 'https://carelocal.net' : 'https://carelocal.co'
+  const domainKey = getDomainKey(host)
+  const baseUrl = domainKey === 'healthcare' ? 'https://carelocal.net' : domainKey === 'senior' ? 'https://carelocalsenior.com' : 'https://carelocal.co'
   const currentDate = new Date()
   
   return [

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff, Loader2, CheckCircle2, AlertCircle, Lock } from 'lucide-react'
-import { getDomainConfig } from '@/lib/domain-config'
+import { getDomainConfig, getDomainKey, type DomainKey } from '@/lib/domain-config'
 
 function ResetPasswordForm() {
   const router = useRouter()
@@ -22,19 +22,17 @@ function ResetPasswordForm() {
   const [error, setError] = useState('')
 
   // Resolve domain vertical configuration dynamically
-  const [domainKey, setDomainKey] = useState<'childcare' | 'healthcare'>('childcare')
+  const [domainKey, setDomainKey] = useState<DomainKey>('childcare')
   
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const host = window.location.host
-      if (host.includes('carelocal.net') || host.includes('carelocalhealth.com') || host.includes('3001')) {
-        setDomainKey('healthcare')
-      }
+      setDomainKey(getDomainKey(window.location.host))
     }
   }, [])
 
   const config = getDomainConfig(domainKey)
   const isHealthcare = domainKey === 'healthcare'
+  const domainLabel = domainKey === 'healthcare' ? 'carelocal.net' : domainKey === 'senior' ? 'carelocalsenior.com' : 'carelocal.co'
 
   // Supabase sends the token as a hash fragment which it auto-exchanges.
   // We just need to wait for the session to settle then allow the update.
@@ -282,7 +280,7 @@ function ResetPasswordForm() {
             ))}
           </div>
         </div>
-        <p className="text-brand-400 text-sm">© {new Date().getFullYear()} {config.appName} · {isHealthcare ? 'carelocal.net' : 'carelocal.co'}</p>
+        <p className="text-brand-400 text-sm">© {new Date().getFullYear()} {config.appName} · {domainLabel}</p>
       </div>
     </div>
   )

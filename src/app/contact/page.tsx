@@ -14,7 +14,7 @@ import {
   Loader2 
 } from 'lucide-react'
 import { submitContactForm } from '@/app/actions/contact.actions'
-import { getDomainConfig } from '@/lib/domain-config'
+import { getDomainConfig, getDomainKey, type DomainKey } from '@/lib/domain-config'
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -30,19 +30,18 @@ export default function ContactPage() {
   const [isSuccess, setIsSuccess] = useState(false)
 
   // Resolve domain vertical configuration dynamically
-  const [domainKey, setDomainKey] = useState<'childcare' | 'healthcare'>('childcare')
+  const [domainKey, setDomainKey] = useState<DomainKey>('childcare')
   
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const host = window.location.host
-      if (host.includes('carelocal.net') || host.includes('carelocalhealth.com') || host.includes('3001')) {
-        setDomainKey('healthcare')
-      }
+      setDomainKey(getDomainKey(window.location.host))
     }
   }, [])
 
   const config = getDomainConfig(domainKey)
   const isHealthcare = domainKey === 'healthcare'
+  const audienceLabel = domainKey === 'healthcare' ? 'healthcare facilities and medical staff' : domainKey === 'senior' ? 'senior-care organizations and caregivers' : 'childcare centers and staff'
+  const staffLabel = domainKey === 'healthcare' ? 'Healthcare staff' : domainKey === 'senior' ? 'Caregivers' : 'Childcare staff'
 
   const contactTypes = [
     { value: 'Customer Support', label: 'Customer Support' },
@@ -171,7 +170,7 @@ export default function ContactPage() {
               Contact Our Team
             </h1>
             <p className="text-brand-700 text-lg font-medium max-w-xl mx-auto">
-              Have questions about {config.appName}? We are here to help {isHealthcare ? 'healthcare facilities and medical staff' : 'childcare centers and staff'}. Get in touch with us today.
+              Have questions about {config.appName}? We are here to help {audienceLabel}. Get in touch with us today.
             </p>
           </div>
 
@@ -240,7 +239,7 @@ export default function ContactPage() {
                     <div>
                       <h4 className="text-sm font-bold text-white mb-1">Looking for shifts?</h4>
                       <p className="text-xs text-brand-200 leading-relaxed">
-                        {isHealthcare ? 'Healthcare staff' : 'Childcare staff'} accounts are completely free. Register to start claiming shifts instantly.
+                        {staffLabel} accounts are completely free. Register to start claiming shifts instantly.
                       </p>
                     </div>
                   </div>

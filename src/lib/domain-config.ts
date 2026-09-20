@@ -1,4 +1,4 @@
-export type DomainKey = 'childcare' | 'healthcare'
+export type DomainKey = 'childcare' | 'senior' | 'healthcare'
 
 export interface PricingPlan {
   name: string
@@ -356,17 +356,98 @@ export const DOMAIN_CONFIGS: Record<DomainKey, DomainConfig> = {
       complianceInfoTitle: 'Fully manage clinical compliance.',
       complianceInfoDesc: 'CareLocal Health gives you the tools to collect, review, and organize medical licenses, BLS cards, and immunization records in one secure place. Set your own requirements and manage shifts with absolute compliance.'
     }
+  },
+  senior: {} as DomainConfig
+}
+
+DOMAIN_CONFIGS.senior = {
+  ...DOMAIN_CONFIGS.healthcare,
+  domainKey: 'senior',
+  themeClass: 'theme-senior',
+  appName: 'CareLocal Senior',
+  title: 'CareLocal Senior — Trusted Senior Caregiver Staffing Software',
+  description: 'Fill caregiver call-outs with your trusted senior-care network and keep every shift covered with confidence.',
+  staffTerm: 'Caregivers',
+  workAreaTerm: 'Care Areas',
+  logoShort: 'CLS',
+  supportEmail: 'support@carelocalsenior.com',
+  privacyEmail: 'privacy@carelocalsenior.com',
+  hero: {
+    tagline: 'Senior care staffing, made dependable',
+    title: 'Keep senior-care shifts ' ,
+    titleHighlight: 'covered with confidence',
+    subtitle: 'CareLocal Senior helps home-care agencies, assisted-living communities, and senior-care teams fill call-outs with a trusted, qualified caregiver network.',
+    ctaPrimary: 'Start your free trial',
+    ctaSecondary: 'See how it works',
+    footnote: '6-month free trial · No setup fees · Caregiver accounts always free'
+  },
+  stats: [
+    { val: '< 2 hrs', label: 'Avg. coverage response' },
+    { val: '85%+', label: 'Shift fill target' },
+    { val: '$0', label: 'Cost to caregivers' }
+  ],
+  howItWorks: [
+    { step: '01', title: 'Agency subscribes', desc: 'Set up your locations, care areas, caregiver roles, and credential checklist.', iconName: 'ShieldCheck' },
+    { step: '02', title: 'Invite your caregiver pool', desc: 'Build a trusted network of caregivers, aides, and support professionals.', iconName: 'Users' },
+    { step: '03', title: 'Post an open shift', desc: 'Choose the client or care area, schedule, role, and requirements.', iconName: 'Clock' },
+    { step: '04', title: 'Fill with confidence', desc: 'Notify eligible caregivers and keep handoffs and coverage visible.', iconName: 'MessageSquare' }
+  ],
+  features: [
+    { iconName: 'Zap', title: 'Fast Call-Out Coverage', desc: 'Notify your eligible caregiver pool as soon as coverage changes.' },
+    { iconName: 'FileText', title: 'Caregiver Credentials', desc: 'Organize background checks, training, CPR, and other required documents.' },
+    { iconName: 'Users', title: 'Your Private Network', desc: 'Build and manage the trusted caregiver pool your organization knows.' },
+    { iconName: 'ShieldCheck', title: 'Continuity of Care', desc: 'Keep approvals, shift notes, and care-area requirements visible to managers.' }
+  ],
+  trustQuote: {
+    quote: '"When a caregiver calls out, we need a trusted replacement quickly and a clear handoff for the next shift."',
+    author: 'Senior Care Operations Director'
+  },
+  faqs: [
+    { q: 'How does CareLocal Senior fill open shifts?', a: 'Post an open shift and notify the eligible caregiver pool approved by your organization. Managers can review claims and confirm coverage.' },
+    { q: 'Is CareLocal Senior a caregiving agency?', a: 'No. CareLocal Senior is software that helps care organizations manage their own private caregiver networks.' },
+    { q: 'What documents can caregivers upload?', a: 'Organizations can collect background checks, CPR cards, training records, references, and other internal requirements.' },
+    { q: 'Can this support home-care and facility care?', a: 'Yes. Configure locations, care areas, roles, and approval rules for your operating model.' },
+    { q: 'How does the free trial work?', a: 'Start with the staffing, credential, and notification workflows during the trial. No credit card is required.' }
+  ],
+  pricing: [
+    { name: 'Starter', price: 79, desc: 'For a single home-care agency or senior-care location.', features: ['1 location', 'Up to 30 caregiver profiles', 'Shift posting and notifications', 'Credential collection and review', 'Basic reporting'], cta: 'Start free trial', href: '/register?plan=starter', highlight: false },
+    { name: 'Growth', price: 199, desc: 'For growing agencies and assisted-living operators.', features: ['Up to 3 locations', 'Up to 100 caregiver profiles', 'Everything in Starter', 'Care-area workflows', 'PTO and schedule reporting', 'Credential expiry alerts'], cta: 'Start free trial', href: '/register?plan=growth', highlight: true },
+    { name: 'Network', price: 399, desc: 'For multi-location senior-care networks.', features: ['Up to 10 locations', 'Up to 300 caregiver profiles', 'Everything in Growth', 'Shared caregiver pool', 'Advanced reporting', 'Priority support'], cta: 'Start free trial', href: '/register?plan=network', highlight: false }
+  ],
+  onboarding: {
+    roleHeading: 'Create your senior-care account',
+    roleSubtitle: 'Choose how you want to use the platform to get started.',
+    centerSelectorLabel: 'I am a Senior Care Organization',
+    centerSelectorDesc: 'I want to manage caregiver coverage and open shifts.',
+    staffSelectorLabel: 'I am a Caregiver',
+    staffSelectorDesc: 'I want to find approved shifts with local care organizations.',
+    centerNameLabel: 'Organization Name',
+    centerNamePlaceholder: 'Oak Ridge Senior Care',
+    directorNameLabel: 'Your Name (Administrator/Director)',
+    directorNamePlaceholder: 'Jane Doe',
+    emailPlaceholder: 'admin@oakridgecare.org',
+    defaultStaffRole: 'caregiver',
+    complianceInfoTitle: 'Manage caregiver readiness with confidence.',
+    complianceInfoDesc: 'Collect, review, and organize caregiver documents and training requirements in one secure place.'
   }
 }
 
 /**
  * Returns the domain key based on host/hostname.
- * Mapped to support development (ports 3000 vs 3001) and production domains.
+ * Mapped to support development (ports 3000, 3001, and 3002) and production domains.
  */
 export function getDomainKey(host: string): DomainKey {
   if (!host) return 'childcare'
   
   const hostLower = host.toLowerCase()
+  if (
+    hostLower.includes('carelocalsenior.com') ||
+    hostLower.includes('senior.carelocal.co') ||
+    hostLower.includes(':3002') ||
+    hostLower.startsWith('3002')
+  ) {
+    return 'senior'
+  }
   if (
     hostLower.includes('carelocal.net') ||
     hostLower.includes('carelocalhealth.com') ||
@@ -382,7 +463,7 @@ export function getDomainKey(host: string): DomainKey {
  * Resolves the configuration for a given host or directly from a domain key.
  */
 export function getDomainConfig(hostOrDomainKey: string): DomainConfig {
-  if (hostOrDomainKey === 'childcare' || hostOrDomainKey === 'healthcare') {
+  if (hostOrDomainKey === 'childcare' || hostOrDomainKey === 'senior' || hostOrDomainKey === 'healthcare') {
     return DOMAIN_CONFIGS[hostOrDomainKey]
   }
   const key = getDomainKey(hostOrDomainKey)

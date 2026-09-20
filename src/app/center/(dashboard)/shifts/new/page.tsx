@@ -12,7 +12,8 @@ import Calendar from 'react-calendar'
 import 'react-calendar/dist/Calendar.css';
 
 export default function PostShiftPage() {
-  const { staffTerm, workAreaTerm } = useCenterContext()
+  const { staffTerm, workAreaTerm, domainKey } = useCenterContext()
+  const isHealthcare = domainKey === 'healthcare'
   const router = useRouter()
     const searchParams = useSearchParams()
   const supabase = createClient()
@@ -43,7 +44,7 @@ export default function PostShiftPage() {
 
     useEffect(() => {
         const date = searchParams.get('date')
-        if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) setShiftDate(date)
+      if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) setShiftDate(new Date(`${date}T00:00:00`))
     }, [searchParams])
 
   useEffect(() => {
@@ -180,8 +181,8 @@ export default function PostShiftPage() {
         >
           <ArrowLeft className="w-4 h-4" /> Back to Shifts
         </Link>
-        <h1 className="text-3xl font-extrabold text-[#0b3828] mb-1">Post a New Shift</h1>
-        <p className="text-[#6b7a73]">Create a shift to instantly notify your eligible staff pool.</p>
+        <h1 className="text-3xl font-extrabold text-[#0b3828] mb-1">{isHealthcare ? 'Post a New Clinical Shift' : 'Post a New Shift'}</h1>
+        <p className="text-[#6b7a73]">Create a shift to instantly notify your eligible {isHealthcare ? 'medical staff' : 'staff'} pool.</p>
       </div>
 
       <div className="bg-white border border-[#e2e8e4] rounded-2xl shadow-sm overflow-hidden">
@@ -247,7 +248,7 @@ export default function PostShiftPage() {
                   onChange={(e) => setStaffType(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
                 >
-                  <option value="any">Any Role</option>
+                  <option value="any">{isHealthcare ? 'Any Clinical Role' : 'Any Role'}</option>
                   {staffRoles.filter(r => r.is_active !== false).map(role => (
                     <option key={role.value} value={role.value}>{role.label}</option>
                   ))}
@@ -261,9 +262,11 @@ export default function PostShiftPage() {
                   onChange={(e) => setWorkAreaId(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
                 >
-                  <option value="any">Float / No specific area</option>
+                  <option value="any">{isHealthcare ? 'Any Care Area' : 'Float / No specific area'}</option>
                   {workAreas.map((room) => (
-                    <option key={room.id} value={room.id}>{room.name} ({room.age_group})</option>
+                    <option key={room.id} value={room.id}>
+                      {room.name}{!isHealthcare && room.age_group ? ` (${room.age_group})` : ''}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -274,7 +277,9 @@ export default function PostShiftPage() {
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="E.g., Park in the back lot, arrive 10 mins early for a quick rundown."
+                placeholder={isHealthcare
+                  ? 'E.g., Report to the charge nurse and bring your current credentials.'
+                  : 'E.g., Park in the back lot, arrive 10 mins early for a quick rundown.'}
                 rows={3}
                 className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25] resize-none"
               />
@@ -317,7 +322,7 @@ export default function PostShiftPage() {
               </div>
             </div>
             <p className="text-[11px] text-[#6b7a73] italic">
-              Transparency on pay and payment methods helps attract the best {staffTerm.toLowerCase()} to your center.
+              Transparency on pay and payment methods helps attract the best {staffTerm.toLowerCase()} to your {isHealthcare ? 'facility' : 'center'}.
             </p>
           </div>
 

@@ -15,16 +15,6 @@ export function useLookups(groupName: string) {
 
   useEffect(() => {
     async function fetchLookups() {
-      // Check cache first
-      const cacheKey = `lookups_${groupName}`
-      const cached = lookupCache[cacheKey]
-      
-      if (cached && (Date.now() - cached.timestamp < CACHE_EXPIRY_MS)) {
-        setData(cached.data)
-        setLoading(false)
-        return
-      }
-
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
@@ -58,6 +48,14 @@ export function useLookups(groupName: string) {
 
         // @ts-ignore
         const domainKey = admin?.centers?.domain_key || 'childcare'
+        const cacheKey = `lookups_${groupName}_${domainKey}`
+        const cached = lookupCache[cacheKey]
+
+        if (cached && (Date.now() - cached.timestamp < CACHE_EXPIRY_MS)) {
+          setData(cached.data)
+          setLoading(false)
+          return
+        }
 
         // Filter platform defaults by domainKey (for overrides or custom records, they have a non-null center_id)
         const fetchedData = (lookups || []).filter(item => {
@@ -86,7 +84,9 @@ export function useLookups(groupName: string) {
   }, [groupName, supabase])
 
   const invalidateCache = () => {
-    delete lookupCache[`lookups_${groupName}`]
+    Object.keys(lookupCache)
+      .filter(key => key.startsWith(`lookups_${groupName}_`))
+      .forEach(key => delete lookupCache[key])
   }
 
   return { data, loading, error, invalidateCache }

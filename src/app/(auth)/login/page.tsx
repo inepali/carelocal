@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react'
-import { getDomainConfig } from '@/lib/domain-config'
+import { getDomainConfig, getDomainKey, type DomainKey } from '@/lib/domain-config'
 
 const LOGIN_CONTENT = {
   childcare: {
@@ -27,6 +27,16 @@ const LOGIN_CONTENT = {
       'Your facility, your compliance standards',
     ],
     footer: 'carelocal.net'
+  },
+  senior: {
+    tagline: 'Keep senior-care shifts covered.',
+    desc: 'Post an open shift, notify your trusted caregiver pool, and keep care coverage moving without the phone tag.',
+    checklist: [
+      'Fast alerts to your approved caregiver pool',
+      'Caregiver documents organized in one place',
+      'Your organization, your care standards',
+    ],
+    footer: 'carelocalsenior.com'
   }
 }
 
@@ -40,14 +50,11 @@ export default function LoginPage() {
   const [error, setError] = useState('')
 
   // Resolve domain vertical configuration dynamically
-  const [domainKey, setDomainKey] = useState<'childcare' | 'healthcare'>('childcare')
+  const [domainKey, setDomainKey] = useState<DomainKey>('childcare')
   
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const host = window.location.host
-      if (host.includes('carelocal.net') || host.includes('carelocalhealth.com') || host.includes('3001')) {
-        setDomainKey('healthcare')
-      }
+      setDomainKey(getDomainKey(window.location.host))
     }
   }, [])
 

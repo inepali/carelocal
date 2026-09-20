@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getTierLimits, SubscriptionTier } from '@/lib/types'
+import type { DomainKey } from '@/lib/domain-config'
 import { CheckCircle2, ShieldCheck, CreditCard, Loader2 } from 'lucide-react'
 
 // You would replace these with actual Stripe Price IDs from your Stripe Dashboard
@@ -20,7 +21,7 @@ export default function BillingPage() {
   const [isActive, setIsActive] = useState(false)
   const [pageLoading, setPageLoading] = useState(true)
   const [portalLoading, setPortalLoading] = useState(false)
-  const [domainKey, setDomainKey] = useState<'childcare' | 'healthcare'>('childcare')
+  const [domainKey, setDomainKey] = useState<DomainKey>('childcare')
   const supabase = createClient()
 
   useEffect(() => {
@@ -45,7 +46,7 @@ export default function BillingPage() {
           setCurrentTier(center.subscription_tier as SubscriptionTier)
           setIsActive(center.subscription_status === 'active' || center.subscription_status === 'trialing')
           if (center.domain_key) {
-            setDomainKey(center.domain_key as 'childcare' | 'healthcare')
+            setDomainKey(center.domain_key as DomainKey)
           }
         }
       }
@@ -74,7 +75,7 @@ export default function BillingPage() {
 
   async function handleSubscribe(tier: SubscriptionTier) {
     if (tier === 'enterprise') {
-      window.location.href = `mailto:sales@carelocal.${domainKey === 'healthcare' ? 'net' : 'co'}`
+      window.location.href = `mailto:sales@${domainKey === 'healthcare' ? 'carelocal.net' : domainKey === 'senior' ? 'carelocalsenior.com' : 'carelocal.co'}`
       return
     }
 
@@ -113,26 +114,32 @@ export default function BillingPage() {
     {
       id: 'starter',
       name: 'Starter',
-      description: domainKey === 'healthcare' ? 'Perfect for single-location clinical practices.' : 'Perfect for single-location centers.',
+      description: domainKey === 'healthcare' ? 'Perfect for single-location clinical practices.' : domainKey === 'senior' ? 'Perfect for a single senior-care location.' : 'Perfect for single-location centers.',
       features: domainKey === 'healthcare'
         ? ['Up to 30 Active Medical Staff', '1 Clinic Location', 'Credential Review Vault', 'Standard Support']
-        : ['Up to 30 Active Staff', '1 Facility Location', 'Basic Compliance Tracking', 'Standard Support']
+        : domainKey === 'senior'
+          ? ['Up to 30 Active Caregivers', '1 Care Location', 'Caregiver Credential Tracking', 'Standard Support']
+          : ['Up to 30 Active Staff', '1 Facility Location', 'Basic Compliance Tracking', 'Standard Support']
     },
     {
       id: 'growth',
       name: 'Growth',
-      description: domainKey === 'healthcare' ? 'For growing clinics and medical groups.' : 'For growing centers and small groups.',
+      description: domainKey === 'healthcare' ? 'For growing clinics and medical groups.' : domainKey === 'senior' ? 'For growing agencies and care communities.' : 'For growing centers and small groups.',
       features: domainKey === 'healthcare'
         ? ['Up to 100 Active Medical Staff', 'Up to 3 Clinic Locations', 'Advanced Credential Workflows', 'Priority Support']
-        : ['Up to 100 Active Staff', 'Up to 3 Facility Locations', 'Advanced Compliance Workflows', 'Priority Support']
+        : domainKey === 'senior'
+          ? ['Up to 100 Active Caregivers', 'Up to 3 Care Locations', 'Advanced Care Workflows', 'Priority Support']
+          : ['Up to 100 Active Staff', 'Up to 3 Facility Locations', 'Advanced Compliance Workflows', 'Priority Support']
     },
     {
       id: 'network',
       name: 'Network',
-      description: domainKey === 'healthcare' ? 'Ideal for healthcare provider networks.' : 'Ideal for established childcare networks.',
+      description: domainKey === 'healthcare' ? 'Ideal for healthcare provider networks.' : domainKey === 'senior' ? 'Ideal for multi-location senior-care networks.' : 'Ideal for established childcare networks.',
       features: domainKey === 'healthcare'
         ? ['Up to 300 Active Medical Staff', 'Up to 10 Clinic Locations', 'Dedicated Account Manager', 'Custom API Access']
-        : ['Up to 300 Active Staff', 'Up to 10 Facility Locations', 'Dedicated Account Manager', 'Custom API Access']
+        : domainKey === 'senior'
+          ? ['Up to 300 Active Caregivers', 'Up to 10 Care Locations', 'Dedicated Account Manager', 'Custom API Access']
+          : ['Up to 300 Active Staff', 'Up to 10 Facility Locations', 'Dedicated Account Manager', 'Custom API Access']
     }
   ]
 

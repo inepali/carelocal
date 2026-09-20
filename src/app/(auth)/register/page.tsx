@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff, ArrowRight, Loader2, Building2, User } from 'lucide-react'
-import { getDomainConfig } from '@/lib/domain-config'
+import { getDomainConfig, getDomainKey, type DomainKey } from '@/lib/domain-config'
 
 function RegisterForm() {
   const router = useRouter()
@@ -16,14 +16,11 @@ function RegisterForm() {
   const supabase = createClient()
   
   // Resolve domain vertical configuration dynamically
-  const [domainKey, setDomainKey] = useState<'childcare' | 'healthcare'>('childcare')
+  const [domainKey, setDomainKey] = useState<DomainKey>('childcare')
   
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const host = window.location.host
-      if (host.includes('carelocal.net') || host.includes('carelocalhealth.com') || host.includes('3001')) {
-        setDomainKey('healthcare')
-      }
+      setDomainKey(getDomainKey(window.location.host))
     }
   }, [])
 
@@ -127,8 +124,8 @@ function RegisterForm() {
           phone,
           director_name: directorName,
           domain_key: domainKey,
-          staff_term: domainKey === 'healthcare' ? 'Medical Staff' : 'Staff',
-          work_area_term: domainKey === 'healthcare' ? 'Care Areas' : 'Classrooms'
+          staff_term: config.staffTerm,
+          work_area_term: config.workAreaTerm
         })
 
       if (centerError) {

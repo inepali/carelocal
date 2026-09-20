@@ -66,12 +66,12 @@ export async function POST(req: Request) {
       
       const centerName = center?.name || 'A CareLocal Center'
 
-      const isHealthcare = center?.domain_key === 'healthcare'
-      const senderName = isHealthcare ? 'CareLocal Health' : 'CareLocal'
-      const senderEmail = isHealthcare ? 'updates@carelocal.net' : 'updates@carelocal.co'
-      let appUrl = isHealthcare ? 'https://carelocal.net' : 'https://carelocal.co'
+      const domainKey = center?.domain_key || 'childcare'
+      const senderName = domainKey === 'healthcare' ? 'CareLocal Health' : domainKey === 'senior' ? 'CareLocal Senior' : 'CareLocal'
+      const senderEmail = domainKey === 'healthcare' ? 'updates@carelocal.net' : domainKey === 'senior' ? 'updates@carelocalsenior.com' : 'updates@carelocal.co'
+      let appUrl = domainKey === 'healthcare' ? 'https://carelocal.net' : domainKey === 'senior' ? 'https://carelocalsenior.com' : 'https://carelocal.co'
       if (process.env.NEXT_PUBLIC_APP_URL && process.env.NEXT_PUBLIC_APP_URL.includes('localhost')) {
-        appUrl = isHealthcare ? 'http://localhost:3001' : 'http://localhost:3000'
+        appUrl = domainKey === 'healthcare' ? 'http://localhost:3001' : domainKey === 'senior' ? 'http://localhost:3002' : 'http://localhost:3000'
       }
 
       // 2. Fetch all active staff connected to this center

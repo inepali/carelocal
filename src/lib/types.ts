@@ -1,3 +1,5 @@
+import type { DomainKey } from '@/lib/domain-config'
+
 export type SubscriptionTier = 'starter' | 'growth' | 'network' | 'enterprise'
 export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused'
 export type StaffType = string  // Open-ended — values are now stored in staff_role_types table
@@ -251,7 +253,15 @@ export const DOCUMENT_CATEGORY_LABELS: Record<DocumentCategory, string> = {
   other: 'Other'
 }
 
-export function getTierLimits(domainKey: 'childcare' | 'healthcare'): Record<SubscriptionTier, { maxLocations: number; maxStaff: number; pricePerMonth: number }> {
+export function getTierLimits(domainKey: DomainKey): Record<SubscriptionTier, { maxLocations: number; maxStaff: number; pricePerMonth: number }> {
+  if (domainKey === 'senior') {
+    return {
+      starter: { maxLocations: 1, maxStaff: 30, pricePerMonth: 79 },
+      growth: { maxLocations: 3, maxStaff: 100, pricePerMonth: 199 },
+      network: { maxLocations: 10, maxStaff: 300, pricePerMonth: 399 },
+      enterprise: { maxLocations: Infinity, maxStaff: Infinity, pricePerMonth: 0 },
+    }
+  }
   if (domainKey === 'healthcare') {
     return {
       starter: { maxLocations: 1, maxStaff: 30, pricePerMonth: 99 },

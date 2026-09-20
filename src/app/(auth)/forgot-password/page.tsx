@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Mail, ArrowLeft, Loader2, CheckCircle2 } from 'lucide-react'
-import { getDomainConfig } from '@/lib/domain-config'
+import { getDomainConfig, getDomainKey, type DomainKey } from '@/lib/domain-config'
 
 export default function ForgotPasswordPage() {
   const supabase = createClient()
@@ -14,19 +14,17 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState('')
 
   // Resolve domain vertical configuration dynamically
-  const [domainKey, setDomainKey] = useState<'childcare' | 'healthcare'>('childcare')
+  const [domainKey, setDomainKey] = useState<DomainKey>('childcare')
   
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const host = window.location.host
-      if (host.includes('carelocal.net') || host.includes('carelocalhealth.com') || host.includes('3001')) {
-        setDomainKey('healthcare')
-      }
+      setDomainKey(getDomainKey(window.location.host))
     }
   }, [])
 
   const config = getDomainConfig(domainKey)
   const isHealthcare = domainKey === 'healthcare'
+  const resetHost = domainKey === 'healthcare' ? 'http://localhost:3001' : domainKey === 'senior' ? 'http://localhost:3002' : 'http://localhost:3000'
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -34,7 +32,7 @@ export default function ForgotPasswordPage() {
     setError('')
 
     const redirectTo =
-      `${process.env.NEXT_PUBLIC_APP_URL || (isHealthcare ? 'http://localhost:3001' : 'http://localhost:3000')}/reset-password`
+      `${process.env.NEXT_PUBLIC_APP_URL || resetHost}/reset-password`
 
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo,
