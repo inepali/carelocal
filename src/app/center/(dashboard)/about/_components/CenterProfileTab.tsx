@@ -3,10 +3,10 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Center, SubscriptionTier, getTierLimits, MetroArea } from '@/lib/types'
-import { Building2, Save, MapPin, Phone, Mail, User, ShieldCheck, Loader2, ExternalLink, Clock, Globe, ArrowRight } from 'lucide-react'
+import { Building2, Save, MapPin, ShieldCheck, Loader2, ExternalLink, Clock, Globe, ArrowRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
-export default function CenterSettingsPage() {
+export default function CenterProfileTab() {
   const supabase = createClient()
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -111,7 +111,7 @@ export default function CenterSettingsPage() {
     if (error) {
       setMessage(`Error: ${error.message}`)
     } else {
-      setMessage('Center settings updated successfully!')
+      setMessage('Center profile updated successfully!')
       loadData()
     }
     setSaving(false)
@@ -142,7 +142,7 @@ export default function CenterSettingsPage() {
     }
   }
 
-  if (loading) return <div className="p-12 animate-pulse font-black text-slate-300">Loading Expansion Data...</div>
+  if (loading) return <div className="p-12 animate-pulse font-black text-slate-300">Loading Center Profile...</div>
 
   const tier = (center.subscription_tier as SubscriptionTier) || 'starter'
   const domainKey = (center.domain_key as 'childcare' | 'healthcare') || 'childcare'
@@ -157,12 +157,7 @@ export default function CenterSettingsPage() {
     : Math.min(100, (activeLocationCount / limits.maxLocations) * 100)
 
   return (
-    <div className="max-w-6xl mx-auto pb-24 px-6 md:px-10">
-      <div className="mb-12">
-        <h1 className="text-3xl font-extrabold text-[#0b3828] mb-2">Facility Settings</h1>
-        <p className="text-[#6b7a73]">Manage your childcare center and expansion regions.</p>
-      </div>
-
+    <div>
       <div className="grid lg:grid-cols-3 gap-12 items-start">
         {/* ── Left: Main Settings ── */}
         <div className="lg:col-span-2 space-y-10">
@@ -305,7 +300,7 @@ export default function CenterSettingsPage() {
                   disabled={saving}
                   className="flex items-center justify-center gap-2 bg-[#157354] text-white font-semibold px-8 py-3 rounded-xl hover:bg-[#0f4a36] disabled:opacity-60 transition-colors shadow-sm"
                 >
-                  {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-5 h-5" /> Save Center Settings</>}
+                  {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-5 h-5" /> Save Center Profile</>}
                 </button>
               </div>
             </form>

@@ -299,7 +299,7 @@ export default function StaffPoolPage() {
                                    href={`/center/team_member/${profile.id}`}
                                    className="inline-flex items-center gap-2 text-[#157354] font-black hover:text-[#0b3828] text-sm group/link"
                                  >
-                                    Review Paperwork <ArrowRight className="w-4 h-4 group-hover/link:translate-x-1 transition-transform" />
+                                    View <ArrowRight className="w-4 h-4 group-hover/link:translate-x-1 transition-transform" />
                                  </Link>
                                )}
                             </td>

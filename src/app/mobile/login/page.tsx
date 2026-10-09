@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Loader2, Lock, Mail } from 'lucide-react'
+import { getDomainKey } from '@/lib/domain-config'
+import { canAccessDomain, wrongDomainMessage, WRONG_DOMAIN_ERROR } from '@/lib/supabase/user-domain'
 
 export default function MobileLoginPage() {
   const supabase = createClient()
@@ -11,14 +13,19 @@ export default function MobileLoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  // The proxy redirects here with ?error=wrong_domain after signing out a cross-vertical session.
+  const [error, setError] = useState(() =>
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('error') === WRONG_DOMAIN_ERROR
+      ? wrongDomainMessage(getDomainKey(window.location.host))
+      : ''
+  )
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
@@ -26,9 +33,19 @@ export default function MobileLoginPage() {
     if (signInError) {
       setError(signInError.message)
       setLoading(false)
-    } else {
-      router.replace('/mobile/shifts')
+      return
     }
+
+    // Accounts are locked to the vertical they signed up on
+    const siteDomain = getDomainKey(window.location.host)
+    if (!(await canAccessDomain(supabase, data.user, siteDomain))) {
+      await supabase.auth.signOut()
+      setError(wrongDomainMessage(siteDomain))
+      setLoading(false)
+      return
+    }
+
+    router.replace('/mobile/shifts')
   }
 
   return (

@@ -188,6 +188,39 @@ export interface WorkArea {
   created_at: string
 }
 
+export interface CenterProgram {
+  id: string
+  center_id: string
+  name: string
+  age_range?: string | null
+  schedule?: string | null
+  capacity?: number | null
+  description?: string | null
+  is_active: boolean
+  sort_order: number
+  created_at: string
+}
+
+export interface CenterTeamMember {
+  id: string
+  center_id: string
+  name: string
+  title?: string | null
+  bio?: string | null
+  email?: string | null
+  sort_order: number
+  created_at: string
+}
+
+export interface CenterAboutItem {
+  id: string
+  center_id: string
+  title: string
+  content?: string | null
+  sort_order: number
+  created_at: string
+}
+
 export interface Shift {
   id: string
   center_id: string
