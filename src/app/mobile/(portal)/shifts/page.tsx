@@ -76,9 +76,14 @@ export default function MobileShiftsPage() {
       // 2. Get my existing center connections
       const { data: connections } = await supabase
         .from('center_staff')
-        .select('center_id, status')
+        .select('center_id, status, employment_class')
         .eq('staff_id', profile.id)
-      
+
+      // Regular employees don't take marketplace shifts at their own center
+      const regularCenterIds = new Set(
+        (connections || []).filter(c => c.employment_class === 'regular').map(c => c.center_id)
+      )
+
       const connectionMap = (connections || []).reduce<Record<string, string>>((acc, curr) => {
         acc[curr.center_id] = curr.status
         return acc
@@ -99,7 +104,7 @@ export default function MobileShiftsPage() {
         .gte('shift_date', today)
         .order('shift_date', { ascending: true })
         
-      setShifts((openShifts as unknown as Shift[]) || [])
+      setShifts(((openShifts as unknown as Shift[]) || []).filter(s => !regularCenterIds.has(s.center_id)))
 
       // 4. Fetch my existing claims
       const { data: myClaims } = await supabase

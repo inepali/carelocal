@@ -11,6 +11,7 @@ import {
   CalendarDays, Plus, Pencil, Trash2, CheckCircle2, AlertTriangle,
   XCircle, FileText, Clock, ChevronDown, X, ShieldCheck, Link2, Star
 } from 'lucide-react'
+import { useIsRegularOnly } from '@/lib/hooks/useIsRegularOnly'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -67,6 +68,7 @@ export default function StaffProfilePage() {
   const [vaultDocs, setVaultDocs]     = useState<StaffDocument[]>([])
   const [reviews, setReviews]         = useState<any[]>([])
   const [activeTab, setActiveTab]     = useState<TabId>('personal')
+  const { isRegularOnly } = useIsRegularOnly()
 
   // ── Load everything once ──
   useEffect(() => {
@@ -131,20 +133,24 @@ export default function StaffProfilePage() {
     )
   }
 
-  const TABS: { id: TabId; label: string; Icon: any }[] = [
+  const ALL_TABS: { id: TabId; label: string; Icon: any }[] = [
     { id: 'personal',      label: 'Personal Info',  Icon: User },
     { id: 'experience',    label: 'Experience',      Icon: Briefcase },
     { id: 'credentials',   label: 'Credentials',     Icon: Award },
     { id: 'availability',  label: 'Availability',    Icon: CalendarDays },
     { id: 'reviews',       label: 'Reviews',         Icon: Star },
   ]
+  // Regular employees don't pick up marketplace shifts, so availability doesn't apply
+  const TABS = ALL_TABS.filter(tab => !(isRegularOnly && tab.id === 'availability'))
 
   return (
     <div className="max-w-3xl mx-auto pb-24 px-4 md:px-6">
       {/* Header */}
       <div className="mb-10">
         <h1 className="text-3xl font-bold text-[#0b3828] mb-1.5 tracking-tight">My Profile</h1>
-        <p className="text-[#6b7a73] text-base">Manage your background, credentials and availability.</p>
+        <p className="text-[#6b7a73] text-base">
+          {isRegularOnly ? 'Manage your background and credentials.' : 'Manage your background, credentials and availability.'}
+        </p>
       </div>
 
       {/* Avatar strip */}

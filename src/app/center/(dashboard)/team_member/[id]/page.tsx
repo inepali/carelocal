@@ -6,7 +6,8 @@ import {
   StaffProfile, CenterDocumentRequirement, StaffDocument,
   CenterStaffDocumentStatus, DocReviewStatus, STAFF_TYPE_LABELS,
   StaffType, StaffExperience, StaffCredential,
-  AGE_GROUP_LABELS, AgeGroup
+  AGE_GROUP_LABELS, AgeGroup,
+  EmploymentClass, EMPLOYMENT_CLASS_LABELS, appliesToEmploymentClass
 } from '@/lib/types'
 import {
   ArrowLeft, CheckCircle2, XCircle, Clock, FileText, ExternalLink,
@@ -76,6 +77,8 @@ export default function StaffReviewPage() {
   const [activating, setActivating]   = useState(false)
   const [reviews, setReviews]         = useState<any[]>([])
   const [internalDocs, setInternalDocs] = useState<any[]>([])
+  const [employmentClass, setEmploymentClass] = useState<EmploymentClass>('substitute')
+  const [savingClass, setSavingClass] = useState(false)
   
   // Internal Docs Upload State
   const [showInternalUpload, setShowInternalUpload] = useState(false)
@@ -109,13 +112,22 @@ export default function StaffReviewPage() {
     setProfile(staffProfile)
 
     if (staffProfile) {
-      // 2. Center Requirements
+      // 2. Employment class at this center + requirements that apply to it
+      const { data: membership } = await supabase
+        .from('center_staff')
+        .select('employment_class')
+        .eq('center_id', admin.center_id)
+        .eq('staff_id', staffId)
+        .maybeSingle()
+      const memberClass: EmploymentClass = membership?.employment_class || 'substitute'
+      setEmploymentClass(memberClass)
+
       const { data: reqs } = await supabase
         .from('center_document_requirements')
         .select('*')
         .eq('center_id', admin.center_id)
         .order('sort_order', { ascending: true })
-      setRequirements(reqs || [])
+      setRequirements((reqs || []).filter(r => appliesToEmploymentClass(r, memberClass)))
 
       // 3. Staff vault docs
       const { data: staffDocs } = await supabase
@@ -222,6 +234,21 @@ export default function StaffReviewPage() {
     else alert('Failed to approve: ' + error.message)
   }
 
+  async function handleChangeEmploymentClass(next: EmploymentClass) {
+    if (!centerId || next === employmentClass) return
+    const message = next === 'regular'
+      ? `Mark as Regular employee? They will no longer see, claim, or be notified about open shifts at this center, any pending shift requests here will be withdrawn, and their document checklist will switch to Regular requirements.`
+      : `Mark as Substitute? They will see and be notified about open shifts at this center again, and their document checklist will switch to Substitute requirements.`
+    if (!confirm(message)) return
+
+    setSavingClass(true)
+    const { error } = await supabase.from('center_staff').update({ employment_class: next })
+      .eq('center_id', centerId).eq('staff_id', staffId)
+    setSavingClass(false)
+    if (!error) { loadData() }
+    else alert('Failed to update employee class: ' + error.message)
+  }
+
   async function handleUploadInternal(e: React.FormEvent) {
     e.preventDefault()
     if (!internalFile || !internalReqId || !centerId) return
@@ -323,6 +350,17 @@ export default function StaffReviewPage() {
               <span className="bg-[#edf7f3] text-[#157354] px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border border-[#d4ede4]">
                 {STAFF_TYPE_LABELS[profile.staff_type as StaffType] || profile.staff_type}
               </span>
+              <select
+                value={employmentClass}
+                disabled={savingClass}
+                onChange={(e) => handleChangeEmploymentClass(e.target.value as EmploymentClass)}
+                title="Employee class at this center"
+                className="bg-white text-[#157354] px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border border-[#d4ede4] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 disabled:opacity-50"
+              >
+                {(Object.entries(EMPLOYMENT_CLASS_LABELS) as [EmploymentClass, string][]).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
               {totalReqs > 0 && (
                 <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border ${
                   acceptedCount === totalReqs ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'

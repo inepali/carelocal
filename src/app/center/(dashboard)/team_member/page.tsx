@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { StaffProfile, CenterStaff, STAFF_TYPE_LABELS, StaffType } from '@/lib/types'
+import { StaffProfile, CenterStaff, STAFF_TYPE_LABELS, StaffType, EMPLOYMENT_CLASS_LABELS, EmploymentClass } from '@/lib/types'
 import { Users, Search, Filter, ShieldCheck, Mail, Phone, ArrowRight, CheckCircle2, Clock, Loader2, Sparkles, UserPlus } from 'lucide-react'
 import { getStaffInviteLink } from '@/lib/api/invites'
 import Link from 'next/link'
@@ -17,6 +17,7 @@ export default function StaffPoolPage() {
   const [activeTab, setActiveTab] = useState<'pool' | 'onboarding' | 'discover'>('pool')
   const [centerInfo, setCenterInfo] = useState<{ id: string, slug: string, city: string, zip: string } | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [classFilter, setClassFilter] = useState<'all' | EmploymentClass>('all')
   const [inviting, setInviting] = useState<string | null>(null)
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
@@ -53,6 +54,7 @@ export default function StaffPoolPage() {
         .from('center_staff')
         .select(`
           status,
+          employment_class,
           added_at,
           staff_profiles (
              id,
@@ -102,7 +104,7 @@ export default function StaffPoolPage() {
     } else {
       const profile = nearbyStaff.find(s => s.id === staffId)
       if (profile) {
-        setStaff([{ status: 'invited', added_at: new Date().toISOString(), staff_profiles: profile }, ...staff])
+        setStaff([{ status: 'invited', employment_class: 'substitute', added_at: new Date().toISOString(), staff_profiles: profile }, ...staff])
         setNearbyStaff(nearbyStaff.filter(s => s.id !== staffId))
       }
     }
@@ -150,6 +152,7 @@ export default function StaffPoolPage() {
       const searchStr = searchTerm.toLowerCase()
       return list.filter(item => {
         const profile = item.staff_profiles || item
+        if (activeTab !== 'discover' && classFilter !== 'all' && item.employment_class !== classFilter) return false
         return (
           profile.first_name?.toLowerCase().includes(searchStr) ||
           profile.last_name?.toLowerCase().includes(searchStr) ||
@@ -217,6 +220,19 @@ export default function StaffPoolPage() {
                   className="w-full pl-12 pr-6 py-4 rounded-[1.25rem] border-2 border-[#f0f4f2] bg-white text-[#1a2e25] font-medium focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all"
                />
             </div>
+            {activeTab !== 'discover' && (
+              <select
+                 value={classFilter}
+                 onChange={(e) => setClassFilter(e.target.value as 'all' | EmploymentClass)}
+                 title="Filter by employee class"
+                 className="px-5 py-4 rounded-[1.25rem] border-2 border-[#f0f4f2] bg-white text-[#1a2e25] font-bold text-sm focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all"
+              >
+                 <option value="all">All Classes</option>
+                 {(Object.entries(EMPLOYMENT_CLASS_LABELS) as [EmploymentClass, string][]).map(([value, label]) => (
+                   <option key={value} value={value}>{label}</option>
+                 ))}
+              </select>
+            )}
          </div>
 
          <div className="overflow-x-auto">
@@ -269,6 +285,13 @@ export default function StaffPoolPage() {
                                 <div className="inline-flex items-center px-3 py-1 bg-[#f8faf9] text-[#3d5a4f] rounded-lg text-xs font-black uppercase tracking-widest border border-[#e2e8e4]">
                                    {STAFF_TYPE_LABELS[profile.staff_type as StaffType]}
                                 </div>
+                                {item.employment_class && (
+                                  <div className={`inline-flex items-center ml-2 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border ${
+                                    item.employment_class === 'regular' ? 'bg-[#edf7f3] text-[#157354] border-[#d4ede4]' : 'bg-white text-[#6b7a73] border-[#e2e8e4]'
+                                  }`}>
+                                     {EMPLOYMENT_CLASS_LABELS[item.employment_class as EmploymentClass]}
+                                  </div>
+                                )}
                             </td>
                             <td className="px-8 py-6">
                                 {status === 'invited' ? (

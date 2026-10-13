@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { CenterDocumentRequirement, DOCUMENT_CATEGORY_LABELS, DocumentCategory } from '@/lib/types'
+import { CenterDocumentRequirement, DOCUMENT_CATEGORY_LABELS, DocumentCategory, EMPLOYMENT_CLASS_LABELS, EmploymentClass } from '@/lib/types'
 import { useStaffRoles } from '@/lib/hooks/useStaffRoles'
 import { FileText, Plus, Trash2, Settings2, Info, CheckCircle2, Loader2, AlertCircle, FileStack, Upload, X, Download, ShieldCheck } from 'lucide-react'
 import { getPresignedUploadUrl, deleteFile, getPresignedViewUrl } from '@/app/actions/storage.actions'
@@ -37,6 +37,7 @@ export default function CenterDocumentsConfigPage() {
   const [isInternal, setIsInternal] = useState(false)
   const [reqCategory, setReqCategory] = useState<DocumentCategory | ''>('')
   const [applicableTypes, setApplicableTypes] = useState<string[]>([])
+  const [applicableClasses, setApplicableClasses] = useState<EmploymentClass[]>([])
 
   // Template State
   const [templateFile, setTemplateFile] = useState<File | null>(null)
@@ -142,6 +143,7 @@ export default function CenterDocumentsConfigPage() {
       is_required: isRequired,
       is_internal: isInternal,
       applies_to: applicableTypes.length > 0 ? applicableTypes : null,
+      applies_to_class: applicableClasses.length > 0 ? applicableClasses : null,
       ...templateData
     }
 
@@ -185,6 +187,7 @@ export default function CenterDocumentsConfigPage() {
     setIsRequired(req.is_required)
     setIsInternal(req.is_internal || false)
     setApplicableTypes(req.applies_to || [])
+    setApplicableClasses(req.applies_to_class || [])
     if (req.template_file_key && req.template_bucket_name) {
       setExistingTemplate({
         key: req.template_file_key,
@@ -205,6 +208,7 @@ export default function CenterDocumentsConfigPage() {
     setIsRequired(true)
     setIsInternal(false)
     setApplicableTypes([])
+    setApplicableClasses([])
     setTemplateFile(null)
     setExistingTemplate(null)
     setShowAdd(false)
@@ -397,6 +401,32 @@ export default function CenterDocumentsConfigPage() {
                   <p className="text-[10px] text-[#a8b5ae] mt-2 italic">If none selected, it applies to all roles.</p>
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-[#1a2e25] mb-1.5 text-xs text-muted-foreground uppercase tracking-widest">Applicable Employee Class</label>
+                  <div className="flex flex-wrap gap-2">
+                    {(Object.entries(EMPLOYMENT_CLASS_LABELS) as [EmploymentClass, string][]).map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => {
+                          if (applicableClasses.includes(value)) {
+                            setApplicableClasses(applicableClasses.filter(c => c !== value))
+                          } else {
+                            setApplicableClasses([...applicableClasses, value])
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${applicableClasses.includes(value)
+                            ? 'bg-[#157354] text-white border-[#157354]'
+                            : 'bg-white text-[#6b7a73] border-[#e2e8e4] hover:bg-gray-50'
+                          }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-[#a8b5ae] mt-2 italic">If none selected, it applies to both regular and substitute staff.</p>
+                </div>
+
                 <div className="border-t border-[#e2e8e4] pt-6">
                   <label className="block text-sm font-bold text-[#1a2e25] mb-2 uppercase tracking-wide text-[10px]">Attach Form or Template (Optional)</label>
 
@@ -546,6 +576,11 @@ export default function CenterDocumentsConfigPage() {
                         <span className="text-xs">
                           {req.applies_to ? `Applies to: ${req.applies_to.join(', ')}` : 'Applies to all staff'}
                         </span>
+                        {req.applies_to_class && req.applies_to_class.length > 0 && (
+                          <span className="text-[10px] font-bold uppercase tracking-widest bg-[#edf7f3] text-[#157354] px-2 py-0.5 rounded border border-[#d4ede4]">
+                            {req.applies_to_class.map(c => EMPLOYMENT_CLASS_LABELS[c]).join(' / ')} only
+                          </span>
+                        )}
                         {req.template_file_key && (
                           <span className="flex items-center gap-1 text-[10px] font-bold text-[#157354] bg-[#edf7f3] px-2 py-0.5 rounded-full border border-[#a9dac9]">
                             <Download className="w-3 h-3" /> Form Attached

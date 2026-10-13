@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, Calendar, FileText, UserCircle, Globe, Search, CreditCard } from 'lucide-react'
+import { LogOut, Calendar, FileText, UserCircle, Globe, Search, CreditCard, Building } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
+import { useIsRegularOnly, isSubstituteOnlyRoute, isRegularOnlyRoute } from '@/lib/hooks/useIsRegularOnly'
 
 export default function StaffPortalLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -12,6 +13,15 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
   const supabase = createClient()
   const [userName, setUserName] = useState('Loading...')
   const [loading, setLoading] = useState(true)
+  const { isRegularOnly, loading: classLoading } = useIsRegularOnly()
+
+  // Regular employees get a single-center portal without the shift marketplace;
+  // substitutes keep the multi-center portal
+  const homeHref = isRegularOnly ? '/staff/center' : '/staff/shifts'
+  const blockedRoute = isRegularOnly ? isSubstituteOnlyRoute(pathname) : isRegularOnlyRoute(pathname)
+  useEffect(() => {
+    if (!classLoading && blockedRoute) router.replace(isRegularOnly ? '/staff/center' : '/staff/centers')
+  }, [classLoading, blockedRoute, isRegularOnly, router])
 
   useEffect(() => {
     async function loadUser() {
@@ -40,15 +50,16 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
   }
 
   const NAVIGATION = [
+    { name: 'My Center', href: '/staff/center', icon: Building },
     { name: 'My Centers', href: '/staff/centers', icon: Globe },
     { name: 'Available Shifts', href: '/staff/shifts', icon: Search },
     { name: 'My Shifts', href: '/staff/my-shifts', icon: Calendar },
     { name: 'My Documents', href: '/staff/documents', icon: FileText },
     { name: 'My Profile', href: '/staff/profile', icon: UserCircle },
     { name: 'My Account', href: '/staff/account', icon: CreditCard },
-  ]
+  ].filter(item => isRegularOnly ? !isSubstituteOnlyRoute(item.href) : !isRegularOnlyRoute(item.href))
 
-  if (loading) {
+  if (loading || classLoading || blockedRoute) {
      return <div className="min-h-screen bg-[#f8faf9] flex items-center justify-center">Loading...</div>
   }
 
@@ -56,7 +67,7 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
     <div className="staff-shell min-h-screen bg-[#f8faf9] flex flex-col font-sans">
       {/* ── Top Navigation (Mobile friendly for staff) ── */}
       <header className="h-16 bg-[#0b3828] text-white flex items-center justify-between px-6 sticky top-0 z-20">
-        <Link href="/staff/shifts" className="flex items-center gap-2">
+        <Link href={homeHref} className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-md bg-[#157354] flex items-center justify-center">
               <span className="text-white font-bold text-xs">CL</span>
             </div>

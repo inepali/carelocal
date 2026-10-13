@@ -58,9 +58,14 @@ export default function StaffShiftsPage() {
       // 2. Get my existing center connections
       const { data: connections } = await supabase
         .from('center_staff')
-        .select('center_id, status')
+        .select('center_id, status, employment_class')
         .eq('staff_id', profile.id)
-      
+
+      // Regular employees don't take marketplace shifts at their own center
+      const regularCenterIds = new Set(
+        (connections || []).filter(c => c.employment_class === 'regular').map(c => c.center_id)
+      )
+
       const connectionMap = (connections || []).reduce((acc: any, curr: any) => {
         acc[curr.center_id] = curr.status
         return acc
@@ -84,7 +89,7 @@ export default function StaffShiftsPage() {
         .lt('shift_date', nextMonthStart)
         .order('shift_date', { ascending: true })
         
-      setShifts(openShifts || [])
+      setShifts((openShifts || []).filter(s => !regularCenterIds.has(s.center_id)))
 
       // 4. Fetch Metros for context
       const { data: metroData } = await supabase.from('metro_areas').select('*').eq('is_active', true)

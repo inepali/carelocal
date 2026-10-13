@@ -5,6 +5,7 @@ export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled'
 export type StaffType = string  // Open-ended — values are now stored in staff_role_types table
 export type AgeGroup = 'infant' | 'toddler' | 'preschool' | 'school_age' | 'mixed'
 export type CenterStaffStatus = 'invited' | 'applying' | 'active' | 'inactive' | 'removed'
+export type EmploymentClass = 'regular' | 'substitute'
 export type DocumentCategory = 'identity' | 'certification' | 'background' | 'training' | 'medical' | 'documentation' | 'academic_qualification' | 'other'
 export type DocReviewStatus = 'missing' | 'pending_review' | 'accepted' | 'rejected' | 'expired'
 export type ShiftStatus = 'open' | 'filled' | 'cancelled' | 'unfilled'
@@ -122,6 +123,7 @@ export interface CenterStaff {
   center_id: string
   staff_id: string
   status: CenterStaffStatus
+  employment_class: EmploymentClass
   is_preferred: boolean
   invite_token?: string
   invite_expires_at?: string
@@ -155,6 +157,7 @@ export interface CenterDocumentRequirement {
   is_required: boolean
   is_internal?: boolean
   applies_to?: StaffType[]
+  applies_to_class?: EmploymentClass[] | null  // null = all classes
   notes?: string
   sort_order: number
   template_file_key?: string
@@ -232,6 +235,20 @@ export const STAFF_TYPE_LABELS: Record<string, string> = {
   floater: 'Floater',
   support: 'Support Staff',
   cook: 'Cook',
+}
+
+export const EMPLOYMENT_CLASS_LABELS: Record<EmploymentClass, string> = {
+  regular: 'Regular',
+  substitute: 'Substitute',
+}
+
+/** Whether a document requirement applies to a staff member's employment class at that center */
+export function appliesToEmploymentClass(
+  req: Pick<CenterDocumentRequirement, 'applies_to_class'>,
+  employmentClass: EmploymentClass | null | undefined
+) {
+  if (!req.applies_to_class || req.applies_to_class.length === 0) return true
+  return req.applies_to_class.includes(employmentClass ?? 'substitute')
 }
 
 export const AGE_GROUP_LABELS: Record<AgeGroup, string> = {

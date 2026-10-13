@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useSearchParams } from 'next/navigation'
 import { getPresignedUploadUrl, getPresignedViewUrl } from '@/app/actions/storage.actions'
+import { appliesToEmploymentClass } from '@/lib/types'
 import { 
   FileText, 
   Upload, 
@@ -153,13 +154,21 @@ function DocumentsContent() {
       if (centerData) {
         setCenter(centerData)
 
-        // Fetch center requirements
+        // Fetch my employment class at this center (set by the center admin)
+        const { data: membership } = await supabase
+          .from('center_staff')
+          .select('employment_class')
+          .eq('center_id', centerData.id)
+          .eq('staff_id', staffProfile.id)
+          .maybeSingle()
+
+        // Fetch center requirements that apply to my class
         const { data: reqs } = await supabase
           .from('center_document_requirements')
           .select('*')
           .eq('center_id', centerData.id)
           .order('sort_order', { ascending: true })
-        setRequirements(reqs || [])
+        setRequirements((reqs || []).filter(r => appliesToEmploymentClass(r, membership?.employment_class)))
 
         // Fetch statuses
         const { data: statusData } = await supabase

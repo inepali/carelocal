@@ -74,7 +74,8 @@ export async function POST(req: Request) {
         appUrl = domainKey === 'healthcare' ? 'http://localhost:3001' : domainKey === 'senior' ? 'http://localhost:3002' : 'http://localhost:3000'
       }
 
-      // 2. Fetch all active staff connected to this center
+      // 2. Fetch all active substitute staff connected to this center
+      //    (regular employees are out of scope for shift notifications)
       const { data: centerStaff } = await supabase
         .from('center_staff')
         .select(`
@@ -88,6 +89,7 @@ export async function POST(req: Request) {
         `)
         .eq('center_id', centerId)
         .eq('status', 'active')
+        .eq('employment_class', 'substitute')
 
       if (!centerStaff || centerStaff.length === 0) {
         return NextResponse.json({ success: true, message: 'No active staff to notify.' })
