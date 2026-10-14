@@ -8,6 +8,16 @@ import { useRouter, usePathname } from 'next/navigation'
 import { CenterContext } from './context'
 import type { DomainKey } from '@/lib/domain-config'
 
+// Dev/demo tool: jumps the browser to another vertical's domain (it does not change the
+// center's vertical). Off unless NEXT_PUBLIC_SHOW_VERTICAL_SWITCHER=true.
+const SHOW_VERTICAL_SWITCHER = process.env.NEXT_PUBLIC_SHOW_VERTICAL_SWITCHER === 'true'
+
+const VERTICALS: { key: DomainKey; label: string; Icon?: typeof Baby }[] = [
+  { key: 'childcare', label: 'Child Care', Icon: Baby },
+  { key: 'senior', label: 'Senior' },
+  { key: 'healthcare', label: 'Hospital', Icon: Building2 },
+]
+
 export default function CenterDashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -107,48 +117,30 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
           <div className="font-medium truncate">{centerName}</div>
         </div>
 
-        <div className="px-4 py-4 border-b border-white/10 shrink-0">
-          <div className="text-[10px] text-brand-300 uppercase tracking-wider font-semibold mb-2">Switch vertical</div>
-          <div className="grid grid-cols-3 gap-1 rounded-lg bg-black/10 p-1">
-            <button
-              type="button"
-              onClick={() => switchVertical('childcare')}
-              disabled={domainKey === 'childcare'}
-              aria-pressed={domainKey === 'childcare'}
-              className={`flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-medium transition-colors ${
-                domainKey === 'childcare'
-                  ? 'bg-brand-600 text-white shadow-sm'
-                  : 'text-brand-200 hover:bg-white/10 hover:text-white'
-              }`}
-            >
-              <Baby className="h-3.5 w-3.5" />
-              Child Care
-            </button>
-            <button
-              type="button"
-              onClick={() => switchVertical('senior')}
-              disabled={domainKey === 'senior'}
-              aria-pressed={domainKey === 'senior'}
-              className={`flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-medium transition-colors ${domainKey === 'senior' ? 'bg-brand-600 text-white shadow-sm' : 'text-brand-200 hover:bg-white/10 hover:text-white'}`}
-            >
-              Senior
-            </button>
-            <button
-              type="button"
-              onClick={() => switchVertical('healthcare')}
-              disabled={domainKey === 'healthcare'}
-              aria-pressed={domainKey === 'healthcare'}
-              className={`flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-medium transition-colors ${
-                domainKey === 'healthcare'
-                  ? 'bg-brand-600 text-white shadow-sm'
-                  : 'text-brand-200 hover:bg-white/10 hover:text-white'
-              }`}
-            >
-              <Building2 className="h-3.5 w-3.5" />
-              Hospital
-            </button>
+        {SHOW_VERTICAL_SWITCHER && (
+          <div className="px-4 py-4 border-b border-white/10 shrink-0">
+            <div className="text-[10px] text-brand-300 uppercase tracking-wider font-semibold mb-2">Switch vertical</div>
+            <div className="grid grid-cols-3 gap-1 rounded-lg bg-black/10 p-1">
+              {VERTICALS.map(({ key, label, Icon }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => switchVertical(key)}
+                  disabled={domainKey === key}
+                  aria-pressed={domainKey === key}
+                  className={`flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-medium transition-colors ${
+                    domainKey === key
+                      ? 'bg-brand-600 text-white shadow-sm'
+                      : 'text-brand-200 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  {Icon && <Icon className="h-3.5 w-3.5" />}
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-1">
           {NAVIGATION.map((item) => {

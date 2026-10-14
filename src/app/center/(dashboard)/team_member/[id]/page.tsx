@@ -19,6 +19,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { getPresignedViewUrl } from '@/app/actions/storage.actions'
 import { useCenterContext } from '../../context'
+import { StaffAvatar } from '@/components/StaffAvatar'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -319,7 +320,7 @@ export default function StaffReviewPage() {
     { id: 'credentials',  label: 'Credentials',  Icon: Award },
     { id: 'availability', label: 'Availability', Icon: CalendarDays },
     { id: 'documents',    label: 'Documents',    Icon: ShieldCheck },
-    { id: 'internal_docs', label: 'Other Documents', Icon: FileStack },
+    { id: 'internal_docs', label: 'Center Documents', Icon: FileStack },
   ]
 
   // compliance progress (exclude internal requirements)
@@ -339,9 +340,12 @@ export default function StaffReviewPage() {
       {/* Header card */}
       <div className="bg-white border-2 border-[#f0f4f2] rounded-[2.5rem] shadow-sm mb-8 overflow-hidden">
         <div className="p-8 bg-[#f8faf9] border-b-2 border-[#f0f4f2] flex flex-col md:flex-row items-start md:items-center gap-6">
-          <div className="w-24 h-24 rounded-[2rem] bg-[#157354] text-white flex items-center justify-center text-4xl font-black shadow-xl shadow-[#157354]/25 shrink-0">
-            {profile.first_name[0]}{profile.last_name[0]}
-          </div>
+          <StaffAvatar
+            avatarKey={profile.avatar_url}
+            firstName={profile.first_name}
+            lastName={profile.last_name}
+            className="w-24 h-24 rounded-[2rem] bg-[#157354] text-white text-4xl font-black shadow-xl shadow-[#157354]/25"
+          />
           <div className="flex-1">
             <h1 className="text-3xl font-black text-[#0b3828] tracking-tight mb-1">
               {profile.first_name} {profile.last_name}
@@ -735,12 +739,28 @@ export default function StaffReviewPage() {
                               </div>
                             </div>
                           </div>
-                          <button
-                            onClick={() => handleView(matchedDoc.file_key, matchedDoc.bucket_name, matchedDoc.file_url)}
-                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#edf7f3] text-[#157354] font-black text-xs hover:bg-[#d4ede4] transition-colors border border-[#d4ede4]"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" /> View File
-                          </button>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              onClick={() => handleView(matchedDoc.file_key, matchedDoc.bucket_name, matchedDoc.file_url)}
+                              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#edf7f3] text-[#157354] font-black text-xs hover:bg-[#d4ede4] transition-colors border border-[#d4ede4]"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" /> View File
+                            </button>
+                            <button
+                              onClick={() => handleReview(req.id, matchedDoc.id, 'accepted')}
+                              disabled={reviewingId === req.id}
+                              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#157354] text-white font-black text-xs hover:bg-[#0f4a36] disabled:opacity-50 transition-colors border border-[#157354]"
+                            >
+                              {reviewingId === req.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />} Accept
+                            </button>
+                            <button
+                              onClick={() => handleReview(req.id, matchedDoc.id, 'rejected')}
+                              disabled={reviewingId === req.id}
+                              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-red-600 font-black text-xs hover:bg-red-50 disabled:opacity-50 transition-colors border border-red-100"
+                            >
+                              {reviewingId === req.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />} Reject
+                            </button>
+                          </div>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2 text-[#6b7a73] text-sm italic">
@@ -758,25 +778,9 @@ export default function StaffReviewPage() {
                             value={reviewNotes || status?.review_notes || ''}
                             onChange={e => setReviewNotes(e.target.value)}
                             placeholder="e.g. Looks good, valid state license."
-                            className="w-full px-4 py-3 rounded-xl border-2 border-[#f0f4f2] bg-white text-sm focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all mb-4"
+                            className="w-full px-4 py-3 rounded-xl border-2 border-[#f0f4f2] bg-white text-sm focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all"
                             rows={2}
                           />
-                          <div className="flex gap-3">
-                            <button
-                              onClick={() => handleReview(req.id, matchedDoc?.id || null, 'accepted')}
-                              disabled={reviewingId === req.id || !matchedDoc}
-                              className="flex-1 flex items-center justify-center gap-2 bg-[#157354] text-white font-black py-3 rounded-xl hover:bg-[#0f4a36] disabled:opacity-50 transition-all text-sm"
-                            >
-                              {reviewingId === req.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle2 className="w-4 h-4" /> Accept</>}
-                            </button>
-                            <button
-                              onClick={() => handleReview(req.id, matchedDoc?.id || null, 'rejected')}
-                              disabled={reviewingId === req.id || !matchedDoc}
-                              className="flex-1 flex items-center justify-center gap-2 bg-white text-red-600 border-2 border-red-100 font-black py-3 rounded-xl hover:bg-red-50 disabled:opacity-50 transition-all text-sm"
-                            >
-                              {reviewingId === req.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><XCircle className="w-4 h-4" /> Reject</>}
-                            </button>
-                          </div>
                         </div>
                       )}
                     </div>

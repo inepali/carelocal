@@ -260,13 +260,12 @@ export const AGE_GROUP_LABELS: Record<AgeGroup, string> = {
 }
 
 export const DOCUMENT_CATEGORY_LABELS: Record<DocumentCategory, string> = {
-  identity: 'Identity (ID/Passport)',
-  certification: 'Certification (CPR/First Aid)',
-  background: 'Background Check',
+  identity: 'Identity',
+  certification: 'Certification',
+  background: 'Background',
   training: 'Training',
   medical: 'Medical/Health',
   documentation: 'Documentation',
-  academic_qualification: 'Academic Qualification',
   other: 'Other'
 }
 

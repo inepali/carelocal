@@ -20,13 +20,12 @@ import {
 
 // Document Categories
 const CATEGORIES = [
-  { label: 'Identity (ID/Passport)', value: 'identity' },
-  { label: 'Certification (CPR/First Aid)', value: 'certification' },
-  { label: 'Background Check', value: 'background' },
+  { label: 'Identity', value: 'identity' },
+  { label: 'Certification', value: 'certification' },
+  { label: 'Background', value: 'background' },
   { label: 'Training', value: 'training' },
   { label: 'Medical/Health', value: 'medical' },
   { label: 'Documentation', value: 'documentation' },
-  { label: 'Academic Qualification', value: 'academic_qualification' },
   { label: 'Other', value: 'other' },
 ]
 

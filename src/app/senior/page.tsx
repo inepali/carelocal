@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { ProductsMenu } from '@/components/marketing/ProductsMenu'
 import { ArrowRight, Clock, FileText, ShieldCheck, Users, Zap } from 'lucide-react'
 import { getDomainConfig } from '@/lib/domain-config'
 
@@ -22,6 +23,7 @@ export default function SeniorHomePage() {
             <span className="text-lg font-bold">{config.appName}</span>
           </Link>
           <div className="flex items-center gap-4">
+            <div className="hidden md:block text-sm font-semibold text-brand-700"><ProductsMenu /></div>
             <Link href="/login" className="text-sm font-semibold text-brand-700 hover:text-brand-600">Log in</Link>
             <Link href="/register" className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800">Start free</Link>
           </div>

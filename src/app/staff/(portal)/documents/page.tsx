@@ -10,13 +10,12 @@ import { useLookups } from '@/hooks/use-lookups'
 
 // Mock categories if types aren't fully exporting them yet
 const CATEGORIES: { label: string; value: DocumentCategory }[] = [
-  { label: 'Identity (ID/Passport)', value: 'identity' },
-  { label: 'Certification (CPR/First Aid)', value: 'certification' },
-  { label: 'Background Check', value: 'background' },
+  { label: 'Identity', value: 'identity' },
+  { label: 'Certification', value: 'certification' },
+  { label: 'Background', value: 'background' },
   { label: 'Training', value: 'training' },
   { label: 'Medical/Health', value: 'medical' },
   { label: 'Documentation', value: 'documentation' },
-  { label: 'Academic Qualification', value: 'academic_qualification' },
   { label: 'Other', value: 'other' },
 ]
 
@@ -317,7 +316,7 @@ function DocumentsContent() {
       )}
 
 
-      <div className="space-y-5">
+      <div className="space-y-8">
         {documents.length === 0 && (
           <div className="bg-[#edf7f3] border border-dashed border-[#a9dac9] rounded-2xl p-8 text-center">
             <FileText className="w-10 h-10 text-[#157354] mx-auto mb-3" />
@@ -329,13 +328,13 @@ function DocumentsContent() {
         )}
         {documentGroups.map((group) => (
           <section key={group.value} className="overflow-hidden rounded-2xl border border-[#e2e8e4] bg-white shadow-sm">
-            <div className="flex flex-col gap-3 border-b border-[#e2e8e4] bg-[#f8faf9] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 border-b border-[#e2e8e4] bg-[#f8faf9] px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#edf7f3] text-[#157354]">
                   <FileText className="h-5 w-5" />
                 </span>
                 <div>
-                  <h2 className="font-bold text-[#1a2e25]">{group.label}</h2>
+                  <h2 className="text-lg font-bold text-[#1a2e25]">{group.label}</h2>
                   <p className="text-xs text-[#6b7a73]">{group.documents.length} document{group.documents.length === 1 ? '' : 's'}</p>
                 </div>
               </div>
@@ -351,53 +350,67 @@ function DocumentsContent() {
               </button>
             </div>
             {group.documents.length > 0 ? (
-              <div className="divide-y divide-[#e2e8e4]">
-                {group.documents.map((doc: StaffDocument) => (
-            <div key={doc.id} className="flex items-center justify-between gap-4 p-5 transition-colors hover:bg-[#fbfcfb] group">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-[#edf7f3] flex items-center justify-center shrink-0">
-                  <FileText className="w-6 h-6 text-[#157354]" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-[#1a2e25] flex items-center gap-2">
-                    {doc.document_name}
-                    {doc.expiry_date && new Date(doc.expiry_date) < new Date() && (
-                      <span className="flex items-center gap-1 text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">
-                        <AlertCircle className="w-3 h-3" /> Expired
-                      </span>
-                    )}
-                  </h3>
-                  <div className="text-sm text-[#6b7a73] flex items-center gap-3">
-                    <span className="capitalize">{doc.document_category}</span>
-                    {doc.expiry_date && (
-                      <span className="flex items-center gap-1">
-                        • Expires {new Date(doc.expiry_date).toLocaleDateString()}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => handleView(doc.file_key, doc.bucket_name, doc.file_url)}
-                  className="p-3 text-[#157354] hover:bg-[#edf7f3] rounded-xl transition-colors group/btn"
-                  title="View Document"
-                >
-                  <Eye className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
-                </button>
-                <button 
-                  onClick={() => deleteDoc(doc.id)}
-                  className="p-3 text-[#a8b5ae] hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors group/btn"
-                  title="Delete"
-                >
-                  <Trash2 className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
-                </button>
-              </div>
-            </div>
-                ))}
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[560px] text-left">
+                  <thead>
+                    <tr className="border-b border-[#e2e8e4] text-[15px] font-bold text-[#1a2e25]">
+                      <th scope="col" className="px-6 py-4">Document</th>
+                      <th scope="col" className="px-6 py-4">Uploaded</th>
+                      <th scope="col" className="px-6 py-4">Expires</th>
+                      <th scope="col" className="px-6 py-4">Status</th>
+                      <th scope="col" className="px-6 py-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#e2e8e4] text-sm font-normal text-[#3d5a4f]">
+                    {group.documents.map((doc: StaffDocument) => {
+                      const isExpired = !!doc.expiry_date && new Date(doc.expiry_date) < new Date()
+                      return (
+                        <tr key={doc.id} className="transition-colors hover:bg-[#fbfcfb]">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <FileText className="h-4 w-4 shrink-0 text-[#157354]" />
+                              <span className="text-[#1a2e25]">{doc.document_name}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">{new Date(doc.uploaded_at).toLocaleDateString()}</td>
+                          <td className={`px-6 py-4 whitespace-nowrap ${isExpired ? 'text-red-600' : ''}`}>
+                            {doc.expiry_date ? new Date(doc.expiry_date).toLocaleDateString() : '—'}
+                          </td>
+                          <td className="px-6 py-4">
+                            {isExpired ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs text-red-600">
+                                <AlertCircle className="h-3 w-3" /> Expired
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center rounded-full bg-[#edf7f3] px-2.5 py-1 text-xs text-[#157354]">Valid</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => handleView(doc.file_key, doc.bucket_name, doc.file_url)}
+                                className="rounded-lg p-2 text-[#157354] transition-colors hover:bg-[#edf7f3]"
+                                title="View Document"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => deleteDoc(doc.id)}
+                                className="rounded-lg p-2 text-[#a8b5ae] transition-colors hover:bg-red-50 hover:text-red-500"
+                                title="Delete"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
               </div>
             ) : (
-              <div className="px-5 py-6 text-sm text-[#6b7a73]">No documents added in this category yet.</div>
+              <div className="px-6 py-6 text-sm text-[#6b7a73]">No documents added in this category yet.</div>
             )}
           </section>
         ))}

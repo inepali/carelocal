@@ -9,9 +9,11 @@ import {
 import {
   User, Mail, Phone, Save, Loader2, Globe, Briefcase, Award,
   CalendarDays, Plus, Pencil, Trash2, CheckCircle2, AlertTriangle,
-  XCircle, FileText, Clock, ChevronDown, X, ShieldCheck, Link2, Star
+  XCircle, FileText, ChevronDown, X, ShieldCheck, Link2, Star, Camera
 } from 'lucide-react'
 import { useIsRegularOnly } from '@/lib/hooks/useIsRegularOnly'
+import { StaffAvatar } from '@/components/StaffAvatar'
+import { getAvatarUploadUrl, deleteAvatar } from '@/app/actions/avatar.actions'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -55,6 +57,91 @@ const DAYS = [
 
 const YEARS = Array.from({ length: 40 }, (_, i) => new Date().getFullYear() - i)
 
+// ─── Shared section layout (matches My Documents) ───────────────────────────
+
+const LBL    = 'block text-sm font-medium text-[#1a2e25] mb-1.5'
+const FLD    = 'w-full px-3.5 py-2.5 rounded-xl border border-[#e2e8e4] bg-white text-[#1a2e25] text-sm focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition'
+const TH_ROW = 'border-b border-[#e2e8e4] text-[15px] font-bold text-[#1a2e25]'
+const TBODY  = 'divide-y divide-[#e2e8e4] text-sm font-normal text-[#3d5a4f]'
+
+function fmtDate(date?: string) {
+  return date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
+}
+
+function ProfileSection({ Icon, title, subtitle, action, children }: {
+  Icon: React.ElementType
+  title: string
+  subtitle?: string
+  action?: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-[#e2e8e4] bg-white shadow-sm">
+      <div className="flex flex-col gap-3 border-b border-[#e2e8e4] bg-[#f8faf9] px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#edf7f3] text-[#157354]">
+            <Icon className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="text-lg font-bold text-[#1a2e25]">{title}</h2>
+            {subtitle && <p className="text-xs text-[#6b7a73]">{subtitle}</p>}
+          </div>
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  )
+}
+
+function AddButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#157354] px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-[#0f4a36]"
+    >
+      <Plus className="h-4 w-4" /> Add New
+    </button>
+  )
+}
+
+function RowActions({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
+  return (
+    <div className="flex items-center justify-end gap-1">
+      <button onClick={onEdit} className="rounded-lg p-2 text-[#157354] transition-colors hover:bg-[#edf7f3]" title="Edit">
+        <Pencil className="h-4 w-4" />
+      </button>
+      <button onClick={onDelete} className="rounded-lg p-2 text-[#a8b5ae] transition-colors hover:bg-red-50 hover:text-red-500" title="Delete">
+        <Trash2 className="h-4 w-4" />
+      </button>
+    </div>
+  )
+}
+
+function FormButtons({ saving, disabled, label, onSave, onCancel }: {
+  saving: boolean
+  disabled: boolean
+  label: string
+  onSave: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div className="flex justify-end gap-2">
+      <button onClick={onCancel} className="px-4 py-2.5 rounded-xl border border-[#e2e8e4] text-[#6b7a73] text-sm font-medium hover:bg-[#f8faf9] transition-colors">
+        Cancel
+      </button>
+      <button
+        onClick={onSave}
+        disabled={saving || disabled}
+        className="inline-flex items-center gap-2 bg-[#157354] text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-[#0f4a36] transition-colors disabled:opacity-50"
+      >
+        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 text-white/70" />} {label}
+      </button>
+    </div>
+  )
+}
+
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export default function StaffProfilePage() {
@@ -69,6 +156,63 @@ export default function StaffProfilePage() {
   const [reviews, setReviews]         = useState<any[]>([])
   const [activeTab, setActiveTab]     = useState<TabId>('personal')
   const { isRegularOnly } = useIsRegularOnly()
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+
+  async function handleAvatarUpload(file: File) {
+    if (!staffId) return
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Please choose an image under 5 MB.')
+      return
+    }
+
+    setUploadingAvatar(true)
+    try {
+      const presigned = await getAvatarUploadUrl(file.name, file.type)
+      if (!presigned.success || !presigned.uploadUrl || !presigned.fileKey) {
+        alert(presigned.error || 'Failed to prepare photo upload')
+        return
+      }
+
+      const uploadRes = await fetch(presigned.uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type },
+      })
+      if (!uploadRes.ok) {
+        alert('Photo upload failed. Please try again.')
+        return
+      }
+
+      const { error } = await supabase.from('staff_profiles').update({ avatar_url: presigned.fileKey }).eq('id', staffId)
+      if (error) {
+        await deleteAvatar(presigned.fileKey)
+        alert('Failed to save photo: ' + error.message)
+        return
+      }
+
+      const previousKey = profile.avatar_url
+      setProfile(prev => ({ ...prev, avatar_url: presigned.fileKey }))
+      if (previousKey) await deleteAvatar(previousKey)
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
+  async function handleAvatarRemove() {
+    if (!staffId || !profile.avatar_url) return
+    if (!confirm('Remove your profile photo?')) return
+
+    setUploadingAvatar(true)
+    const previousKey = profile.avatar_url
+    const { error } = await supabase.from('staff_profiles').update({ avatar_url: null }).eq('id', staffId)
+    if (error) {
+      alert('Failed to remove photo: ' + error.message)
+    } else {
+      setProfile(prev => ({ ...prev, avatar_url: undefined }))
+      await deleteAvatar(previousKey)
+    }
+    setUploadingAvatar(false)
+  }
 
   // ── Load everything once ──
   useEffect(() => {
@@ -155,14 +299,61 @@ export default function StaffProfilePage() {
 
       {/* Avatar strip */}
       <div className="flex items-center gap-6 mb-10 p-6 bg-white rounded-2xl border border-[#e2e8e4] shadow-sm">
-        <div className="w-20 h-20 rounded-[1.5rem] bg-[#157354] text-white flex items-center justify-center text-2xl font-bold shadow-lg shadow-[#157354]/30 shrink-0">
-          {profile.first_name?.[0]}{profile.last_name?.[0]}
-        </div>
+        <label
+          className={`relative group shrink-0 ${staffId ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+          title={staffId ? 'Change profile photo' : 'Save your personal info first'}
+        >
+          <StaffAvatar
+            avatarKey={profile.avatar_url}
+            firstName={profile.first_name}
+            lastName={profile.last_name}
+            className="w-20 h-20 rounded-[1.5rem] bg-[#157354] text-white text-2xl font-bold shadow-lg shadow-[#157354]/30"
+          />
+          {staffId && (
+            <span className={`absolute inset-0 rounded-[1.5rem] bg-black/45 text-white flex items-center justify-center transition-opacity ${uploadingAvatar ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+              {uploadingAvatar ? <Loader2 className="w-6 h-6 animate-spin" /> : <Camera className="w-6 h-6" />}
+            </span>
+          )}
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="sr-only"
+            disabled={!staffId || uploadingAvatar}
+            onChange={e => {
+              const file = e.target.files?.[0]
+              e.target.value = ''
+              if (file) handleAvatarUpload(file)
+            }}
+          />
+        </label>
         <div>
           <div className="text-xl font-semibold text-[#1a2e25] tracking-tight">{profile.first_name} {profile.last_name}</div>
           <div className="flex items-center gap-3 mt-1">
             <span className="text-[10px] font-medium tracking-wide text-[#a8b5ae]">Verified Member</span>
           </div>
+          {staffId && (
+            <div className="flex items-center gap-3 mt-2 text-xs font-semibold">
+              <label className="text-[#157354] hover:underline cursor-pointer">
+                {profile.avatar_url ? 'Change photo' : 'Upload photo'}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="sr-only"
+                  disabled={uploadingAvatar}
+                  onChange={e => {
+                    const file = e.target.files?.[0]
+                    e.target.value = ''
+                    if (file) handleAvatarUpload(file)
+                  }}
+                />
+              </label>
+              {profile.avatar_url && (
+                <button type="button" onClick={handleAvatarRemove} disabled={uploadingAvatar} className="text-red-600 hover:underline disabled:opacity-50">
+                  Remove
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -336,10 +527,10 @@ function PersonalInfoTab({
           <textarea value={profile.bio || ''} onChange={e => setProfile({...profile, bio: e.target.value})} rows={4} placeholder="Tell centers about your background..." className={`${F} resize-none`} />
         </div>
 
-        <div className="pt-4 border-t-2 border-[#f0f4f2]">
-          <label className={L}>Preferred Payment Methods</label>
-          <p className="text-[11px] text-[#a8b5ae] font-bold mb-4 -mt-1">Select all the ways you're comfortable receiving payment for shifts.</p>
-          <div className="flex flex-wrap gap-2">
+        <div className="pt-6 border-t border-[#e2e8e4]">
+          <label className="block text-[15px] font-bold text-[#1a2e25] mb-1">Preferred Payment Methods</label>
+          <p className="text-xs text-[#6b7a73] mb-3">Select all the ways you&apos;re comfortable receiving payment for shifts.</p>
+          <div className="flex flex-wrap gap-1.5">
             {PAYMENT_METHODS.map(method => {
               const active = activeMethods.includes(method.key)
               return (
@@ -347,10 +538,11 @@ function PersonalInfoTab({
                   key={method.key}
                   type="button"
                   onClick={() => togglePayment(method.key)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-black border-2 transition-all ${
+                  aria-pressed={active}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border transition-colors ${
                     active
-                      ? 'bg-[#157354] text-white border-[#157354] shadow-md shadow-[#157354]/20'
-                      : 'bg-white text-[#6b7a73] border-[#f0f4f2] hover:border-[#157354]/30 hover:text-[#0b3828]'
+                      ? 'bg-[#157354] text-white border-[#157354]'
+                      : 'bg-white text-[#3d5a4f] border-[#e2e8e4] hover:border-[#157354]/40 hover:text-[#0b3828]'
                   }`}
                 >
                   <span>{method.emoji}</span> {method.label}
@@ -359,7 +551,7 @@ function PersonalInfoTab({
             })}
           </div>
           {activeMethods.length === 0 && (
-            <p className="text-[10px] text-[#a8b5ae] font-bold mt-3">No preference selected — centers will see all methods as acceptable.</p>
+            <p className="text-xs text-[#a8b5ae] mt-2">No preference selected — centers will see all methods as acceptable.</p>
           )}
         </div>
 
@@ -426,74 +618,65 @@ function ExperienceTab({ staffId, supabase }: { staffId: string; supabase: any }
     setItems(prev => prev.filter(i => i.id !== id))
   }
 
-  const F = 'w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white text-[#1a2e25] text-sm focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition'
-  const L = 'block text-sm font-medium text-[#1a2e25] mb-1.5'
 
   return (
-    <div className="space-y-4">
-      {/* Add button */}
-      {!form && (
-        <button
-          onClick={() => setForm({ is_current: false })}
-          className="w-full flex items-center justify-center gap-2 bg-white border-2 border-dashed border-[#157354]/30 text-[#157354] font-black text-sm py-4 rounded-2xl hover:border-[#157354] hover:bg-[#edf7f3] transition-all"
-        >
-          <Plus className="w-4 h-4" /> Add Work Experience
-        </button>
-      )}
-
-      {/* Inline form */}
+    <ProfileSection
+      Icon={Briefcase}
+      title="Work Experience"
+      subtitle={`${items.length} position${items.length === 1 ? '' : 's'}`}
+      action={!form && <AddButton onClick={() => setForm({ is_current: false })} />}
+    >
       {form && (
-        <div className="bg-white border-2 border-[#157354]/20 rounded-[2rem] p-6 space-y-5 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="font-black text-[#0b3828]">{form.id ? 'Edit' : 'New'} Experience</h3>
+        <div className="p-6 space-y-4 border-b border-[#e2e8e4] bg-[#fbfcfb]">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-[#0b3828]">{form.id ? 'Edit' : 'New'} Experience</h3>
             <button onClick={() => setForm(null)} className="text-[#a8b5ae] hover:text-[#0b3828] transition-colors"><X className="w-5 h-5" /></button>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid sm:grid-cols-3 gap-4">
             <div>
-              <label className={L}>Employer / Center Name *</label>
-              <input className={F} value={form.employer || ''} onChange={e => setForm({...form, employer: e.target.value})} placeholder="Sunshine Childcare Center" />
+              <label className={LBL}>Employer / Center Name *</label>
+              <input className={FLD} value={form.employer || ''} onChange={e => setForm({...form, employer: e.target.value})} placeholder="Sunshine Childcare Center" />
             </div>
             <div>
-              <label className={L}>Your Role / Title *</label>
-              <input className={F} value={form.role || ''} onChange={e => setForm({...form, role: e.target.value})} placeholder="Lead Teacher" />
+              <label className={LBL}>Your Role / Title *</label>
+              <input className={FLD} value={form.role || ''} onChange={e => setForm({...form, role: e.target.value})} placeholder="Lead Teacher" />
             </div>
-          </div>
-
-          <div>
-            <label className={L}>Primary Age Group</label>
-            <select className={`${F} appearance-none cursor-pointer`} value={form.age_group || ''} onChange={e => setForm({...form, age_group: e.target.value as AgeGroup || undefined})}>
-              <option value="">Select...</option>
-              {Object.entries(AGE_GROUP_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
+            <div>
+              <label className={LBL}>Primary Age Group</label>
+              <select className={`${FLD} appearance-none cursor-pointer`} value={form.age_group || ''} onChange={e => setForm({...form, age_group: e.target.value as AgeGroup || undefined})}>
+                <option value="">Select...</option>
+                {Object.entries(AGE_GROUP_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
-              <label className={L}>Start Month</label>
-              <select className={`${F} appearance-none`} value={form.start_month || ''} onChange={e => setForm({...form, start_month: Number(e.target.value) || undefined})}>
+              <label className={LBL}>Start Month</label>
+              <select className={`${FLD} appearance-none`} value={form.start_month || ''} onChange={e => setForm({...form, start_month: Number(e.target.value) || undefined})}>
                 <option value="">Month</option>
                 {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
               </select>
             </div>
             <div>
-              <label className={L}>Start Year</label>
-              <select className={`${F} appearance-none`} value={form.start_year || ''} onChange={e => setForm({...form, start_year: Number(e.target.value) || undefined})}>
+              <label className={LBL}>Start Year</label>
+              <select className={`${FLD} appearance-none`} value={form.start_year || ''} onChange={e => setForm({...form, start_year: Number(e.target.value) || undefined})}>
                 <option value="">Year</option>
                 {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
             {!form.is_current && <>
               <div>
-                <label className={L}>End Month</label>
-                <select className={`${F} appearance-none`} value={form.end_month || ''} onChange={e => setForm({...form, end_month: Number(e.target.value) || undefined})}>
+                <label className={LBL}>End Month</label>
+                <select className={`${FLD} appearance-none`} value={form.end_month || ''} onChange={e => setForm({...form, end_month: Number(e.target.value) || undefined})}>
                   <option value="">Month</option>
                   {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
                 </select>
               </div>
               <div>
-                <label className={L}>End Year</label>
-                <select className={`${F} appearance-none`} value={form.end_year || ''} onChange={e => setForm({...form, end_year: Number(e.target.value) || undefined})}>
+                <label className={LBL}>End Year</label>
+                <select className={`${FLD} appearance-none`} value={form.end_year || ''} onChange={e => setForm({...form, end_year: Number(e.target.value) || undefined})}>
                   <option value="">Year</option>
                   {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
@@ -506,73 +689,61 @@ function ExperienceTab({ staffId, supabase }: { staffId: string; supabase: any }
               onClick={() => setForm({...form, is_current: !form.is_current})}>
               <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.is_current ? 'translate-x-5' : 'translate-x-1'}`} />
             </div>
-            <span className="text-sm font-black text-[#1a2e25]">I currently work here</span>
+            <span className="text-sm font-medium text-[#1a2e25]">I currently work here</span>
           </label>
 
           <div>
-            <label className={L}>Description (optional)</label>
-            <textarea className={`${F} resize-none`} rows={3} value={form.description || ''} onChange={e => setForm({...form, description: e.target.value})} placeholder="Brief description of your responsibilities..." />
+            <label className={LBL}>Description (optional)</label>
+            <textarea className={`${FLD} resize-none`} rows={2} value={form.description || ''} onChange={e => setForm({...form, description: e.target.value})} placeholder="Brief description of your responsibilities..." />
           </div>
 
-          <div className="flex gap-3">
-            <button onClick={handleSave} disabled={saving || !form.employer || !form.role}
-              className="flex-1 bg-[#157354] text-white font-black py-3 rounded-xl hover:bg-[#0f4a36] transition-all disabled:opacity-50 flex items-center justify-center gap-2">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4" /> Save Experience</>}
-            </button>
-            <button onClick={() => setForm(null)} className="px-6 py-3 rounded-xl border-2 border-[#f0f4f2] text-[#6b7a73] font-black hover:border-[#e2e8e4] transition-all text-sm">
-              Cancel
-            </button>
-          </div>
+          <FormButtons saving={saving} disabled={!form.employer || !form.role} label="Save Experience" onSave={handleSave} onCancel={() => setForm(null)} />
         </div>
       )}
 
-      {/* List */}
       {loading ? (
-        <div className="animate-pulse space-y-3">
-          <div className="h-24 bg-white rounded-2xl border border-[#e2e8e4]" />
-          <div className="h-24 bg-white rounded-2xl border border-[#e2e8e4]" />
+        <div className="p-6 animate-pulse space-y-3">
+          <div className="h-8 bg-[#f0f4f2] rounded-lg" />
+          <div className="h-8 bg-[#f0f4f2] rounded-lg" />
         </div>
-      ) : items.length === 0 && !form ? (
-        <div className="text-center py-16 bg-white rounded-[2rem] border-2 border-dashed border-[#e2e8e4]">
-          <Briefcase className="w-10 h-10 text-[#a8b5ae] mx-auto mb-3" />
-          <p className="text-[#6b7a73] font-bold text-sm">No work experience added yet.</p>
-          <p className="text-[#a8b5ae] text-xs mt-1">Add your childcare background to help centers match you.</p>
-        </div>
+      ) : items.length === 0 ? (
+        !form && <div className="px-6 py-6 text-sm text-[#6b7a73]">No work experience added yet. Add your background to help centers match you.</div>
       ) : (
-        <div className="space-y-3">
-          {items.map(item => (
-            <div key={item.id} className="group bg-white border-2 border-[#f0f4f2] hover:border-[#157354]/20 rounded-2xl p-5 flex items-start gap-4 transition-all">
-              <div className="w-11 h-11 rounded-xl bg-[#edf7f3] flex items-center justify-center shrink-0">
-                <Briefcase className="w-5 h-5 text-[#157354]" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <div className="font-black text-[#0b3828] leading-tight">{item.employer}</div>
-                    <div className="text-sm font-bold text-[#6b7a73]">{item.role}</div>
-                  </div>
-                  <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                    <button onClick={() => setForm(item)} className="p-1.5 rounded-lg hover:bg-[#edf7f3] text-[#157354] transition-all"><Pencil className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => handleDelete(item.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 mt-2">
-                  <span className="text-[10px] font-black text-[#a8b5ae] uppercase tracking-wider">
-                    {monthYearStr(item.start_month, item.start_year)} {(item.start_month || item.start_year) ? '–' : ''} {monthYearStr(item.end_month, item.end_year, item.is_current)}
-                  </span>
-                  {item.age_group && (
-                    <span className="bg-[#f8faf9] text-[#6b7a73] border border-[#e2e8e4] px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest">
-                      {AGE_GROUP_LABELS[item.age_group]}
-                    </span>
-                  )}
-                </div>
-                {item.description && <p className="text-xs text-[#6b7a73] mt-2 leading-relaxed">{item.description}</p>}
-              </div>
-            </div>
-          ))}
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-left">
+            <thead>
+              <tr className={TH_ROW}>
+                <th scope="col" className="px-6 py-4">Employer</th>
+                <th scope="col" className="px-6 py-4">Role</th>
+                <th scope="col" className="px-6 py-4">Age Group</th>
+                <th scope="col" className="px-6 py-4">Period</th>
+                <th scope="col" className="px-6 py-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className={TBODY}>
+              {items.map(item => (
+                <tr key={item.id} className="hover:bg-[#fbfcfb] transition-colors align-top">
+                  <td className="px-6 py-4">
+                    <div className="text-[#1a2e25]">{item.employer}</div>
+                    {item.description && <div className="mt-0.5 max-w-xs text-xs text-[#6b7a73] line-clamp-2">{item.description}</div>}
+                  </td>
+                  <td className="px-6 py-4">{item.role}</td>
+                  <td className="px-6 py-4">{item.age_group ? AGE_GROUP_LABELS[item.age_group] : '—'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {(item.start_month || item.start_year)
+                      ? `${monthYearStr(item.start_month, item.start_year)} – ${monthYearStr(item.end_month, item.end_year, item.is_current)}`
+                      : monthYearStr(item.end_month, item.end_year, item.is_current) || '—'}
+                  </td>
+                  <td className="px-6 py-4">
+                    <RowActions onEdit={() => setForm(item)} onDelete={() => handleDelete(item.id)} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
-    </div>
+    </ProfileSection>
   )
 }
 
@@ -626,143 +797,116 @@ function CredentialsTab({ staffId, supabase, vaultDocs }: { staffId: string; sup
     setItems(prev => prev.filter(i => i.id !== id))
   }
 
-  const F = 'w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white text-[#1a2e25] text-sm focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition'
-  const L = 'block text-sm font-medium text-[#1a2e25] mb-1.5'
 
   return (
-    <div className="space-y-4">
-      {!form && (
-        <button
-          onClick={() => setForm({})}
-          className="w-full flex items-center justify-center gap-2 bg-white border-2 border-dashed border-[#157354]/30 text-[#157354] font-black text-sm py-4 rounded-2xl hover:border-[#157354] hover:bg-[#edf7f3] transition-all"
-        >
-          <Plus className="w-4 h-4" /> Add Credential / Certification
-        </button>
-      )}
-
+    <ProfileSection
+      Icon={Award}
+      title="Credentials & Certifications"
+      subtitle={`${items.length} credential${items.length === 1 ? '' : 's'}`}
+      action={!form && <AddButton onClick={() => setForm({})} />}
+    >
       {form && (
-        <div className="bg-white border-2 border-[#157354]/20 rounded-[2rem] p-6 space-y-5 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="font-black text-[#0b3828]">{form.id ? 'Edit' : 'New'} Credential</h3>
+        <div className="p-6 space-y-4 border-b border-[#e2e8e4] bg-[#fbfcfb]">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-[#0b3828]">{form.id ? 'Edit' : 'New'} Credential</h3>
             <button onClick={() => setForm(null)} className="text-[#a8b5ae] hover:text-[#0b3828]"><X className="w-5 h-5" /></button>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid sm:grid-cols-3 gap-4">
             <div>
-              <label className={L}>Credential Name *</label>
-              <input className={F} value={form.credential_name || ''} onChange={e => setForm({...form, credential_name: e.target.value})} placeholder="CPR / First Aid" />
+              <label className={LBL}>Credential Name *</label>
+              <input className={FLD} value={form.credential_name || ''} onChange={e => setForm({...form, credential_name: e.target.value})} placeholder="CPR / First Aid" />
             </div>
             <div>
-              <label className={L}>Issuing Organization</label>
-              <input className={F} value={form.issuing_body || ''} onChange={e => setForm({...form, issuing_body: e.target.value})} placeholder="American Red Cross" />
-            </div>
-          </div>
-
-          <div>
-            <label className={L}>Credential / License Number</label>
-            <input className={F} value={form.credential_number || ''} onChange={e => setForm({...form, credential_number: e.target.value})} placeholder="Optional" />
-          </div>
-
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label className={L}>Issue Date</label>
-              <input type="date" className={F} value={form.issue_date || ''} onChange={e => setForm({...form, issue_date: e.target.value})} />
+              <label className={LBL}>Issuing Organization</label>
+              <input className={FLD} value={form.issuing_body || ''} onChange={e => setForm({...form, issuing_body: e.target.value})} placeholder="American Red Cross" />
             </div>
             <div>
-              <label className={L}>Expiry Date</label>
-              <input type="date" className={F} value={form.expiry_date || ''} onChange={e => setForm({...form, expiry_date: e.target.value})} />
-              <p className="text-[10px] text-[#a8b5ae] font-bold mt-1">You'll see expiry alerts when this approaches.</p>
+              <label className={LBL}>Credential / License Number</label>
+              <input className={FLD} value={form.credential_number || ''} onChange={e => setForm({...form, credential_number: e.target.value})} placeholder="Optional" />
             </div>
           </div>
 
-          {vaultDocs.length > 0 && (
+          <div className="grid sm:grid-cols-3 gap-4">
             <div>
-              <label className={L}><Link2 className="w-3 h-3 inline mr-1" />Link to Document in Vault</label>
-              <select className={`${F} appearance-none cursor-pointer`} value={form.linked_document_id || ''} onChange={e => setForm({...form, linked_document_id: e.target.value || undefined})}>
-                <option value="">None</option>
-                {vaultDocs.map(d => <option key={d.id} value={d.id}>{d.document_name}</option>)}
-              </select>
+              <label className={LBL}>Issue Date</label>
+              <input type="date" className={FLD} value={form.issue_date || ''} onChange={e => setForm({...form, issue_date: e.target.value})} />
             </div>
-          )}
-
-          <div className="flex gap-3">
-            <button onClick={handleSave} disabled={saving || !form.credential_name}
-              className="flex-1 bg-[#157354] text-white font-black py-3 rounded-xl hover:bg-[#0f4a36] transition-all disabled:opacity-50 flex items-center justify-center gap-2">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4" /> Save Credential</>}
-            </button>
-            <button onClick={() => setForm(null)} className="px-6 py-3 rounded-xl border-2 border-[#f0f4f2] text-[#6b7a73] font-black hover:border-[#e2e8e4] transition-all text-sm">
-              Cancel
-            </button>
+            <div>
+              <label className={LBL}>Expiry Date</label>
+              <input type="date" className={FLD} value={form.expiry_date || ''} onChange={e => setForm({...form, expiry_date: e.target.value})} />
+            </div>
+            {vaultDocs.length > 0 && (
+              <div>
+                <label className={LBL}><Link2 className="w-3 h-3 inline mr-1" />Linked Document</label>
+                <select className={`${FLD} appearance-none cursor-pointer`} value={form.linked_document_id || ''} onChange={e => setForm({...form, linked_document_id: e.target.value || undefined})}>
+                  <option value="">None</option>
+                  {vaultDocs.map(d => <option key={d.id} value={d.id}>{d.document_name}</option>)}
+                </select>
+              </div>
+            )}
           </div>
+
+          <FormButtons saving={saving} disabled={!form.credential_name} label="Save Credential" onSave={handleSave} onCancel={() => setForm(null)} />
         </div>
       )}
 
       {loading ? (
-        <div className="animate-pulse space-y-3">
-          <div className="h-20 bg-white rounded-2xl border border-[#e2e8e4]" />
-          <div className="h-20 bg-white rounded-2xl border border-[#e2e8e4]" />
+        <div className="p-6 animate-pulse space-y-3">
+          <div className="h-8 bg-[#f0f4f2] rounded-lg" />
+          <div className="h-8 bg-[#f0f4f2] rounded-lg" />
         </div>
-      ) : items.length === 0 && !form ? (
-        <div className="text-center py-16 bg-white rounded-[2rem] border-2 border-dashed border-[#e2e8e4]">
-          <Award className="w-10 h-10 text-[#a8b5ae] mx-auto mb-3" />
-          <p className="text-[#6b7a73] font-bold text-sm">No credentials added yet.</p>
-          <p className="text-[#a8b5ae] text-xs mt-1">Add CPR, CDA, background checks, and more.</p>
-        </div>
+      ) : items.length === 0 ? (
+        !form && <div className="px-6 py-6 text-sm text-[#6b7a73]">No credentials added yet. Add CPR, CDA, background checks, and more.</div>
       ) : (
-        <div className="space-y-3">
-          {items.map(item => {
-            const status = getExpiryStatus(item.expiry_date)
-            const badge  = status ? EXPIRY_BADGE[status] : null
-            return (
-              <div key={item.id} className={`group bg-white border-2 rounded-2xl p-5 flex items-start gap-4 transition-all hover:shadow-sm ${
-                status === 'expired' ? 'border-red-100 bg-red-50/30' :
-                status === 'soon'    ? 'border-amber-100 bg-amber-50/20' :
-                'border-[#f0f4f2] hover:border-[#157354]/20'
-              }`}>
-                <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
-                  status === 'expired' ? 'bg-red-100' : status === 'soon' ? 'bg-amber-100' : 'bg-[#edf7f3]'
-                }`}>
-                  <Award className={`w-5 h-5 ${status === 'expired' ? 'text-red-500' : status === 'soon' ? 'text-amber-500' : 'text-[#157354]'}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="font-black text-[#0b3828] leading-tight">{item.credential_name}</div>
-                      {item.issuing_body && <div className="text-sm font-bold text-[#6b7a73]">{item.issuing_body}</div>}
-                    </div>
-                    <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      <button onClick={() => setForm(item)} className="p-1.5 rounded-lg hover:bg-[#edf7f3] text-[#157354]"><Pencil className="w-3.5 h-3.5" /></button>
-                      <button onClick={() => handleDelete(item.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 mt-2">
-                    {item.issue_date && (
-                      <span className="text-[10px] font-bold text-[#a8b5ae]">Issued {new Date(item.issue_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
-                    )}
-                    {item.expiry_date && (
-                      <span className="text-[10px] font-bold text-[#a8b5ae]">· Expires {new Date(item.expiry_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
-                    )}
-                    {badge && (
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[9px] font-black uppercase tracking-wider ${badge.className}`}>
-                        <badge.Icon className="w-2.5 h-2.5" /> {badge.label}
-                      </span>
-                    )}
-                    {item.linked_document && (
-                      <span className="inline-flex items-center gap-1 text-[9px] font-black text-[#157354] bg-[#edf7f3] border border-[#d4ede4] px-2 py-0.5 rounded-lg">
-                        <FileText className="w-2.5 h-2.5" /> {(item.linked_document as any).document_name}
-                      </span>
-                    )}
-                  </div>
-                  {item.credential_number && (
-                    <div className="text-[10px] text-[#a8b5ae] font-bold mt-1">#{item.credential_number}</div>
-                  )}
-                </div>
-              </div>
-            )
-          })}
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-left">
+            <thead>
+              <tr className={TH_ROW}>
+                <th scope="col" className="px-6 py-4">Credential</th>
+                <th scope="col" className="px-6 py-4">Number</th>
+                <th scope="col" className="px-6 py-4">Issued</th>
+                <th scope="col" className="px-6 py-4">Expires</th>
+                <th scope="col" className="px-6 py-4">Status</th>
+                <th scope="col" className="px-6 py-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className={TBODY}>
+              {items.map(item => {
+                const status = getExpiryStatus(item.expiry_date)
+                const badge  = status ? EXPIRY_BADGE[status] : null
+                return (
+                  <tr key={item.id} className="hover:bg-[#fbfcfb] transition-colors align-top">
+                    <td className="px-6 py-4">
+                      <div className="text-[#1a2e25]">{item.credential_name}</div>
+                      {item.issuing_body && <div className="text-xs text-[#6b7a73]">{item.issuing_body}</div>}
+                      {item.linked_document && (
+                        <div className="mt-1 inline-flex items-center gap-1 text-xs text-[#157354]">
+                          <FileText className="w-3 h-3" /> {(item.linked_document as any).document_name}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">{item.credential_number || '—'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{fmtDate(item.issue_date)}</td>
+                    <td className={`px-6 py-4 whitespace-nowrap ${status === 'expired' ? 'text-red-600' : ''}`}>{fmtDate(item.expiry_date)}</td>
+                    <td className="px-6 py-4">
+                      {badge ? (
+                        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${badge.className}`}>
+                          <badge.Icon className="w-3 h-3" /> {badge.label}
+                        </span>
+                      ) : '—'}
+                    </td>
+                    <td className="px-6 py-4">
+                      <RowActions onEdit={() => setForm(item)} onDelete={() => handleDelete(item.id)} />
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       )}
-    </div>
+    </ProfileSection>
   )
 }
 
@@ -800,101 +944,75 @@ function AvailabilityTab({
     setSaving(false)
   }
 
-  const F = 'w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white text-[#1a2e25] text-sm focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition'
 
   return (
-    <div className="bg-white border border-[#e2e8e4] rounded-2xl shadow-sm p-8 space-y-8">
-      {message && (
-        <div className={`p-4 rounded-xl text-sm font-medium border-2 ${message.includes('Error') ? 'bg-red-50 text-red-700 border-red-100' : 'bg-[#f0fdf4] text-[#16a34a] border-[#bbf7d0]'}`}>
-          {message}
-        </div>
-      )}
-
-      {/* Days picker */}
-      <div>
-        <div className="text-sm font-medium text-[#1a2e25] mb-3 flex items-center gap-2">
-          <CalendarDays className="w-4 h-4 text-[#157354]" /> Days Available for Shifts
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          {DAYS.map(day => {
-            const active = activeDays.includes(day.key)
-            return (
-              <button
-                key={day.key}
-                type="button"
-                onClick={() => toggleDay(day.key)}
-                className={`w-14 h-14 rounded-2xl font-semibold text-sm transition-all border-2 ${
-                  active
-                    ? 'bg-[#157354] text-white border-[#157354] shadow-lg shadow-[#157354]/20 scale-105'
-                    : 'bg-white text-[#6b7a73] border-[#f0f4f2] hover:border-[#157354]/30 hover:text-[#0b3828]'
-                }`}
-              >
-                {day.label}
-              </button>
-            )
-          })}
-        </div>
-        {activeDays.length === 0 && (
-          <p className="text-xs text-[#a8b5ae] mt-3">Select the days you're open to working.</p>
+    <ProfileSection Icon={CalendarDays} title="Availability" subtitle="When you are open to picking up shifts">
+      <div className="p-6 space-y-6">
+        {message && (
+          <div className={`p-3 rounded-xl text-sm font-medium border ${message.includes('Error') ? 'bg-red-50 text-red-700 border-red-100' : 'bg-[#f0fdf4] text-[#16a34a] border-[#bbf7d0]'}`}>
+            {message}
+          </div>
         )}
-      </div>
 
-      {/* Time range */}
-      <div>
-        <div className="text-sm font-semibold text-[#1a2e25] mb-3 flex items-center gap-2">
-          <Clock className="w-4 h-4 text-[#157354]" /> Preferred Shift Hours
-        </div>
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid gap-6 md:grid-cols-[auto_1fr] md:items-start">
+          {/* Days picker */}
           <div>
-            <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Earliest Start Time</label>
-            <input type="time" className={F} value={profile.available_from || ''} onChange={e => setProfile({...profile, available_from: e.target.value})} />
+            <div className={LBL}>Days Available</div>
+            <div className="flex gap-1.5 flex-wrap">
+              {DAYS.map(day => {
+                const active = activeDays.includes(day.key)
+                return (
+                  <button
+                    key={day.key}
+                    type="button"
+                    onClick={() => toggleDay(day.key)}
+                    aria-pressed={active}
+                    className={`w-11 h-9 rounded-lg text-sm transition-colors border ${
+                      active
+                        ? 'bg-[#157354] text-white border-[#157354]'
+                        : 'bg-white text-[#6b7a73] border-[#e2e8e4] hover:border-[#157354]/40 hover:text-[#0b3828]'
+                    }`}
+                  >
+                    {day.label}
+                  </button>
+                )
+              })}
+            </div>
           </div>
+
+          {/* Time range */}
           <div>
-            <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Latest End Time</label>
-            <input type="time" className={F} value={profile.available_to || ''} onChange={e => setProfile({...profile, available_to: e.target.value})} />
+            <div className={LBL}>Preferred Shift Hours</div>
+            <div className="flex items-center gap-2">
+              <input type="time" aria-label="Earliest start time" className={FLD} value={profile.available_from || ''} onChange={e => setProfile({...profile, available_from: e.target.value})} />
+              <span className="text-sm text-[#6b7a73]">to</span>
+              <input type="time" aria-label="Latest end time" className={FLD} value={profile.available_to || ''} onChange={e => setProfile({...profile, available_to: e.target.value})} />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Notes */}
-      <div>
-        <div className="text-sm font-medium text-[#1a2e25] mb-3 flex items-center gap-2">
-          <FileText className="w-4 h-4 text-[#157354]" /> Availability Notes
+        <div>
+          <div className={LBL}>Availability Notes</div>
+          <textarea
+            className={`${FLD} resize-none`}
+            rows={2}
+            value={profile.availability_notes || ''}
+            onChange={e => setProfile({...profile, availability_notes: e.target.value})}
+            placeholder="e.g. Available for last-minute shifts, prefer mornings, not available school holidays..."
+          />
         </div>
-        <textarea
-          className={`${F} resize-none`}
-          rows={3}
-          value={profile.availability_notes || ''}
-          onChange={e => setProfile({...profile, availability_notes: e.target.value})}
-          placeholder="e.g. Available for last-minute shifts, prefer mornings, not available school holidays..."
-        />
-      </div>
 
-      {/* Summary chip */}
-      {activeDays.length > 0 && (
-        <div className="flex flex-wrap gap-2 p-4 bg-[#f8faf9] rounded-2xl border border-[#e2e8e4]">
-          <span className="text-xs font-medium text-[#6b7a73] self-center mr-1">Your schedule:</span>
-          {activeDays.map(d => (
-            <span key={d} className="bg-[#157354] text-white text-xs font-medium px-3 py-1 rounded-lg capitalize">
-              {DAYS.find(day => day.key === d)?.label}
-            </span>
-          ))}
-          {(profile.available_from || profile.available_to) && (
-            <span className="bg-[#edf7f3] text-[#157354] border border-[#d4ede4] text-xs font-medium px-3 py-1 rounded-lg">
-              {profile.available_from || '–'} → {profile.available_to || '–'}
-            </span>
-          )}
+        <div className="flex justify-end">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="inline-flex items-center gap-2 bg-[#157354] text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-[#0f4a36] transition-colors disabled:opacity-60"
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 text-white/70" />} Save Availability
+          </button>
         </div>
-      )}
-
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        className="w-full flex items-center justify-center gap-3 bg-[#157354] text-white font-semibold px-8 py-3 rounded-xl hover:bg-[#0f4a36] shadow-sm transition-colors disabled:opacity-60"
-      >
-        {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-5 h-5 text-white/60" /> Save Availability</>}
-      </button>
-    </div>
+      </div>
+    </ProfileSection>
   )
 }
 

@@ -7,6 +7,7 @@ import { Users, Search, Filter, ShieldCheck, Mail, Phone, ArrowRight, CheckCircl
 import { getStaffInviteLink } from '@/lib/api/invites'
 import Link from 'next/link'
 import { useCenterContext } from '../context'
+import { StaffAvatar } from '@/components/StaffAvatar'
 
 export default function StaffPoolPage() {
   const { staffTerm } = useCenterContext()
@@ -270,9 +271,12 @@ export default function StaffPoolPage() {
                         <tr key={idx} className="hover:bg-[#f8faf9] transition-all group">
                             <td className="px-8 py-6">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-14 h-14 rounded-2xl bg-[#edf7f3] text-[#157354] flex items-center justify-center font-black text-2xl shadow-sm group-hover:scale-110 transition-transform">
-                                        {profile.first_name[0]}
-                                    </div>
+                                    <StaffAvatar
+                                        avatarKey={profile.avatar_url}
+                                        firstName={profile.first_name}
+                                        lastName={profile.last_name}
+                                        className="w-14 h-14 rounded-2xl bg-[#edf7f3] text-[#157354] font-black text-xl shadow-sm group-hover:scale-110 transition-transform"
+                                    />
                                     <div>
                                         <div className="font-extrabold text-[#1a2e25] text-lg leading-tight">
                                            {profile.first_name} {profile.last_name}
@@ -322,7 +326,7 @@ export default function StaffPoolPage() {
                                    href={`/center/team_member/${profile.id}`}
                                    className="inline-flex items-center gap-2 text-[#157354] font-black hover:text-[#0b3828] text-sm group/link"
                                  >
-                                    Review Paperwork <ArrowRight className="w-4 h-4 group-hover/link:translate-x-1 transition-transform" />
+                                    View Profile <ArrowRight className="w-4 h-4 group-hover/link:translate-x-1 transition-transform" />
                                  </Link>
                                )}
                             </td>

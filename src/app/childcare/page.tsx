@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { ProductsMenu } from '@/components/marketing/ProductsMenu'
 import {
   CheckCircle, Zap, FileText, Users, ArrowRight,
   Star, MessageSquare, Clock, ShieldCheck, ChevronDown
@@ -104,6 +105,7 @@ export default function ChildcareHomePage() {
             <span className="font-bold text-[#0f4a36] text-lg">CareLocal</span>
           </Link>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-[#6b7a73]">
+            <ProductsMenu />
             <Link href="#how-it-works" className="hover:text-[#157354] transition-colors">How it works</Link>
             <Link href="#features" className="hover:text-[#157354] transition-colors">Features</Link>
             <Link href="#pricing" className="hover:text-[#157354] transition-colors">Pricing</Link>
