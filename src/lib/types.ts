@@ -302,3 +302,62 @@ export function getTierLimits(domainKey: 'childcare' | 'healthcare'): Record<Sub
 }
 
 export const TIER_LIMITS = getTierLimits('childcare')
+
+// ── Vendors & Inspections ──────────────────────────────────────
+
+export interface Vendor {
+  id: string
+  center_id: string
+  name: string
+  service_type?: string | null
+  contact_name?: string | null
+  phone?: string | null
+  email?: string | null
+  website?: string | null
+  address?: string | null
+  notes?: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type InspectionIntervalUnit = 'days' | 'weeks' | 'months' | 'years'
+export type InspectionResult = 'passed' | 'passed_with_conditions' | 'failed'
+
+export const INSPECTION_RESULT_LABELS: Record<InspectionResult, string> = {
+  passed: 'Passed',
+  passed_with_conditions: 'Passed w/ conditions',
+  failed: 'Failed',
+}
+
+export interface Inspection {
+  id: string
+  center_id: string
+  inspection_type: string
+  title?: string | null
+  interval_value?: number | null
+  interval_unit?: InspectionIntervalUnit | null
+  last_inspection_date?: string | null
+  next_due_date?: string | null
+  last_result?: InspectionResult | null
+  vendor_id?: string | null
+  notes?: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  vendor?: Pick<Vendor, 'id' | 'name'> | null
+}
+
+export interface InspectionLog {
+  id: string
+  inspection_id: string
+  center_id: string
+  performed_on: string
+  result?: InspectionResult | null
+  vendor_id?: string | null
+  inspector_name?: string | null
+  notes?: string | null
+  created_by?: string | null
+  created_at: string
+  vendor?: Pick<Vendor, 'id' | 'name'> | null
+}
