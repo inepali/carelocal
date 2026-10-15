@@ -1,19 +1,20 @@
 import type { MetadataRoute } from 'next'
 import { headers } from 'next/headers'
 import { getDomainKey } from '@/lib/domain-config'
+import { siteUrl } from '@/lib/site'
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
-  const headersList = await headers()
-  const host = headersList.get('host') || 'carelocal.co'
-  const domainKey = getDomainKey(host)
-  const baseUrl = domainKey === 'healthcare' ? 'https://carelocal.net' : domainKey === 'senior' ? 'https://carelocalsenior.com' : 'https://carelocal.co'
+  const host = (await headers()).get('host') || 'carelocal.co'
+  const baseUrl = siteUrl(getDomainKey(host))
 
   return {
     rules: {
       userAgent: '*',
       allow: '/',
-      disallow: ['/admin/', '/center/', '/staff/', '/api/'],
+      // Signed-in app areas and APIs (also sent X-Robots-Tag: noindex, see next.config.ts)
+      disallow: ['/admin/', '/center/', '/staff/', '/mobile/', '/api/'],
     },
     sitemap: `${baseUrl}/sitemap.xml`,
+    host: baseUrl,
   }
 }

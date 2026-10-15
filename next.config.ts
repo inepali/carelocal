@@ -1,5 +1,8 @@
 import type { NextConfig } from "next";
 
+// Signed-in areas must never appear in search results, even if a link leaks.
+const NOINDEX_PATHS = ['/admin/:path*', '/center/:path*', '/staff/:path*', '/mobile/:path*', '/api/:path*']
+
 const nextConfig: NextConfig = {
   output: 'standalone',
   async headers() {
@@ -17,6 +20,10 @@ const nextConfig: NextConfig = {
           }
         ],
       },
+      ...NOINDEX_PATHS.map(source => ({
+        source,
+        headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
+      })),
     ];
   },
 };

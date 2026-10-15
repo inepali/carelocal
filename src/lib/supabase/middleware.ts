@@ -1,12 +1,30 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { getDomainKey } from '@/lib/domain-config'
+import { getDomainKey, type DomainKey } from '@/lib/domain-config'
+import { siteUrl } from '@/lib/site'
 import { canAccessDomain, WRONG_DOMAIN_ERROR } from '@/lib/supabase/user-domain'
 
 export async function updateSession(request: NextRequest) {
   const host = request.headers.get('host') || ''
   const domainKey = getDomainKey(host)
   const homePath = `/${domainKey}`
+
+  // SEO: each vertical's landing page lives only at "/" of its own domain.
+  // /childcare, /healthcare and /senior are internal paths (see the rewrite below),
+  // so a direct visit is redirected instead of serving duplicate content.
+  const vertical = request.nextUrl.pathname.replace(/\/$/, '')
+  if (vertical === '/childcare' || vertical === '/healthcare' || vertical === '/senior') {
+    const target = vertical.slice(1) as DomainKey
+    const isLocal = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host)
+    if (target === domainKey) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/'
+      return NextResponse.redirect(url, 308)
+    }
+    if (!isLocal) {
+      return NextResponse.redirect(new URL('/', siteUrl(target)), 308)
+    }
+  }
 
   let supabaseResponse = request.nextUrl.pathname === '/'
     ? NextResponse.rewrite(new URL(homePath, request.url), {

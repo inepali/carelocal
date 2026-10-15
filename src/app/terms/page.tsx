@@ -11,7 +11,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const config = getDomainConfig(domainKey)
 
   return {
-    title: `Terms & Conditions | ${config.appName}`,
+    title: 'Terms & Conditions',
+    alternates: { canonical: '/terms' },
     description: `Terms and Conditions governing the use of ${config.appName}, the substitute placement and staff coordination platform.`,
   }
 }

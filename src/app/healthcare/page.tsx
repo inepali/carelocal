@@ -1,14 +1,21 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ProductsMenu } from '@/components/marketing/ProductsMenu'
+import { ComplianceSuite } from '@/components/marketing/ComplianceSuite'
+import { getDomainConfig } from '@/lib/domain-config'
+import { StructuredData } from '@/components/marketing/StructuredData'
 import {
   CheckCircle, Zap, FileText, Users, ArrowRight,
   Star, MessageSquare, Clock, ShieldCheck, ChevronDown
 } from 'lucide-react'
 
+const seo = getDomainConfig('healthcare')
+
 export const metadata: Metadata = {
-  title: 'CareLocal Health — Medical Staffing Software & Hospital Shift Scheduling',
-  description: 'Post open medical shifts, SMS blast your pre-approved pool of nurses and CNAs, and manage credentials in one place. Try CareLocal Health today.',
+  title: { absolute: seo.title },
+  description: seo.description,
+  // Served at "/" of its own domain; the vertical path redirects there
+  alternates: { canonical: '/' },
 }
 
 const HOW_IT_WORKS = [
@@ -91,10 +98,43 @@ const PRICING = [
   },
 ]
 
+/** Shown in the FAQ section and published as FAQPage structured data */
+const FAQS = [
+  {
+    q: "How does the SMS shift broadcast work?",
+    a: "With CareLocal Health, posting a shift takes under 30 seconds. The platform instantly broadcasts an SMS text notification to your pre-approved pool of nurses and aides. The first qualified professional to claim it gets the shift. No phone tag, no manual group messages."
+  },
+  {
+    q: "Is CareLocal Health a healthcare staffing agency?",
+    a: "No. CareLocal Health is a software-as-a-service platform that helps you avoid expensive staffing agencies. We provide the tools for clinics and hospitals to build, organize, and dispatch their own private substitute and PRN pools, saving thousands in markup fees."
+  },
+  {
+    q: "How does the platform help with medical compliance?",
+    a: "Build your credential checklist once — licenses, BLS, TB, immunizations, orientation and annual competencies — and every item gets a due date from each clinician's start date and renews before it expires. Administrators record completion dates and hours, staff acknowledge policies online, and a credential overview shows exactly who needs what. You stay in charge of every compliance decision."
+  },
+  {
+    q: "How do I collect expiring credentials from staff?",
+    a: "Request a document from one clinician or from everyone whose card is expiring. They get a text, push or email and answer from the document library on their phone — only the document they choose is shared. Reminders follow up automatically, 30, 7 and 1 day before it's due."
+  },
+  {
+    q: "How are health records and credentials protected?",
+    a: "Documents live in private, encrypted storage and open only through links that expire within minutes. Health and immunization records sit in a confidential file only owners and designated admins can open, and every view is logged. Accepted documents stay in your records even after someone leaves."
+  },
+  {
+    q: "Is CareLocal Health free for nurses and CNAs?",
+    a: "Yes! Nurse, CNA, and caregiver accounts are 100% free. Health staff can create profiles, upload certifications, and claim shifts from any mobile browser without paying any fees or subscriptions. While account usage has no limits, a small platform maintenance fee is applied to the staff member's balance for each assigned shift."
+  },
+  {
+    q: "How does the 6-month free trial work?",
+    a: "We want healthcare administrators to experience the benefits risk-free. You get full access to CareLocal Health's staff scheduling features, SMS blasting, and compliance management for 6 months. No credit card is required to sign up, and you can cancel anytime."
+  }
+]
+
 export default function HealthcareHomePage() {
   return (
     <div className="min-h-screen bg-[#f4f7fc]">
 
+      <StructuredData vertical="healthcare" faqs={FAQS} plans={PRICING} />
       {/* ── Nav ── */}
       <nav className="sticky top-0 z-50 glass border-b border-brand-100">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -108,6 +148,7 @@ export default function HealthcareHomePage() {
             <ProductsMenu />
             <Link href="#how-it-works" className="hover:text-brand-600 transition-colors">How it works</Link>
             <Link href="#features" className="hover:text-brand-600 transition-colors">Features</Link>
+            <Link href="#compliance" className="hover:text-brand-600 transition-colors">Compliance</Link>
             <Link href="#pricing" className="hover:text-brand-600 transition-colors">Pricing</Link>
             <Link href="/contact" className="hover:text-brand-600 transition-colors">Contact</Link>
           </div>
@@ -146,8 +187,8 @@ export default function HealthcareHomePage() {
           </h1>
 
           <p className="text-xl text-brand-700 max-w-2xl mx-auto mb-10 leading-relaxed">
-            CareLocal Health is the staffing coordination platform built exclusively for healthcare facilities.
-            Post a shift, blast your credentialed nursing pool via SMS, and get shifts claimed instantly.
+            CareLocal Health is the staffing and credentialing platform built for healthcare facilities.
+            Fill shifts from your credentialed pool by text in minutes — and keep every license, competency and facility inspection current.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -257,6 +298,9 @@ export default function HealthcareHomePage() {
         </div>
       </section>
 
+      {/* ── Credentialing & operations ── */}
+      <ComplianceSuite vertical="healthcare" />
+
       {/* ── Pricing ── */}
       <section id="pricing" className="py-24 px-6">
         <div className="max-w-6xl mx-auto">
@@ -311,7 +355,7 @@ export default function HealthcareHomePage() {
             ))}
           </div>
           <p className="text-center text-sm text-brand-500 mt-8">
-            All plans include a 6-month free trial. Annual billing saves 2 months.
+            All plans include a 6-month free trial and the full credentialing toolkit — checklists, policy sign-off, document requests, inspections and vendors. Annual billing saves 2 months.
             <Link href="/contact" className="text-brand-600 font-medium ml-1 hover:underline">
               Need Enterprise? Contact us →
             </Link>
@@ -346,28 +390,7 @@ export default function HealthcareHomePage() {
             </p>
           </div>
           <div className="space-y-2 divide-y divide-brand-100">
-            {[
-              {
-                q: "How does the SMS shift broadcast work?",
-                a: "With CareLocal Health, posting a shift takes under 30 seconds. The platform instantly broadcasts an SMS text notification to your pre-approved pool of nurses and aides. The first qualified professional to claim it gets the shift. No phone tag, no manual group messages."
-              },
-              {
-                q: "Is CareLocal Health a healthcare staffing agency?",
-                a: "No. CareLocal Health is a software-as-a-service platform that helps you avoid expensive staffing agencies. We provide the tools for clinics and hospitals to build, organize, and dispatch their own private substitute and PRN pools, saving thousands in markup fees."
-              },
-              {
-                q: "How does the platform help with medical compliance?",
-                a: "We serve as a central vault for medical credentials. Staff upload state nursing licenses, BLS certifications, background checks, and health/immunization logs. Administrators can review, approve, and track expiration dates in real-time, ensuring only fully compliant staff claim open shifts."
-              },
-              {
-                q: "Is CareLocal Health free for nurses and CNAs?",
-                a: "Yes! Nurse, CNA, and caregiver accounts are 100% free. Health staff can create profiles, upload certifications, and claim shifts from any mobile browser without paying any fees or subscriptions. While account usage has no limits, a small platform maintenance fee is applied to the staff member's balance for each assigned shift."
-              },
-              {
-                q: "How does the 6-month free trial work?",
-                a: "We want healthcare administrators to experience the benefits risk-free. You get full access to CareLocal Health's staff scheduling features, SMS blasting, and compliance management for 6 months. No credit card is required to sign up, and you can cancel anytime."
-              }
-            ].map((faq, index) => (
+            {FAQS.map((faq, index) => (
               <details key={index} className="group py-6 [&_summary::-webkit-details-marker]:hidden">
                 <summary className="flex items-center justify-between cursor-pointer focus:outline-none">
                   <h3 className="text-lg font-bold text-brand-900 pr-4">{faq.q}</h3>

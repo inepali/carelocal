@@ -11,7 +11,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const config = getDomainConfig(domainKey)
 
   return {
-    title: `Privacy Policy | ${config.appName}`,
+    title: 'Privacy Policy',
+    alternates: { canonical: '/privacy' },
     description: `Privacy Policy for ${config.appName} staffing platform, describing how we safeguard credentials and data for centers/facilities and staff.`,
   }
 }

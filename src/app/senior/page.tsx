@@ -1,14 +1,19 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ProductsMenu } from '@/components/marketing/ProductsMenu'
-import { ArrowRight, Clock, FileText, ShieldCheck, Users, Zap } from 'lucide-react'
+import { ComplianceSuite } from '@/components/marketing/ComplianceSuite'
+import { ArrowRight, ChevronDown, Clock, FileText, ShieldCheck, Users, Zap } from 'lucide-react'
+import { StructuredData } from '@/components/marketing/StructuredData'
 import { getDomainConfig } from '@/lib/domain-config'
 
 const config = getDomainConfig('senior')
 
+
 export const metadata: Metadata = {
-  title: config.title,
+  title: { absolute: config.title },
   description: config.description,
+  // Served at "/" of its own domain; the vertical path redirects there
+  alternates: { canonical: '/' },
 }
 
 const featureIcons = [Zap, FileText, Users, ShieldCheck]
@@ -16,6 +21,7 @@ const featureIcons = [Zap, FileText, Users, ShieldCheck]
 export default function SeniorHomePage() {
   return (
     <main className="min-h-screen bg-surface text-brand-900">
+      <StructuredData vertical="senior" faqs={config.faqs} plans={config.pricing} />
       <nav className="glass border-b border-brand-100">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-2">
@@ -54,6 +60,37 @@ export default function SeniorHomePage() {
           {config.features.map((feature, index) => { const Icon = featureIcons[index]; return <article key={feature.title} className="rounded-2xl border border-brand-100 bg-white p-6"><Icon className="h-6 w-6 text-brand-600" /><h2 className="mt-4 font-bold">{feature.title}</h2><p className="mt-2 text-sm leading-6 text-brand-700">{feature.desc}</p></article> })}
         </div>
       </section>
+      <ComplianceSuite vertical="senior" />
+
+      <section id="faq" className="border-t border-brand-100 bg-white px-6 py-20">
+        <div className="mx-auto max-w-4xl">
+          <h2 className="mb-10 text-center text-4xl font-bold text-brand-900">Frequently Asked Questions</h2>
+          <div className="divide-y divide-brand-100">
+            {config.faqs.map(faq => (
+              <details key={faq.q} className="group py-6 [&_summary::-webkit-details-marker]:hidden">
+                <summary className="flex cursor-pointer items-center justify-between focus:outline-none">
+                  <h3 className="pr-4 text-lg font-bold text-brand-900">{faq.q}</h3>
+                  <ChevronDown className="h-5 w-5 shrink-0 text-brand-600 transition duration-300 group-open:-rotate-180" />
+                </summary>
+                <p className="mt-4 leading-relaxed text-brand-700">{faq.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <footer className="bg-brand-900 px-6 py-12">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 text-sm text-brand-100 md:flex-row">
+          <span className="font-semibold text-white">{config.appName}</span>
+          <div className="flex gap-6">
+            <Link href="/register" className="hover:text-white">Start free trial</Link>
+            <Link href="/contact" className="hover:text-white">Contact</Link>
+            <Link href="/privacy" className="hover:text-white">Privacy</Link>
+            <Link href="/terms" className="hover:text-white">Terms</Link>
+          </div>
+          <span>© {new Date().getFullYear()} {config.appName}. All rights reserved.</span>
+        </div>
+      </footer>
     </main>
   )
 }

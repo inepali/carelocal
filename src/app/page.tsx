@@ -11,8 +11,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const config = getDomainConfig(host)
 
   return {
-    title: config.title,
+    title: { absolute: config.title },
     description: config.description,
+    alternates: { canonical: '/' },
   }
 }
 

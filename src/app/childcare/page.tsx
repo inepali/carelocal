@@ -1,21 +1,28 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ProductsMenu } from '@/components/marketing/ProductsMenu'
+import { ComplianceSuite } from '@/components/marketing/ComplianceSuite'
+import { getDomainConfig } from '@/lib/domain-config'
+import { StructuredData } from '@/components/marketing/StructuredData'
 import {
   CheckCircle, Zap, FileText, Users, ArrowRight,
   Star, MessageSquare, Clock, ShieldCheck, ChevronDown
 } from 'lucide-react'
 
+const seo = getDomainConfig('childcare')
+
 export const metadata: Metadata = {
-  title: 'CareLocal — Childcare Staffing Software & Daycare Substitute Scheduling',
-  description: 'Post open shifts, SMS blast your pre-approved daycare substitute teacher pool, and manage teacher credentials in one place. Try CareLocal for free today.',
+  title: { absolute: seo.title },
+  description: seo.description,
+  // Served at "/" of its own domain; the vertical path redirects there
+  alternates: { canonical: '/' },
 }
 
 const HOW_IT_WORKS = [
   {
     step: '01',
     title: 'Center subscribes',
-    desc: 'Sign up in minutes. Set up your center profile, classrooms, and document checklist.',
+    desc: 'Sign up in minutes. Set up your classrooms and add the NC staff file checklist in one click.',
     icon: ShieldCheck,
   },
   {
@@ -46,18 +53,18 @@ const FEATURES = [
   },
   {
     icon: FileText,
-    title: 'Document Profiles',
-    desc: 'Staff upload their CPR cards, background checks, and certs once. You review and approve them directly.',
+    title: 'One Document Library per Teacher',
+    desc: 'Staff upload CPR cards, TB results and certificates once, from their phone, and reuse them. You review and approve.',
   },
   {
     icon: Users,
     title: 'Your Staff, Your Pool',
-    desc: "Not a marketplace. Your center builds its own trusted pool of people you already know.",
+    desc: "Not a marketplace. Your center builds its own trusted pool of regular staff and substitutes you already know.",
   },
   {
     icon: ShieldCheck,
-    title: 'You Own Compliance',
-    desc: 'Set your own document checklist. CareLocal organizes docs — your center makes all compliance calls.',
+    title: 'Always Inspection-Ready',
+    desc: 'Due dates, renewals, training hours and inspection reports tracked for you. You stay in charge of every compliance call.',
   },
 ]
 
@@ -91,10 +98,47 @@ const PRICING = [
   },
 ]
 
+/** Shown in the FAQ section and published as FAQPage structured data */
+const FAQS = [
+  {
+    q: "How does the SMS shift blast work?",
+    a: "With CareLocal's childcare staff scheduling software, posting a shift takes under 30 seconds. The platform instantly broadcasts an SMS text notification to your pre-approved substitute pool. The first eligible teacher to claim it gets the shift. No phone tag, no manual group messages."
+  },
+  {
+    q: "Is CareLocal a childcare staffing agency?",
+    a: "No. CareLocal is a software platform and a direct alternative to expensive daycare staffing agencies. We provide the tools for childcare centers to build, organize, and dispatch their own private substitute pools, saving thousands in agency markups and placement fees."
+  },
+  {
+    q: "How does CareLocal help with state licensing compliance?",
+    a: "Start from the NC Staff and Substitute file checklists and the 11-topic Health & Safety Training record in one click, then adjust them to your center. Every item gets a due date from the employee's start date and renews on schedule — annually, every 5 years, or before a certificate expires. Directors record training dates and hours, staff sign policies online, and a compliance overview shows exactly who needs what before your licensing consultant does. You stay in charge of every compliance decision."
+  },
+  {
+    q: "How do I collect missing documents from staff?",
+    a: "Send a request to one teacher or to everyone missing an item. Staff get a text, push or email, and answer from the document library on their phone — only the document they choose is shared with your center. You accept it, or send it back with a note, and reminders follow up automatically until it's done."
+  },
+  {
+    q: "Can I keep facility inspection records in CareLocal too?",
+    a: "Yes. Track fire marshal, sanitation, playground, fire extinguisher, pest control, HVAC and any other inspection with its schedule, due date, result and full history. Attach the inspection report or certificate to each visit, and keep your service vendors and their contacts in one list."
+  },
+  {
+    q: "How are sensitive staff documents protected?",
+    a: "Documents live in private, encrypted storage — never on a public link — and open only through links that expire within minutes. Medical records such as TB results and health questionnaires are kept in a confidential file that only the owner and designated admins can open, and every view is logged. Accepted documents stay in your records even after an employee leaves."
+  },
+  {
+    q: "Is CareLocal free for daycare teachers and substitutes?",
+    a: "Yes! Teacher, floater, and substitute accounts are 100% free. Childcare staff can create profiles, upload certifications, and claim shifts from any mobile browser without paying any fees or subscriptions. While account usage has no limits, a small platform maintenance fee is applied to the staff member's balance for each assigned shift."
+  },
+  {
+    q: "How does the 6-month free trial work?",
+    a: "We want center directors to experience the benefits risk-free. You get full access to CareLocal's staff scheduling features, SMS blasting, and document management for 6 months. No credit card is required to sign up, and you can cancel anytime."
+  }
+]
+
 export default function ChildcareHomePage() {
   return (
     <div className="min-h-screen bg-[#f8faf9]">
 
+      <StructuredData vertical="childcare" faqs={FAQS} plans={PRICING} />
       {/* ── Nav ── */}
       <nav className="sticky top-0 z-50 glass border-b border-[#e2e8e4]">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -108,6 +152,7 @@ export default function ChildcareHomePage() {
             <ProductsMenu />
             <Link href="#how-it-works" className="hover:text-[#157354] transition-colors">How it works</Link>
             <Link href="#features" className="hover:text-[#157354] transition-colors">Features</Link>
+            <Link href="#compliance" className="hover:text-[#157354] transition-colors">Compliance</Link>
             <Link href="#pricing" className="hover:text-[#157354] transition-colors">Pricing</Link>
             <Link href="/contact" className="hover:text-[#157354] transition-colors">Contact</Link>
           </div>
@@ -141,13 +186,12 @@ export default function ChildcareHomePage() {
           </div>
 
           <h1 className="text-5xl md:text-6xl font-extrabold text-[#0b3828] leading-tight tracking-tight mb-6">
-            Fill childcare shifts in{' '}
-            <span className="gradient-text">minutes, not hours</span>
+            The all-in-one platform for{' '}
+            <span className="gradient-text">childcare staffing and compliance</span>
           </h1>
 
           <p className="text-xl text-[#3d5a4f] max-w-2xl mx-auto mb-10 leading-relaxed">
-            CareLocal is the staffing coordination platform built exclusively for childcare centers.
-            Post a shift, blast your staff pool via SMS, and get confirmation — before you finish your coffee.
+            Shifts, staff documents, trainings, inspections and vendors — one login for your whole center.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -257,6 +301,9 @@ export default function ChildcareHomePage() {
         </div>
       </section>
 
+      {/* ── Compliance & operations ── */}
+      <ComplianceSuite vertical="childcare" />
+
       {/* ── Pricing ── */}
       <section id="pricing" className="py-24 px-6">
         <div className="max-w-6xl mx-auto">
@@ -311,7 +358,7 @@ export default function ChildcareHomePage() {
             ))}
           </div>
           <p className="text-center text-sm text-[#6b7a73] mt-8">
-            All plans include a 6-month free trial. Annual billing saves 2 months.
+            All plans include a 6-month free trial and the full compliance toolkit — staff file checklists, policy sign-off, document requests, inspections and vendors. Annual billing saves 2 months.
             <Link href="/contact" className="text-[#157354] font-medium ml-1 hover:underline">
               Need Enterprise? Contact us →
             </Link>
@@ -346,28 +393,7 @@ export default function ChildcareHomePage() {
             </p>
           </div>
           <div className="space-y-2 divide-y divide-[#e2e8e4]">
-            {[
-              {
-                q: "How does the SMS shift blast work?",
-                a: "With CareLocal's childcare staff scheduling software, posting a shift takes under 30 seconds. The platform instantly broadcasts an SMS text notification to your pre-approved substitute pool. The first eligible teacher to claim it gets the shift. No phone tag, no manual group messages."
-              },
-              {
-                q: "Is CareLocal a childcare staffing agency?",
-                a: "No. CareLocal is a software platform and a direct alternative to expensive daycare staffing agencies. We provide the tools for childcare centers to build, organize, and dispatch their own private substitute pools, saving thousands in agency markups and placement fees."
-              },
-              {
-                q: "How does CareLocal help with state licensing compliance?",
-                a: "We serve as your central database for teacher credentials. Staff upload background checks, CPR cards, and training certifications once. Center directors can review, approve, and track expiration dates in real-time, ensuring only compliant subs are allowed to claim open shifts."
-              },
-              {
-                q: "Is CareLocal free for daycare teachers and substitutes?",
-                a: "Yes! Teacher, floater, and substitute accounts are 100% free. Childcare staff can create profiles, upload certifications, and claim shifts from any mobile browser without paying any fees or subscriptions. While account usage has no limits, a small platform maintenance fee is applied to the staff member's balance for each assigned shift."
-              },
-              {
-                q: "How does the 6-month free trial work?",
-                a: "We want center directors to experience the benefits risk-free. You get full access to CareLocal's staff scheduling features, SMS blasting, and document management for 6 months. No credit card is required to sign up, and you can cancel anytime."
-              }
-            ].map((faq, index) => (
+            {FAQS.map((faq, index) => (
               <details key={index} className="group py-6 [&_summary::-webkit-details-marker]:hidden">
                 <summary className="flex items-center justify-between cursor-pointer focus:outline-none">
                   <h3 className="text-lg font-bold text-[#0b3828] pr-4">{faq.q}</h3>
@@ -388,10 +414,10 @@ export default function ChildcareHomePage() {
       <section className="py-24 px-6 bg-[#157354]">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="text-4xl font-extrabold text-white mb-4">
-            Ready to never scramble for subs again?
+            Ready to never scramble for subs — or binders — again?
           </h2>
           <p className="text-[#a9dac9] text-lg mb-10">
-            Join Charlotte centers already using CareLocal. Your entire staff pool gets free accounts.
+            Join Charlotte centers already using CareLocal to fill shifts and stay inspection-ready. Your entire staff pool gets free accounts.
           </p>
           <Link
             href="/register"
