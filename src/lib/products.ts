@@ -11,13 +11,13 @@ export interface Product {
 /**
  * Products shown in the marketing site's "Products" menu.
  * Add a product here and it appears on every vertical's landing page.
- * Point `href` at the product's page/site once it exists.
+ * `href` is an internal path or a full URL (external sites open in a new tab).
  */
 export const PRODUCTS: Product[] = [
   {
     name: 'CareDisplay',
     tagline: 'Digital displays for schedules and announcements at your center',
-    href: '/contact',
+    href: 'https://caredisplay.carelocal.net',
     Icon: Monitor,
   },
   {
@@ -29,7 +29,7 @@ export const PRODUCTS: Product[] = [
   {
     name: 'PurchApp',
     tagline: 'Purchasing and supply ordering for your team',
-    href: '/contact',
+    href: 'https://purchapp.net',
     Icon: ShoppingCart,
   },
 ]
