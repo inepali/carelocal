@@ -83,10 +83,14 @@ BEGIN
     RAISE EXCEPTION 'Vendor does not belong to this center';
   END IF;
 
-  IF TG_TABLE_NAME = 'center_inspection_logs' AND NOT EXISTS (
-    SELECT 1 FROM public.center_inspections i WHERE i.id = NEW.inspection_id AND i.center_id = NEW.center_id
-  ) THEN
-    RAISE EXCEPTION 'Inspection does not belong to this center';
+  -- Nested IF: PL/pgSQL doesn't short-circuit AND, so NEW.inspection_id must only be
+  -- referenced when the trigger fires on center_inspection_logs (center_inspections has no such field)
+  IF TG_TABLE_NAME = 'center_inspection_logs' THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.center_inspections i WHERE i.id = NEW.inspection_id AND i.center_id = NEW.center_id
+    ) THEN
+      RAISE EXCEPTION 'Inspection does not belong to this center';
+    END IF;
   END IF;
 
   RETURN NEW;
