@@ -23,7 +23,7 @@ export const PRODUCTS: Product[] = [
   {
     name: 'CareTime',
     tagline: 'Staff time tracking and attendance',
-    href: '/contact',
+    href: 'https://purple-snake-685383.hostingersite.com/',
     Icon: Clock,
   },
   {

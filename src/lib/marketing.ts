@@ -102,7 +102,7 @@ export const COMPLIANCE_SUITE: Record<DomainKey, ComplianceSuiteCopy> = {
       },
     ],
     security: SECURITY_COMMON('Medical reports, TB results and health questionnaires'),
-    gridColumns: ['Application', 'TB', 'CBC', 'CPR', 'H&S', 'SIDS', 'EPR'],
+    gridColumns: ['App', 'TB', 'CBC', 'CPR', 'H&S', 'SIDS', 'EPR'],
     people: 'teachers',
   },
 
@@ -174,7 +174,7 @@ export const COMPLIANCE_SUITE: Record<DomainKey, ComplianceSuiteCopy> = {
       },
     ],
     security: SECURITY_COMMON('Health records and immunization documents'),
-    gridColumns: ['License', 'BLS', 'TB', 'Immun.', 'Orient.', 'Comp.', 'HIPAA'],
+    gridColumns: ['License', 'BLS', 'TB', 'Vax', 'Orient', 'Skills', 'HIPAA'],
     people: 'clinicians',
   },
 
@@ -246,7 +246,7 @@ export const COMPLIANCE_SUITE: Record<DomainKey, ComplianceSuiteCopy> = {
       },
     ],
     security: SECURITY_COMMON('Medical and health records'),
-    gridColumns: ['Background', 'TB', 'CPR', 'Training', 'Meds', 'Policy', 'Review'],
+    gridColumns: ['BG check', 'TB', 'CPR', 'Train', 'Meds', 'Policy', 'Review'],
     people: 'caregivers',
   },
 }

@@ -83,6 +83,12 @@ export default function InspectionsPage() {
   const [inspections, setInspections] = useState<Inspection[]>([])
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [filter, setFilter] = useState<Filter>('all')
+
+  // Deep link from the dashboard tiles, e.g. /center/inspections?filter=overdue
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get('filter')
+    if (requested === 'overdue' || requested === 'due_soon' || requested === 'ok') setFilter(requested)
+  }, [])
   const [search, setSearch] = useState('')
 
   // Add / edit modal

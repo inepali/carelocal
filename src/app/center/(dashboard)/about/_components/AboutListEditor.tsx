@@ -7,7 +7,9 @@ import { Plus, Edit2, Trash2, Loader2, X, ArrowUp, ArrowDown, type LucideIcon } 
 export type AboutField = {
   key: string
   label: string
-  type?: 'text' | 'email' | 'number' | 'textarea' | 'checkbox'
+  type?: 'text' | 'email' | 'number' | 'textarea' | 'checkbox' | 'select'
+  /** Choices for type 'select' (the placeholder becomes the empty option) */
+  options?: { value: string; label: string }[]
   placeholder?: string
   required?: boolean
   half?: boolean
@@ -239,7 +241,21 @@ export default function AboutListEditor<T extends AboutRow>({
                     ) : (
                       <>
                         <label className="block font-bold text-[#1a2e25] mb-2 uppercase tracking-widest text-[10px]">{field.label}</label>
-                        {field.type === 'textarea' ? (
+                        {field.type === 'select' ? (
+                          <select
+                            required={field.required}
+                            value={String(form[field.key] ?? '')}
+                            onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
+                            className="w-full px-5 py-4 rounded-2xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all font-medium"
+                          >
+                            <option value="">{field.placeholder || 'Select…'}</option>
+                            {(field.options ?? []).map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                            {/* Keep a value that is no longer an active option selectable */}
+                            {String(form[field.key] ?? '') !== '' && !(field.options ?? []).some(o => o.value === form[field.key]) && (
+                              <option value={String(form[field.key])}>{String(form[field.key])}</option>
+                            )}
+                          </select>
+                        ) : field.type === 'textarea' ? (
                           <textarea
                             rows={5}
                             required={field.required}

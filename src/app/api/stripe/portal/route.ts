@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: center.stripe_customer_id,
-      return_url: `${origin}/center/subscription`,
+      return_url: `${origin}/center/about#subscription`,
     })
 
     return NextResponse.json({ url: portalSession.url })

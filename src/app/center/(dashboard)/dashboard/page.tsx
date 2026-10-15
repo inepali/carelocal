@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Shift, StaffProfile } from '@/lib/types'
 import Link from 'next/link'
-import { Calendar, Users, AlertCircle, FileText, ArrowRight, CheckCircle2, Clock, UserPlus, Globe, Star, ShieldCheck } from 'lucide-react'
+import { Calendar, Users, AlertCircle, FileText, ArrowRight, CheckCircle2, Clock, UserPlus, Globe, Star, AlertTriangle, CalendarCheck, Eye, Inbox } from 'lucide-react'
 import { useCenterContext } from '../context'
 import { loadCenterCompliance, countStates } from '@/lib/compliance-data'
+import { inspectionStatus, DUE_SOON_DAYS } from '@/lib/inspections'
 
 export default function DashboardOverview() {
   const { staffTerm } = useCenterContext()
@@ -25,6 +26,7 @@ export default function DashboardOverview() {
   const [upcomingShifts, setUpcomingShifts] = useState<any[]>([])
   const [recentActivity, setRecentActivity] = useState<any[]>([])
   const [compliance, setCompliance] = useState<{ overdue: number; dueSoon: number; review: number; requestsToReview: number } | null>(null)
+  const [inspectionCounts, setInspectionCounts] = useState<{ overdue: number; due_soon: number; ok: number } | null>(null)
 
   useEffect(() => {
     async function fetchDashboardData() {
@@ -125,6 +127,19 @@ export default function DashboardOverview() {
         review: complianceCounts.pending_review,
         requestsToReview: submittedRequests ?? 0,
       })
+
+      // Facility inspections (same status rules as the Inspections page)
+      const { data: inspectionRows } = await supabase
+        .from('center_inspections')
+        .select('next_due_date')
+        .eq('center_id', centerId)
+        .eq('is_active', true)
+      const inspectionTally = { overdue: 0, due_soon: 0, ok: 0 }
+      for (const row of inspectionRows || []) {
+        const status = inspectionStatus(row.next_due_date)
+        if (status in inspectionTally) inspectionTally[status as keyof typeof inspectionTally]++
+      }
+      setInspectionCounts(inspectionTally)
 
       setUpcomingShifts(shiftsData || [])
 
@@ -253,33 +268,30 @@ export default function DashboardOverview() {
       </div>
 
       {compliance && (
-        <div className="mb-10 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#edf7f3] text-[#157354]"><ShieldCheck className="h-5 w-5" /></span>
-              <div>
-                <h2 className="text-lg font-bold text-[#0b3828]">Personnel file compliance</h2>
-                <p className="text-xs text-[#6b7a73]">Documents and trainings across your {staffTerm.toLowerCase()}</p>
-              </div>
-            </div>
-            <Link href="/center/compliance" className="inline-flex items-center gap-1.5 text-sm font-bold text-[#157354] hover:underline">
-              Open overview <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {[
-              { label: 'Overdue', value: compliance.overdue, href: '/center/compliance', tone: compliance.overdue > 0 ? 'text-red-600' : 'text-[#0b3828]' },
-              { label: 'Due in 30 days', value: compliance.dueSoon, href: '/center/compliance', tone: compliance.dueSoon > 0 ? 'text-amber-600' : 'text-[#0b3828]' },
-              { label: 'Awaiting your review', value: compliance.review, href: '/center/compliance', tone: compliance.review > 0 ? 'text-sky-700' : 'text-[#0b3828]' },
-              { label: 'Requests answered', value: compliance.requestsToReview, href: '/center/requests', tone: compliance.requestsToReview > 0 ? 'text-sky-700' : 'text-[#0b3828]' },
-            ].map(tile => (
-              <Link key={tile.label} href={tile.href} className="rounded-2xl border border-[#e2e8e4] p-4 hover:border-[#157354] transition-colors">
-                <div className={`text-3xl font-black ${tile.tone}`}>{tile.value}</div>
-                <div className="text-sm font-semibold text-[#6b7a73]">{tile.label}</div>
-              </Link>
-            ))}
-          </div>
-        </div>
+        <SummaryRow
+          title="Personnel file compliance"
+          linkLabel="View compliance"
+          href="/center/compliance"
+          tiles={[
+            { label: 'Overdue', value: compliance.overdue, icon: AlertTriangle, tone: 'text-red-600 bg-red-50', href: '/center/compliance' },
+            { label: `Due in ${DUE_SOON_DAYS} days`, value: compliance.dueSoon, icon: Clock, tone: 'text-amber-600 bg-amber-50', href: '/center/compliance' },
+            { label: 'Awaiting review', value: compliance.review, icon: Eye, tone: 'text-sky-700 bg-sky-50', href: '/center/compliance' },
+            { label: 'Requests answered', value: compliance.requestsToReview, icon: Inbox, tone: 'text-sky-700 bg-sky-50', href: '/center/requests' },
+          ]}
+        />
+      )}
+
+      {inspectionCounts && (
+        <SummaryRow
+          title="Facility inspections"
+          linkLabel="View inspections"
+          href="/center/inspections"
+          tiles={[
+            { label: 'Overdue', value: inspectionCounts.overdue, icon: AlertTriangle, tone: 'text-red-600 bg-red-50', href: '/center/inspections?filter=overdue' },
+            { label: `Due in ${DUE_SOON_DAYS} days`, value: inspectionCounts.due_soon, icon: Clock, tone: 'text-amber-600 bg-amber-50', href: '/center/inspections?filter=due_soon' },
+            { label: 'Current', value: inspectionCounts.ok, icon: CalendarCheck, tone: 'text-[#157354] bg-[#edf7f3]', href: '/center/inspections?filter=ok' },
+          ]}
+        />
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -373,6 +385,42 @@ export default function DashboardOverview() {
           </Link>
         </div>
       )}
+    </div>
+  )
+}
+
+/** Dashboard summary: heading + link outside, then clickable icon tiles */
+function SummaryRow({ title, linkLabel, href, tiles }: {
+  title: string
+  linkLabel: string
+  href: string
+  tiles: { label: string; value: number; icon: React.ElementType; tone: string; href: string }[]
+}) {
+  return (
+    <div className="mb-10">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-lg font-bold text-[#0b3828]">{title}</h2>
+        <Link href={href} className="inline-flex items-center gap-1.5 text-sm font-bold text-[#157354] hover:underline">
+          {linkLabel} <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
+      <div className={`grid grid-cols-1 gap-4 ${tiles.length === 4 ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-3'}`}>
+        {tiles.map(tile => (
+          <Link
+            key={tile.label}
+            href={tile.href}
+            className="bg-white border border-[#e2e8e4] rounded-2xl p-5 flex items-center gap-4 transition-all hover:shadow-md hover:border-[#157354]"
+          >
+            <div className={`w-11 h-11 shrink-0 rounded-xl flex items-center justify-center ${tile.tone}`}>
+              <tile.icon className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-2xl font-black text-[#0b3828]">{tile.value}</div>
+              <div className="text-xs font-bold uppercase tracking-widest text-[#6b7a73]">{tile.label}</div>
+            </div>
+          </Link>
+        ))}
+      </div>
     </div>
   )
 }

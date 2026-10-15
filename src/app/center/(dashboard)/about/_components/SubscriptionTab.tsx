@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Loader2, CreditCard, ShieldCheck, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 
-export default function SubscriptionPage() {
+export default function SubscriptionTab() {
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
   const [portalLoading, setPortalLoading] = useState(false)
@@ -68,7 +68,7 @@ export default function SubscriptionPage() {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto py-12 flex justify-center">
+      <div className="py-12 flex justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-[#157354]" />
       </div>
     )
@@ -77,10 +77,10 @@ export default function SubscriptionPage() {
   const isActive = subscription?.status === 'active' || subscription?.status === 'trialing'
 
   return (
-    <div className="max-w-4xl mx-auto px-6 md:px-8 py-8">
+    <div className="max-w-4xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-black text-[#0b3828] tracking-tight mb-2">Subscription & Billing</h1>
-        <p className="text-[#6b7a73] font-medium">Manage your CareLocal plan, billing details, and view your current usage.</p>
+        <h2 className="text-2xl font-black text-[#0b3828] tracking-tight mb-2">Subscription & Billing</h2>
+        <p className="text-[#6b7a73] font-medium">Manage your CareLocal plan and billing details.</p>
       </div>
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden mb-8">

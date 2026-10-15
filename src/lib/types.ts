@@ -236,6 +236,7 @@ export interface CenterTeamMember {
   name: string
   title?: string | null
   bio?: string | null
+  role?: string | null   // a 'Role' value from center_lookups
   email?: string | null
   sort_order: number
   created_at: string

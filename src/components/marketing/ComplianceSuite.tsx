@@ -23,6 +23,12 @@ const DEMO_ROWS: { name: string; cells: ('ok' | 'soon' | 'late' | 'review' | 'to
   { name: 'Daniel R.', cells: ['ok', 'ok', 'late', 'ok', 'soon', 'todo', 'ok'] },
 ]
 
+// Badge counts are derived from the grid so the illustration always adds up
+const DEMO_COUNTS = DEMO_ROWS.flatMap(r => r.cells).reduce<Record<string, number>>((acc, c) => {
+  acc[c] = (acc[c] ?? 0) + 1
+  return acc
+}, {})
+
 const DEMO_CELL: Record<string, string> = {
   ok: 'bg-emerald-500',
   soon: 'bg-amber-400',
@@ -55,16 +61,16 @@ export function ComplianceSuite({ vertical }: { vertical: DomainKey }) {
             <div className="mb-4 flex items-center justify-between">
               <span className="text-sm font-bold text-brand-900">Compliance overview</span>
               <span className="flex gap-1.5 text-[11px]">
-                <span className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-red-700">Overdue 1</span>
-                <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-700">Due soon 3</span>
-                <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-sky-700">Review 1</span>
+                <span className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-red-700">Overdue {DEMO_COUNTS.late}</span>
+                <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-700">Due soon {DEMO_COUNTS.soon}</span>
+                <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-sky-700">Review {DEMO_COUNTS.review}</span>
               </span>
             </div>
             <div className="overflow-hidden rounded-xl border border-brand-100 bg-white">
               <div className="grid grid-cols-[96px_repeat(7,1fr)] border-b border-brand-100 bg-brand-50/60 px-3 py-2">
                 <span />
                 {copy.gridColumns.map(c => (
-                  <span key={c} className="truncate text-center text-[10px] font-semibold text-brand-700">{c}</span>
+                  <span key={c} className="text-center text-[10px] font-semibold leading-tight text-brand-700">{c}</span>
                 ))}
               </div>
               {DEMO_ROWS.map(row => (
@@ -90,7 +96,7 @@ export function ComplianceSuite({ vertical }: { vertical: DomainKey }) {
                 </span>
                 <h3 className="mb-2 text-lg font-bold text-brand-900">{pillar.title}</h3>
                 <p className="mb-4 text-sm leading-relaxed text-brand-700">{pillar.desc}</p>
-                <ul className="mt-auto space-y-2">
+                <ul className="space-y-2">
                   {pillar.points.map(point => (
                     <li key={point} className="flex items-start gap-2 text-sm text-brand-900">
                       <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" /> {point}

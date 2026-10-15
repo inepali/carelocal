@@ -4,12 +4,10 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Center, SubscriptionTier, getTierLimits, MetroArea } from '@/lib/types'
 import { Building2, Save, MapPin, ShieldCheck, Loader2, ExternalLink, Clock, Globe, ArrowRight } from 'lucide-react'
-import { useRouter } from 'next/navigation'
 import { getDomainKey, type DomainKey } from '@/lib/domain-config'
 
 export default function CenterProfileTab() {
   const supabase = createClient()
-  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -117,7 +115,7 @@ export default function CenterProfileTab() {
 
   const handleManageCredits = async () => {
     if (!center?.stripe_customer_id) {
-      router.push('/center/subscription')
+      window.location.hash = 'subscription'
       return
     }
     

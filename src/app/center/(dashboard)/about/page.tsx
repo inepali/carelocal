@@ -3,14 +3,18 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { CenterProgram, CenterTeamMember, CenterAboutItem } from '@/lib/types'
-import { Building2, BookOpen, Users, ListPlus, Clock, Mail } from 'lucide-react'
+import { Building2, BookOpen, Users, ListPlus, Clock, Mail, CreditCard } from 'lucide-react'
 import CenterProfileTab from './_components/CenterProfileTab'
 import AboutListEditor from './_components/AboutListEditor'
+import SubscriptionTab from './_components/SubscriptionTab'
+import { useLookups } from '@/hooks/use-lookups'
+import { lookupLabel } from '@/lib/lookups'
 
 const TABS = [
   { id: 'profile', name: 'Center Profile', icon: Building2 },
   { id: 'programs', name: 'Programs', icon: BookOpen },
   { id: 'team', name: 'Team', icon: Users },
+  { id: 'subscription', name: 'Subscription', icon: CreditCard },
   { id: 'others', name: 'Others', icon: ListPlus },
 ] as const
 
@@ -24,6 +28,9 @@ export default function CenterAboutPage() {
     return TABS.find(t => t.id === hash)?.id ?? 'profile'
   })
   const [centerId, setCenterId] = useState<string | null>(null)
+  // Roles from Manage Data → Roles
+  const { data: roleLookups } = useLookups('Role')
+  const roleOptions = roleLookups.filter(r => r.is_active).map(r => ({ value: r.value, label: r.label }))
 
   async function fetchCenterId() {
     const { data: { user } } = await supabase.auth.getUser()
@@ -37,6 +44,18 @@ export default function CenterAboutPage() {
 
     return (admin?.center_id as string | undefined) ?? null
   }
+
+  // Follow #hash links into a tab (e.g. /center/about#subscription, or a hash set from inside a tab)
+  useEffect(() => {
+    function syncFromHash() {
+      const hash = window.location.hash.replace('#', '')
+      const tab = TABS.find(t => t.id === hash)
+      if (tab) setActiveTab(tab.id)
+    }
+    syncFromHash()
+    window.addEventListener('hashchange', syncFromHash)
+    return () => window.removeEventListener('hashchange', syncFromHash)
+  }, [])
 
   useEffect(() => {
     let ignore = false
@@ -143,14 +162,19 @@ export default function CenterAboutPage() {
               emptyText="Add your director and leadership team so people can get to know who runs the center."
               fields={[
                 { key: 'name', label: 'Full Name', placeholder: 'e.g. Jane Smith', required: true, half: true },
-                { key: 'title', label: 'Title / Role', placeholder: 'e.g. Center Director', half: true },
+                { key: 'role', label: 'Role', type: 'select', placeholder: 'Select a role…', options: roleOptions, half: true },
                 { key: 'email', label: 'Email', type: 'email', placeholder: 'Optional' },
                 { key: 'bio', label: 'Bio', type: 'textarea', placeholder: 'Background, experience, and what they love about the work.' },
               ]}
               renderItem={(member) => (
                 <>
                   <h3 className="text-lg font-black text-[#0b3828] tracking-tight">{member.name}</h3>
-                  {member.title && <p className="text-xs font-bold uppercase tracking-widest text-[#157354] mb-2">{member.title}</p>}
+                  {/* Older entries may only have the free-text title */}
+                  {(member.role || member.title) && (
+                    <p className="text-xs font-bold uppercase tracking-widest text-[#157354] mb-3">
+                      {member.role ? lookupLabel(roleLookups, member.role) : member.title}
+                    </p>
+                  )}
                   {member.email && (
                     <a href={`mailto:${member.email}`} className="inline-flex items-center gap-1.5 text-xs text-[#6b7a73] hover:text-[#157354] font-medium mb-3"><Mail className="w-3.5 h-3.5" /> {member.email}</a>
                   )}
@@ -181,6 +205,10 @@ export default function CenterAboutPage() {
                 </>
               )}
             />
+          </div>
+
+          <div role="tabpanel" id="about-panel-subscription" aria-labelledby="about-tab-subscription" hidden={activeTab !== 'subscription'}>
+            <SubscriptionTab />
           </div>
         </>
       )}
