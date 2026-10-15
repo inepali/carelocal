@@ -8,7 +8,8 @@ const LOOKUP_GROUPS = [
   { id: 'Role', label: 'Roles' },
   { id: 'Document Type', label: 'Document Types' },
   { id: 'Shift Type', label: 'Shift Types' },
-  { id: 'Payment Method', label: 'Payment Methods' }
+  { id: 'Payment Method', label: 'Payment Methods' },
+  { id: 'Inspection Type', label: 'Inspection Types' }
 ]
 
 export default function ManageDataPage() {

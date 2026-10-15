@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react'
 import { getDomainConfig, getDomainKey, type DomainKey } from '@/lib/domain-config'
+import { canAccessDomain, wrongDomainMessage, WRONG_DOMAIN_ERROR } from '@/lib/supabase/user-domain'
 
 const LOGIN_CONTENT = {
   childcare: {
@@ -54,7 +55,12 @@ export default function LoginPage() {
   
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setDomainKey(getDomainKey(window.location.host))
+      const host = window.location.host
+      const siteDomain = getDomainKey(host)
+      setDomainKey(siteDomain)
+      if (new URLSearchParams(window.location.search).get('error') === WRONG_DOMAIN_ERROR) {
+        setError(wrongDomainMessage(siteDomain))
+      }
     }
   }, [])
 
@@ -70,6 +76,15 @@ export default function LoginPage() {
 
     if (authError) {
       setError(authError.message)
+      setLoading(false)
+      return
+    }
+
+    // Accounts are locked to the vertical they signed up on
+    const siteDomain = getDomainKey(window.location.host)
+    if (!(await canAccessDomain(supabase, data.user, siteDomain))) {
+      await supabase.auth.signOut()
+      setError(wrongDomainMessage(siteDomain))
       setLoading(false)
       return
     }

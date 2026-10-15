@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { getDomainKey } from '@/lib/domain-config'
+import { canAccessDomain, WRONG_DOMAIN_ERROR } from '@/lib/supabase/user-domain'
 
 export async function updateSession(request: NextRequest) {
   const host = request.headers.get('host') || ''
@@ -62,6 +63,23 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/login' // Or a "forbidden" page
     return NextResponse.redirect(url)
+  }
+
+  // 3. Vertical Lock: accounts may only use the vertical (childcare/healthcare/senior) they signed up on
+  const isMobileRoute = request.nextUrl.pathname.startsWith('/mobile') && request.nextUrl.pathname !== '/mobile/login'
+  if (user && (isCenterRoute || isStaffRoute || isMobileRoute)) {
+    const siteDomain = domainKey
+    if (!(await canAccessDomain(supabase, user, siteDomain))) {
+      await supabase.auth.signOut()
+      const url = request.nextUrl.clone()
+      url.pathname = isMobileRoute ? '/mobile/login' : '/login'
+      url.search = ''
+      url.searchParams.set('error', WRONG_DOMAIN_ERROR)
+      const redirect = NextResponse.redirect(url)
+      // Carry the cleared session cookies onto the redirect.
+      supabaseResponse.cookies.getAll().forEach(cookie => redirect.cookies.set(cookie))
+      return redirect
+    }
   }
 
   return supabaseResponse
