@@ -1,13 +1,11 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js'
+import { rejectUnauthorizedCron } from '@/lib/server/cron-auth';
 
 // Vercel Cron will hit this endpoint
 export async function GET(request: Request) {
-  // Optional: Verify Vercel Cron authentication header
-  const authHeader = request.headers.get('authorization');
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const rejected = rejectUnauthorizedCron(request)
+  if (rejected) return rejected
 
   // Initialize Supabase admin client to bypass RLS
   const supabase = createClient(

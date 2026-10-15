@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Stripe from 'stripe'
+import { getStripe } from '@/lib/server/stripe'
 import { createClient } from '@/lib/supabase/server'
 
-// Default to a dummy key if not set to prevent immediate crashes, but warn
-const stripeSecret = process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder'
-const stripe = new Stripe(stripeSecret, {
-  apiVersion: '2026-04-22.dahlia', // Update this based on the installed stripe-node version
-})
 
 export async function POST(req: NextRequest) {
   try {
+    const stripe = getStripe()
     if (!process.env.STRIPE_SECRET_KEY) {
       return NextResponse.json(
         { error: 'Stripe is not configured on the server. Please set STRIPE_SECRET_KEY in your environment.' },

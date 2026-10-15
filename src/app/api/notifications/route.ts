@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createClient as createSessionClient } from '@/lib/supabase/server'
 import { Resend } from 'resend'
 import twilio from 'twilio'
 import webpush from 'web-push'
@@ -52,11 +53,43 @@ if (serviceAccountJson) {
   }
 }
 
+const escapeHtml = (value: string) =>
+  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+
 export async function POST(req: Request) {
   try {
-    const { centerId, shiftId, staffTypeNeeded, action, shiftDate, startTime, endTime } = await req.json()
+    const { shiftId, action } = await req.json()
 
     if (action === 'shift_posted') {
+      // Only an admin of the shift's own center may alert staff. The shift details come from the
+      // database, never from the request, so callers cannot choose the audience or the message.
+      const session = await createSessionClient()
+      const { data: { user } } = await session.auth.getUser()
+      if (!user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+
+      const { data: shift } = typeof shiftId === 'string'
+        ? await supabase
+            .from('shifts')
+            .select('center_id, shift_date, start_time, end_time, staff_type_needed')
+            .eq('id', shiftId)
+            .maybeSingle()
+        : { data: null }
+      if (!shift) return NextResponse.json({ success: false, error: 'Shift not found' }, { status: 404 })
+
+      const { data: adminRow } = await supabase
+        .from('center_admins')
+        .select('user_id')
+        .eq('center_id', shift.center_id)
+        .eq('user_id', user.id)
+        .maybeSingle()
+      if (!adminRow) return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
+
+      const centerId = shift.center_id as string
+      const staffTypeNeeded = shift.staff_type_needed as string | null
+      const shiftDate = shift.shift_date as string
+      const startTime = shift.start_time as string
+      const endTime = shift.end_time as string
+
       // 1. Fetch the center name and domain key
       const { data: center } = await supabase
         .from('centers')
@@ -287,8 +320,8 @@ export async function POST(req: Request) {
               subject: notificationTitle,
               html: `
                 <div style="font-family: sans-serif; max-w: 600px; margin: 0 auto;">
-                  <h2>${notificationTitle}</h2>
-                  <p>${notificationMessage}</p>
+                  <h2>${escapeHtml(notificationTitle)}</h2>
+                  <p>${escapeHtml(notificationMessage)}</p>
                   <a href="${appUrl}/staff/shifts" style="display: inline-block; padding: 12px 24px; background-color: #157354; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 16px;">View Shift</a>
                 </div>
               `

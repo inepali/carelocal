@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Stripe from 'stripe'
+import type Stripe from 'stripe'
+import { getStripe, getStripeWebhookSecret } from '@/lib/server/stripe'
 import { createClient } from '@supabase/supabase-js'
 import { SubscriptionTier } from '@/lib/types'
 
-const stripeSecret = process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder'
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_placeholder'
-
-const stripe = new Stripe(stripeSecret, {
-  apiVersion: '2026-04-22.dahlia',
-})
 
 // Helper to map Stripe status to DB Enum
 function mapSubscriptionStatus(status: string): string {
@@ -23,6 +18,7 @@ function mapSubscriptionStatus(status: string): string {
 
 export async function POST(req: NextRequest) {
   try {
+    const stripe = getStripe()
     const body = await req.text()
     const signature = req.headers.get('stripe-signature')
 
@@ -33,7 +29,7 @@ export async function POST(req: NextRequest) {
     let event: Stripe.Event
 
     try {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
+      event = stripe.webhooks.constructEvent(body, signature, getStripeWebhookSecret())
     } catch (err: any) {
       console.error(`Webhook signature verification failed: ${err.message}`)
       return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })

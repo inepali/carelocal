@@ -29,7 +29,7 @@
     "dotenv": "^17.4.1",
     "google-auth-library": "^10.7.0",
     "lucide-react": "^1.8.0",
-    "next": "16.2.3",
+    "next": "^16.4.1",
     "pg": "^8.20.0",
     "react": "19.2.4",
     "react-calendar": "^6.0.1",
@@ -50,7 +50,7 @@
     "@types/react-dom": "^19",
     "@types/web-push": "^3.6.4",
     "eslint": "^9",
-    "eslint-config-next": "16.2.3",
+    "eslint-config-next": "^16.4.1",
     "supabase": "^2.89.1",
     "tailwindcss": "^4",
     "typescript": "^5"

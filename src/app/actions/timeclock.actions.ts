@@ -3,18 +3,27 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
+import { authorizeShiftClaimAction } from '@/lib/server/staff-access'
 
 export async function checkInStaff(shiftId: string, staffId: string) {
+  const auth = await authorizeShiftClaimAction(shiftId, staffId)
+  if (!auth.ok) return { error: auth.error }
+
   const supabase = await createClient()
 
-  const { error: claimError } = await supabase
+  // Only a confirmed claim that has not checked in yet; a repeat call changes nothing,
+  // so the maintenance fee below can't be applied twice.
+  const { data: updatedClaims, error: claimError } = await supabase
     .from('shift_claims')
     .update({ check_in_time: new Date().toISOString() })
     .eq('shift_id', shiftId)
     .eq('staff_id', staffId)
     .eq('status', 'confirmed') // Ensure they are the confirmed staff
+    .is('check_in_time', null)
+    .select('id')
 
   if (claimError) return { error: claimError.message }
+  if (!updatedClaims || updatedClaims.length === 0) return { error: 'No confirmed shift to check in to.' }
 
   // Apply Metro-Specific Staff Maintenance Fee automatically at CHECK-IN
   try {
@@ -80,16 +89,21 @@ export async function checkInStaff(shiftId: string, staffId: string) {
 }
 
 export async function checkOutStaff(shiftId: string, staffId: string) {
+  const auth = await authorizeShiftClaimAction(shiftId, staffId)
+  if (!auth.ok) return { error: auth.error }
+
   const supabase = await createClient()
 
-  const { error: claimError } = await supabase
+  const { data: updatedClaims, error: claimError } = await supabase
     .from('shift_claims')
     .update({ check_out_time: new Date().toISOString() })
     .eq('shift_id', shiftId)
     .eq('staff_id', staffId)
     .eq('status', 'confirmed')
+    .select('id')
 
   if (claimError) return { error: claimError.message }
+  if (!updatedClaims || updatedClaims.length === 0) return { error: 'No confirmed shift to check out of.' }
 
   // Update shift status to completed
   const { error: shiftError } = await supabase

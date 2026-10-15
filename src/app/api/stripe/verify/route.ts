@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Stripe from 'stripe'
+import { getStripe } from '@/lib/server/stripe'
 import { createClient } from '@/lib/supabase/server'
 import { SubscriptionTier } from '@/lib/types'
 
-const stripeSecret = process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder'
-
-const stripe = new Stripe(stripeSecret, {
-  apiVersion: '2026-04-22.dahlia',
-})
 
 // Helper to map Stripe status to DB Enum
 function mapSubscriptionStatus(status: string): string {
@@ -22,6 +17,7 @@ function mapSubscriptionStatus(status: string): string {
 
 export async function GET(req: NextRequest) {
   try {
+    const stripe = getStripe()
     const searchParams = req.nextUrl.searchParams
     const sessionId = searchParams.get('session_id')
 

@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@supabase/supabase-js'
+import { getSignedInUserId, isOwnStaffProfile } from '@/lib/server/staff-access'
 
 /**
  * Fetches all shifts a staff member has claimed, bypassing RLS.
@@ -8,6 +9,10 @@ import { createClient } from '@supabase/supabase-js'
  * database-level recursive loop locks.
  */
 export async function getMyShiftsBypassingRLS(staffId: string) {
+  // The service role below skips RLS, so only ever serve the signed-in user's own profile.
+  const userId = await getSignedInUserId()
+  if (!userId || !(await isOwnStaffProfile(userId, staffId))) return { shifts: [], claims: [], reviews: [] }
+
   // Use service role key to securely bypass RLS rules without exposing it to the client
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
