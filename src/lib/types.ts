@@ -299,6 +299,7 @@ export const DOCUMENT_CATEGORY_LABELS: Record<DocumentCategory, string> = {
   training: 'Training',
   medical: 'Medical/Health',
   documentation: 'Documentation',
+  academic_qualification: 'Academic Qualification',
   other: 'Other'
 }
 
