@@ -6,8 +6,11 @@ import { MapPin, CheckCircle2, Loader2, ArrowRight, ShieldCheck, Globe, Sparkles
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { payStaffBalance } from '@/app/actions/staff-billing.actions'
+import { useLookups } from '@/hooks/use-lookups'
+import { lookupLabel } from '@/lib/lookups'
 
 export default function StaffShiftsPage() {
+  const { data: roleLookups } = useLookups('Role')
   const supabase = createClient()
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -353,7 +356,7 @@ export default function StaffShiftsPage() {
                     <div className="flex items-center gap-1 font-bold text-[#1a2e25]"><Clock className="h-3 w-3 text-[#157354]" />{timeLabel}</div>
                     <div className="truncate text-xs font-black text-[#0b3828]">{shift.centers?.name}</div>
                     <div className="truncate text-[11px] text-[#3d5a4f]">{roomLabel || 'Any room'}</div>
-                    <div className="truncate text-[11px] font-semibold text-[#157354]">{shift.staff_type_needed || 'Professional'}</div>
+                    <div className="truncate text-[11px] font-semibold text-[#157354]">{lookupLabel(roleLookups, shift.staff_type_needed) || 'Professional'}</div>
                     <div className="font-bold text-[#157354]">${shift.hourly_rate ?? '20.00'}/hr</div>
                   </div>
                   <div className="mt-2 flex flex-col gap-1.5">
@@ -424,7 +427,7 @@ export default function StaffShiftsPage() {
                       ${shift.hourly_rate ?? '20.00'}/hr
                     </span>
                     <span className="shrink-0 whitespace-nowrap rounded-full border border-[#e2e8e4] bg-[#f8faf9] px-4 py-2 text-xs font-black uppercase tracking-widest text-[#6b7a73]">
-                      {shift.staff_type_needed || 'Professional'}
+                      {lookupLabel(roleLookups, shift.staff_type_needed) || 'Professional'}
                     </span>
                     <span className="shrink-0 whitespace-nowrap rounded-full border border-[#e2e8e4] bg-[#f8faf9] px-4 py-2 text-xs font-black uppercase tracking-widest text-[#6b7a73] capitalize">
                       {payLabel}

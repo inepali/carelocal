@@ -2,15 +2,18 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { StaffProfile, CenterStaff, STAFF_TYPE_LABELS, StaffType, EMPLOYMENT_CLASS_LABELS, EmploymentClass } from '@/lib/types'
+import { StaffProfile, CenterStaff, EMPLOYMENT_CLASS_LABELS, EmploymentClass } from '@/lib/types'
 import { Users, Search, Filter, ShieldCheck, Mail, Phone, ArrowRight, CheckCircle2, Clock, Loader2, Sparkles, UserPlus } from 'lucide-react'
 import { getStaffInviteLink } from '@/lib/api/invites'
 import Link from 'next/link'
 import { useCenterContext } from '../context'
 import { StaffAvatar } from '@/components/StaffAvatar'
+import { useLookups } from '@/hooks/use-lookups'
+import { lookupLabel } from '@/lib/lookups'
 
 export default function StaffPoolPage() {
   const { staffTerm } = useCenterContext()
+  const { data: roleLookups } = useLookups('Role')
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
   const [staff, setStaff] = useState<any[]>([])
@@ -287,7 +290,7 @@ export default function StaffPoolPage() {
                             </td>
                             <td className="px-8 py-6">
                                 <div className="inline-flex items-center px-3 py-1 bg-[#f8faf9] text-[#3d5a4f] rounded-lg text-xs font-black uppercase tracking-widest border border-[#e2e8e4]">
-                                   {STAFF_TYPE_LABELS[profile.staff_type as StaffType]}
+                                   {lookupLabel(roleLookups, profile.staff_type)}
                                 </div>
                                 {item.employment_class && (
                                   <div className={`inline-flex items-center ml-2 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border ${

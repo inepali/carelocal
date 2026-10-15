@@ -12,6 +12,7 @@ import {
   XCircle, FileText, ChevronDown, X, ShieldCheck, Link2, Star, Camera
 } from 'lucide-react'
 import { useIsRegularOnly } from '@/lib/hooks/useIsRegularOnly'
+import { useLookups } from '@/hooks/use-lookups'
 import { StaffAvatar } from '@/components/StaffAvatar'
 import { getAvatarUploadUrl, deleteAvatar } from '@/app/actions/avatar.actions'
 
@@ -446,16 +447,7 @@ function PersonalInfoTab({
   const F = 'w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white text-[#1a2e25] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition'
   const L = 'block text-sm font-medium text-[#1a2e25] mb-1.5'
 
-  const PAYMENT_METHODS = [
-    { key: 'payroll',  label: 'Payroll',      emoji: '🏢' },
-    { key: 'direct_deposit', label: 'Direct Deposit', emoji: '🏦' },
-    { key: 'check',    label: 'Check',        emoji: '📝' },
-    { key: 'cash',     label: 'Cash',         emoji: '💵' },
-    { key: 'zelle',    label: 'Zelle',        emoji: '⚡' },
-    { key: 'venmo',    label: 'Venmo',        emoji: '💙' },
-    { key: 'cashapp',  label: 'Cash App',     emoji: '💚' },
-    { key: 'paypal',   label: 'PayPal',       emoji: '🅿️' },
-  ]
+  const { data: paymentLookups } = useLookups('Payment Method')
 
   const activeMethods: string[] = profile.preferred_payment_methods || []
 
@@ -531,13 +523,13 @@ function PersonalInfoTab({
           <label className="block text-[15px] font-bold text-[#1a2e25] mb-1">Preferred Payment Methods</label>
           <p className="text-xs text-[#6b7a73] mb-3">Select all the ways you&apos;re comfortable receiving payment for shifts.</p>
           <div className="flex flex-wrap gap-1.5">
-            {PAYMENT_METHODS.map(method => {
-              const active = activeMethods.includes(method.key)
+            {paymentLookups.filter(m => m.is_active || activeMethods.includes(m.value)).map(method => {
+              const active = activeMethods.includes(method.value)
               return (
                 <button
-                  key={method.key}
+                  key={method.value}
                   type="button"
-                  onClick={() => togglePayment(method.key)}
+                  onClick={() => togglePayment(method.value)}
                   aria-pressed={active}
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border transition-colors ${
                     active
@@ -545,7 +537,7 @@ function PersonalInfoTab({
                       : 'bg-white text-[#3d5a4f] border-[#e2e8e4] hover:border-[#157354]/40 hover:text-[#0b3828]'
                   }`}
                 >
-                  <span>{method.emoji}</span> {method.label}
+                  {method.label}
                 </button>
               )
             })}

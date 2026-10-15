@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, LayoutDashboard, Users, UserPlus, FileText, Info, Calendar, Home, Tags, CreditCard, Database, LifeBuoy, ClipboardCheck, Truck, Baby, Building2 } from 'lucide-react'
+import { LogOut, LayoutDashboard, Users, UserPlus, FileText, Info, Calendar, Tags, CreditCard, Database, LifeBuoy, ClipboardCheck, Truck, Baby, Building2, UserCircle, Inbox, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { CenterContext } from './context'
@@ -27,6 +27,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
   const [staffTerm, setStaffTerm] = useState('Staffs')
   const [workAreaTerm, setWorkAreaTerm] = useState('Classrooms')
   const [domainKey, setDomainKey] = useState<DomainKey>('childcare')
+  const [hasStaffProfile, setHasStaffProfile] = useState(false)
 
   useEffect(() => {
     async function loadCenter() {
@@ -56,6 +57,10 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
         // @ts-ignore
         if (data.centers.domain_key) setDomainKey(data.centers.domain_key)
       }
+
+      // Admins who are also employees can switch to their own staff portal
+      const { data: ownProfile } = await supabase.from('staff_profiles').select('id').eq('user_id', user.id).maybeSingle()
+      setHasStaffProfile(!!ownProfile)
       setLoading(false)
     }
 
@@ -82,8 +87,9 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
     { name: 'Dashboard', href: '/center/dashboard', icon: LayoutDashboard },
     { name: 'Shifts', href: '/center/shifts', icon: Calendar },
     { name: staffTerm, href: '/center/team_member', icon: Users },
-    { name: workAreaTerm, href: '/center/sections', icon: Home },
     { name: 'Documents', href: '/center/documents', icon: FileText },
+    { name: 'Requests', href: '/center/requests', icon: Inbox },
+    { name: 'Compliance', href: '/center/compliance', icon: ShieldCheck },
     { name: 'Inspections', href: '/center/inspections', icon: ClipboardCheck },
     { name: 'Vendors', href: '/center/vendors', icon: Truck },
     { name: 'Manage Data', href: '/center/settings/data', icon: Database },
@@ -165,6 +171,15 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
         </nav>
 
         <div className="p-4 border-t border-white/10 shrink-0">
+          {hasStaffProfile && (
+            <Link
+              href="/staff/documents"
+              className="flex items-center gap-3 px-3 py-2 w-full text-sm text-brand-200 hover:bg-white/5 hover:text-white rounded-lg transition-colors"
+            >
+              <UserCircle className="w-4 h-4" />
+              My staff portal
+            </Link>
+          )}
           <button
             onClick={handleSignOut}
             className="flex items-center gap-3 px-3 py-2 w-full text-sm text-brand-200 hover:bg-white/5 hover:text-white rounded-lg transition-colors"

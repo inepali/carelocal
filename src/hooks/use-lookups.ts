@@ -1,93 +1,65 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { fetchLookupRows, mergeLookups, resolveLookupScope, type LookupItem } from '@/lib/lookups'
 
 // Simple in-memory cache for lookups to prevent excessive DB calls
-const lookupCache: Record<string, { data: any[], timestamp: number }> = {}
+const lookupCache: Record<string, { data: LookupItem[], timestamp: number }> = {}
 const CACHE_EXPIRY_MS = 1000 * 60 * 5 // 5 minutes
 
+/**
+ * Resolved items for a center_lookups group: the domain's platform defaults merged with
+ * the center's overrides / custom items. Includes inactive items (needed to label old
+ * records) — filter on `is_active` for dropdowns.
+ */
 export function useLookups(groupName: string) {
-  const [data, setData] = useState<any[]>([])
+  const [data, setData] = useState<LookupItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
-  const supabase = createClient()
 
   useEffect(() => {
+    let cancelled = false
+    const supabase = createClient()
+
     async function fetchLookups() {
       try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
-          setLoading(false)
-          return
-        }
+        const scope = await resolveLookupScope(supabase)
+        if (!scope) return
 
-        // We fetch the center_id and domain_key first
-        const { data: admin } = await supabase
-          .from('center_admins')
-          .select('center_id, centers ( domain_key )')
-          .eq('user_id', user.id)
-          .maybeSingle()
-
-        let query = supabase
-          .from('center_lookups')
-          .select('*')
-          .eq('group_name', groupName)
-
-        if (admin && admin.center_id) {
-          query = query.or(`center_id.is.null,center_id.eq.${admin.center_id}`)
-        } else {
-          query = query.is('center_id', null)
-        }
-
-        const { data: lookups, error } = await query
-          .order('sort_order', { ascending: true })
-          .order('created_at', { ascending: true })
-
-        if (error) throw error
-
-        // @ts-ignore
-        const domainKey = admin?.centers?.domain_key || 'childcare'
-        const cacheKey = `lookups_${groupName}_${domainKey}`
+        const cacheKey = `lookups_${groupName}_${scope.domainKey}_${scope.centerId ?? 'staff'}`
         const cached = lookupCache[cacheKey]
-
-        if (cached && (Date.now() - cached.timestamp < CACHE_EXPIRY_MS)) {
-          setData(cached.data)
-          setLoading(false)
+        if (cached && Date.now() - cached.timestamp < CACHE_EXPIRY_MS) {
+          if (!cancelled) setData(cached.data)
           return
         }
 
-        // Filter platform defaults by domainKey (for overrides or custom records, they have a non-null center_id)
-        const fetchedData = (lookups || []).filter(item => {
-          if (item.center_id === null) {
-            return item.domain_key === domainKey
-          }
-          return true
-        })
-        
-        // Update cache
-        lookupCache[cacheKey] = {
-          data: fetchedData,
-          timestamp: Date.now()
-        }
-        
-        setData(fetchedData)
-      } catch (err: any) {
+        const rows = await fetchLookupRows(supabase, groupName, scope.centerId)
+        const merged = mergeLookups(rows, scope.domainKey)
+        lookupCache[cacheKey] = { data: merged, timestamp: Date.now() }
+        if (!cancelled) setData(merged)
+      } catch (err) {
         console.error(`Error fetching lookups for ${groupName}:`, err)
-        setError(err)
+        if (!cancelled) setError(err as Error)
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
 
     fetchLookups()
-  }, [groupName, supabase])
+    return () => { cancelled = true }
+  }, [groupName])
 
-  const invalidateCache = () => {
-    Object.keys(lookupCache)
-      .filter(key => key.startsWith(`lookups_${groupName}_`))
-      .forEach(key => delete lookupCache[key])
-  }
+  const invalidateCache = useCallback(() => {
+    invalidateLookupCache(groupName)
+  }, [groupName])
 
   return { data, loading, error, invalidateCache }
+}
+
+/** Drop cached items for a group (call after editing lookups) */
+export function invalidateLookupCache(groupName: string) {
+  Object.keys(lookupCache)
+    .filter(key => key.startsWith(`lookups_${groupName}_`))
+    .forEach(key => delete lookupCache[key])
 }

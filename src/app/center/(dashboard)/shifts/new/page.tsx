@@ -23,14 +23,7 @@ export default function PostShiftPage() {
   const { data: staffRoles } = useLookups('Role')
   const { data: paymentMethodsRaw } = useLookups('Payment Method')
 
-  const paymentMethods = paymentMethodsRaw.filter(p => p.is_active !== false)
-  const DEFAULT_PAYMENT_METHODS = [
-    { value: 'payroll', label: 'Corporate Payroll' },
-    { value: 'venmo', label: 'Venmo' },
-    { value: 'cash', label: 'Cash' },
-    { value: 'check', label: 'Check' },
-    { value: 'zelle', label: 'Zelle' }
-  ]
+  const paymentMethods = paymentMethodsRaw.filter(p => p.is_active)
 
   // Form State - now using Date objects for better handling
   const [shiftDate, setShiftDate] = useState<Date>(new Date())
@@ -263,7 +256,7 @@ export default function PostShiftPage() {
                   className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
                 >
                   <option value="any">{isHealthcare ? 'Any Care Area' : 'Float / No specific area'}</option>
-                  {workAreas.map((room) => (
+                  {workAreas.filter(room => room.is_active).map((room) => (
                     <option key={room.id} value={room.id}>
                       {room.name}{!isHealthcare && room.age_group ? ` (${room.age_group})` : ''}
                     </option>
@@ -315,7 +308,7 @@ export default function PostShiftPage() {
                   onChange={(e) => setPaymentMode(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25] font-semibold"
                 >
-                  {(paymentMethods.length > 0 ? paymentMethods : DEFAULT_PAYMENT_METHODS).map(p => (
+                  {paymentMethods.map(p => (
                     <option key={p.value} value={p.value}>{p.label}</option>
                   ))}
                 </select>

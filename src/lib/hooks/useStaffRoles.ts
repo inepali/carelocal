@@ -1,47 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useLookups } from '@/hooks/use-lookups'
 
 /**
- * Fetches the merged list of staff role types for a given center:
- *  - Platform defaults (center_id IS NULL) come first
- *  - Center-specific custom roles follow
- *  - Only active roles are returned
+ * Active staff roles for the signed-in center admin's center: platform defaults for the
+ * center's vertical merged with the center's own Role lookups (Manage Data → Roles).
  *
- * Pass `centerId` as soon as it is known. The hook re-fetches automatically
- * when centerId changes.
+ * `centerId` is kept for call-site compatibility; the center is resolved from the session.
  */
-export function useStaffRoles(centerId: string | null | undefined) {
-  const [roles, setRoles] = useState<{ value: string; label: string; is_active: boolean }[]>([])
-  const [loading, setLoading] = useState(!!centerId)
-  const [prevCenterId, setPrevCenterId] = useState(centerId)
-
-  if (centerId !== prevCenterId) {
-    setPrevCenterId(centerId)
-    setLoading(!!centerId)
-    if (!centerId) {
-      setRoles([])
-    }
-  }
-
-  useEffect(() => {
-    if (!centerId) return
-
-    const supabase = createClient()
-
-    supabase
-      .from('center_lookups')
-      .select('*')
-      .eq('center_id', centerId)
-      .eq('group_name', 'Role')
-      .order('sort_order', { ascending: true })
-      .order('created_at', { ascending: true })
-      .then(({ data }) => {
-        setRoles(data || [])
-        setLoading(false)
-      })
-  }, [centerId])
-
-  return { roles, loading }
+export function useStaffRoles(_centerId?: string | null) {
+  const { data, loading } = useLookups('Role')
+  return { roles: data.filter(r => r.is_active), loading }
 }

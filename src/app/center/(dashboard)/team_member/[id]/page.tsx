@@ -4,22 +4,26 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   StaffProfile, CenterDocumentRequirement, StaffDocument,
-  CenterStaffDocumentStatus, DocReviewStatus, STAFF_TYPE_LABELS,
-  StaffType, StaffExperience, StaffCredential,
+  CenterStaffDocumentStatus,
+  StaffExperience, StaffCredential,
   AGE_GROUP_LABELS, AgeGroup,
-  EmploymentClass, EMPLOYMENT_CLASS_LABELS, appliesToEmploymentClass
+  EmploymentClass, EMPLOYMENT_CLASS_LABELS, appliesToEmploymentClass, DocumentRequest
 } from '@/lib/types'
 import {
-  ArrowLeft, CheckCircle2, XCircle, Clock, FileText, ExternalLink,
-  MessageSquare, AlertCircle, Loader2, ShieldCheck, User, Briefcase,
+  ArrowLeft, CheckCircle2, XCircle, Clock, FileText,
+  MessageSquare, Loader2, ShieldCheck, User, Briefcase,
   Award, CalendarDays, MapPin, Phone, Mail, CreditCard,
-  AlertTriangle, Globe, Star, Upload, FileStack, Plus, Trash2
+  AlertTriangle, Star
 } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { getPresignedViewUrl } from '@/app/actions/storage.actions'
 import { useCenterContext } from '../../context'
 import { StaffAvatar } from '@/components/StaffAvatar'
+import { ComplianceRecord } from './_components/ComplianceRecord'
+import { RequestDocumentsDialog } from '@/components/center/RequestDocumentsDialog'
+import { computeCompliance } from '@/lib/compliance'
+import { useLookups } from '@/hooks/use-lookups'
+import { lookupLabel } from '@/lib/lookups'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -49,17 +53,15 @@ const DAYS_MAP: Record<string, string> = {
   mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun'
 }
 
-const PAYMENT_LABELS: Record<string, string> = {
-  payroll: '🏢 Payroll', direct_deposit: '🏦 Direct Deposit', check: '📝 Check',
-  cash: '💵 Cash', zelle: '⚡ Zelle', venmo: '💙 Venmo', cashapp: '💚 Cash App', paypal: '🅿️ PayPal'
-}
 
-type TabId = 'overview' | 'experience' | 'credentials' | 'availability' | 'documents' | 'internal_docs'
+type TabId = 'overview' | 'experience' | 'credentials' | 'availability' | 'documents'
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function StaffReviewPage() {
   const { staffTerm } = useCenterContext()
+  const { data: roleLookups } = useLookups('Role')
+  const { data: paymentLookups } = useLookups('Payment Method')
   const { id: staffId } = useParams()
   const supabase = createClient()
 
@@ -70,8 +72,6 @@ export default function StaffReviewPage() {
   const [statuses, setStatuses]       = useState<CenterStaffDocumentStatus[]>([])
   const [experiences, setExperiences] = useState<StaffExperience[]>([])
   const [credentials, setCredentials] = useState<StaffCredential[]>([])
-  const [reviewingId, setReviewingId] = useState<string | null>(null)
-  const [reviewNotes, setReviewNotes] = useState('')
   const [centerId, setCenterId]       = useState<string | null>(null)
   const [activeTab, setActiveTab]     = useState<TabId>('overview')
   const [showActivationModal, setShowActivationModal] = useState(false)
@@ -79,14 +79,15 @@ export default function StaffReviewPage() {
   const [reviews, setReviews]         = useState<any[]>([])
   const [internalDocs, setInternalDocs] = useState<any[]>([])
   const [employmentClass, setEmploymentClass] = useState<EmploymentClass>('substitute')
+  const [startDate, setStartDate] = useState('')
+  const [viewerRole, setViewerRole] = useState<string | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [targetCenterRole, setTargetCenterRole] = useState<string | null>(null)
+  const [savingAccess, setSavingAccess] = useState(false)
+  const [openRequests, setOpenRequests] = useState<DocumentRequest[]>([])
+  const [requestFor, setRequestFor] = useState<{ requirementId?: string } | null>(null)
   const [savingClass, setSavingClass] = useState(false)
   
-  // Internal Docs Upload State
-  const [showInternalUpload, setShowInternalUpload] = useState(false)
-  const [internalReqId, setInternalReqId] = useState('')
-  const [internalFile, setInternalFile] = useState<File | null>(null)
-  const [internalReviewDate, setInternalReviewDate] = useState('')
-  const [uploadingInternal, setUploadingInternal] = useState(false)
 
   useEffect(() => { loadData() }, [staffId])
 
@@ -97,12 +98,16 @@ export default function StaffReviewPage() {
 
     const { data: admin } = await supabase
       .from('center_admins')
-      .select('center_id')
+      .select('center_id, role')
       .eq('user_id', user.id)
       .single()
 
     if (!admin) return
     setCenterId(admin.center_id)
+    setViewerRole(admin.role)
+    setCurrentUserId(user.id)
+    const { data: targetRole } = await supabase.rpc('staff_center_role', { p_center_id: admin.center_id, p_staff_id: staffId })
+    setTargetCenterRole((targetRole as string | null) ?? null)
 
     // 1. Staff Profile (full)
     const { data: staffProfile } = await supabase
@@ -116,12 +121,13 @@ export default function StaffReviewPage() {
       // 2. Employment class at this center + requirements that apply to it
       const { data: membership } = await supabase
         .from('center_staff')
-        .select('employment_class')
+        .select('employment_class, employment_start_date')
         .eq('center_id', admin.center_id)
         .eq('staff_id', staffId)
         .maybeSingle()
       const memberClass: EmploymentClass = membership?.employment_class || 'substitute'
       setEmploymentClass(memberClass)
+      setStartDate(membership?.employment_start_date ?? '')
 
       const { data: reqs } = await supabase
         .from('center_document_requirements')
@@ -144,6 +150,14 @@ export default function StaffReviewPage() {
         .eq('center_id', admin.center_id)
         .eq('staff_id', staffId)
       setStatuses(reviewStatuses || [])
+
+      const { data: requestRows } = await supabase
+        .from('document_requests')
+        .select('*')
+        .eq('center_id', admin.center_id)
+        .eq('staff_id', staffId)
+        .in('status', ['open', 'submitted'])
+      setOpenRequests(requestRows || [])
 
       // 5. Experiences
       const { data: exp } = await supabase
@@ -195,34 +209,6 @@ export default function StaffReviewPage() {
     setLoading(false)
   }
 
-  async function handleView(fileKey?: string, bucketName?: string, fallbackUrl?: string) {
-    if (!fileKey || !bucketName) {
-      if (fallbackUrl) window.open(fallbackUrl, '_blank')
-      else alert('No file access info available')
-      return
-    }
-    const res = await getPresignedViewUrl(fileKey, bucketName)
-    if (res.success && res.url) window.open(res.url, '_blank')
-    else alert(res.error || 'Failed to generate access link')
-  }
-
-  async function handleReview(requirementId: string, matchedDocId: string | null, status: DocReviewStatus) {
-    setReviewingId(requirementId)
-    const { data: { user } } = await supabase.auth.getUser()
-    const { data: admin } = await supabase.from('center_admins').select('center_id').eq('user_id', user!.id).single()
-    const payload = {
-      center_id: admin!.center_id, staff_id: staffId, requirement_id: requirementId,
-      matched_document_id: matchedDocId, status, center_reviewed: true,
-      reviewed_by: user!.id, reviewed_at: new Date().toISOString(), review_notes: reviewNotes
-    }
-    const existing = statuses.find(s => s.requirement_id === requirementId)
-    const { error } = existing
-      ? await supabase.from('center_staff_document_status').update(payload).eq('id', existing.id)
-      : await supabase.from('center_staff_document_status').insert(payload)
-    if (!error) { setReviewNotes(''); setReviewingId(null); loadData() }
-    else { alert('Failed to save review.'); setReviewingId(null) }
-  }
-
   async function handleActivateStaff() {
     setActivating(true)
     const { data: { user } } = await supabase.auth.getUser()
@@ -250,59 +236,31 @@ export default function StaffReviewPage() {
     else alert('Failed to update employee class: ' + error.message)
   }
 
-  async function handleUploadInternal(e: React.FormEvent) {
-    e.preventDefault()
-    if (!internalFile || !internalReqId || !centerId) return
-    setUploadingInternal(true)
-    
-    try {
-      const { getPresignedUploadUrl } = await import('@/app/actions/storage.actions')
-      const uploadRes = await getPresignedUploadUrl(internalFile.name, internalFile.type, 'center_internal')
-      if (uploadRes.success && uploadRes.uploadUrl && uploadRes.fileKey && uploadRes.bucketName) {
-        const uploadResponse = await fetch(uploadRes.uploadUrl, {
-          method: 'PUT',
-          body: internalFile,
-          headers: { 'Content-Type': internalFile.type }
-        })
+  async function handleToggleAdmin(makeAdmin: boolean) {
+    if (!centerId || !profile) return
+    const name = `${profile.first_name} ${profile.last_name}`
+    const message = makeAdmin
+      ? `Make ${name} an Admin? They will be able to manage this center, including staff documents and confidential medical files. Their own checklist still applies and they cannot approve their own documents.`
+      : `Remove Admin access for ${name}? They will remain an employee.`
+    if (!confirm(message)) return
 
-        if (uploadResponse.ok) {
-          const req = requirements.find(r => r.id === internalReqId)
-          const { error } = await supabase.from('center_internal_documents').insert({
-            center_id: centerId,
-            staff_id: staffId,
-            requirement_id: internalReqId,
-            document_name: req?.document_name || 'Internal Document',
-            file_url: uploadRes.fileKey, // Store key for now, or construct URL
-            file_key: uploadRes.fileKey,
-            bucket_name: uploadRes.bucketName,
-            future_review_date: internalReviewDate || null
-          })
-          if (!error) {
-            setShowInternalUpload(false)
-            setInternalFile(null)
-            setInternalReqId('')
-            setInternalReviewDate('')
-            loadData()
-          } else {
-            alert('Failed to save document record: ' + error.message)
-          }
-        } else {
-          alert('Failed to upload file to storage.')
-        }
-      }
-    } catch (err) {
-      alert('Error uploading document.')
-    } finally {
-      setUploadingInternal(false)
-    }
+    setSavingAccess(true)
+    const { error } = await supabase.rpc('set_center_admin_access', { p_center_id: centerId, p_staff_id: staffId, p_is_admin: makeAdmin })
+    setSavingAccess(false)
+    if (error) alert(error.message)
+    else loadData()
   }
 
-  async function handleDeleteInternal(id: string, fileKey: string, bucketName: string) {
-    if (!confirm('Are you sure you want to delete this internal document?')) return
-    const { deleteFile } = await import('@/app/actions/storage.actions')
-    await deleteFile(fileKey, bucketName)
-    await supabase.from('center_internal_documents').delete().eq('id', id)
-    loadData()
+  async function handleChangeStartDate(next: string) {
+    if (!centerId || !next || next === startDate) return
+    const previous = startDate
+    setStartDate(next)
+    const { error } = await supabase.from('center_staff').update({ employment_start_date: next })
+      .eq('center_id', centerId).eq('staff_id', staffId)
+    if (error) {
+      setStartDate(previous)
+      alert('Failed to update employment start date: ' + error.message)
+    }
   }
 
   if (loading) return (
@@ -320,13 +278,17 @@ export default function StaffReviewPage() {
     { id: 'credentials',  label: 'Credentials',  Icon: Award },
     { id: 'availability', label: 'Availability', Icon: CalendarDays },
     { id: 'documents',    label: 'Documents',    Icon: ShieldCheck },
-    { id: 'internal_docs', label: 'Center Documents', Icon: FileStack },
   ]
 
-  // compliance progress (exclude internal requirements)
-  const complianceReqs = requirements.filter(r => !r.is_internal)
-  const acceptedCount = statuses.filter(s => s.status === 'accepted' && complianceReqs.some(cr => cr.id === s.requirement_id)).length
-  const totalReqs = complianceReqs.length
+  // Compliance progress: every applicable requirement (incl. center records), N/A excluded
+  const complianceResults = requirements.map(req => {
+    const record = statuses.find(s => s.requirement_id === req.id)
+    const doc = record?.matched_document_id ? uploads.find(u => u.id === record.matched_document_id) : undefined
+    return { record, result: computeCompliance(req, record, startDate || null, doc?.expiry_date) }
+  })
+  const totalReqs = complianceResults.filter(r => r.result.state !== 'not_applicable').length
+  const acceptedCount = complianceResults.filter(r => r.record?.status === 'accepted' && (r.result.state === 'current' || r.result.state === 'due_soon')).length
+  const attentionCount = complianceResults.filter(r => r.result.state === 'overdue' || r.result.state === 'pending_review').length
 
   return (
     <div className="max-w-5xl mx-auto pb-20 px-4">
@@ -352,7 +314,7 @@ export default function StaffReviewPage() {
             </h1>
             <div className="flex flex-wrap items-center gap-3 mb-3">
               <span className="bg-[#edf7f3] text-[#157354] px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border border-[#d4ede4]">
-                {STAFF_TYPE_LABELS[profile.staff_type as StaffType] || profile.staff_type}
+                {lookupLabel(roleLookups, profile.staff_type)}
               </span>
               <select
                 value={employmentClass}
@@ -365,11 +327,44 @@ export default function StaffReviewPage() {
                   <option key={value} value={value}>{label}</option>
                 ))}
               </select>
+              <label className="inline-flex items-center gap-2 bg-white px-3 py-1 rounded-lg text-xs font-bold text-[#6b7a73] border border-[#d4ede4]" title="Due dates are counted from this date">
+                Started
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => handleChangeStartDate(e.target.value)}
+                  className="bg-transparent text-[#157354] font-black focus:outline-none"
+                />
+              </label>
+              {targetCenterRole === 'owner' ? (
+                <span className="inline-flex items-center gap-1.5 bg-[#0b3828] text-white px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Owner
+                </span>
+              ) : viewerRole === 'owner' ? (
+                <button
+                  type="button"
+                  disabled={savingAccess || (targetCenterRole !== 'admin' && employmentClass !== 'regular')}
+                  onClick={() => handleToggleAdmin(targetCenterRole !== 'admin')}
+                  title={targetCenterRole !== 'admin' && employmentClass !== 'regular' ? 'Only Regular employees can be made Admin' : undefined}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border transition-colors disabled:opacity-50 ${
+                    targetCenterRole === 'admin'
+                      ? 'bg-[#0b3828] text-white border-[#0b3828] hover:bg-[#157354]'
+                      : 'bg-white text-[#157354] border-[#d4ede4] hover:bg-[#edf7f3]'
+                  }`}
+                >
+                  {savingAccess ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                  {targetCenterRole === 'admin' ? 'Admin · Remove' : 'Make Admin'}
+                </button>
+              ) : targetCenterRole === 'admin' ? (
+                <span className="inline-flex items-center gap-1.5 bg-[#0b3828] text-white px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Admin
+                </span>
+              ) : null}
               {totalReqs > 0 && (
                 <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border ${
                   acceptedCount === totalReqs ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'
                 }`}>
-                  {acceptedCount}/{totalReqs} Docs Verified
+                  {acceptedCount}/{totalReqs} Complete
                 </span>
               )}
             </div>
@@ -404,9 +399,9 @@ export default function StaffReviewPage() {
           >
             <tab.Icon className="w-4 h-4" />
             {tab.label}
-            {tab.id === 'documents' && totalReqs > 0 && acceptedCount < totalReqs && (
-              <span className="ml-1 bg-amber-400 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">
-                {totalReqs - acceptedCount}
+            {tab.id === 'documents' && attentionCount > 0 && (
+              <span className="ml-1 bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full" title="Overdue or needs review">
+                {attentionCount}
               </span>
             )}
           </button>
@@ -437,7 +432,7 @@ export default function StaffReviewPage() {
               <div className="flex flex-wrap gap-2">
                 {(profile as any).preferred_payment_methods.map((m: string) => (
                   <span key={m} className="px-4 py-2 bg-[#edf7f3] text-[#157354] border border-[#d4ede4] rounded-xl text-sm font-black">
-                    {PAYMENT_LABELS[m] || m}
+                    {lookupLabel(paymentLookups, m)}
                   </span>
                 ))}
               </div>
@@ -657,270 +652,36 @@ export default function StaffReviewPage() {
       )}
 
       {/* ── Documents / Compliance Tab ─────────────────────────────── */}
-      {activeTab === 'documents' && (
-        <div className="bg-white border-2 border-[#f0f4f2] rounded-[2rem] overflow-hidden">
-          <div className="p-6 border-b-2 border-[#f0f4f2] bg-[#f8faf9] flex items-center justify-between">
-            <h2 className="text-lg font-black text-[#0b3828] flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-[#157354]" /> Compliance Review
-            </h2>
-            <span className={`px-3 py-1 rounded-lg text-xs font-black border ${
-              acceptedCount === totalReqs && totalReqs > 0
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                : 'bg-amber-50 text-amber-700 border-amber-200'
-            }`}>
-              {acceptedCount} / {totalReqs} verified
-            </span>
-          </div>
-
-          <div className="p-6 space-y-6">
-            {complianceReqs.length === 0 ? (
-              <div className="text-center py-12 text-[#a8b5ae]">
-                <Globe className="w-10 h-10 mx-auto mb-3" />
-                <p className="font-bold">No document requirements configured for your center.</p>
-                <p className="text-sm mt-1">Add requirements in your center settings.</p>
-              </div>
-            ) : (
-              complianceReqs.map((req) => {
-                const status    = statuses.find(s => s.requirement_id === req.id)
-                const matchedDoc = uploads.find(u => u.id === status?.matched_document_id)
-                return (
-                  <div key={req.id} className="border-2 border-[#f0f4f2] rounded-2xl overflow-hidden">
-                    {/* Req header */}
-                    <div className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#f8faf9] border-b-2 border-[#f0f4f2]">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-black text-[#1a2e25]">{req.document_name}</span>
-                          {req.is_required && (
-                            <span className="text-[9px] bg-[#157354] text-white px-2 py-0.5 rounded-full uppercase tracking-wider">Required</span>
-                          )}
-                        </div>
-                        <p className="text-xs text-[#6b7a73]">{req.notes || 'No specific instructions.'}</p>
-                      </div>
-                      <div className="shrink-0">
-                        {status?.status === 'accepted' ? (
-                          <div className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full text-xs font-black border border-emerald-200">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Approved
-                          </div>
-                        ) : status?.status === 'rejected' ? (
-                          <div className="flex items-center gap-1.5 text-red-600 bg-red-50 px-3 py-1.5 rounded-full text-xs font-black border border-red-100">
-                            <XCircle className="w-3.5 h-3.5" /> Flagged
-                          </div>
-                        ) : status?.status === 'pending_review' ? (
-                          <div className="flex items-center gap-1.5 text-amber-600 bg-amber-50 px-3 py-1.5 rounded-full text-xs font-black border border-amber-100 animate-pulse">
-                            <Clock className="w-3.5 h-3.5" /> Needs Review
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5 text-[#a8b5ae] bg-[#f8faf9] px-3 py-1.5 rounded-full text-xs font-black border border-[#e2e8e4]">
-                            <AlertCircle className="w-3.5 h-3.5" /> Missing
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="p-5 bg-white">
-                      {matchedDoc ? (
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                          <div className="flex items-center gap-4">
-                            <div className="w-11 h-11 rounded-xl bg-[#edf7f3] flex items-center justify-center shrink-0">
-                              <FileText className="w-5 h-5 text-[#157354]" />
-                            </div>
-                            <div>
-                              <div className="font-black text-[#1a2e25] text-sm">{matchedDoc.document_name}</div>
-                              <div className="text-xs text-[#6b7a73] flex items-center gap-2 mt-0.5">
-                                <span>Uploaded {new Date(matchedDoc.uploaded_at).toLocaleDateString()}</span>
-                                {matchedDoc.expiry_date && (
-                                  <>
-                                    <span>·</span>
-                                    <span className={new Date(matchedDoc.expiry_date) < new Date() ? 'text-red-500 font-bold' : ''}>
-                                      Expires {new Date(matchedDoc.expiry_date).toLocaleDateString()}
-                                    </span>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <button
-                              onClick={() => handleView(matchedDoc.file_key, matchedDoc.bucket_name, matchedDoc.file_url)}
-                              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#edf7f3] text-[#157354] font-black text-xs hover:bg-[#d4ede4] transition-colors border border-[#d4ede4]"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" /> View File
-                            </button>
-                            <button
-                              onClick={() => handleReview(req.id, matchedDoc.id, 'accepted')}
-                              disabled={reviewingId === req.id}
-                              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#157354] text-white font-black text-xs hover:bg-[#0f4a36] disabled:opacity-50 transition-colors border border-[#157354]"
-                            >
-                              {reviewingId === req.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />} Accept
-                            </button>
-                            <button
-                              onClick={() => handleReview(req.id, matchedDoc.id, 'rejected')}
-                              disabled={reviewingId === req.id}
-                              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-red-600 font-black text-xs hover:bg-red-50 disabled:opacity-50 transition-colors border border-red-100"
-                            >
-                              {reviewingId === req.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />} Reject
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 text-[#6b7a73] text-sm italic">
-                          <AlertCircle className="w-4 h-4 text-[#a8b5ae]" /> Staff has not linked a document yet.
-                        </div>
-                      )}
-
-                      {/* Review actions */}
-                      {(matchedDoc || status?.status === 'rejected') && (
-                        <div className="mt-5 pt-5 border-t-2 border-[#f0f4f2]">
-                          <label className="block text-[10px] font-black text-[#0b3828] uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                            <MessageSquare className="w-3 h-3" /> Review Notes
-                          </label>
-                          <textarea
-                            value={reviewNotes || status?.review_notes || ''}
-                            onChange={e => setReviewNotes(e.target.value)}
-                            placeholder="e.g. Looks good, valid state license."
-                            className="w-full px-4 py-3 rounded-xl border-2 border-[#f0f4f2] bg-white text-sm focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all"
-                            rows={2}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )
-              })
-            )}
-          </div>
-        </div>
+      {activeTab === 'documents' && centerId && (
+        <ComplianceRecord
+          centerId={centerId}
+          staffId={String(staffId)}
+          requirements={requirements}
+          statuses={statuses}
+          uploads={uploads}
+          centerFiles={internalDocs}
+          startDate={startDate || null}
+          canViewConfidential={viewerRole === 'owner' || viewerRole === 'admin'}
+          isSelf={!!currentUserId && profile.user_id === currentUserId}
+          onChanged={loadData}
+          openRequests={openRequests}
+          onRequest={(requirementId) => setRequestFor({ requirementId })}
+        />
       )}
 
-      {/* ── Internal Docs Tab ──────────────────────────────────────── */}
-      {activeTab === 'internal_docs' && (
-        <div className="bg-white border-2 border-[#f0f4f2] rounded-[2rem] overflow-hidden">
-          <div className="p-6 border-b-2 border-[#f0f4f2] bg-[#f8faf9] flex items-center justify-between">
-            <h2 className="text-lg font-black text-[#0b3828] flex items-center gap-2">
-              <FileStack className="w-5 h-5 text-[#157354]" /> Center-Only Documents
-            </h2>
-            <button
-              onClick={() => setShowInternalUpload(!showInternalUpload)}
-              className="flex items-center gap-2 px-4 py-2 bg-[#157354] text-white font-black text-sm rounded-xl hover:bg-[#0f4a36] transition-colors shadow-sm"
-            >
-              <Plus className="w-4 h-4" /> Upload Document
-            </button>
-          </div>
 
-          {showInternalUpload && (
-            <div className="p-6 border-b-2 border-[#f0f4f2] bg-white">
-              <form onSubmit={handleUploadInternal} className="space-y-4 max-w-xl">
-                <div>
-                  <label className="block text-xs font-black text-[#0b3828] uppercase tracking-widest mb-2">Select Requirement Type</label>
-                  <select
-                    required
-                    value={internalReqId}
-                    onChange={(e) => setInternalReqId(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-[#f0f4f2] bg-[#f8faf9] text-sm focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all font-bold text-[#1a2e25]"
-                  >
-                    <option value="">-- Select a center-only requirement --</option>
-                    {requirements.filter(r => r.is_internal).map(r => (
-                      <option key={r.id} value={r.id}>{r.document_name}</option>
-                    ))}
-                  </select>
-                  {requirements.filter(r => r.is_internal).length === 0 && (
-                    <p className="text-xs text-amber-600 mt-2 font-bold">
-                      No center-only requirements defined. Go to Settings &gt; Documents to create one.
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-[#0b3828] uppercase tracking-widest mb-2">File</label>
-                  <input
-                    type="file"
-                    required
-                    onChange={(e) => setInternalFile(e.target.files?.[0] || null)}
-                    className="w-full text-sm text-[#6b7a73] file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-black file:bg-[#edf7f3] file:text-[#157354] hover:file:bg-[#d4ede4] transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-[#0b3828] uppercase tracking-widest mb-2">Future Review Date (Optional)</label>
-                  <input
-                    type="date"
-                    value={internalReviewDate}
-                    onChange={(e) => setInternalReviewDate(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-[#f0f4f2] bg-white text-sm focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all text-[#1a2e25]"
-                  />
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => { setShowInternalUpload(false); setInternalFile(null); setInternalReqId(''); setInternalReviewDate(''); }}
-                    className="px-5 py-2.5 bg-white border-2 border-[#f0f4f2] text-[#6b7a73] font-black rounded-xl hover:bg-[#f8faf9] transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={uploadingInternal || !internalFile || !internalReqId}
-                    className="px-5 py-2.5 bg-[#157354] text-white font-black rounded-xl hover:bg-[#0f4a36] disabled:opacity-50 transition-colors flex items-center gap-2"
-                  >
-                    {uploadingInternal ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                    Upload
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-
-          <div className="p-6">
-            {internalDocs.length === 0 ? (
-              <div className="text-center py-12 text-[#a8b5ae]">
-                <FileStack className="w-10 h-10 mx-auto mb-3" />
-                <p className="font-bold text-[#6b7a73]">No internal documents uploaded yet.</p>
-                <p className="text-sm mt-1">These documents are only visible to your center.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {internalDocs.map(doc => (
-                  <div key={doc.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-white border-2 border-[#f0f4f2] rounded-2xl">
-                    <div className="flex items-center gap-4">
-                      <div className="w-11 h-11 rounded-xl bg-[#f8faf9] flex items-center justify-center shrink-0 border border-[#e2e8e4]">
-                        <FileText className="w-5 h-5 text-[#6b7a73]" />
-                      </div>
-                      <div>
-                        <div className="font-black text-[#1a2e25]">{doc.document_name}</div>
-                        <div className="text-xs text-[#a8b5ae] font-bold mt-0.5 flex flex-wrap items-center gap-2">
-                          <span>Uploaded {new Date(doc.uploaded_at).toLocaleDateString()}</span>
-                          {doc.future_review_date && (
-                            <>
-                              <span>·</span>
-                              <span className="text-amber-600">Review by {new Date(doc.future_review_date).toLocaleDateString()}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => handleView(doc.file_key, doc.bucket_name, doc.file_url)}
-                        className="p-2.5 rounded-xl bg-[#edf7f3] text-[#157354] hover:bg-[#d4ede4] transition-colors"
-                        title="View Document"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteInternal(doc.id, doc.file_key, doc.bucket_name)}
-                        className="p-2.5 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-                        title="Delete Document"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+      {requestFor && centerId && (
+        <RequestDocumentsDialog
+          centerId={centerId}
+          initialStaffIds={[String(staffId)]}
+          initialRequirementId={requestFor.requirementId}
+          onClose={() => setRequestFor(null)}
+          onCreated={(count) => {
+            setRequestFor(null)
+            if (count === 0) alert('There is already an open request for this item.')
+            loadData()
+          }}
+        />
       )}
 
       {/* ── Activation Modal ───────────────────────────────────────── */}

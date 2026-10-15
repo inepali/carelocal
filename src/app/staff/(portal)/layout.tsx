@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, Calendar, FileText, UserCircle, Globe, Search, CreditCard, Building } from 'lucide-react'
+import { LogOut, Calendar, FileText, UserCircle, Globe, Search, CreditCard, Building, LayoutDashboard, Inbox } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { useIsRegularOnly, isSubstituteOnlyRoute, isRegularOnlyRoute } from '@/lib/hooks/useIsRegularOnly'
@@ -12,6 +12,8 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
   const pathname = usePathname()
   const supabase = createClient()
   const [userName, setUserName] = useState('Loading...')
+  const [isCenterAdmin, setIsCenterAdmin] = useState(false)
+  const [openRequestCount, setOpenRequestCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const { isRegularOnly, loading: classLoading } = useIsRegularOnly()
 
@@ -30,14 +32,21 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
 
       const { data, error } = await supabase
         .from('staff_profiles')
-        .select('first_name, last_name')
+        .select('id, first_name, last_name')
         .eq('user_id', user.id)
       
       if (data && data.length > 0) {
         setUserName(`${data[0].first_name} ${data[0].last_name}`)
+        const { count } = await supabase.from('document_requests').select('id', { count: 'exact', head: true })
+          .eq('staff_id', data[0].id).eq('status', 'open')
+        setOpenRequestCount(count ?? 0)
       } else {
         setUserName(user.email?.split('@')[0] || 'Educator')
       }
+
+      // Employees who are also center admins can switch back to the center dashboard
+      const { data: adminRow } = await supabase.from('center_admins').select('center_id').eq('user_id', user.id).limit(1).maybeSingle()
+      setIsCenterAdmin(!!adminRow)
       setLoading(false)
     }
 
@@ -55,6 +64,7 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
     { name: 'Available Shifts', href: '/staff/shifts', icon: Search },
     { name: 'My Shifts', href: '/staff/my-shifts', icon: Calendar },
     { name: 'My Documents', href: '/staff/documents', icon: FileText },
+    { name: 'Requests', href: '/staff/requests', icon: Inbox },
     { name: 'My Profile', href: '/staff/profile', icon: UserCircle },
     { name: 'My Account', href: '/staff/account', icon: CreditCard },
   ].filter(item => isRegularOnly ? !isSubstituteOnlyRoute(item.href) : !isRegularOnlyRoute(item.href))
@@ -74,6 +84,11 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
             <span className="font-semibold text-lg tracking-tight truncate hidden sm:block">CareLocal</span>
         </Link>
         <div className="flex items-center gap-4">
+            {isCenterAdmin && (
+                <Link href="/center/dashboard" className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/20 transition-colors">
+                    <LayoutDashboard className="w-4 h-4" /> Center dashboard
+                </Link>
+            )}
             <span className="text-[#a9dac9] text-sm font-medium">{userName}</span>
             <button
                 onClick={handleSignOut}
@@ -103,7 +118,10 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
                         }`}
                     >
                         <item.icon className={`w-5 h-5 ${isActive ? 'text-[#a9dac9]' : 'text-[#6b7a73]'}`} />
-                        {item.name}
+                        <span className="flex-1">{item.name}</span>
+                        {item.href === '/staff/requests' && openRequestCount > 0 && (
+                          <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">{openRequestCount}</span>
+                        )}
                     </Link>
                     )
                 })}
@@ -131,7 +149,12 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
                     }`}
                 >
                     <item.icon className="w-6 h-6" />
-                    {item.name.replace('My ', '')}
+                    <span className="relative">
+                      {item.name.replace('My ', '')}
+                      {item.href === '/staff/requests' && openRequestCount > 0 && (
+                        <span className="absolute -right-3 -top-5 rounded-full bg-red-500 px-1.5 text-[9px] font-bold text-white">{openRequestCount}</span>
+                      )}
+                    </span>
                 </Link>
                 )
             })}

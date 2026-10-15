@@ -3,8 +3,13 @@
 import { useEffect, useState, Suspense, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useSearchParams } from 'next/navigation'
-import { getPresignedUploadUrl, getPresignedViewUrl } from '@/app/actions/storage.actions'
-import { appliesToEmploymentClass } from '@/lib/types'
+import { deleteVaultDocument } from '@/app/actions/storage.actions'
+import { openStoredFile, uploadStoredFile, DOCUMENT_ACCEPT } from '@/lib/files'
+import { appliesToEmploymentClass, type CenterDocumentRequirement, type CenterStaffDocumentStatus as SharedStatus } from '@/lib/types'
+import { computeCompliance, COMPLIANCE_STATE_STYLE, formatDate } from '@/lib/compliance'
+import { RequestInbox } from '@/components/staff/RequestInbox'
+import { useLookups } from '@/hooks/use-lookups'
+import { lookupLabel } from '@/lib/lookups'
 import { 
   FileText, 
   Upload, 
@@ -17,17 +22,6 @@ import {
   X, 
   Download
 } from 'lucide-react'
-
-// Document Categories
-const CATEGORIES = [
-  { label: 'Identity', value: 'identity' },
-  { label: 'Certification', value: 'certification' },
-  { label: 'Background', value: 'background' },
-  { label: 'Training', value: 'training' },
-  { label: 'Medical/Health', value: 'medical' },
-  { label: 'Documentation', value: 'documentation' },
-  { label: 'Other', value: 'other' },
-]
 
 interface StaffProfile {
   id: string
@@ -56,20 +50,9 @@ interface Center {
   slug: string
 }
 
-interface Requirement {
-  id: string
-  document_name: string
-  document_category: string
-  template_file_key: string | null
-  template_bucket_name: string | null
-}
+type Requirement = CenterDocumentRequirement
+type CenterStaffDocumentStatus = Omit<SharedStatus, 'matched_document'>
 
-interface CenterStaffDocumentStatus {
-  id: string
-  requirement_id: string
-  status: string
-  matched_document_id: string | null
-}
 
 export default function MobileDocumentsPage() {
   return (
@@ -90,12 +73,16 @@ function DocumentsContent() {
 
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState<StaffProfile | null>(null)
+  const { data: docTypes } = useLookups('Document Type')
   const [documents, setDocuments] = useState<StaffDocument[]>([])
   
   // Center requirements state (if center query parameter is present)
   const [center, setCenter] = useState<Center | null>(null)
   const [requirements, setRequirements] = useState<Requirement[]>([])
   const [centerDocStatuses, setCenterDocStatuses] = useState<CenterStaffDocumentStatus[]>([])
+  const [startDate, setStartDate] = useState<string | null>(null)
+  const [signingReq, setSigningReq] = useState<string | null>(null)
+  const [signature, setSignature] = useState('')
   const [linkingReq, setLinkingReq] = useState<Requirement | null>(null)
 
   // Upload Form State
@@ -156,7 +143,7 @@ function DocumentsContent() {
         // Fetch my employment class at this center (set by the center admin)
         const { data: membership } = await supabase
           .from('center_staff')
-          .select('employment_class')
+          .select('employment_class, employment_start_date')
           .eq('center_id', centerData.id)
           .eq('staff_id', staffProfile.id)
           .maybeSingle()
@@ -167,7 +154,8 @@ function DocumentsContent() {
           .select('*')
           .eq('center_id', centerData.id)
           .order('sort_order', { ascending: true })
-        setRequirements((reqs || []).filter(r => appliesToEmploymentClass(r, membership?.employment_class)))
+        setRequirements((reqs || []).filter(r => !r.is_internal && appliesToEmploymentClass(r, membership?.employment_class)))
+        setStartDate(membership?.employment_start_date ?? null)
 
         // Fetch statuses
         const { data: statusData } = await supabase
@@ -185,32 +173,15 @@ function DocumentsContent() {
     loadData()
   }, [loadData])
 
-  const handleView = async (fileKey: string | null, bucketName: string | null, fallbackUrl?: string | null) => {
-    if (!fileKey || !bucketName) {
-      if (fallbackUrl) window.open(fallbackUrl, '_blank')
-      else alert('No file details available')
-      return
-    }
-
-    const res = await getPresignedViewUrl(fileKey, bucketName)
-    if (res.success && res.url) {
-      window.open(res.url, '_blank')
-    } else {
-      alert(res.error || 'Failed to view document')
-    }
-  }
 
   const handleDelete = async (id: string) => {
     if (!profile) return
     if (!confirm('Are you sure you want to delete this document from your vault?')) return
 
-    const { error } = await supabase
-      .from('staff_documents')
-      .delete()
-      .eq('id', id)
+    const res = await deleteVaultDocument(id)
 
-    if (error) {
-      alert('Delete failed: ' + error.message)
+    if (!res.success) {
+      alert('Delete failed: ' + res.error)
     } else {
       setDocuments(prev => prev.filter(d => d.id !== id))
       // Reload center checklists to update linked statuses
@@ -235,27 +206,7 @@ function DocumentsContent() {
     setUploading(true)
 
     try {
-      // 1. Fetch Presigned Upload URL
-      const presigned = await getPresignedUploadUrl(selectedFile.name, selectedFile.type)
-      
-      if (!presigned.success || !presigned.uploadUrl) {
-        alert(presigned.error || 'Failed to authorize upload')
-        setUploading(false)
-        return
-      }
-
-      // 2. Put file to Cloudflare R2
-      const uploadRes = await fetch(presigned.uploadUrl, {
-        method: 'PUT',
-        body: selectedFile,
-        headers: {
-          'Content-Type': selectedFile.type,
-        },
-      })
-
-      if (!uploadRes.ok) {
-        throw new Error('Storage upload failed')
-      }
+      const { fileKey, bucketName } = await uploadStoredFile('vault', selectedFile)
 
       // 3. Save reference in staff_documents
       const { error } = await supabase
@@ -266,8 +217,8 @@ function DocumentsContent() {
           document_category: docCategory,
           expiry_date: expiryDate || null,
           file_url: 'r2_private_access',
-          file_key: presigned.fileKey,
-          bucket_name: presigned.bucketName,
+          file_key: fileKey,
+          bucket_name: bucketName,
           file_name: selectedFile.name
         })
 
@@ -318,14 +269,8 @@ function DocumentsContent() {
     }
   }
 
-  const handleDownloadTemplate = async (req: Requirement) => {
-    if (!req.template_file_key || !req.template_bucket_name) return
-    const res = await getPresignedViewUrl(req.template_file_key, req.template_bucket_name)
-    if (res.success && res.url) {
-      window.open(res.url, '_blank')
-    } else {
-      alert('Could not retrieve template file link')
-    }
+  const handleDownloadTemplate = (req: Requirement) => {
+    if (req.template_file_key) openStoredFile('template', req.id)
   }
 
   if (loading) {
@@ -338,10 +283,22 @@ function DocumentsContent() {
   }
 
   // Calculate matching status metrics for center onboarding checklist
-  const progressCount = requirements.filter(req => {
-    const statusObj = centerDocStatuses.find(s => s.requirement_id === req.id)
-    return statusObj?.status === 'accepted' || statusObj?.status === 'pending_review'
-  }).length
+  const checklistRows = requirements.map(req => {
+    const record = centerDocStatuses.find(s => s.requirement_id === req.id) ?? null
+    const doc = record?.matched_document_id ? documents.find(d => d.id === record.matched_document_id) : undefined
+    return { req, record, result: computeCompliance(req, record, startDate, doc?.expiry_date) }
+  })
+  const applicableRows = checklistRows.filter(r => r.result.state !== 'not_applicable')
+  const progressCount = applicableRows.filter(r => r.record?.status === 'accepted' && (r.result.state === 'current' || r.result.state === 'due_soon')).length
+
+  const handleSign = async (req: Requirement) => {
+    if (!signature.trim()) return
+    const { error } = await supabase.rpc('acknowledge_requirement', { p_requirement_id: req.id, p_signature: signature.trim() })
+    if (error) { alert(error.message); return }
+    setSigningReq(null)
+    setSignature('')
+    await loadData()
+  }
 
   return (
     <div className="py-2">
@@ -371,7 +328,7 @@ function DocumentsContent() {
                 : 'text-[#6b7a73] hover:text-[#0b3828]'
             }`}
           >
-            Checklist ({progressCount}/{requirements.length})
+            Checklist ({progressCount}/{applicableRows.length})
           </button>
           <button
             onClick={() => setActiveTab('vault')}
@@ -412,7 +369,7 @@ function DocumentsContent() {
                 <input 
                   type="file" 
                   className="hidden" 
-                  accept=".pdf,image/*"
+                  accept={DOCUMENT_ACCEPT}
                   onChange={(e) => {
                     const file = e.target.files?.[0] || null
                     setSelectedFile(file)
@@ -457,7 +414,7 @@ function DocumentsContent() {
                 className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-[#f8faf9] focus:outline-none focus:border-[#157354]"
               >
                 <option value="" disabled>Select Category</option>
-                {CATEGORIES.map(c => (
+                {docTypes.filter(c => c.is_active).map(c => (
                   <option key={c.value} value={c.value}>{c.label}</option>
                 ))}
               </select>
@@ -491,6 +448,7 @@ function DocumentsContent() {
       {/* ── VAULT DOCUMENTS TAB ── */}
       {activeTab === 'vault' && (
         <div className="space-y-3">
+          <RequestInbox variant="mobile" />
           {documents.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-[#e2e8e4] px-4">
               <FileText className="w-10 h-10 text-[#a8b5ae] mx-auto mb-3" />
@@ -507,7 +465,7 @@ function DocumentsContent() {
             </div>
           ) : (
             documents.map((doc) => {
-              const categoryObj = CATEGORIES.find(c => c.value === doc.document_category)
+              const categoryLabel = lookupLabel(docTypes, doc.document_category)
               const isExpired = doc.expiry_date && new Date(doc.expiry_date) < new Date()
 
               return (
@@ -529,7 +487,7 @@ function DocumentsContent() {
                         )}
                       </h3>
                       <div className="text-[10px] text-[#6b7a73] font-medium mt-0.5 flex flex-wrap items-center gap-x-2">
-                        <span className="capitalize">{categoryObj?.label || doc.document_category}</span>
+                        <span className="capitalize">{categoryLabel}</span>
                         {doc.expiry_date && (
                           <span>• Exp: {new Date(doc.expiry_date).toLocaleDateString()}</span>
                         )}
@@ -539,7 +497,7 @@ function DocumentsContent() {
 
                   <div className="flex items-center gap-1 shrink-0">
                     <button
-                      onClick={() => handleView(doc.file_key, doc.bucket_name, doc.file_url)}
+                      onClick={() => openStoredFile('vault', doc.id)}
                       className="p-2.5 text-[#157354] hover:bg-[#edf7f3] rounded-lg transition-colors cursor-pointer"
                       title="View Credential"
                     >
@@ -574,78 +532,57 @@ function DocumentsContent() {
           </div>
 
           <div className="space-y-3">
-            {requirements.map((req) => {
-              const assignment = centerDocStatuses.find(s => s.requirement_id === req.id)
-              const isMet = assignment?.status === 'accepted'
-              const isPending = assignment?.status === 'pending_review'
-              const isRejected = assignment?.status === 'rejected'
+            {checklistRows.map(({ req, record, result }) => {
+              const style = COMPLIANCE_STATE_STYLE[result.state]
+              const isAck = req.evidence_type === 'acknowledgement'
+              const isDone = record?.status === 'accepted' && (result.state === 'current' || result.state === 'due_soon')
+              const needsSignature = isAck && result.state !== 'not_applicable' && !(isDone && record?.acknowledged_version === req.policy_version)
+              const canLink = !isAck && result.state !== 'not_applicable' && record?.status !== 'pending_review' && (!isDone || result.state === 'due_soon')
 
               return (
-                <div 
-                  key={req.id}
-                  className={`border rounded-2xl p-4 shadow-sm flex items-center justify-between gap-4 transition-all ${
-                    isMet 
-                      ? 'bg-emerald-50/50 border-emerald-200' 
-                      : isPending 
-                        ? 'bg-amber-50/50 border-amber-200' 
-                        : 'bg-white border-slate-200'
-                  }`}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                      isMet 
-                        ? 'bg-emerald-100 text-emerald-800' 
-                        : isPending 
-                          ? 'bg-amber-100 text-amber-800' 
-                          : 'bg-slate-100 text-slate-400'
-                    }`}>
-                      {isMet ? (
-                        <ShieldCheck className="w-5 h-5" />
-                      ) : (
-                        <FileText className="w-5 h-5" />
-                      )}
-                    </div>
+                <div key={req.id} className="border border-slate-200 bg-white rounded-2xl p-4 shadow-sm space-y-3">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <h4 className="font-bold text-[#0b3828] text-xs leading-snug">{req.document_name}</h4>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
-                        Category: {CATEGORIES.find(c => c.value === req.document_category)?.label || req.document_category}
+                      <p className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 ${result.state === 'overdue' ? 'text-rose-600' : 'text-slate-400'}`}>
+                        {result.dueDate ? `Due ${formatDate(result.dueDate)}` : lookupLabel(docTypes, req.document_category)}
                       </p>
-                      
-                      {isRejected && (
-                        <span className="inline-block mt-1 text-[9px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md">
-                          Rejected by Director
-                        </span>
+                      {record?.status === 'rejected' && record.review_notes && (
+                        <p className="mt-1 text-[10px] text-rose-600">Center note: {record.review_notes}</p>
                       )}
-
+                      {record?.not_applicable && (
+                        <p className="mt-1 text-[10px] text-slate-500">Not applicable{record.not_applicable_reason ? `: ${record.not_applicable_reason}` : ''}</p>
+                      )}
                       {req.template_file_key && (
-                        <button
-                          onClick={() => handleDownloadTemplate(req)}
-                          className="mt-1 flex items-center gap-1 text-[10px] font-bold text-[#157354] hover:underline"
-                        >
-                          <Download className="w-3 h-3" /> Download Form Template
+                        <button onClick={() => handleDownloadTemplate(req)} className="mt-1 flex items-center gap-1 text-[10px] font-bold text-[#157354] hover:underline">
+                          <Download className="w-3 h-3" /> {isAck ? 'Read the policy' : 'Download Form Template'}
                         </button>
                       )}
                     </div>
+                    <span className={`shrink-0 rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-wider ${style.className}`}>{style.label}</span>
                   </div>
 
-                  <div className="shrink-0">
-                    {isMet ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase tracking-wider px-2 py-1 border border-emerald-200">
-                        Approved
-                      </span>
-                    ) : isPending ? (
-                      <span className="text-[9px] font-bold text-amber-700 bg-amber-100 border border-amber-200 rounded-full px-2.5 py-1 uppercase tracking-wider">
-                        Reviewing
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => setLinkingReq(req)}
-                        className="bg-[#0b3828] hover:bg-black text-white font-bold text-[10px] uppercase tracking-wider px-3 py-2 rounded-xl transition-all cursor-pointer shadow-sm"
-                      >
-                        Link Doc
-                      </button>
-                    )}
-                  </div>
+                  {needsSignature && (signingReq === req.id ? (
+                    <div className="space-y-2">
+                      <p className="text-[10px] text-slate-500">By signing you confirm you have received and read this{req.policy_version > 1 ? ` (version ${req.policy_version})` : ''}.</p>
+                      <input value={signature} onChange={e => setSignature(e.target.value)} placeholder="Type your full name"
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-[#f8faf9] focus:outline-none focus:border-[#157354]" />
+                      <div className="flex gap-2">
+                        <button onClick={() => setSigningReq(null)} className="flex-1 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 border border-slate-200 rounded-xl">Cancel</button>
+                        <button disabled={!signature.trim()} onClick={() => handleSign(req)} className="flex-1 py-2 text-[10px] font-bold uppercase tracking-wider text-white bg-[#157354] rounded-xl disabled:opacity-50">Sign</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button onClick={() => { setSigningReq(req.id); setSignature('') }} className="w-full bg-[#157354] text-white font-bold text-[10px] uppercase tracking-wider px-3 py-2 rounded-xl">
+                      {record?.acknowledged_at ? 'Sign updated policy' : 'Acknowledge'}
+                    </button>
+                  ))}
+
+                  {canLink && (
+                    <button onClick={() => setLinkingReq(req)} className="w-full bg-[#0b3828] hover:bg-black text-white font-bold text-[10px] uppercase tracking-wider px-3 py-2 rounded-xl">
+                      {record?.matched_document_id ? 'Replace Document' : req.evidence_type === 'training' ? 'Link Certificate' : 'Link Document'}
+                    </button>
+                  )}
                 </div>
               )
             })}

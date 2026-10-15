@@ -2,12 +2,15 @@ import type { DomainKey } from '@/lib/domain-config'
 
 export type SubscriptionTier = 'starter' | 'growth' | 'network' | 'enterprise'
 export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused'
-export type StaffType = string  // Open-ended — values are now stored in staff_role_types table
+export type StaffType = string  // A 'Role' value from center_lookups
 export type AgeGroup = 'infant' | 'toddler' | 'preschool' | 'school_age' | 'mixed'
 export type CenterStaffStatus = 'invited' | 'applying' | 'active' | 'inactive' | 'removed'
 export type EmploymentClass = 'regular' | 'substitute'
-export type DocumentCategory = 'identity' | 'certification' | 'background' | 'training' | 'medical' | 'documentation' | 'academic_qualification' | 'other'
+export type DocumentCategory = string  // A 'Document Type' value from center_lookups
 export type DocReviewStatus = 'missing' | 'pending_review' | 'accepted' | 'rejected' | 'expired'
+export type RequirementSection = 'personnel' | 'health' | 'training' | 'policies' | 'evaluations'
+export type EvidenceType = 'staff_document' | 'center_record' | 'acknowledgement' | 'training'
+export type RenewalType = 'none' | 'interval' | 'document_expiry' | 'policy_change'
 export type ShiftStatus = 'open' | 'filled' | 'cancelled' | 'unfilled'
 export type ClaimStatus = 'pending' | 'confirmed' | 'cancelled'
 export type MetroArea = {
@@ -124,6 +127,7 @@ export interface CenterStaff {
   staff_id: string
   status: CenterStaffStatus
   employment_class: EmploymentClass
+  employment_start_date?: string | null  // date the due-date clock starts (admin-set)
   is_preferred: boolean
   invite_token?: string
   invite_expires_at?: string
@@ -163,6 +167,18 @@ export interface CenterDocumentRequirement {
   template_file_key?: string
   template_bucket_name?: string
   template_file_name?: string
+  // Compliance rules (see src/lib/compliance.ts)
+  section: RequirementSection
+  evidence_type: EvidenceType
+  is_confidential: boolean
+  due_within_days?: number | null   // days after employment start; 0 = by day 1; null = no deadline
+  renewal_type: RenewalType
+  renewal_months?: number | null
+  is_conditional: boolean           // "if applicable"
+  group_label?: string | null
+  template_key?: string | null
+  policy_version: number           // bumped when an acknowledged policy changes
+  policy_updated_at?: string | null
   created_at: string
 }
 
@@ -177,6 +193,14 @@ export interface CenterStaffDocumentStatus {
   reviewed_by?: string
   reviewed_at?: string
   review_notes?: string
+  completed_on?: string | null
+  hours?: number | null
+  expires_on?: string | null
+  not_applicable: boolean
+  not_applicable_reason?: string | null
+  acknowledged_at?: string | null
+  acknowledged_version?: number | null
+  acknowledged_signature?: string | null
   // Joined
   requirement?: CenterDocumentRequirement
   matched_document?: StaffDocument
@@ -262,14 +286,6 @@ export interface ShiftClaim {
   shift?: Shift
 }
 
-/** @deprecated Use useStaffRoles() hook instead — values now come from the DB */
-export const STAFF_TYPE_LABELS: Record<string, string> = {
-  teacher: 'Teacher',
-  floater: 'Floater',
-  support: 'Support Staff',
-  cook: 'Cook',
-}
-
 export const EMPLOYMENT_CLASS_LABELS: Record<EmploymentClass, string> = {
   regular: 'Regular',
   substitute: 'Substitute',
@@ -290,17 +306,6 @@ export const AGE_GROUP_LABELS: Record<AgeGroup, string> = {
   preschool:  'Pre-K (3–5)',
   school_age: 'School Age (5+)',
   mixed:      'Mixed Ages',
-}
-
-export const DOCUMENT_CATEGORY_LABELS: Record<DocumentCategory, string> = {
-  identity: 'Identity',
-  certification: 'Certification',
-  background: 'Background',
-  training: 'Training',
-  medical: 'Medical/Health',
-  documentation: 'Documentation',
-  academic_qualification: 'Academic Qualification',
-  other: 'Other'
 }
 
 export function getTierLimits(domainKey: DomainKey): Record<SubscriptionTier, { maxLocations: number; maxStaff: number; pricePerMonth: number }> {
@@ -387,4 +392,26 @@ export interface InspectionLog {
   created_by?: string | null
   created_at: string
   vendor?: Pick<Vendor, 'id' | 'name'> | null
+}
+
+export type DocumentRequestStatus = 'open' | 'submitted' | 'completed' | 'cancelled'
+
+/** A center's request for a document from one employee (see document_requests) */
+export interface DocumentRequest {
+  id: string
+  center_id: string
+  staff_id: string
+  requirement_id: string | null
+  title: string
+  message: string | null
+  due_date: string | null
+  is_confidential: boolean
+  status: DocumentRequestStatus
+  submitted_document_id: string | null
+  submitted_at: string | null
+  staff_note: string | null
+  center_note: string | null
+  requested_by: string | null
+  resolved_at: string | null
+  created_at: string
 }

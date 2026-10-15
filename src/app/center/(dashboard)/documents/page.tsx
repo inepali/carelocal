@@ -1,217 +1,233 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { CenterDocumentRequirement, DOCUMENT_CATEGORY_LABELS, DocumentCategory, EMPLOYMENT_CLASS_LABELS, EmploymentClass } from '@/lib/types'
+import {
+  CenterDocumentRequirement, DocumentCategory, EMPLOYMENT_CLASS_LABELS, EmploymentClass,
+  EvidenceType, RenewalType, RequirementSection,
+} from '@/lib/types'
 import { useStaffRoles } from '@/lib/hooks/useStaffRoles'
-import { FileText, Plus, Trash2, Settings2, Info, CheckCircle2, Loader2, AlertCircle, FileStack, Upload, X, Download, ShieldCheck } from 'lucide-react'
-import { getPresignedUploadUrl, deleteFile, getPresignedViewUrl } from '@/app/actions/storage.actions'
+import {
+  FileText, Plus, Trash2, Settings2, CheckCircle2, Loader2, AlertCircle, Upload, X, Download,
+  Lock, ChevronUp, ChevronDown, LayoutTemplate, ShieldCheck, GraduationCap, ClipboardList, UserSquare2, HeartPulse,
+} from 'lucide-react'
+import { removeRequirementTemplate } from '@/app/actions/storage.actions'
+import { openStoredFile, uploadStoredFile, DOCUMENT_ACCEPT } from '@/lib/files'
 import { useLookups } from '@/hooks/use-lookups'
+import { lookupLabel } from '@/lib/lookups'
+import {
+  SECTIONS, EVIDENCE_TYPES, RENEWAL_TYPES, DUE_PRESETS, describeDue, describeRenewal, evidenceLabel,
+} from '@/lib/compliance'
+import { COMPLIANCE_TEMPLATES, type ComplianceTemplate } from '@/lib/compliance-templates'
+import { useCenterContext } from '../context'
 
+const SECTION_ICONS: Record<RequirementSection, React.ElementType> = {
+  personnel: UserSquare2,
+  health: HeartPulse,
+  training: GraduationCap,
+  policies: ClipboardList,
+  evaluations: FileText,
+}
+
+const LBL = 'block text-sm font-medium text-[#1a2e25] mb-1.5'
+const FLD = 'w-full px-3.5 py-2.5 rounded-xl border border-[#e2e8e4] bg-white text-sm text-[#1a2e25] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354]'
+const CHIP = (on: boolean) => `px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${on
+  ? 'bg-[#157354] text-white border-[#157354]'
+  : 'bg-white text-[#6b7a73] border-[#e2e8e4] hover:bg-gray-50'}`
+
+type FormState = {
+  name: string
+  notes: string
+  category: DocumentCategory | ''
+  section: RequirementSection
+  evidenceType: EvidenceType
+  isRequired: boolean
+  isConfidential: boolean
+  isConditional: boolean
+  dueDays: string            // '' = no deadline
+  renewalType: RenewalType
+  renewalMonths: string
+  groupLabel: string
+  roles: string[]
+  classes: EmploymentClass[]
+}
+
+const EMPTY_FORM: FormState = {
+  name: '', notes: '', category: '', section: 'personnel', evidenceType: 'staff_document',
+  isRequired: true, isConfidential: false, isConditional: false, dueDays: '', renewalType: 'none',
+  renewalMonths: '12', groupLabel: '', roles: [], classes: [],
+}
 
 export default function CenterDocumentsConfigPage() {
   const supabase = createClient()
+  const { domainKey } = useCenterContext()
   const [loading, setLoading] = useState(true)
-  const [adding, setAdding] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [requirements, setRequirements] = useState<CenterDocumentRequirement[]>([])
   const [centerId, setCenterId] = useState<string | null>(null)
   const { roles: staffRoles } = useStaffRoles(centerId)
-  
-  const { data: lookupDocTypesRaw } = useLookups('Document Type')
-  const lookupDocTypes = lookupDocTypesRaw.filter(l => l.is_active !== false)
-  const defaultDocTypes = Object.entries(DOCUMENT_CATEGORY_LABELS).map(([val, label]) => ({ value: val, label: label as string }))
-  const activeDocTypes = lookupDocTypes.length > 0 ? lookupDocTypes : defaultDocTypes
 
-  const getDocTypeLabel = (val: string) => {
-    const found = lookupDocTypesRaw.find(l => l.value === val)
-    if (found) return found.label
-    return DOCUMENT_CATEGORY_LABELS[val as keyof typeof DOCUMENT_CATEGORY_LABELS] || val
-  }
+  const { data: lookupDocTypes } = useLookups('Document Type')
+  const activeDocTypes = lookupDocTypes.filter(l => l.is_active)
 
-  // Form State
-  const [showAdd, setShowAdd] = useState(false)
-  const [activeTab, setActiveTab] = useState<'standard' | 'internal'>('standard')
+  // Form
+  const [showForm, setShowForm] = useState(false)
+  const [showTemplates, setShowTemplates] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [reqName, setReqName] = useState('')
-  const [isRequired, setIsRequired] = useState(true)
-  const [isInternal, setIsInternal] = useState(false)
-  const [reqCategory, setReqCategory] = useState<DocumentCategory | ''>('')
-  const [applicableTypes, setApplicableTypes] = useState<string[]>([])
-  const [applicableClasses, setApplicableClasses] = useState<EmploymentClass[]>([])
+  const [form, setForm] = useState<FormState>(EMPTY_FORM)
+  const [applyingTemplate, setApplyingTemplate] = useState<string | null>(null)
 
-  // Template State
+  // Blank form / template file
   const [templateFile, setTemplateFile] = useState<File | null>(null)
   const [existingTemplate, setExistingTemplate] = useState<{ key: string, bucket: string, name: string } | null>(null)
   const [deletingTemplate, setDeletingTemplate] = useState(false)
 
+  const templates = COMPLIANCE_TEMPLATES[domainKey] ?? []
+
   useEffect(() => {
     loadRequirements()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function loadRequirements() {
-    setLoading(true)
+  async function getAdminCenterId() {
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) return null
+    const { data: admin } = await supabase.from('center_admins').select('center_id').eq('user_id', user.id).single()
+    return admin?.center_id as string | null
+  }
 
-    const { data: admin } = await supabase
-      .from('center_admins')
-      .select('center_id')
-      .eq('user_id', user.id)
-      .single()
-
-    if (admin) {
-      setCenterId(admin.center_id)
+  async function loadRequirements() {
+    const id = centerId ?? await getAdminCenterId()
+    if (id) {
+      setCenterId(id)
       const { data } = await supabase
         .from('center_document_requirements')
         .select('*')
-        .eq('center_id', admin.center_id)
+        .eq('center_id', id)
         .order('sort_order', { ascending: true })
-
+        .order('created_at', { ascending: true })
       setRequirements(data || [])
     }
     setLoading(false)
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setAdding(true)
+  const bySection = useMemo(() => {
+    const map = new Map<RequirementSection, CenterDocumentRequirement[]>()
+    SECTIONS.forEach(s => map.set(s.id, []))
+    requirements.forEach(r => (map.get(r.section) ?? map.get('personnel')!).push(r))
+    return map
+  }, [requirements])
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      setAdding(false)
-      return
-    }
+  // ── Form ──
 
-    const { data: admin } = await supabase
-      .from('center_admins')
-      .select('center_id')
-      .eq('user_id', user.id)
-      .single()
-
-    if (!admin) {
-      setAdding(false)
-      return
-    }
-
-    let templateData = editingId ? {
-      template_file_key: existingTemplate?.key,
-      template_bucket_name: existingTemplate?.bucket,
-      template_file_name: existingTemplate?.name
-    } : {
-      template_file_key: undefined,
-      template_bucket_name: 'centeruploads',
-      template_file_name: undefined
-    }
-
-    // Handle Template Upload if selected
-    if (templateFile) {
-      const uploadRes = await getPresignedUploadUrl(templateFile.name, templateFile.type, 'center')
-      if (uploadRes.success && uploadRes.uploadUrl && uploadRes.fileKey && uploadRes.bucketName) {
-        const uploadResponse = await fetch(uploadRes.uploadUrl, {
-          method: 'PUT',
-          body: templateFile,
-          headers: { 'Content-Type': templateFile.type }
-        })
-
-        if (uploadResponse.ok) {
-          // If we are replacing an existing template, delete the old one
-          if (existingTemplate?.key) {
-            await deleteFile(existingTemplate.key, existingTemplate.bucket)
-          }
-
-          templateData = {
-            template_file_key: uploadRes.fileKey,
-            template_bucket_name: uploadRes.bucketName,
-            template_file_name: templateFile.name
-          }
-        } else {
-          alert('Failed to upload template file')
-          setAdding(false)
-          return
-        }
-      } else {
-        alert('Failed to generate template upload link')
-        setAdding(false)
-        return
-      }
-    }
-
-    const payload = {
-      center_id: admin.center_id,
-      document_name: reqName,
-      document_category: reqCategory,
-      is_required: isRequired,
-      is_internal: isInternal,
-      applies_to: applicableTypes.length > 0 ? applicableTypes : null,
-      applies_to_class: applicableClasses.length > 0 ? applicableClasses : null,
-      ...templateData
-    }
-
-    if (editingId) {
-      const { error } = await supabase
-        .from('center_document_requirements')
-        .update(payload)
-        .eq('id', editingId)
-
-      if (!error) {
-        cancelEdit()
-        loadRequirements()
-      } else {
-        alert('Failed to update requirement: ' + error.message)
-      }
-    } else {
-      const { error } = await supabase
-        .from('center_document_requirements')
-        .insert({
-          ...payload,
-          sort_order: requirements.length
-        })
-
-      if (!error) {
-        setReqName('')
-        setShowAdd(false)
-        setTemplateFile(null)
-        setReqCategory('')
-        loadRequirements()
-      } else {
-        alert('Failed to create requirement: ' + error.message)
-      }
-    }
-    setAdding(false)
+  function openNew(section?: RequirementSection) {
+    cancelEdit()
+    setForm({ ...EMPTY_FORM, section: section ?? 'personnel', isConfidential: section === 'health' })
+    setShowForm(true)
+    setShowTemplates(false)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   function startEdit(req: CenterDocumentRequirement) {
     setEditingId(req.id)
-    setReqName(req.document_name)
-    setReqCategory(req.document_category)
-    setIsRequired(req.is_required)
-    setIsInternal(req.is_internal || false)
-    setApplicableTypes(req.applies_to || [])
-    setApplicableClasses(req.applies_to_class || [])
-    if (req.template_file_key && req.template_bucket_name) {
-      setExistingTemplate({
-        key: req.template_file_key,
-        bucket: req.template_bucket_name,
-        name: req.template_file_name || 'Attached Form'
-      })
-    } else {
-      setExistingTemplate(null)
-    }
-    setShowAdd(true)
+    setForm({
+      name: req.document_name,
+      notes: req.notes || '',
+      category: req.document_category,
+      section: req.section,
+      evidenceType: req.evidence_type,
+      isRequired: req.is_required,
+      isConfidential: req.is_confidential,
+      isConditional: req.is_conditional,
+      dueDays: req.due_within_days == null ? '' : String(req.due_within_days),
+      renewalType: req.renewal_type,
+      renewalMonths: String(req.renewal_months ?? 12),
+      groupLabel: req.group_label || '',
+      roles: req.applies_to || [],
+      classes: req.applies_to_class || [],
+    })
+    setExistingTemplate(req.template_file_key && req.template_bucket_name
+      ? { key: req.template_file_key, bucket: req.template_bucket_name, name: req.template_file_name || 'Attached Form' }
+      : null)
+    setShowForm(true)
+    setShowTemplates(false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   function cancelEdit() {
     setEditingId(null)
-    setReqName('')
-    setReqCategory('')
-    setIsRequired(true)
-    setIsInternal(false)
-    setApplicableTypes([])
-    setApplicableClasses([])
+    setForm(EMPTY_FORM)
     setTemplateFile(null)
     setExistingTemplate(null)
-    setShowAdd(false)
+    setShowForm(false)
+  }
+
+  function toggle<T>(list: T[], value: T) {
+    return list.includes(value) ? list.filter(v => v !== value) : [...list, value]
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!centerId) return
+    setSaving(true)
+
+    let templateData: Record<string, string | null | undefined> = editingId ? {
+      template_file_key: existingTemplate?.key,
+      template_bucket_name: existingTemplate?.bucket,
+      template_file_name: existingTemplate?.name,
+    } : {}
+
+    if (templateFile) {
+      try {
+        const uploaded = await uploadStoredFile('template', templateFile)
+        // Replacing an existing template: remove the old file (clears the row's template columns first)
+        if (editingId && existingTemplate?.key) await removeRequirementTemplate(editingId)
+        templateData = {
+          template_file_key: uploaded.fileKey,
+          template_bucket_name: uploaded.bucketName,
+          template_file_name: templateFile.name,
+        }
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Failed to upload template file')
+        setSaving(false)
+        return
+      }
+    }
+
+    const payload = {
+      center_id: centerId,
+      document_name: form.name.trim(),
+      notes: form.notes.trim() || null,
+      document_category: form.category,
+      section: form.section,
+      evidence_type: form.evidenceType,
+      is_internal: form.evidenceType === 'center_record', // center records are hidden from staff
+      is_required: form.isRequired,
+      is_confidential: form.isConfidential,
+      is_conditional: form.isConditional,
+      due_within_days: form.dueDays === '' ? null : Math.max(0, parseInt(form.dueDays, 10) || 0),
+      renewal_type: form.renewalType,
+      renewal_months: form.renewalType === 'interval' ? Math.max(1, parseInt(form.renewalMonths, 10) || 12) : null,
+      group_label: form.groupLabel.trim() || null,
+      applies_to: form.roles.length > 0 ? form.roles : null,
+      applies_to_class: form.classes.length > 0 ? form.classes : null,
+      ...templateData,
+    }
+
+    const { error } = editingId
+      ? await supabase.from('center_document_requirements').update(payload).eq('id', editingId)
+      : await supabase.from('center_document_requirements').insert({
+          ...payload,
+          sort_order: (bySection.get(form.section)?.length ?? 0),
+        })
+
+    setSaving(false)
+    if (error) {
+      alert(`Failed to ${editingId ? 'update' : 'create'} requirement: ${error.message}`)
+      return
+    }
+    cancelEdit()
+    loadRequirements()
   }
 
   async function handleRemoveTemplate() {
@@ -219,55 +235,120 @@ export default function CenterDocumentsConfigPage() {
       setExistingTemplate(null)
       return
     }
-
     if (!confirm('Are you sure you want to remove the template from this requirement?')) return
 
     setDeletingTemplate(true)
-    const { success } = await deleteFile(existingTemplate.key, existingTemplate.bucket)
-    if (success) {
-      const { error } = await supabase
-        .from('center_document_requirements')
-        .update({
-          template_file_key: null,
-          template_file_name: null
-        })
-        .eq('id', editingId)
-
-      if (!error) {
-        setExistingTemplate(null)
-        loadRequirements()
-      }
+    const res = await removeRequirementTemplate(editingId)
+    if (res.success) {
+      setExistingTemplate(null)
+      loadRequirements()
+    } else {
+      alert(res.error)
     }
     setDeletingTemplate(false)
   }
 
-  async function handleViewTemplate(key: string, bucket: string) {
-    const res = await getPresignedViewUrl(key, bucket)
-    if (res.success && res.url) {
-      window.open(res.url, '_blank')
-    } else {
-      alert('Could not open file')
+  async function deleteRequirement(req: CenterDocumentRequirement) {
+    if (!confirm(`Delete "${req.document_name}"? It will be removed from every staff member's checklist.`)) return
+
+    // Remove the template file while the row (used for the permission check) still exists
+    if (req.template_file_key) {
+      const res = await removeRequirementTemplate(req.id)
+      if (!res.success) {
+        alert(res.error)
+        return
+      }
+    }
+
+    const { error } = await supabase.from('center_document_requirements').delete().eq('id', req.id)
+    if (error) {
+      alert('Failed to delete requirement: ' + error.message)
+      return
+    }
+    if (editingId === req.id) cancelEdit()
+    setRequirements(prev => prev.filter(r => r.id !== req.id))
+  }
+
+  async function publishPolicyUpdate(req: CenterDocumentRequirement) {
+    if (!confirm(`Mark "${req.document_name}" as updated? Every employee it applies to will need to acknowledge the new version (currently version ${req.policy_version}). Attach the updated document first if it changed.`)) return
+    const { error } = await supabase.rpc('publish_policy_update', { p_requirement_id: req.id })
+    if (error) alert('Failed to publish update: ' + error.message)
+    else loadRequirements()
+  }
+
+  // ── Reorder within a section ──
+
+  async function move(section: RequirementSection, index: number, delta: -1 | 1) {
+    const list = [...(bySection.get(section) ?? [])]
+    const target = index + delta
+    if (target < 0 || target >= list.length) return
+    ;[list[index], list[target]] = [list[target], list[index]]
+
+    const changed = list
+      .map((r, i) => ({ id: r.id, sort_order: i, before: r.sort_order }))
+      .filter(r => r.sort_order !== r.before)
+
+    setRequirements(prev => prev.map(r => {
+      const c = changed.find(x => x.id === r.id)
+      return c ? { ...r, sort_order: c.sort_order } : r
+    }).sort((a, b) => a.sort_order - b.sort_order))
+
+    const results = await Promise.all(changed.map(c =>
+      supabase.from('center_document_requirements').update({ sort_order: c.sort_order }).eq('id', c.id)
+    ))
+    if (results.some(r => r.error)) {
+      alert('Failed to save the new order')
+      loadRequirements()
     }
   }
 
-  async function deleteRequirement(id: string) {
-    const req = requirements.find(r => r.id === id)
-    if (!confirm('Are you sure? This will remove this requirement for all your staff.')) return
+  // ── Templates ──
 
-    const { error } = await supabase
-      .from('center_document_requirements')
-      .delete()
-      .eq('id', id)
+  function newItemCount(template: ComplianceTemplate) {
+    const existing = new Set(requirements.map(r => r.template_key).filter(Boolean))
+    return template.items.filter(i => !existing.has(i.key)).length
+  }
 
-    if (!error) {
-      // Also delete the template if it exists
-      if (req?.template_file_key && req?.template_bucket_name) {
-        await deleteFile(req.template_file_key, req.template_bucket_name)
-      }
+  async function applyTemplate(template: ComplianceTemplate) {
+    if (!centerId) return
+    const existing = new Set(requirements.map(r => r.template_key).filter(Boolean))
+    const items = template.items.filter(i => !existing.has(i.key))
+    if (items.length === 0) return
+    if (!confirm(`Add ${items.length} requirement${items.length === 1 ? '' : 's'} from "${template.name}"? You can edit or remove them afterwards.`)) return
 
-      if (editingId === id) cancelEdit()
-      setRequirements(requirements.filter(r => r.id !== id))
+    setApplyingTemplate(template.id)
+    const nextSort: Partial<Record<RequirementSection, number>> = {}
+    SECTIONS.forEach(s => { nextSort[s.id] = bySection.get(s.id)?.length ?? 0 })
+
+    const rows = items.map(item => ({
+      center_id: centerId,
+      template_key: item.key,
+      document_name: item.name,
+      notes: item.notes ?? null,
+      document_category: item.document_category,
+      section: item.section,
+      evidence_type: item.evidence_type,
+      is_internal: item.evidence_type === 'center_record',
+      is_required: !item.is_conditional,
+      is_confidential: !!item.is_confidential,
+      is_conditional: !!item.is_conditional,
+      due_within_days: item.due_within_days,
+      renewal_type: item.renewal_type,
+      renewal_months: item.renewal_type === 'interval' ? item.renewal_months ?? 12 : null,
+      group_label: item.group_label ?? null,
+      applies_to: null,
+      applies_to_class: item.classes ?? null,
+      sort_order: nextSort[item.section] = (nextSort[item.section] ?? 0) + 1,
+    }))
+
+    const { error } = await supabase.from('center_document_requirements').insert(rows)
+    setApplyingTemplate(null)
+    if (error) {
+      alert('Failed to add template: ' + error.message)
+      return
     }
+    setShowTemplates(false)
+    loadRequirements()
   }
 
   if (loading) {
@@ -277,340 +358,370 @@ export default function CenterDocumentsConfigPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-extrabold text-[#0b3828] mb-1">Document Requirements</h1>
-          <p className="text-[#6b7a73]">Define which documents are required for staff to work at your center.</p>
+          <p className="text-[#6b7a73]">The personnel file checklist for your staff — what is needed, when it is due and when it renews.</p>
         </div>
-        <button
-          onClick={showAdd ? cancelEdit : () => setShowAdd(true)}
-          className={`inline-flex items-center justify-center gap-2 font-semibold px-6 py-3 rounded-xl shadow-sm transition-colors ${showAdd ? 'bg-white text-[#6b7a73] border border-[#e2e8e4] hover:bg-gray-50' : 'bg-[#157354] text-white hover:bg-[#0f4a36]'
-            }`}
-        >
-          {showAdd ? 'Cancel' : <><Plus className="w-5 h-5" /> Add Requirement</>}
-        </button>
+        <div className="flex gap-2">
+          {templates.length > 0 && (
+            <button
+              onClick={() => { setShowTemplates(v => !v); setShowForm(false) }}
+              className="inline-flex items-center gap-2 font-semibold px-5 py-3 rounded-xl border border-[#e2e8e4] bg-white text-[#157354] hover:bg-[#edf7f3] transition-colors"
+            >
+              <LayoutTemplate className="w-5 h-5" /> Templates
+            </button>
+          )}
+          <button
+            onClick={showForm ? cancelEdit : () => openNew()}
+            className={`inline-flex items-center justify-center gap-2 font-semibold px-5 py-3 rounded-xl shadow-sm transition-colors ${showForm ? 'bg-white text-[#6b7a73] border border-[#e2e8e4] hover:bg-gray-50' : 'bg-[#157354] text-white hover:bg-[#0f4a36]'}`}
+          >
+            {showForm ? 'Cancel' : <><Plus className="w-5 h-5" /> Add Requirement</>}
+          </button>
+        </div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-8">
-        {/* ── Left: Instructions ── */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="bg-[#edf7f3] border border-[#a9dac9] rounded-2xl p-6">
-            <h3 className="font-bold text-[#0b3828] flex items-center gap-2 mb-3">
-              <Info className="w-5 h-5" /> {editingId ? 'Editing Requirement' : 'How this works'}
-            </h3>
-            {editingId ? (
-              <p className="text-sm text-[#3d5a4f] leading-relaxed">
-                You are currently editing <strong>{reqName || 'a requirement'}</strong>.
-                Changes will be updated for all staff members who have this on their checklist.
-              </p>
-            ) : (
-              <ul className="text-sm text-[#3d5a4f] space-y-3">
-                <li>• Each requirement you add here appears on your staff's checklist.</li>
-                <li>• You can mark documents as "Center-Only" so staff cannot see them, but you can upload them internally.</li>
-                <li>• You will be notified when staff upload a document for review.</li>
-                <li>• You can mark requirements as "Optional" for certain staff types.</li>
-                <li>• <strong>You</strong> are responsible for verifying if the uploaded document meets your state standards.</li>
-              </ul>
-            )}
-          </div>
-        </div>
-
-        {/* ── Right: Requirements List ── */}
-        <div className="lg:col-span-2 space-y-6">
-          {showAdd && (
-            <div className="bg-white border-2 border-[#157354] rounded-2xl p-6 shadow-lg animate-in fade-in slide-in-from-top-4">
-              <h2 className="text-lg font-bold text-[#1a2e25] mb-4">
-                {editingId ? 'Edit Requirement' : 'New Requirement'}
-              </h2>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Requirement Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={reqName}
-                    onChange={(e) => setReqName(e.target.value)}
-                    placeholder="e.g. State Fingerprint Clearance"
-                    className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-[#1a2e25] mb-1.5 uppercase tracking-widest text-[10px]">Document Type / Category</label>
-                  <select
-                    required
-                    value={reqCategory}
-                    onChange={(e) => setReqCategory(e.target.value as DocumentCategory)}
-                    className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 font-bold text-sm"
-                  >
-                    <option value="" disabled>-- Select --</option>
-                    {activeDocTypes.map(type => (
-                      <option key={type.value} value={type.value}>{type.label}</option>
-                    ))}
-                  </select>
-                  <p className="text-[10px] text-[#a8b5ae] mt-2 italic">The category helps staff filter their vault to find the right document for this requirement.</p>
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="is_req"
-                      checked={isRequired}
-                      onChange={(e) => setIsRequired(e.target.checked)}
-                      className="w-4 h-4 rounded border-gray-300 text-[#157354] focus:ring-[#157354]"
-                    />
-                    <label htmlFor="is_req" className="text-sm font-medium text-[#1a2e25]">This is a mandatory requirement</label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="is_internal"
-                      checked={isInternal}
-                      onChange={(e) => setIsInternal(e.target.checked)}
-                      className="w-4 h-4 rounded border-gray-300 text-[#157354] focus:ring-[#157354]"
-                    />
-                    <label htmlFor="is_internal" className="text-sm font-medium text-[#1a2e25]">Center-Only (Staff cannot see this requirement or the files)</label>
+      {/* ── Templates ── */}
+      {showTemplates && (
+        <div className="mb-8 grid gap-4 md:grid-cols-2">
+          {templates.map(t => {
+            const count = newItemCount(t)
+            return (
+              <div key={t.id} className="rounded-2xl border border-[#e2e8e4] bg-white p-6 shadow-sm flex flex-col">
+                <div className="flex items-start gap-3 mb-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#edf7f3] text-[#157354]"><LayoutTemplate className="h-5 w-5" /></span>
+                  <div>
+                    <h3 className="font-bold text-[#1a2e25]">{t.name}</h3>
+                    <p className="text-sm text-[#6b7a73] mt-0.5">{t.description}</p>
                   </div>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-[#1a2e25] mb-1.5 text-xs text-muted-foreground uppercase tracking-widest">Applicable Roles</label>
-                  <div className="flex flex-wrap gap-2">
-                    {staffRoles.map(role => (
-                      <button
-                        key={role.value}
-                        type="button"
-                        onClick={() => {
-                          if (applicableTypes.includes(role.value)) {
-                            setApplicableTypes(applicableTypes.filter(t => t !== role.value))
-                          } else {
-                            setApplicableTypes([...applicableTypes, role.value])
-                          }
-                        }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${applicableTypes.includes(role.value)
-                            ? 'bg-[#157354] text-white border-[#157354]'
-                            : 'bg-white text-[#6b7a73] border-[#e2e8e4] hover:bg-gray-50'
-                          }`}
-                      >
-                        {role.label}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-[10px] text-[#a8b5ae] mt-2 italic">If none selected, it applies to all roles.</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-[#1a2e25] mb-1.5 text-xs text-muted-foreground uppercase tracking-widest">Applicable Employee Class</label>
-                  <div className="flex flex-wrap gap-2">
-                    {(Object.entries(EMPLOYMENT_CLASS_LABELS) as [EmploymentClass, string][]).map(([value, label]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => {
-                          if (applicableClasses.includes(value)) {
-                            setApplicableClasses(applicableClasses.filter(c => c !== value))
-                          } else {
-                            setApplicableClasses([...applicableClasses, value])
-                          }
-                        }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${applicableClasses.includes(value)
-                            ? 'bg-[#157354] text-white border-[#157354]'
-                            : 'bg-white text-[#6b7a73] border-[#e2e8e4] hover:bg-gray-50'
-                          }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-[10px] text-[#a8b5ae] mt-2 italic">If none selected, it applies to both regular and substitute staff.</p>
-                </div>
-
-                <div className="border-t border-[#e2e8e4] pt-6">
-                  <label className="block text-sm font-bold text-[#1a2e25] mb-2 uppercase tracking-wide text-[10px]">Attach Form or Template (Optional)</label>
-
-                  {existingTemplate && !templateFile ? (
-                    <div className="flex items-center justify-between p-3 bg-[#f8faf9] rounded-xl border border-[#e2e8e4]">
-                      <div className="flex items-center gap-3">
-                        <FileText className="w-5 h-5 text-[#157354]" />
-                        <div>
-                          <p className="text-xs font-bold text-[#1a2e25]">{existingTemplate.name}</p>
-                          <button
-                            type="button"
-                            onClick={() => handleViewTemplate(existingTemplate.key, existingTemplate.bucket)}
-                            className="text-[10px] text-[#157354] hover:underline font-bold"
-                          >
-                            View attached file
-                          </button>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        disabled={deletingTemplate}
-                        onClick={handleRemoveTemplate}
-                        className="p-1.5 text-[#6b7a73] hover:text-red-500 transition-colors"
-                      >
-                        {deletingTemplate ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <div className="relative">
-                        <input
-                          type="file"
-                          id="template_upload"
-                          className="hidden"
-                          onChange={(e) => setTemplateFile(e.target.files?.[0] || null)}
-                          accept=".pdf,.doc,.docx,.jpg,.png"
-                        />
-                        <label
-                          htmlFor="template_upload"
-                          className="flex flex-col items-center justify-center w-full p-6 border-2 border-dashed border-[#e2e8e4] rounded-2xl cursor-pointer hover:border-[#157354] hover:bg-[#f8faf9] transition-all group"
-                        >
-                          {templateFile ? (
-                            <>
-                              <CheckCircle2 className="w-8 h-8 text-[#157354] mb-2" />
-                              <p className="text-sm font-bold text-[#1a2e25]">{templateFile.name}</p>
-                              <button
-                                type="button"
-                                onClick={(e) => { e.preventDefault(); setTemplateFile(null); }}
-                                className="mt-2 text-xs text-red-500 font-bold hover:underline"
-                              >
-                                Remove selection
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="w-8 h-8 text-[#a8b5ae] mb-2 group-hover:text-[#157354]" />
-                              <p className="text-sm font-medium text-[#6b7a73]">Click to upload instructions or a blank form</p>
-                              <p className="text-[10px] text-[#a8b5ae] mt-1">PDF, Word, or Images up to 5MB</p>
-                            </>
-                          )}
-                        </label>
-                      </div>
-                      {existingTemplate && templateFile && (
-                        <p className="text-[10px] text-amber-600 font-bold flex items-center gap-1">
-                          <AlertCircle className="w-3 h-3" /> This will replace the current template when you save.
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div className="pt-2 flex gap-3">
-                  {editingId && (
-                    <button
-                      type="button"
-                      onClick={cancelEdit}
-                      className="flex-1 bg-white text-[#6b7a73] font-bold py-3 rounded-xl border border-[#e2e8e4] hover:bg-gray-50 transition-all"
-                    >
-                      Cancel
-                    </button>
-                  )}
+                <div className="mt-auto flex items-center justify-between pt-3">
+                  <span className="text-xs text-[#6b7a73]">{t.items.length} items · {count === 0 ? 'all added' : `${count} new`}</span>
                   <button
-                    type="submit"
-                    disabled={adding || !reqName}
-                    className="flex-[2] flex items-center justify-center gap-2 bg-[#157354] text-white font-bold py-3 rounded-xl hover:bg-[#0f4a36] disabled:opacity-50 transition-all shadow-md"
+                    onClick={() => applyTemplate(t)}
+                    disabled={count === 0 || applyingTemplate !== null}
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#157354] px-4 py-2 text-xs font-bold text-white hover:bg-[#0f4a36] disabled:opacity-50"
                   >
-                    {adding ? <Loader2 className="w-5 h-5 animate-spin" /> : (editingId ? 'Update Requirement' : 'Create Requirement')}
+                    {applyingTemplate === t.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                    {count === 0 ? 'Added' : 'Add to checklist'}
                   </button>
                 </div>
-              </form>
-            </div>
-          )}
-
-          {/* Tabs */}
-          <div className="flex border-b-2 border-[#f0f4f2] mb-6">
-            <button
-              onClick={() => setActiveTab('standard')}
-              className={`pb-4 px-6 font-bold text-sm transition-all border-b-4 -mb-[2px] ${
-                activeTab === 'standard'
-                  ? 'border-[#157354] text-[#157354]'
-                  : 'border-transparent text-[#a8b5ae] hover:text-[#6b7a73]'
-              }`}
-            >
-              Standard Requirements
-            </button>
-            <button
-              onClick={() => setActiveTab('internal')}
-              className={`pb-4 px-6 font-bold text-sm transition-all border-b-4 -mb-[2px] flex items-center gap-2 ${
-                activeTab === 'internal'
-                  ? 'border-[#157354] text-[#157354]'
-                  : 'border-transparent text-[#a8b5ae] hover:text-[#6b7a73]'
-              }`}
-            >
-              Center-Only Documents <ShieldCheck className="w-4 h-4" />
-            </button>
-          </div>
-
-          {(activeTab === 'standard' ? requirements.filter(r => !r.is_internal) : requirements.filter(r => r.is_internal)).length === 0 ? (
-            <div className="bg-white border border-[#e2e8e4] rounded-2xl p-12 text-center shadow-sm">
-              <Settings2 className="w-12 h-12 text-[#e2e8e4] mx-auto mb-4" />
-              <h2 className="text-xl font-bold text-[#0b3828] mb-2">No requirements defined</h2>
-              <p className="text-[#6b7a73] max-w-sm mx-auto mb-6">
-                {activeTab === 'standard' 
-                  ? 'Start by adding the common documents you need from your staff, like CPR certifications or Background Checks.'
-                  : 'Add internal documents that you want to keep on file for staff, hidden from their portal.'}
-              </p>
-            </div>
-          ) : (
-            <div className="bg-white border border-[#e2e8e4] rounded-2xl shadow-sm overflow-hidden text-sm">
-              <div className="p-4 bg-[#f8faf9] border-b border-[#e2e8e4] font-bold text-[#0b3828] flex items-center gap-2 uppercase tracking-widest text-xs">
-                <FileText className="w-4 h-4" /> Configured Requirements
               </div>
-              <div className="divide-y divide-[#e2e8e4]">
-                {(activeTab === 'standard' ? requirements.filter(r => !r.is_internal) : requirements.filter(r => r.is_internal)).map((req) => (
-                  <div key={req.id} className="p-6 flex items-center justify-between hover:bg-[#f8faf9] transition-colors group">
+            )
+          })}
+          <p className="md:col-span-2 text-xs text-[#a8b5ae]">
+            Based on NC DCDEE center checklists. Verify against current state rules; every item can be edited after it is added.
+          </p>
+        </div>
+      )}
+
+      {/* ── Add / edit form ── */}
+      {showForm && (
+        <div className="mb-8 bg-white border-2 border-[#157354] rounded-2xl p-6 shadow-lg">
+          <h2 className="text-lg font-bold text-[#1a2e25] mb-5">{editingId ? 'Edit Requirement' : 'New Requirement'}</h2>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="md:col-span-2">
+                <label className={LBL}>Requirement Name *</label>
+                <input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. TB Screening or Test Results" className={FLD} />
+              </div>
+              <div>
+                <label className={LBL}>Document Type *</label>
+                <select required value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className={FLD}>
+                  <option value="" disabled>Select…</option>
+                  {activeDocTypes.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              <div>
+                <label className={LBL}>Section</label>
+                <select
+                  value={form.section}
+                  onChange={e => {
+                    const section = e.target.value as RequirementSection
+                    setForm({ ...form, section, isConfidential: section === 'health' ? true : form.isConfidential })
+                  }}
+                  className={FLD}
+                >
+                  {SECTIONS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <label className={LBL}>How it is fulfilled</label>
+                <select value={form.evidenceType} onChange={e => setForm({ ...form, evidenceType: e.target.value as EvidenceType })} className={FLD}>
+                  {EVIDENCE_TYPES.map(t => <option key={t.id} value={t.id}>{t.label} — {t.hint}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              <div>
+                <label className={LBL}>Due</label>
+                <select
+                  value={DUE_PRESETS.some(p => String(p.days ?? '') === form.dueDays) ? form.dueDays : 'custom'}
+                  onChange={e => setForm({ ...form, dueDays: e.target.value === 'custom' ? (form.dueDays || '45') : e.target.value })}
+                  className={FLD}
+                >
+                  {DUE_PRESETS.map(p => <option key={p.label} value={p.days ?? ''}>{p.label}</option>)}
+                  <option value="custom">Custom number of days…</option>
+                </select>
+                {!DUE_PRESETS.some(p => String(p.days ?? '') === form.dueDays) && (
+                  <input type="number" min={0} value={form.dueDays} onChange={e => setForm({ ...form, dueDays: e.target.value })} className={`${FLD} mt-2`} placeholder="Days after employment start" />
+                )}
+                <p className="text-[11px] text-[#a8b5ae] mt-1.5">Counted from each employee&apos;s employment start date.</p>
+              </div>
+              <div>
+                <label className={LBL}>Renewal</label>
+                <select value={form.renewalType} onChange={e => setForm({ ...form, renewalType: e.target.value as RenewalType })} className={FLD}>
+                  {RENEWAL_TYPES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+                </select>
+                {form.renewalType === 'interval' && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-sm text-[#6b7a73]">Every</span>
+                    <input type="number" min={1} value={form.renewalMonths} onChange={e => setForm({ ...form, renewalMonths: e.target.value })} className={`${FLD} w-24`} />
+                    <span className="text-sm text-[#6b7a73]">months</span>
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className={LBL}>Group (optional)</label>
+                <input value={form.groupLabel} onChange={e => setForm({ ...form, groupLabel: e.target.value })} placeholder="e.g. Health & Safety Training" className={FLD} />
+              </div>
+            </div>
+
+            <div>
+              <label className={LBL}>Instructions for staff (optional)</label>
+              <textarea rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} className={`${FLD} resize-none`} placeholder="What qualifies, where to get it, special rules…" />
+            </div>
+
+            <div className="flex flex-wrap gap-x-6 gap-y-3">
+              <label className="flex items-center gap-2 text-sm text-[#1a2e25]">
+                <input type="checkbox" checked={form.isRequired} onChange={e => setForm({ ...form, isRequired: e.target.checked })} className="w-4 h-4 rounded border-gray-300 text-[#157354] focus:ring-[#157354]" />
+                Mandatory
+              </label>
+              <label className="flex items-center gap-2 text-sm text-[#1a2e25]">
+                <input type="checkbox" checked={form.isConditional} onChange={e => setForm({ ...form, isConditional: e.target.checked })} className="w-4 h-4 rounded border-gray-300 text-[#157354] focus:ring-[#157354]" />
+                If applicable (can be marked N/A per employee)
+              </label>
+              <label className="flex items-center gap-2 text-sm text-[#1a2e25]">
+                <input type="checkbox" checked={form.isConfidential} onChange={e => setForm({ ...form, isConfidential: e.target.checked })} className="w-4 h-4 rounded border-gray-300 text-[#157354] focus:ring-[#157354]" />
+                <Lock className="w-3.5 h-3.5 text-amber-600" /> Confidential — only Owner/Admin roles can open files
+              </label>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className={LBL}>Applies to roles</label>
+                <div className="flex flex-wrap gap-2">
+                  {staffRoles.map(role => (
+                    <button key={role.value} type="button" onClick={() => setForm({ ...form, roles: toggle(form.roles, role.value) })} className={CHIP(form.roles.includes(role.value))}>
+                      {role.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-[#a8b5ae] mt-1.5">None selected = all roles.</p>
+              </div>
+              <div>
+                <label className={LBL}>Applies to employee class</label>
+                <div className="flex flex-wrap gap-2">
+                  {(Object.entries(EMPLOYMENT_CLASS_LABELS) as [EmploymentClass, string][]).map(([value, label]) => (
+                    <button key={value} type="button" onClick={() => setForm({ ...form, classes: toggle(form.classes, value) })} className={CHIP(form.classes.includes(value))}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-[#a8b5ae] mt-1.5">None selected = regular and substitute staff.</p>
+              </div>
+            </div>
+
+            <div className="border-t border-[#e2e8e4] pt-5">
+              <label className={LBL}>Blank form or instructions (optional)</label>
+              {existingTemplate && !templateFile ? (
+                <div className="flex items-center justify-between p-3 bg-[#f8faf9] rounded-xl border border-[#e2e8e4]">
+                  <div className="flex items-center gap-3">
+                    <FileText className="w-5 h-5 text-[#157354]" />
                     <div>
-                      <h3 className="font-bold text-[#1a2e25] flex items-center gap-2 text-base">
-                        {req.document_name}
-                        {req.is_required && !req.is_internal && (
-                          <span className="text-[10px] bg-[#157354] text-white px-2 py-0.5 rounded-full uppercase tracking-tighter">Required</span>
-                        )}
-                      </h3>
-                      <div className="flex items-center gap-3 mt-1 text-[#6b7a73]">
-                        <span className="text-[10px] font-black uppercase tracking-widest bg-[#f8faf9] px-2 py-0.5 rounded border border-[#e2e8e4] text-[#a8b5ae]">
-                          {getDocTypeLabel(req.document_category)}
-                        </span>
-                        <span className="text-xs">
-                          {req.applies_to ? `Applies to: ${req.applies_to.join(', ')}` : 'Applies to all staff'}
-                        </span>
-                        {req.applies_to_class && req.applies_to_class.length > 0 && (
-                          <span className="text-[10px] font-bold uppercase tracking-widest bg-[#edf7f3] text-[#157354] px-2 py-0.5 rounded border border-[#d4ede4]">
-                            {req.applies_to_class.map(c => EMPLOYMENT_CLASS_LABELS[c]).join(' / ')} only
-                          </span>
-                        )}
-                        {req.template_file_key && (
-                          <span className="flex items-center gap-1 text-[10px] font-bold text-[#157354] bg-[#edf7f3] px-2 py-0.5 rounded-full border border-[#a9dac9]">
-                            <Download className="w-3 h-3" /> Form Attached
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => startEdit(req)}
-                        className="p-2 text-[#6b7a73] hover:text-[#157354] hover:bg-[#edf7f3] rounded-lg transition-colors border border-transparent hover:border-[#a9dac9]"
-                        title="Edit Requirement"
-                      >
-                        <Settings2 className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => deleteRequirement(req.id)}
-                        className="p-2 text-[#6b7a73] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
-                        title="Delete Requirement"
-                      >
-                        <Trash2 className="w-5 h-5" />
+                      <p className="text-xs font-bold text-[#1a2e25]">{existingTemplate.name}</p>
+                      <button type="button" onClick={() => editingId && openStoredFile('template', editingId)} className="text-[11px] text-[#157354] hover:underline font-bold">
+                        View attached file
                       </button>
                     </div>
                   </div>
-                ))}
-              </div>
+                  <button type="button" disabled={deletingTemplate} onClick={handleRemoveTemplate} className="p-1.5 text-[#6b7a73] hover:text-red-500 transition-colors" title="Remove file">
+                    {deletingTemplate ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <input type="file" id="template_upload" className="hidden" accept={DOCUMENT_ACCEPT} onChange={e => setTemplateFile(e.target.files?.[0] || null)} />
+                  <label htmlFor="template_upload" className="flex items-center gap-3 w-full p-4 border-2 border-dashed border-[#e2e8e4] rounded-xl cursor-pointer hover:border-[#157354] hover:bg-[#f8faf9] transition-all">
+                    {templateFile ? (
+                      <>
+                        <CheckCircle2 className="w-5 h-5 text-[#157354]" />
+                        <span className="text-sm font-bold text-[#1a2e25] flex-1">{templateFile.name}</span>
+                        <button type="button" onClick={e => { e.preventDefault(); setTemplateFile(null) }} className="text-xs text-red-500 font-bold hover:underline">Remove</button>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-5 h-5 text-[#a8b5ae]" />
+                        <span className="text-sm text-[#6b7a73]">Upload a blank form staff can download (PDF, Word or image, up to 15 MB)</span>
+                      </>
+                    )}
+                  </label>
+                  {existingTemplate && templateFile && (
+                    <p className="text-[11px] text-amber-600 font-bold flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> This will replace the current file when you save.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
-          )}
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button type="button" onClick={cancelEdit} className="px-5 py-2.5 rounded-xl border border-[#e2e8e4] text-sm font-medium text-[#6b7a73] hover:bg-[#f8faf9]">Cancel</button>
+              <button type="submit" disabled={saving || !form.name.trim() || !form.category} className="inline-flex items-center gap-2 bg-[#157354] text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:bg-[#0f4a36] disabled:opacity-50">
+                {saving && <Loader2 className="w-4 h-4 animate-spin" />} {editingId ? 'Update Requirement' : 'Create Requirement'}
+              </button>
+            </div>
+          </form>
         </div>
+      )}
+
+      {/* ── Sections ── */}
+      {requirements.length === 0 && !showForm && (
+        <div className="mb-8 bg-[#edf7f3] border border-dashed border-[#a9dac9] rounded-2xl p-8 text-center">
+          <Settings2 className="w-10 h-10 text-[#157354] mx-auto mb-3" />
+          <h2 className="text-xl font-bold text-[#0b3828] mb-2">No requirements yet</h2>
+          <p className="text-[#3d5a4f] max-w-md mx-auto">
+            {templates.length > 0 ? 'Start from a template to add the state checklist in one click, or add requirements one by one.' : 'Add the documents and trainings your staff need.'}
+          </p>
+        </div>
+      )}
+
+      <div className="space-y-8">
+        {SECTIONS.map(section => {
+          const items = bySection.get(section.id) ?? []
+          if (items.length === 0) return null
+          const Icon = SECTION_ICONS[section.id]
+          return (
+            <section key={section.id} className="overflow-hidden rounded-2xl border border-[#e2e8e4] bg-white shadow-sm">
+              <div className="flex flex-col gap-3 border-b border-[#e2e8e4] bg-[#f8faf9] px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#edf7f3] text-[#157354]"><Icon className="h-5 w-5" /></span>
+                  <div>
+                    <h2 className="text-lg font-bold text-[#1a2e25] flex items-center gap-2">
+                      {section.label}
+                      {section.id === 'health' && <Lock className="h-4 w-4 text-amber-600" />}
+                    </h2>
+                    <p className="text-xs text-[#6b7a73]">{items.length} item{items.length === 1 ? '' : 's'} · {section.description}</p>
+                  </div>
+                </div>
+                <button type="button" onClick={() => openNew(section.id)} className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#157354] px-4 py-2 text-xs font-bold text-white hover:bg-[#0f4a36]">
+                  <Plus className="h-4 w-4" /> Add New
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] text-left">
+                  <thead>
+                    <tr className="border-b border-[#e2e8e4] text-[15px] font-bold text-[#1a2e25]">
+                      <th scope="col" className="px-6 py-4">Requirement</th>
+                      <th scope="col" className="px-4 py-4">Applies to</th>
+                      <th scope="col" className="px-4 py-4">Due</th>
+                      <th scope="col" className="px-4 py-4">Renewal</th>
+                      <th scope="col" className="px-4 py-4">Fulfilled by</th>
+                      <th scope="col" className="px-6 py-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#e2e8e4] text-sm font-normal text-[#3d5a4f]">
+                    {items.map((req, index) => {
+                      const showGroup = req.group_label && req.group_label !== items[index - 1]?.group_label
+                      return (
+                        <RequirementRow
+                          key={req.id}
+                          req={req}
+                          groupHeading={showGroup ? req.group_label! : null}
+                          roleLabel={(v: string) => lookupLabel(staffRoles, v)}
+                          isFirst={index === 0}
+                          isLast={index === items.length - 1}
+                          onUp={() => move(section.id, index, -1)}
+                          onDown={() => move(section.id, index, 1)}
+                          onEdit={() => startEdit(req)}
+                          onDelete={() => deleteRequirement(req)}
+                          onPublish={req.evidence_type === 'acknowledgement' ? () => publishPolicyUpdate(req) : undefined}
+                        />
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )
+        })}
       </div>
+
+      <p className="mt-6 text-xs text-[#a8b5ae] flex items-center gap-1.5">
+        <ShieldCheck className="h-3.5 w-3.5" /> You are responsible for verifying that documents meet your state&apos;s requirements.
+      </p>
     </div>
+  )
+}
+
+function RequirementRow({ req, groupHeading, roleLabel, isFirst, isLast, onUp, onDown, onEdit, onDelete, onPublish }: {
+  req: CenterDocumentRequirement
+  groupHeading: string | null
+  roleLabel: (value: string) => string
+  isFirst: boolean
+  isLast: boolean
+  onUp: () => void
+  onDown: () => void
+  onEdit: () => void
+  onDelete: () => void
+  onPublish?: () => void
+}) {
+  const renewal = describeRenewal(req)
+  const appliesTo = [
+    req.applies_to_class?.length ? req.applies_to_class.map(c => EMPLOYMENT_CLASS_LABELS[c]).join(' / ') : 'All staff',
+    req.applies_to?.length ? req.applies_to.map(roleLabel).join(', ') : null,
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <>
+      {groupHeading && (
+        <tr className="bg-[#fbfcfb]">
+          <td colSpan={6} className="px-6 py-2 text-xs font-bold uppercase tracking-wider text-[#157354]">{groupHeading}</td>
+        </tr>
+      )}
+      <tr className="align-top hover:bg-[#fbfcfb] transition-colors">
+        <td className="px-6 py-4">
+          <div className="flex flex-wrap items-center gap-1.5 text-[#1a2e25]">
+            {req.document_name}
+            {req.is_confidential && <Lock className="h-3.5 w-3.5 text-amber-600" aria-label="Confidential" />}
+            {req.is_conditional && <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-600">If applicable</span>}
+            {!req.is_required && !req.is_conditional && <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-600">Optional</span>}
+            {req.template_file_key && <span className="inline-flex items-center gap-1 rounded-full border border-[#a9dac9] bg-[#edf7f3] px-2 py-0.5 text-[11px] text-[#157354]"><Download className="h-3 w-3" /> Form</span>}
+          </div>
+          {req.notes && <div className="mt-0.5 max-w-md text-xs text-[#6b7a73] line-clamp-2">{req.notes}</div>}
+        </td>
+        <td className="px-4 py-4 text-xs">{appliesTo}</td>
+        <td className="px-4 py-4 whitespace-nowrap">{describeDue(req.due_within_days)}</td>
+        <td className="px-4 py-4 whitespace-nowrap">{renewal || '—'}{req.evidence_type === 'acknowledgement' && req.policy_version > 1 && <div className="text-xs text-[#6b7a73]">Version {req.policy_version}</div>}</td>
+        <td className="px-4 py-4 text-xs">{evidenceLabel(req.evidence_type)}</td>
+        <td className="px-6 py-4">
+          <div className="flex items-center justify-end gap-1">
+            {onPublish && (
+              <button onClick={onPublish} className="rounded-lg px-2 py-1 text-[11px] font-bold text-[#157354] hover:bg-[#edf7f3]" title="Policy changed: ask everyone to acknowledge again">Policy updated</button>
+            )}
+            <button onClick={onUp} disabled={isFirst} className="rounded-lg p-1.5 text-[#6b7a73] hover:bg-[#edf7f3] disabled:opacity-30" title="Move up"><ChevronUp className="h-4 w-4" /></button>
+            <button onClick={onDown} disabled={isLast} className="rounded-lg p-1.5 text-[#6b7a73] hover:bg-[#edf7f3] disabled:opacity-30" title="Move down"><ChevronDown className="h-4 w-4" /></button>
+            <button onClick={onEdit} className="rounded-lg p-1.5 text-[#157354] hover:bg-[#edf7f3]" title="Edit"><Settings2 className="h-4 w-4" /></button>
+            <button onClick={onDelete} className="rounded-lg p-1.5 text-[#a8b5ae] hover:bg-red-50 hover:text-red-500" title="Delete"><Trash2 className="h-4 w-4" /></button>
+          </div>
+        </td>
+      </tr>
+    </>
   )
 }

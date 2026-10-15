@@ -2,22 +2,12 @@
 
 import { useEffect, useState, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { StaffDocument, DOCUMENT_CATEGORY_LABELS, DocumentCategory, Center, CenterDocumentRequirement, StaffType, CenterStaffDocumentStatus } from '@/lib/types'
+import { StaffDocument, DocumentCategory, Center, CenterDocumentRequirement, StaffType, CenterStaffDocumentStatus } from '@/lib/types'
 import { FileText, Plus, Trash2, ArrowRight, Upload, Info, CheckCircle2, Loader2, AlertCircle, ShieldCheck, ChevronRight, X, Calendar, ExternalLink, Globe, Sparkles, Download, Eye } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
-import { getPresignedUploadUrl, getPresignedViewUrl } from '@/app/actions/storage.actions'
+import { deleteVaultDocument } from '@/app/actions/storage.actions'
+import { openStoredFile, uploadStoredFile, DOCUMENT_ACCEPT } from '@/lib/files'
 import { useLookups } from '@/hooks/use-lookups'
-
-// Mock categories if types aren't fully exporting them yet
-const CATEGORIES: { label: string; value: DocumentCategory }[] = [
-  { label: 'Identity', value: 'identity' },
-  { label: 'Certification', value: 'certification' },
-  { label: 'Background', value: 'background' },
-  { label: 'Training', value: 'training' },
-  { label: 'Medical/Health', value: 'medical' },
-  { label: 'Documentation', value: 'documentation' },
-  { label: 'Other', value: 'other' },
-]
 
 export default function StaffDocumentsPage() {
   return (
@@ -43,8 +33,7 @@ function DocumentsContent() {
   const [docCategory, setDocCategory] = useState<DocumentCategory | ''>('')
   const [expiryDate, setExpiryDate] = useState('')
 
-  const { data: lookupDocTypesRaw } = useLookups('Document Type')
-  const lookupDocTypes = lookupDocTypesRaw.filter(l => l.is_active !== false)
+  const { data: lookupDocTypes } = useLookups('Document Type')
 
   useEffect(() => {
     loadDocuments()
@@ -79,22 +68,6 @@ function DocumentsContent() {
     setLoading(false)
   }
 
-  async function handleView(fileKey?: string, bucketName?: string, fallbackUrl?: string) {
-    if (!fileKey || !bucketName) {
-      if (fallbackUrl) window.open(fallbackUrl, '_blank')
-      else alert('No file access info available')
-      return
-    }
-
-    const res = await getPresignedViewUrl(fileKey, bucketName)
-    if (res.success && res.url) {
-      window.open(res.url, '_blank')
-    } else {
-      alert(res.error || 'Failed to generate access link')
-    }
-  }
-
-
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault()
     if (!selectedFile) {
@@ -103,48 +76,19 @@ function DocumentsContent() {
     }
 
     setUploading(true)
-
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      setUploading(false)
-      return
-    }
-
-    const { data: profile } = await supabase
-      .from('staff_profiles')
-      .select('id')
-      .eq('user_id', user.id)
-      .single()
-
-    if (!profile) {
-      setUploading(false)
-      return
-    }
-
-    // 1. Get Presigned URL
-    const presigned = await getPresignedUploadUrl(selectedFile.name, selectedFile.type)
-    
-    if (!presigned.success || !presigned.uploadUrl) {
-      alert(presigned.error || 'Failed to get upload authorization')
-      setUploading(false)
-      return
-    }
-
-    // 2. Upload to Cloudflare R2
     try {
-      const uploadRes = await fetch(presigned.uploadUrl, {
-        method: 'PUT',
-        body: selectedFile,
-        headers: {
-          'Content-Type': selectedFile.type,
-        },
-      })
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
 
-      if (!uploadRes.ok) {
-        throw new Error('Failed to upload to storage')
-      }
+      const { data: profile } = await supabase
+        .from('staff_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
+      if (!profile) return
 
-      // 3. Save to Supabase
+      const { fileKey, bucketName } = await uploadStoredFile('vault', selectedFile)
+
       const { error } = await supabase
         .from('staff_documents')
         .insert({
@@ -152,9 +96,9 @@ function DocumentsContent() {
           document_name: docName || selectedFile.name,
           document_category: docCategory,
           expiry_date: expiryDate || null,
-          file_url: 'r2_private_access', // No longer using direct public URLs
-          file_key: presigned.fileKey,
-          bucket_name: presigned.bucketName,
+          file_url: 'r2_private_access', // files are only reachable through signed links
+          file_key: fileKey,
+          bucket_name: bucketName,
           file_name: selectedFile.name
         })
 
@@ -171,7 +115,7 @@ function DocumentsContent() {
       }
     } catch (err) {
       console.error('Upload error:', err)
-      alert('File upload failed')
+      alert(err instanceof Error ? err.message : 'File upload failed')
     } finally {
       setUploading(false)
     }
@@ -179,25 +123,12 @@ function DocumentsContent() {
 
   async function deleteDoc(id: string) {
     if (!confirm('Are you sure you want to delete this document?')) return
-    
-    const { error } = await supabase
-      .from('staff_documents')
-      .delete()
-      .eq('id', id)
-    
-    if (!error) {
-      setDocuments(documents.filter(d => d.id !== id))
-    }
-  }
 
-  async function handleDownloadTemplate(req: CenterDocumentRequirement) {
-    if (!req.template_file_key || !req.template_bucket_name) return
-    
-    const res = await getPresignedViewUrl(req.template_file_key, req.template_bucket_name)
-    if (res.success && res.url) {
-      window.open(res.url, '_blank')
+    const res = await deleteVaultDocument(id)
+    if (res.success) {
+      setDocuments(documents.filter(d => d.id !== id))
     } else {
-      alert('Could not open template file')
+      alert(res.error)
     }
   }
 
@@ -207,9 +138,16 @@ function DocumentsContent() {
     </div>
   }
 
-  const documentTypes = lookupDocTypes.length > 0 ? lookupDocTypes : CATEGORIES
+  // Active types, plus any type (inactive or unknown) that still has documents so nothing disappears
+  const documentTypes = [
+    ...lookupDocTypes.filter(t => t.is_active || documents.some(d => d.document_category === t.value)),
+    ...[...new Set(documents.map(d => d.document_category))]
+      .filter(value => !lookupDocTypes.some(t => t.value === value))
+      .map(value => ({ value, label: value })),
+  ]
   const documentGroups = documentTypes.map((documentType) => ({
-    ...documentType,
+    value: documentType.value,
+    label: documentType.label,
     documents: documents.filter((document) => document.document_category === documentType.value),
   }))
 
@@ -242,7 +180,7 @@ function DocumentsContent() {
                 <input 
                   type="file" 
                   className="hidden" 
-                  accept=".pdf,image/*"
+                  accept={DOCUMENT_ACCEPT}
                   onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
                 />
                 {selectedFile ? (
@@ -287,7 +225,7 @@ function DocumentsContent() {
                       className="w-full px-4 py-3 rounded-xl border border-[#c9d9d1] bg-[#f8faf9] text-[#1a2e25] focus:outline-none disabled:cursor-not-allowed disabled:opacity-100"
                     >
                       <option value="" disabled>Select Type</option>
-                      {(lookupDocTypes.length > 0 ? lookupDocTypes : CATEGORIES).map(c => (
+                      {documentTypes.map(c => (
                         <option key={c.value} value={c.value}>{c.label}</option>
                       ))}
                     </select>
@@ -388,7 +326,7 @@ function DocumentsContent() {
                           <td className="px-6 py-4">
                             <div className="flex items-center justify-end gap-1">
                               <button
-                                onClick={() => handleView(doc.file_key, doc.bucket_name, doc.file_url)}
+                                onClick={() => openStoredFile('vault', doc.id)}
                                 className="rounded-lg p-2 text-[#157354] transition-colors hover:bg-[#edf7f3]"
                                 title="View Document"
                               >

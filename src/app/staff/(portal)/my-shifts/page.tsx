@@ -8,8 +8,11 @@ import { useRouter } from 'next/navigation'
 import { getMyShiftsBypassingRLS } from '@/app/actions/my-shifts.actions'
 import { submitReview } from '@/app/actions/reviews.actions'
 import { ReviewModal } from '@/components/ReviewModal'
+import { useLookups } from '@/hooks/use-lookups'
+import { lookupLabel } from '@/lib/lookups'
 
 export default function MyShiftsPage() {
+  const { data: roleLookups } = useLookups('Role')
   const supabase = createClient()
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -465,7 +468,7 @@ export default function MyShiftsPage() {
                       ${shift.hourly_rate ?? '20.00'}/hr
                     </span>
                     <span className="shrink-0 whitespace-nowrap rounded-full border border-[#e2e8e4] bg-[#f8faf9] px-4 py-2 text-xs font-black uppercase tracking-widest text-[#6b7a73]">
-                      {shift.staff_type_needed || 'Professional'}
+                      {lookupLabel(roleLookups, shift.staff_type_needed) || 'Professional'}
                     </span>
                     <span className="shrink-0 whitespace-nowrap rounded-full border border-[#e2e8e4] bg-[#f8faf9] px-4 py-2 text-xs font-black uppercase tracking-widest text-[#6b7a73] capitalize">
                       {payLabel}

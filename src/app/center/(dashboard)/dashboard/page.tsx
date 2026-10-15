@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Shift, StaffProfile } from '@/lib/types'
 import Link from 'next/link'
-import { Calendar, Users, AlertCircle, FileText, ArrowRight, CheckCircle2, Clock, UserPlus, Globe, Star } from 'lucide-react'
+import { Calendar, Users, AlertCircle, FileText, ArrowRight, CheckCircle2, Clock, UserPlus, Globe, Star, ShieldCheck } from 'lucide-react'
 import { useCenterContext } from '../context'
+import { loadCenterCompliance, countStates } from '@/lib/compliance-data'
 
 export default function DashboardOverview() {
   const { staffTerm } = useCenterContext()
@@ -23,6 +24,7 @@ export default function DashboardOverview() {
   })
   const [upcomingShifts, setUpcomingShifts] = useState<any[]>([])
   const [recentActivity, setRecentActivity] = useState<any[]>([])
+  const [compliance, setCompliance] = useState<{ overdue: number; dueSoon: number; review: number; requestsToReview: number } | null>(null)
 
   useEffect(() => {
     async function fetchDashboardData() {
@@ -109,6 +111,19 @@ export default function DashboardOverview() {
         totalReviews,
         trialDaysLeft,
         isTrialing
+      })
+
+      // Personnel file compliance (overdue / due soon / waiting for review)
+      const [complianceData, { count: submittedRequests }] = await Promise.all([
+        loadCenterCompliance(supabase, centerId),
+        supabase.from('document_requests').select('id', { count: 'exact', head: true }).eq('center_id', centerId).eq('status', 'submitted'),
+      ])
+      const complianceCounts = countStates(complianceData)
+      setCompliance({
+        overdue: complianceCounts.overdue,
+        dueSoon: complianceCounts.due_soon,
+        review: complianceCounts.pending_review,
+        requestsToReview: submittedRequests ?? 0,
       })
 
       setUpcomingShifts(shiftsData || [])
@@ -236,6 +251,36 @@ export default function DashboardOverview() {
           </div>
         </div>
       </div>
+
+      {compliance && (
+        <div className="mb-10 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#edf7f3] text-[#157354]"><ShieldCheck className="h-5 w-5" /></span>
+              <div>
+                <h2 className="text-lg font-bold text-[#0b3828]">Personnel file compliance</h2>
+                <p className="text-xs text-[#6b7a73]">Documents and trainings across your {staffTerm.toLowerCase()}</p>
+              </div>
+            </div>
+            <Link href="/center/compliance" className="inline-flex items-center gap-1.5 text-sm font-bold text-[#157354] hover:underline">
+              Open overview <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {[
+              { label: 'Overdue', value: compliance.overdue, href: '/center/compliance', tone: compliance.overdue > 0 ? 'text-red-600' : 'text-[#0b3828]' },
+              { label: 'Due in 30 days', value: compliance.dueSoon, href: '/center/compliance', tone: compliance.dueSoon > 0 ? 'text-amber-600' : 'text-[#0b3828]' },
+              { label: 'Awaiting your review', value: compliance.review, href: '/center/compliance', tone: compliance.review > 0 ? 'text-sky-700' : 'text-[#0b3828]' },
+              { label: 'Requests answered', value: compliance.requestsToReview, href: '/center/requests', tone: compliance.requestsToReview > 0 ? 'text-sky-700' : 'text-[#0b3828]' },
+            ].map(tile => (
+              <Link key={tile.label} href={tile.href} className="rounded-2xl border border-[#e2e8e4] p-4 hover:border-[#157354] transition-colors">
+                <div className={`text-3xl font-black ${tile.tone}`}>{tile.value}</div>
+                <div className="text-sm font-semibold text-[#6b7a73]">{tile.label}</div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Upcoming Shifts */}

@@ -32,14 +32,7 @@ export default function ShiftDetailPage() {
   const [centerId, setCenterId] = useState<string | null>(null)
   const { data: staffRoles } = useLookups('Role')
   const { data: paymentMethodsRaw } = useLookups('Payment Method')
-  const paymentMethods = paymentMethodsRaw.filter(p => p.is_active !== false)
-  const DEFAULT_PAYMENT_METHODS = [
-    { value: 'payroll', label: 'Corporate Payroll' },
-    { value: 'venmo', label: 'Venmo' },
-    { value: 'cash', label: 'Cash' },
-    { value: 'check', label: 'Check' },
-    { value: 'zelle', label: 'Zelle' }
-  ]
+  const paymentMethods = paymentMethodsRaw.filter(p => p.is_active)
 
   // Form State (for Edit)
   const [editDate, setEditDate] = useState('')
@@ -345,7 +338,7 @@ export default function ShiftDetailPage() {
                          className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
                        >
                          <option value="any">Float / No specific area</option>
-                         {workAreas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                         {workAreas.filter(c => c.is_active || c.id === editWorkArea).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                       </select>
                     </div>
                  </div>
@@ -366,7 +359,7 @@ export default function ShiftDetailPage() {
                     <div>
                       <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Mode</label>
                        <select value={editMode} onChange={(e) => setEditMode(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]">
-                          {(paymentMethods.length > 0 ? paymentMethods : DEFAULT_PAYMENT_METHODS).map(p => (
+                          {paymentMethods.map(p => (
                             <option key={p.value} value={p.value}>{p.label}</option>
                           ))}
                       </select>
