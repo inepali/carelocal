@@ -16,7 +16,7 @@ import { createClient } from '@/lib/supabase/server'
  * - New keys are namespaced per owner (enforced again by a DB trigger).
  * - View links expire after 5 minutes and every view is written to document_access_log.
  */
-export type FileKind = 'vault' | 'internal' | 'template'
+export type FileKind = 'vault' | 'internal' | 'template' | 'inspection'
 
 const VIEW_URL_TTL_SECONDS = 300
 const UPLOAD_URL_TTL_SECONDS = 600
@@ -35,7 +35,7 @@ const ALLOWED_TYPES: Record<string, string> = {
 function bucketFor(kind: FileKind) {
   const bucket = kind === 'vault'
     ? process.env.R2_EMPLOYEE_BUCKET
-    : kind === 'internal'
+    : kind === 'internal' || kind === 'inspection'
       ? process.env.R2_CENTER_BUCKET_INTERNAL
       : process.env.R2_CENTER_BUCKET
   if (!bucket) throw new Error(`Storage bucket for ${kind} files is not configured`)
@@ -145,6 +145,10 @@ export async function getFileViewUrl(kind: FileKind, id: string) {
       centerId = data?.center_id ?? null
       const req = data?.requirement as { is_confidential?: boolean } | { is_confidential?: boolean }[] | null | undefined
       isConfidential = !!(Array.isArray(req) ? req[0]?.is_confidential : req?.is_confidential)
+    } else if (kind === 'inspection') {
+      const { data } = await supabase.from('center_inspection_files').select('file_key, center_id').eq('id', id).maybeSingle()
+      fileKey = data?.file_key ?? null
+      centerId = data?.center_id ?? null
     } else {
       const { data } = await supabase.from('center_document_requirements').select('template_file_key, center_id').eq('id', id).maybeSingle()
       fileKey = data?.template_file_key ?? null
@@ -204,6 +208,21 @@ export async function deleteVaultDocument(id: string) {
 }
 
 /** Center: delete a center-held document. */
+/** Center: delete an inspection report file. */
+export async function deleteInspectionFile(id: string) {
+  const { supabase, user } = await getSessionContext()
+  if (!user) return fail('Please sign in again.')
+
+  const { data: file } = await supabase.from('center_inspection_files').select('file_key').eq('id', id).maybeSingle()
+  if (!file) return fail('File not found.')
+
+  const { error } = await supabase.from('center_inspection_files').delete().eq('id', id)
+  if (error) return fail(error.message)
+
+  await removeObject('inspection', file.file_key)
+  return { success: true as const }
+}
+
 export async function deleteInternalDocument(id: string) {
   const { supabase, user } = await getSessionContext()
   if (!user) return fail('Please sign in again.')

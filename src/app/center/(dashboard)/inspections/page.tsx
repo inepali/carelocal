@@ -5,16 +5,18 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useLookups } from '@/hooks/use-lookups'
 import {
-  Inspection, InspectionIntervalUnit, InspectionLog, InspectionResult,
+  Inspection, InspectionFile, InspectionIntervalUnit, InspectionLog, InspectionResult,
   INSPECTION_RESULT_LABELS, Vendor,
 } from '@/lib/types'
+import { deleteInspectionFile } from '@/app/actions/storage.actions'
+import { openStoredFile, uploadStoredFile, DOCUMENT_ACCEPT } from '@/lib/files'
 import {
   addInterval, daysUntil, formatDate, formatInterval, inspectionStatus,
   InspectionStatus, todayDateOnly, DUE_SOON_DAYS,
 } from '@/lib/inspections'
 import {
   Plus, Edit2, Trash2, Loader2, ClipboardCheck, X, CheckCircle2, History,
-  AlertTriangle, Clock, CalendarCheck, Search,
+  AlertTriangle, Clock, CalendarCheck, Search, Paperclip, FileText, Upload,
 } from 'lucide-react'
 
 const OTHER = '__other__'
@@ -95,6 +97,15 @@ export default function InspectionsPage() {
   // History drawer
   const [historyFor, setHistoryFor] = useState<Inspection | null>(null)
   const [history, setHistory] = useState<InspectionLog[]>([])
+  const [historyFiles, setHistoryFiles] = useState<InspectionFile[]>([])
+  const [uploadingFor, setUploadingFor] = useState<string | null>(null) // log id, or 'other'
+
+  // Reports attached while recording, and report counts per inspection for the list
+  const [recordFiles, setRecordFiles] = useState<File[]>([])
+  // New / edit inspection: files to attach on save, and reports already attached (edit)
+  const [editFiles, setEditFiles] = useState<File[]>([])
+  const [editExisting, setEditExisting] = useState<InspectionFile[]>([])
+  const [fileCounts, setFileCounts] = useState<Record<string, number>>({})
   const [historyLoading, setHistoryLoading] = useState(false)
 
   const [saving, setSaving] = useState(false)
@@ -116,7 +127,7 @@ export default function InspectionsPage() {
 
     if (admin) {
       setCenterId(admin.center_id)
-      const [{ data: rows }, { data: vendorRows }] = await Promise.all([
+      const [{ data: rows }, { data: vendorRows }, { data: fileRows }] = await Promise.all([
         supabase
           .from('center_inspections')
           .select('*, vendor:center_vendors(id, name)')
@@ -128,9 +139,17 @@ export default function InspectionsPage() {
           .select('*')
           .eq('center_id', admin.center_id)
           .order('name'),
+        supabase
+          .from('center_inspection_files')
+          .select('inspection_id')
+          .eq('center_id', admin.center_id),
       ])
       setInspections((rows as Inspection[]) || [])
       setVendors(vendorRows || [])
+      setFileCounts((fileRows || []).reduce<Record<string, number>>((acc, f) => {
+        acc[f.inspection_id] = (acc[f.inspection_id] ?? 0) + 1
+        return acc
+      }, {}))
     }
     setLoading(false)
   }
@@ -165,9 +184,21 @@ export default function InspectionsPage() {
 
   // ── Add / edit ───────────────────────────────
 
+  async function loadEditReports(inspectionId: string) {
+    const { data } = await supabase
+      .from('center_inspection_files')
+      .select('id, center_id, inspection_id, log_id, file_name, content_type, size_bytes, uploaded_at')
+      .eq('inspection_id', inspectionId)
+      .order('uploaded_at', { ascending: false })
+    setEditExisting((data as InspectionFile[]) || [])
+  }
+
   function openEdit(inspection: Inspection | null = null) {
     setError(null)
     setEditing(inspection)
+    setEditFiles([])
+    setEditExisting([])
+    if (inspection) loadEditReports(inspection.id)
     if (inspection) {
       const known = typeOptions.includes(inspection.inspection_type)
       const autoDue = inspection.last_inspection_date && inspection.interval_value && inspection.interval_unit
@@ -229,42 +260,118 @@ export default function InspectionsPage() {
       notes: form.notes.trim() || null,
     }
 
+    // Where new reports go: the inspection, and the history entry they document (if any)
+    let inspectionId: string
+    let logId: string | null = null
+
     if (editing) {
       const { error: err } = await supabase.from('center_inspections').update(payload).eq('id', editing.id)
       if (err) { setSaving(false); setError(err.message); return }
+      inspectionId = editing.id
+      if (editFiles.length > 0) {
+        // Attach to the most recent visit; without history they go under "Other reports"
+        const { data: latest } = await supabase
+          .from('center_inspection_logs')
+          .select('id')
+          .eq('inspection_id', editing.id)
+          .order('performed_on', { ascending: false })
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        logId = latest?.id ?? null
+      }
     } else {
       const { data: created, error: err } = await supabase
         .from('center_inspections').insert(payload).select('id').single()
       if (err || !created) { setSaving(false); setError(err?.message || 'Failed to save'); return }
+      inspectionId = created.id
       // Seed history with the initial "last inspection" so it appears in the log
       if (payload.last_inspection_date) {
-        await supabase.from('center_inspection_logs').insert({
+        const { data: seeded } = await supabase.from('center_inspection_logs').insert({
           inspection_id: created.id,
           center_id: centerId,
           performed_on: payload.last_inspection_date,
           vendor_id: payload.vendor_id,
           created_by: userId,
           notes: 'Recorded when inspection was added',
-        })
+        }).select('id').single()
+        logId = seeded?.id ?? null
       }
+    }
+
+    if (editFiles.length > 0) {
+      const failures = await attachReports(inspectionId, logId, editFiles)
+      if (failures.length) alert('The inspection was saved, but some reports could not be attached:\n' + failures.join('\n') + '\n\nYou can attach them from History.')
     }
 
     setSaving(false)
     setEditOpen(false)
+    setEditFiles([])
     loadData()
   }
 
   async function handleDelete(inspection: Inspection) {
     if (!confirm(`Delete "${inspection.inspection_type}"${inspection.title ? ` (${inspection.title})` : ''} and its history? This can't be undone.`)) return
     const { error: err } = await supabase.from('center_inspections').delete().eq('id', inspection.id)
-    if (err) alert('Failed to delete inspection: ' + err.message)
-    else loadData()
+    if (err) {
+      // Reports are kept as records: the database refuses to delete an inspection that has them
+      alert(err.code === '23503'
+        ? 'This inspection has attached reports, which are kept as records. Delete the reports in History first, or keep the inspection.'
+        : 'Failed to delete inspection: ' + err.message)
+    } else loadData()
+  }
+
+  // ── Reports (paper records) ──────────────────
+
+  /** Uploads files to secure storage and attaches them to an inspection (and history entry) */
+  async function attachReports(inspectionId: string, logId: string | null, files: File[]) {
+    if (!centerId) return []
+    const failures: string[] = []
+    for (const file of files) {
+      try {
+        const { fileKey, bucketName } = await uploadStoredFile('inspection', file)
+        const { error: insErr } = await supabase.from('center_inspection_files').insert({
+          center_id: centerId,
+          inspection_id: inspectionId,
+          log_id: logId,
+          file_name: file.name,
+          file_key: fileKey,
+          bucket_name: bucketName,
+          content_type: file.type || null,
+          size_bytes: file.size,
+          uploaded_by: userId,
+        })
+        if (insErr) throw insErr
+      } catch (err) {
+        failures.push(`${file.name}: ${err instanceof Error ? err.message : 'upload failed'}`)
+      }
+    }
+    return failures
+  }
+
+  async function uploadToHistory(logId: string | null, files: FileList | null) {
+    if (!historyFor || !files || files.length === 0) return
+    setUploadingFor(logId ?? 'other')
+    const failures = await attachReports(historyFor.id, logId, Array.from(files))
+    setUploadingFor(null)
+    if (failures.length) alert('Some files could not be attached:\n' + failures.join('\n'))
+    openHistory(historyFor)
+    loadData()
+  }
+
+  async function removeReport(file: InspectionFile) {
+    if (!confirm(`Delete "${file.file_name}"? The file will be permanently removed.`)) return
+    const res = await deleteInspectionFile(file.id)
+    if (!res.success) { alert(res.error); return }
+    if (historyFor) openHistory(historyFor)
+    loadData()
   }
 
   // ── Record performed inspection ─────────────
 
   function openRecord(inspection: Inspection) {
     setError(null)
+    setRecordFiles([])
     const today = todayDateOnly()
     setRecording(inspection)
     setRecordForm({
@@ -301,7 +408,7 @@ export default function InspectionsPage() {
     setSaving(true)
     setError(null)
 
-    const { error: logErr } = await supabase.from('center_inspection_logs').insert({
+    const { data: log, error: logErr } = await supabase.from('center_inspection_logs').insert({
       inspection_id: recording.id,
       center_id: centerId,
       performed_on: recordForm.performed_on,
@@ -310,8 +417,14 @@ export default function InspectionsPage() {
       inspector_name: recordForm.inspector_name.trim() || null,
       notes: recordForm.notes.trim() || null,
       created_by: userId,
-    })
-    if (logErr) { setSaving(false); setError(logErr.message); return }
+    }).select('id').single()
+    if (logErr || !log) { setSaving(false); setError(logErr?.message ?? 'Failed to save the record'); return }
+
+    // Attach the inspection report(s) to this history entry
+    if (recordFiles.length > 0) {
+      const failures = await attachReports(recording.id, log.id, recordFiles)
+      if (failures.length) alert('The inspection was recorded, but some reports could not be attached:\n' + failures.join('\n') + '\n\nYou can attach them from History.')
+    }
 
     // Only advance the inspection if this is the most recent one (back-filling older history shouldn't move the due date)
     const isLatest = !recording.last_inspection_date || recordForm.performed_on >= recording.last_inspection_date
@@ -328,6 +441,7 @@ export default function InspectionsPage() {
     setSaving(false)
     setRecording(null)
     setRecordForm(null)
+    setRecordFiles([])
     loadData()
     if (historyFor?.id === recording.id) openHistory(recording)
   }
@@ -337,21 +451,92 @@ export default function InspectionsPage() {
   async function openHistory(inspection: Inspection) {
     setHistoryFor(inspection)
     setHistoryLoading(true)
-    const { data } = await supabase
-      .from('center_inspection_logs')
-      .select('*, vendor:center_vendors(id, name)')
-      .eq('inspection_id', inspection.id)
-      .order('performed_on', { ascending: false })
-      .order('created_at', { ascending: false })
+    const [{ data }, { data: files }] = await Promise.all([
+      supabase
+        .from('center_inspection_logs')
+        .select('*, vendor:center_vendors(id, name)')
+        .eq('inspection_id', inspection.id)
+        .order('performed_on', { ascending: false })
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('center_inspection_files')
+        .select('id, center_id, inspection_id, log_id, file_name, content_type, size_bytes, uploaded_at')
+        .eq('inspection_id', inspection.id)
+        .order('uploaded_at', { ascending: true }),
+    ])
     setHistory((data as InspectionLog[]) || [])
+    setHistoryFiles((files as InspectionFile[]) || [])
     setHistoryLoading(false)
   }
 
   async function deleteLog(log: InspectionLog) {
-    if (!confirm(`Remove the ${formatDate(log.performed_on)} entry from history? The inspection's due date won't change.`)) return
+    const attached = historyFiles.filter(f => f.log_id === log.id).length
+    if (!confirm(`Remove the ${formatDate(log.performed_on)} entry from history? The inspection's due date won't change.${attached ? ` Its ${attached} attached report${attached === 1 ? '' : 's'} will be kept under "Other reports".` : ''}`)) return
     const { error: err } = await supabase.from('center_inspection_logs').delete().eq('id', log.id)
     if (err) alert('Failed to remove entry: ' + err.message)
     else if (historyFor) openHistory(historyFor)
+  }
+
+  /** Drop zone + list of files waiting to be attached when the form is saved */
+  function renderPicker(files: File[], setFiles: React.Dispatch<React.SetStateAction<File[]>>) {
+    return (
+      <>
+        <label className="flex items-center gap-3 w-full p-4 border-2 border-dashed border-[#e2e8e4] rounded-xl cursor-pointer hover:border-[#157354] hover:bg-[#f8faf9] transition-all">
+          <Upload className="w-5 h-5 text-[#a8b5ae]" />
+          <span className="text-sm text-[#6b7a73]">Attach the report, certificate or invoice (PDF, photo or Word, up to 15 MB each)</span>
+          <input
+            type="file"
+            multiple
+            accept={DOCUMENT_ACCEPT}
+            className="sr-only"
+            onChange={e => {
+              const picked = Array.from(e.target.files ?? [])
+              e.target.value = ''
+              setFiles(prev => [...prev, ...picked])
+            }}
+          />
+        </label>
+        {files.length > 0 && (
+          <ul className="mt-2 space-y-1.5">
+            {files.map((f, i) => (
+              <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-2 rounded-lg bg-[#edf7f3] px-3 py-2 text-sm">
+                <span className="flex min-w-0 items-center gap-2 text-[#1a2e25]"><FileText className="w-4 h-4 shrink-0 text-[#157354]" /><span className="truncate">{f.name}</span><span className="shrink-0 text-xs text-[#6b7a73]">· attaches on save</span></span>
+                <button type="button" onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))} aria-label={`Remove ${f.name}`} className="p-1 text-[#a8b5ae] hover:text-red-500"><X className="w-4 h-4" /></button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </>
+    )
+  }
+
+  /** Attached reports for a history entry (logId) or not tied to one (null) */
+  function renderReports(files: InspectionFile[], logId: string | null) {
+    const key = logId ?? 'other'
+    return (
+      <div className="mt-3 space-y-1.5">
+        {files.map(file => (
+          <div key={file.id} className="flex items-center justify-between gap-2 rounded-lg bg-[#f8faf9] px-3 py-2">
+            <button onClick={() => openStoredFile('inspection', file.id)} className="flex min-w-0 items-center gap-2 text-sm text-[#157354] hover:underline" title={`Uploaded ${new Date(file.uploaded_at).toLocaleDateString()}`}>
+              <FileText className="w-4 h-4 shrink-0" /><span className="truncate">{file.file_name}</span>
+            </button>
+            <button onClick={() => removeReport(file)} aria-label={`Delete ${file.file_name}`} className="p-1 text-[#a8b5ae] hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+          </div>
+        ))}
+        <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-bold text-[#157354] hover:underline">
+          {uploadingFor === key ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Paperclip className="w-3.5 h-3.5" />}
+          {uploadingFor === key ? 'Uploading…' : 'Attach report'}
+          <input
+            type="file"
+            multiple
+            accept={DOCUMENT_ACCEPT}
+            className="sr-only"
+            disabled={uploadingFor !== null}
+            onChange={e => { const picked = e.target.files; uploadToHistory(logId, picked); e.target.value = '' }}
+          />
+        </label>
+      </div>
+    )
   }
 
   // ── Render ───────────────────────────────────
@@ -483,7 +668,10 @@ export default function InspectionsPage() {
                             <button onClick={() => openRecord(i)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#157354] text-white text-xs font-bold hover:bg-[#0f4a36] whitespace-nowrap">
                               <CheckCircle2 className="w-3.5 h-3.5" /> Record
                             </button>
-                            <button onClick={() => openHistory(i)} aria-label="History" title="History" className="p-2 text-[#6b7a73] hover:text-[#157354] hover:bg-[#edf7f3] rounded-lg"><History className="w-4 h-4" /></button>
+                            <button onClick={() => openHistory(i)} aria-label="History and reports" title="History and reports" className="inline-flex items-center gap-1 p-2 text-[#6b7a73] hover:text-[#157354] hover:bg-[#edf7f3] rounded-lg">
+                              <History className="w-4 h-4" />
+                              {fileCounts[i.id] > 0 && <span className="inline-flex items-center gap-0.5 text-xs font-bold text-[#157354]"><Paperclip className="w-3.5 h-3.5" />{fileCounts[i.id]}</span>}
+                            </button>
                             <button onClick={() => openEdit(i)} aria-label="Edit" title="Edit" className="p-2 text-[#6b7a73] hover:text-[#157354] hover:bg-[#edf7f3] rounded-lg"><Edit2 className="w-4 h-4" /></button>
                             <button onClick={() => handleDelete(i)} aria-label="Delete" title="Delete" className="p-2 text-[#6b7a73] hover:text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                           </div>
@@ -568,6 +756,35 @@ export default function InspectionsPage() {
                 <textarea rows={3} value={form.notes} onChange={e => updateForm({ notes: e.target.value })} className={inputClass} />
               </div>
 
+              <div>
+                <label className={labelClass}>Inspection Report &amp; Paperwork</label>
+                {editExisting.length > 0 && (
+                  <ul className="mb-2 space-y-1.5">
+                    {editExisting.map(file => (
+                      <li key={file.id} className="flex items-center justify-between gap-2 rounded-lg bg-[#f8faf9] px-3 py-2 text-sm">
+                        <button type="button" onClick={() => openStoredFile('inspection', file.id)} className="flex min-w-0 items-center gap-2 text-[#157354] hover:underline">
+                          <FileText className="w-4 h-4 shrink-0" /><span className="truncate">{file.file_name}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => { await removeReport(file); if (editing) loadEditReports(editing.id) }}
+                          aria-label={`Delete ${file.file_name}`}
+                          className="p-1 text-[#a8b5ae] hover:text-red-500"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {renderPicker(editFiles, setEditFiles)}
+                <p className="text-xs text-[#a8b5ae] mt-2">
+                  {editing
+                    ? 'New files are added to the most recent visit in History.'
+                    : form.last_inspection_date ? 'Files are saved with the last inspection date above.' : 'Files are saved under "Other reports" in History.'}
+                </p>
+              </div>
+
               {error && <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{error}</div>}
 
               <div className="pt-2 flex gap-3">
@@ -636,6 +853,11 @@ export default function InspectionsPage() {
                 <textarea rows={3} value={recordForm.notes} onChange={e => updateRecord({ notes: e.target.value })} className={inputClass} />
               </div>
 
+              <div>
+                <label className={labelClass}>Inspection Report &amp; Paperwork</label>
+                {renderPicker(recordFiles, setRecordFiles)}
+              </div>
+
               {error && <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{error}</div>}
 
               <div className="pt-2 flex gap-3">
@@ -682,9 +904,18 @@ export default function InspectionsPage() {
                         </div>
                       )}
                       {log.notes && <p className="text-sm text-[#6b7a73] mt-2 whitespace-pre-wrap">{log.notes}</p>}
+                      {renderReports(historyFiles.filter(f => f.log_id === log.id), log.id)}
                     </li>
                   ))}
                 </ol>
+              )}
+
+              {!historyLoading && (historyFiles.some(f => !f.log_id) || history.length === 0) && (
+                <div className="mt-6 border border-dashed border-[#e2e8e4] rounded-2xl p-4">
+                  <div className="font-bold text-[#0b3828] text-sm">Other reports</div>
+                  <p className="text-xs text-[#6b7a73]">Paperwork not tied to a specific visit (e.g. a service contract or certificate).</p>
+                  {renderReports(historyFiles.filter(f => !f.log_id), null)}
+                </div>
               )}
             </div>
             <div className="p-4 border-t border-[#e2e8e4]">

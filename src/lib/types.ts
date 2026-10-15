@@ -394,6 +394,18 @@ export interface InspectionLog {
   vendor?: Pick<Vendor, 'id' | 'name'> | null
 }
 
+/** A report or other paper record attached to an inspection (center_inspection_files) */
+export interface InspectionFile {
+  id: string
+  center_id: string
+  inspection_id: string
+  log_id: string | null
+  file_name: string
+  content_type?: string | null
+  size_bytes?: number | null
+  uploaded_at: string
+}
+
 export type DocumentRequestStatus = 'open' | 'submitted' | 'completed' | 'cancelled'
 
 /** A center's request for a document from one employee (see document_requests) */
