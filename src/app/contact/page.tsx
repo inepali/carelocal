@@ -14,6 +14,7 @@ import {
   Loader2 
 } from 'lucide-react'
 import { submitContactForm } from '@/app/actions/contact.actions'
+import { ProductsMenu } from '@/components/marketing/ProductsMenu'
 import { getDomainConfig, getDomainKey, type DomainKey } from '@/lib/domain-config'
 
 export default function ContactPage() {
@@ -137,11 +138,18 @@ export default function ContactPage() {
             </div>
             <span className="font-bold text-brand-900 text-lg">{config.appName}</span>
           </Link>
+          {/* Same menu as the home page (the senior home page only shows Products) */}
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-brand-700">
-            <Link href="/#how-it-works" className="hover:text-brand-600 transition-colors">How it works</Link>
-            <Link href="/#features" className="hover:text-brand-600 transition-colors">Features</Link>
-            <Link href="/#pricing" className="hover:text-brand-600 transition-colors">Pricing</Link>
-            <Link href="/contact" className="hover:text-brand-600 transition-colors">Contact</Link>
+            <ProductsMenu />
+            {domainKey !== 'senior' && (
+              <>
+                <Link href="/#how-it-works" className="hover:text-brand-600 transition-colors">How it works</Link>
+                <Link href="/#features" className="hover:text-brand-600 transition-colors">Features</Link>
+                <Link href="/#compliance" className="hover:text-brand-600 transition-colors">Compliance</Link>
+                <Link href="/#pricing" className="hover:text-brand-600 transition-colors">Pricing</Link>
+                <Link href="/contact" className="hover:text-brand-600 transition-colors">Contact</Link>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <Link
