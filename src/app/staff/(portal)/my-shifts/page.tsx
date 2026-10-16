@@ -250,7 +250,7 @@ export default function MyShiftsPage() {
   const changeMonth = (offset: number) => setSelectedMonth(current => new Date(current.getFullYear(), current.getMonth() + offset, 1))
 
   return (
-    <div className="mx-auto w-full max-w-5xl pb-32">
+    <div className="max-w-5xl pb-32">
       <div className="mb-10">
         <h1 className="text-4xl font-black text-[#0b3828] mb-2 tracking-tight">My Shifts</h1>
         <p className="text-[#6b7a73] text-lg font-medium">

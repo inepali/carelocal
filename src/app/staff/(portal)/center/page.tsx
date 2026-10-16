@@ -44,7 +44,7 @@ export default function MyCenterPage() {
    }, [])
 
    if (loading) return (
-      <div className="max-w-4xl animate-pulse">
+      <div className="max-w-5xl animate-pulse">
          <div className="h-40 bg-white rounded-3xl border border-[#e2e8e4] mb-8"></div>
          <div className="h-64 bg-white rounded-3xl border border-[#e2e8e4]"></div>
       </div>

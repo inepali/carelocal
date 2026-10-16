@@ -66,7 +66,7 @@ export default function StaffAccountPage() {
 
   if (loading) {
     return (
-      <div className="max-w-4xl animate-pulse">
+      <div className="max-w-5xl animate-pulse">
         <div className="h-40 bg-white rounded-3xl border border-[#e2e8e4] mb-8"></div>
         <div className="h-64 bg-white rounded-3xl border border-[#e2e8e4]"></div>
       </div>
@@ -76,7 +76,7 @@ export default function StaffAccountPage() {
   const balance = profile?.balance_due ? parseFloat(profile.balance_due.toString()) : 0
 
   return (
-    <div className="max-w-4xl pb-32">
+    <div className="max-w-5xl pb-32">
       {/* Toast Success Notification */}
       {paymentSuccessMessage && (
         <div className="fixed bottom-6 right-6 z-50 p-4 bg-[#157354] text-white font-bold rounded-2xl shadow-xl flex items-center gap-2 animate-bounce">

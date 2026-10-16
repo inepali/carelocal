@@ -9,16 +9,17 @@ import {
 import {
   User, Mail, Phone, Save, Loader2, Globe, Briefcase, Award,
   CalendarDays, Plus, Pencil, Trash2, CheckCircle2, AlertTriangle,
-  XCircle, FileText, ChevronDown, X, ShieldCheck, Link2, Star, Camera
+  XCircle, FileText, ChevronDown, X, ShieldCheck, Link2, Star, Camera, GraduationCap
 } from 'lucide-react'
 import { useIsRegularOnly } from '@/lib/hooks/useIsRegularOnly'
 import { useLookups } from '@/hooks/use-lookups'
+import { AcademicQualificationsTab } from '@/components/staff/AcademicQualificationsTab'
 import { StaffAvatar } from '@/components/StaffAvatar'
 import { getAvatarUploadUrl, deleteAvatar } from '@/app/actions/avatar.actions'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-type TabId = 'personal' | 'experience' | 'credentials' | 'availability' | 'reviews'
+type TabId = 'personal' | 'academic' | 'experience' | 'credentials' | 'availability' | 'reviews'
 
 const MONTHS = [
   'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'
@@ -270,7 +271,7 @@ export default function StaffProfilePage() {
 
   if (loading) {
     return (
-      <div className="animate-pulse space-y-6 max-w-3xl py-10 px-6">
+      <div className="animate-pulse space-y-6 max-w-5xl">
         <div className="h-8 w-48 bg-slate-200 rounded mb-8" />
         <div className="h-12 w-full bg-slate-100 rounded-2xl" />
         <div className="h-72 bg-white rounded-[2.5rem] border border-[#e2e8e4]" />
@@ -280,6 +281,7 @@ export default function StaffProfilePage() {
 
   const ALL_TABS: { id: TabId; label: string; Icon: any }[] = [
     { id: 'personal',      label: 'Personal Info',  Icon: User },
+    { id: 'academic',      label: 'Academic Qualifications', Icon: GraduationCap },
     { id: 'experience',    label: 'Experience',      Icon: Briefcase },
     { id: 'credentials',   label: 'Credentials',     Icon: Award },
     { id: 'availability',  label: 'Availability',    Icon: CalendarDays },
@@ -289,11 +291,11 @@ export default function StaffProfilePage() {
   const TABS = ALL_TABS.filter(tab => !(isRegularOnly && tab.id === 'availability'))
 
   return (
-    <div className="max-w-3xl mx-auto pb-24 px-4 md:px-6">
+    <div className="max-w-5xl pb-32">
       {/* Header */}
       <div className="mb-10">
-        <h1 className="text-3xl font-bold text-[#0b3828] mb-1.5 tracking-tight">My Profile</h1>
-        <p className="text-[#6b7a73] text-base">
+        <h1 className="text-4xl font-black text-[#0b3828] mb-2 tracking-tight">My Profile</h1>
+        <p className="text-[#6b7a73] text-lg font-medium">
           {isRegularOnly ? 'Manage your background and credentials.' : 'Manage your background, credentials and availability.'}
         </p>
       </div>
@@ -392,6 +394,9 @@ export default function StaffProfilePage() {
           metros={metros}
           vaultDocCount={vaultDocs.length}
         />
+      )}
+      {activeTab === 'academic' && staffId && (
+        <AcademicQualificationsTab staffId={staffId} />
       )}
       {activeTab === 'experience' && staffId && (
         <ExperienceTab staffId={staffId} supabase={supabase} />

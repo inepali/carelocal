@@ -8,6 +8,7 @@ import { useSearchParams } from 'next/navigation'
 import { deleteVaultDocument } from '@/app/actions/storage.actions'
 import { openStoredFile, uploadStoredFile, DOCUMENT_ACCEPT } from '@/lib/files'
 import { useLookups } from '@/hooks/use-lookups'
+import { ACADEMIC_CATEGORY } from '@/components/staff/AcademicQualificationsTab'
 
 export default function StaffDocumentsPage() {
   return (
@@ -145,18 +146,19 @@ function DocumentsContent() {
       .filter(value => !lookupDocTypes.some(t => t.value === value))
       .map(value => ({ value, label: value })),
   ]
-  const documentGroups = documentTypes.map((documentType) => ({
+  // Academic qualifications are managed on My Profile
+  const documentGroups = documentTypes.filter(t => t.value !== ACADEMIC_CATEGORY).map((documentType) => ({
     value: documentType.value,
     label: documentType.label,
     documents: documents.filter((document) => document.document_category === documentType.value),
   }))
 
   return (
-    <div className="max-w-4xl">
-      <div className="mb-8">
+    <div className="max-w-5xl pb-32">
+      <div className="mb-10">
         <div>
-          <h1 className="text-3xl font-extrabold text-[#0b3828] mb-1">My Documents</h1>
-          <p className="text-[#6b7a73]">Upload and manage your credentials. These will be visible to centers you work with.</p>
+          <h1 className="text-4xl font-black text-[#0b3828] mb-2 tracking-tight">My Documents</h1>
+          <p className="text-[#6b7a73] text-lg font-medium">Upload and manage your credentials. These will be visible to centers you work with.</p>
         </div>
       </div>
 
