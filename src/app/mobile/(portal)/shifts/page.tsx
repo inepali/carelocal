@@ -33,6 +33,7 @@ interface Shift {
 
 interface StaffProfile {
   id: string
+  requested_employment_class?: string | null
   user_id: string
   first_name: string
   last_name: string
@@ -138,7 +139,8 @@ export default function MobileShiftsPage() {
         .insert({
           center_id: centerId,
           staff_id: myProfile.id,
-          status: 'invited'
+          status: 'invited',
+          requested_employment_class: myProfile.requested_employment_class ?? 'substitute'
         })
 
       if (error) {

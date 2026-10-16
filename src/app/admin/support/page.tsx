@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { LifeBuoy, Loader2, CheckCircle2, MessageSquare, Clock, Building2, User } from 'lucide-react'
+import { showAlert } from '@/lib/dialog'
 
 export default function AdminSupportPage() {
   const supabase = createClient()
@@ -40,7 +41,7 @@ export default function AdminSupportPage() {
     if (!error) {
       await loadData()
     } else {
-      alert("Failed to update status: " + error.message)
+      showAlert("Failed to update status: " + error.message)
     }
     setUpdatingId(null)
   }

@@ -15,6 +15,7 @@ import {
   CheckCircle2, ExternalLink, FileText, Loader2, Lock, PenLine, Send, ShieldAlert, Trash2, Upload, X, XCircle,
   UserSquare2, HeartPulse, GraduationCap, ClipboardList,
 } from 'lucide-react'
+import { showAlert, showConfirm } from '@/lib/dialog'
 
 export interface CenterFile {
   id: string
@@ -117,7 +118,7 @@ export function ComplianceRecord({
     }, { onConflict: 'center_id,staff_id,requirement_id' })
     setSaving(false)
     if (error) {
-      alert('Failed to save: ' + error.message)
+      showAlert('Failed to save: ' + error.message)
       return
     }
     setOpenId(null)
@@ -125,7 +126,7 @@ export function ComplianceRecord({
   }
 
   function markComplete(req: CenterDocumentRequirement, record: CenterStaffDocumentStatus | null) {
-    if (!draft.completedOn) { alert('Enter the completion date'); return }
+    if (!draft.completedOn) { showAlert('Enter the completion date'); return }
     save(req, record, {
       status: 'accepted',
       completed_on: draft.completedOn,
@@ -137,12 +138,12 @@ export function ComplianceRecord({
   }
 
   function reject(req: CenterDocumentRequirement, record: CenterStaffDocumentStatus | null) {
-    if (!draft.notes.trim()) { alert('Add a note so the employee knows what to fix'); return }
+    if (!draft.notes.trim()) { showAlert('Add a note so the employee knows what to fix'); return }
     save(req, record, { status: 'rejected' })
   }
 
   function setNotApplicable(req: CenterDocumentRequirement, record: CenterStaffDocumentStatus | null, value: boolean) {
-    if (value && !draft.naReason.trim()) { alert('Add a reason, e.g. "Does not drive"'); return }
+    if (value && !draft.naReason.trim()) { showAlert('Add a reason, e.g. "Does not drive"'); return }
     save(req, record, { not_applicable: value, not_applicable_reason: value ? draft.naReason.trim() : null })
   }
 
@@ -162,16 +163,16 @@ export function ComplianceRecord({
       if (error) throw error
       onChanged()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Upload failed')
+      showAlert(err instanceof Error ? err.message : 'Upload failed')
     } finally {
       setUploading(false)
     }
   }
 
   async function removeCenterFile(id: string) {
-    if (!confirm('Delete this center file?')) return
+    if (!await showConfirm('Delete this center file?')) return
     const res = await deleteInternalDocument(id)
-    if (!res.success) alert(res.error)
+    if (!res.success) showAlert(res.error)
     onChanged()
   }
 

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { exportCenterRequirementsAsTemplate } from '@/app/actions/requirement-templates.actions'
+import { showAlert, showPrompt } from '@/lib/dialog'
 
 export default function AdminCentersPage() {
   const supabase = createClient()
@@ -71,16 +72,16 @@ export default function AdminCentersPage() {
     if (!error) {
       setCenters(prev => prev.map(c => c.id === centerId ? { ...c, trial_months: months } : c))
     } else {
-      alert('Failed to update trial months')
+      showAlert('Failed to update trial months')
     }
   }
 
   const exportChecklist = async (center: { id: string; name: string }) => {
-    const name = prompt(`Template name for ${center.name}'s document requirements:`, `${center.name} checklist`)
+    const name = await showPrompt(`Template name for ${center.name}'s document requirements:`, `${center.name} checklist`, { title: 'Export as template' })
     if (!name?.trim()) return
-    const description = prompt('Short description (optional):') ?? ''
+    const description = (await showPrompt('Short description (optional):', '', { title: 'Export as template' })) ?? ''
     const res = await exportCenterRequirementsAsTemplate(center.id, name, description)
-    alert(res.success ? `Saved "${name.trim()}" with ${res.count} requirements. Other centers can now import it from Document Requirements.` : res.error)
+    showAlert(res.success ? `Saved "${name.trim()}" with ${res.count} requirements. Other centers can now import it from Document Requirements.` : res.error)
   }
 
   if (loading) {

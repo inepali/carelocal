@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2, CreditCard, ShieldCheck, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
+import { showAlert } from '@/lib/dialog'
 
 export default function SubscriptionTab() {
   const supabase = createClient()
@@ -56,11 +57,11 @@ export default function SubscriptionTab() {
       if (data.url) {
         window.location.href = data.url
       } else {
-        alert(data.error || 'Failed to open subscription portal')
+        showAlert(data.error || 'Failed to open subscription portal')
       }
     } catch (err) {
       console.error(err)
-      alert('An error occurred while opening the portal')
+      showAlert('An error occurred while opening the portal')
     } finally {
       setPortalLoading(false)
     }

@@ -22,6 +22,7 @@ import {
    EMPLOYMENT_CLASS_LABELS
 } from '@/lib/types'
 import { CenterChecklist } from '@/components/staff/CenterChecklist'
+import { showAlert } from '@/lib/dialog'
 
 export default function MyCentersPage() {
    return (
@@ -40,6 +41,8 @@ function CentersContent() {
    const [searchResults, setSearchResults] = useState<Center[]>([])
    const [searching, setSearching] = useState(false)
    const [staffProfile, setStaffProfile] = useState<any>(null)
+   // Class requested per center when applying (the center confirms it on approval)
+   const [applyClass, setApplyClass] = useState<Record<string, EmploymentClass>>({})
 
    // Checklist State
    const [activeCenterId, setActiveCenterId] = useState<string | null>(null)
@@ -156,11 +159,12 @@ function CentersContent() {
          .insert({
             center_id: centerId,
             staff_id: staffProfile.id,
-            status: 'applying'
+            status: 'applying',
+            requested_employment_class: applyClass[centerId] ?? staffProfile.requested_employment_class ?? 'substitute'
          })
 
       if (error) {
-         alert(error.message)
+         showAlert(error.message)
       } else {
          setSearchQuery('')
          setSearchResults([])
@@ -238,12 +242,24 @@ function CentersContent() {
                               {isAlreadyMember ? (
                                  <span className="text-[10px] font-black uppercase tracking-widest text-[#a8b5ae] px-4 py-2 bg-[#f8faf9] rounded-lg">Already Member</span>
                               ) : (
+                                 <div className="flex items-center gap-3">
+                                 <select
+                                    value={applyClass[center.id] ?? staffProfile?.requested_employment_class ?? 'substitute'}
+                                    onChange={(e) => setApplyClass(prev => ({ ...prev, [center.id]: e.target.value as EmploymentClass }))}
+                                    aria-label="Job classification"
+                                    className="px-3 py-3 rounded-xl border-2 border-[#f0f4f2] bg-white text-xs font-black uppercase tracking-widest text-[#157354] focus:outline-none focus:border-[#157354]"
+                                 >
+                                    {(Object.entries(EMPLOYMENT_CLASS_LABELS) as [EmploymentClass, string][]).map(([value, label]) => (
+                                       <option key={value} value={value}>{label}</option>
+                                    ))}
+                                 </select>
                                  <button
                                     onClick={() => handleApply(center.id)}
                                     className="flex items-center gap-2 bg-[#edf7f3] text-[#157354] font-black text-xs uppercase tracking-widest px-5 py-3 rounded-xl hover:bg-[#157354] hover:text-white transition-all shadow-sm"
                                  >
                                     <Plus className="w-4 h-4" /> Apply to Join
                                  </button>
+                                 </div>
                               )}
                            </div>
                         )
@@ -278,9 +294,10 @@ function CentersContent() {
                                  }`}>
                                  {assoc.status}
                               </span>
-                              {assoc.employment_class && (
+                              {(assoc.status === 'active' ? assoc.employment_class : (assoc.requested_employment_class ?? assoc.employment_class)) && (
                                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.1em] border-2 bg-[#edf7f3] text-[#157354] border-[#d4ede4]">
-                                    {EMPLOYMENT_CLASS_LABELS[assoc.employment_class as EmploymentClass]}
+                                    {EMPLOYMENT_CLASS_LABELS[(assoc.status === 'active' ? assoc.employment_class : (assoc.requested_employment_class ?? assoc.employment_class)) as EmploymentClass]}
+                                    {assoc.status !== 'active' && ' (requested)'}
                                  </span>
                               )}
                               {centerRatings[assoc.center.id] && (
@@ -318,7 +335,7 @@ function CentersContent() {
                      {/* Onboarding Checklist for this center */}
                      {activeCenterId === assoc.center_id && (
                         <div className="p-8 bg-[#f8faf9] border-t-2 border-[#f0f4f2] animate-in slide-in-from-top-4 duration-500">
-                           <CenterChecklist centerId={assoc.center_id} staffId={staffProfile.id} employmentClass={assoc.employment_class} />
+                           <CenterChecklist centerId={assoc.center_id} staffId={staffProfile.id} employmentClass={(assoc.status === 'active' ? assoc.employment_class : (assoc.requested_employment_class ?? assoc.employment_class))} />
                         </div>
                      )}
                   </div>

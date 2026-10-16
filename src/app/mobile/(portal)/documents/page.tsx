@@ -22,6 +22,7 @@ import {
   X, 
   Download
 } from 'lucide-react'
+import { showAlert, showConfirm } from '@/lib/dialog'
 
 interface StaffProfile {
   id: string
@@ -176,12 +177,12 @@ function DocumentsContent() {
 
   const handleDelete = async (id: string) => {
     if (!profile) return
-    if (!confirm('Are you sure you want to delete this document from your vault?')) return
+    if (!await showConfirm('Are you sure you want to delete this document from your vault?')) return
 
     const res = await deleteVaultDocument(id)
 
     if (!res.success) {
-      alert('Delete failed: ' + res.error)
+      showAlert('Delete failed: ' + res.error)
     } else {
       setDocuments(prev => prev.filter(d => d.id !== id))
       // Reload center checklists to update linked statuses
@@ -199,7 +200,7 @@ function DocumentsContent() {
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedFile || !docCategory || !profile) {
-      alert('Please complete all form fields')
+      showAlert('Please complete all form fields')
       return
     }
 
@@ -235,7 +236,7 @@ function DocumentsContent() {
       await loadData()
     } catch (err: unknown) {
       console.error(err)
-      alert('Upload failed: ' + (err instanceof Error ? err.message : 'Server error'))
+      showAlert('Upload failed: ' + (err instanceof Error ? err.message : 'Server error'))
     } finally {
       setUploading(false)
     }
@@ -256,7 +257,7 @@ function DocumentsContent() {
       }, { onConflict: 'center_id,staff_id,requirement_id' })
 
     if (error) {
-      alert('Linking failed: ' + error.message)
+      showAlert('Linking failed: ' + error.message)
     } else {
       setLinkingReq(null)
       // Reload statuses
@@ -294,7 +295,7 @@ function DocumentsContent() {
   const handleSign = async (req: Requirement) => {
     if (!signature.trim()) return
     const { error } = await supabase.rpc('acknowledge_requirement', { p_requirement_id: req.id, p_signature: signature.trim() })
-    if (error) { alert(error.message); return }
+    if (error) { showAlert(error.message); return }
     setSigningReq(null)
     setSignature('')
     await loadData()

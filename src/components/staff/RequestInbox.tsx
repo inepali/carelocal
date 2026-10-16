@@ -8,6 +8,7 @@ import type { DocumentRequest, StaffDocument } from '@/lib/types'
 import { submitDocumentRequest } from '@/app/actions/document-requests.actions'
 import { uploadStoredFile, DOCUMENT_ACCEPT } from '@/lib/files'
 import { formatDate } from '@/lib/compliance'
+import { showAlert } from '@/lib/dialog'
 
 type Row = DocumentRequest & {
   center: { name: string; slug: string } | null
@@ -67,7 +68,7 @@ export function RequestInbox({ variant = 'page', onCountChange }: { variant?: 'p
     setBusy(true)
     const res = await submitDocumentRequest(answering.id, documentId, note)
     setBusy(false)
-    if (!res.success) { alert(res.error); return }
+    if (!res.success) { showAlert(res.error); return }
     setAnswering(null)
     load()
   }
@@ -91,7 +92,7 @@ export function RequestInbox({ variant = 'page', onCountChange }: { variant?: 'p
       await send(doc.id)
     } catch (err) {
       setBusy(false)
-      alert(err instanceof Error ? err.message : 'Upload failed')
+      showAlert(err instanceof Error ? err.message : 'Upload failed')
     }
   }
 

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
-  StaffProfile, StaffExperience, StaffCredential, StaffDocument,
+  StaffProfile, StaffExperience, StaffCredential, StaffDocument, StaffReference, MIN_STAFF_REFERENCES,
   MetroArea, AgeGroup, AGE_GROUP_LABELS
 } from '@/lib/types'
 import {
@@ -16,10 +16,11 @@ import { useLookups } from '@/hooks/use-lookups'
 import { AcademicQualificationsTab } from '@/components/staff/AcademicQualificationsTab'
 import { StaffAvatar } from '@/components/StaffAvatar'
 import { getAvatarUploadUrl, deleteAvatar } from '@/app/actions/avatar.actions'
+import { showAlert, showConfirm } from '@/lib/dialog'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-type TabId = 'personal' | 'academic' | 'experience' | 'credentials' | 'availability' | 'reviews'
+type TabId = 'personal' | 'academic' | 'experience' | 'references' | 'credentials' | 'availability' | 'reviews'
 
 const MONTHS = [
   'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'
@@ -163,7 +164,7 @@ export default function StaffProfilePage() {
   async function handleAvatarUpload(file: File) {
     if (!staffId) return
     if (file.size > 5 * 1024 * 1024) {
-      alert('Please choose an image under 5 MB.')
+      showAlert('Please choose an image under 5 MB.')
       return
     }
 
@@ -171,7 +172,7 @@ export default function StaffProfilePage() {
     try {
       const presigned = await getAvatarUploadUrl(file.name, file.type)
       if (!presigned.success || !presigned.uploadUrl || !presigned.fileKey) {
-        alert(presigned.error || 'Failed to prepare photo upload')
+        showAlert(presigned.error || 'Failed to prepare photo upload')
         return
       }
 
@@ -181,14 +182,14 @@ export default function StaffProfilePage() {
         headers: { 'Content-Type': file.type },
       })
       if (!uploadRes.ok) {
-        alert('Photo upload failed. Please try again.')
+        showAlert('Photo upload failed. Please try again.')
         return
       }
 
       const { error } = await supabase.from('staff_profiles').update({ avatar_url: presigned.fileKey }).eq('id', staffId)
       if (error) {
         await deleteAvatar(presigned.fileKey)
-        alert('Failed to save photo: ' + error.message)
+        showAlert('Failed to save photo: ' + error.message)
         return
       }
 
@@ -202,13 +203,13 @@ export default function StaffProfilePage() {
 
   async function handleAvatarRemove() {
     if (!staffId || !profile.avatar_url) return
-    if (!confirm('Remove your profile photo?')) return
+    if (!await showConfirm('Remove your profile photo?')) return
 
     setUploadingAvatar(true)
     const previousKey = profile.avatar_url
     const { error } = await supabase.from('staff_profiles').update({ avatar_url: null }).eq('id', staffId)
     if (error) {
-      alert('Failed to remove photo: ' + error.message)
+      showAlert('Failed to remove photo: ' + error.message)
     } else {
       setProfile(prev => ({ ...prev, avatar_url: undefined }))
       await deleteAvatar(previousKey)
@@ -281,11 +282,12 @@ export default function StaffProfilePage() {
 
   const ALL_TABS: { id: TabId; label: string; Icon: any }[] = [
     { id: 'personal',      label: 'Personal Info',  Icon: User },
-    { id: 'academic',      label: 'Academic Qualifications', Icon: GraduationCap },
+    { id: 'academic',      label: 'Education', Icon: GraduationCap },
     { id: 'experience',    label: 'Experience',      Icon: Briefcase },
+    { id: 'references',    label: 'References',      Icon: Link2 },
     { id: 'credentials',   label: 'Credentials',     Icon: Award },
     { id: 'availability',  label: 'Availability',    Icon: CalendarDays },
-    { id: 'reviews',       label: 'Reviews',         Icon: Star },
+    { id: 'reviews',       label: 'Care Score',      Icon: Star },
   ]
   // Regular employees don't pick up marketplace shifts, so availability doesn't apply
   const TABS = ALL_TABS.filter(tab => !(isRegularOnly && tab.id === 'availability'))
@@ -400,6 +402,9 @@ export default function StaffProfilePage() {
       )}
       {activeTab === 'experience' && staffId && (
         <ExperienceTab staffId={staffId} supabase={supabase} />
+      )}
+      {activeTab === 'references' && staffId && (
+        <ReferencesTab staffId={staffId} supabase={supabase} />
       )}
       {activeTab === 'credentials' && staffId && (
         <CredentialsTab staffId={staffId} supabase={supabase} vaultDocs={vaultDocs} />
@@ -744,6 +749,146 @@ function ExperienceTab({ staffId, supabase }: { staffId: string; supabase: any }
   )
 }
 
+// ─── References Tab ─────────────────────────────────────────────────────────
+
+type RefForm = Partial<StaffReference>
+
+function ReferencesTab({ staffId, supabase }: { staffId: string; supabase: any }) {
+  const [items, setItems]     = useState<StaffReference[]>([])
+  const [loading, setLoading] = useState(true)
+  const [form, setForm]       = useState<RefForm | null>(null)
+  const [saving, setSaving]   = useState(false)
+
+  useEffect(() => { load() }, [])
+
+  async function load() {
+    const { data } = await supabase
+      .from('staff_references')
+      .select('*')
+      .eq('staff_id', staffId)
+      .order('created_at', { ascending: true })
+    setItems(data || [])
+    setLoading(false)
+  }
+
+  const complete = !!(form?.full_name?.trim() && form?.email?.trim() && form?.phone?.trim() && form?.business?.trim() && form?.title?.trim())
+
+  async function handleSave() {
+    if (!form || !complete) return
+    setSaving(true)
+    const payload = {
+      staff_id:  staffId,
+      full_name: form.full_name!.trim(),
+      email:     form.email!.trim(),
+      phone:     form.phone!.trim(),
+      business:  form.business!.trim(),
+      title:     form.title!.trim(),
+    }
+    const { error } = form.id
+      ? await supabase.from('staff_references').update(payload).eq('id', form.id)
+      : await supabase.from('staff_references').insert(payload)
+    setSaving(false)
+    if (error) { showAlert('Failed to save reference: ' + error.message); return }
+    setForm(null)
+    load()
+  }
+
+  async function handleDelete(id: string) {
+    if (!await showConfirm('Remove this reference?')) return
+    await supabase.from('staff_references').delete().eq('id', id)
+    setItems(prev => prev.filter(i => i.id !== id))
+  }
+
+  const missing = Math.max(0, MIN_STAFF_REFERENCES - items.length)
+
+  return (
+    <ProfileSection
+      Icon={Link2}
+      title="References"
+      subtitle={`${items.length} of at least ${MIN_STAFF_REFERENCES}`}
+      action={!form && <AddButton onClick={() => setForm({})} />}
+    >
+      {!loading && missing > 0 && (
+        <div className="px-6 py-3 text-sm font-medium text-amber-800 bg-amber-50 border-b border-amber-200 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          Add {missing} more reference{missing === 1 ? '' : 's'}. Centers ask for at least {MIN_STAFF_REFERENCES} professional references.
+        </div>
+      )}
+
+      {form && (
+        <div className="p-6 space-y-4 border-b border-[#e2e8e4] bg-[#fbfcfb]">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-[#0b3828]">{form.id ? 'Edit' : 'New'} Reference</h3>
+            <button onClick={() => setForm(null)} className="text-[#a8b5ae] hover:text-[#0b3828] transition-colors"><X className="w-5 h-5" /></button>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className={LBL}>Full Name *</label>
+              <input className={FLD} value={form.full_name || ''} onChange={e => setForm({ ...form, full_name: e.target.value })} placeholder="Jane Smith" />
+            </div>
+            <div>
+              <label className={LBL}>Title *</label>
+              <input className={FLD} value={form.title || ''} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Center Director" />
+            </div>
+            <div>
+              <label className={LBL}>Business *</label>
+              <input className={FLD} value={form.business || ''} onChange={e => setForm({ ...form, business: e.target.value })} placeholder="Sunshine Childcare Center" />
+            </div>
+            <div>
+              <label className={LBL}>Email *</label>
+              <input type="email" className={FLD} value={form.email || ''} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="jane@example.com" />
+            </div>
+            <div>
+              <label className={LBL}>Phone *</label>
+              <input type="tel" className={FLD} value={form.phone || ''} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="(704) 555-0123" />
+            </div>
+          </div>
+          <FormButtons saving={saving} disabled={!complete} label="Save Reference" onSave={handleSave} onCancel={() => setForm(null)} />
+        </div>
+      )}
+
+      {loading ? (
+        <div className="p-6 animate-pulse space-y-3">
+          <div className="h-8 bg-[#f0f4f2] rounded-lg" />
+          <div className="h-8 bg-[#f0f4f2] rounded-lg" />
+        </div>
+      ) : items.length === 0 ? (
+        !form && <div className="px-6 py-6 text-sm text-[#6b7a73]">No references added yet.</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-left">
+            <thead>
+              <tr className={TH_ROW}>
+                <th scope="col" className="px-6 py-4">Name</th>
+                <th scope="col" className="px-6 py-4">Business</th>
+                <th scope="col" className="px-6 py-4">Title</th>
+                <th scope="col" className="px-6 py-4">Contact</th>
+                <th scope="col" className="px-6 py-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className={TBODY}>
+              {items.map(item => (
+                <tr key={item.id} className="hover:bg-[#fbfcfb] transition-colors align-top">
+                  <td className="px-6 py-4 text-[#1a2e25]">{item.full_name}</td>
+                  <td className="px-6 py-4">{item.business}</td>
+                  <td className="px-6 py-4">{item.title}</td>
+                  <td className="px-6 py-4 text-xs">
+                    <div>{item.email}</div>
+                    <div className="text-[#6b7a73]">{item.phone}</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <RowActions onEdit={() => setForm(item)} onDelete={() => handleDelete(item.id)} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </ProfileSection>
+  )
+}
+
 // ─── Credentials Tab ─────────────────────────────────────────────────────────
 
 type CredForm = Partial<StaffCredential>
@@ -1021,7 +1166,7 @@ function ReviewsTab({ reviews }: { reviews: any[] }) {
       {reviews.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-[2rem] border-2 border-dashed border-[#e2e8e4]">
           <Star className="w-10 h-10 text-[#a8b5ae] mx-auto mb-3" />
-          <p className="text-[#6b7a73] font-bold text-sm">No reviews yet.</p>
+          <p className="text-[#6b7a73] font-bold text-sm">No Care Score ratings yet.</p>
           <p className="text-[#a8b5ae] text-xs mt-1">Complete shifts to build your reputation!</p>
         </div>
       ) : (

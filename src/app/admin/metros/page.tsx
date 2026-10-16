@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { MetroArea } from '@/lib/types'
 import { MapPin, Plus, Edit2, Check, X, Loader2, Save } from 'lucide-react'
+import { showAlert } from '@/lib/dialog'
 
 export default function AdminMetrosPage() {
   const supabase = createClient()
@@ -49,7 +50,7 @@ export default function AdminMetrosPage() {
   }
 
   const saveMetro = async () => {
-    if (!formData.name || !formData.state_code || !formData.slug) return alert('Name, Slug, and State Code are required')
+    if (!formData.name || !formData.state_code || !formData.slug) return showAlert('Name, Slug, and State Code are required')
 
     if (isAdding) {
       const { error } = await supabase.from('metro_areas').insert([
@@ -63,7 +64,7 @@ export default function AdminMetrosPage() {
           staff_maintenance_fee: formData.staff_maintenance_fee || 0.00
         }
       ])
-      if (error) alert(error.message)
+      if (error) showAlert(error.message)
     } else if (editingId) {
       const { error } = await supabase.from('metro_areas').update({
           name: formData.name, 
@@ -74,7 +75,7 @@ export default function AdminMetrosPage() {
           is_active: formData.is_active,
           staff_maintenance_fee: formData.staff_maintenance_fee || 0.00
       }).eq('id', editingId)
-      if (error) alert(error.message)
+      if (error) showAlert(error.message)
     }
 
     cancelEdit()

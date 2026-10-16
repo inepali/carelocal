@@ -14,6 +14,7 @@ import {
 import {
    sectionsFor, COMPLIANCE_STATE_STYLE, computeCompliance, describeDue, describeRenewal, formatDate,
 } from '@/lib/compliance'
+import { showAlert } from '@/lib/dialog'
 
 /**
  * A staff member's checklist for one center: what applies to them, when it is due,
@@ -87,7 +88,7 @@ export function CenterChecklist({
       setBusy(false)
 
       if (error) {
-         alert('Linking failed: ' + error.message)
+         showAlert('Linking failed: ' + error.message)
          return
       }
       setLinkingReq(null)
@@ -97,7 +98,7 @@ export function CenterChecklist({
    async function handleUnlink(statusId: string) {
       const { error } = await createClient().from('center_staff_document_status').delete().eq('id', statusId)
       if (error) {
-         alert(error.message)
+         showAlert(error.message)
          return
       }
       loadChecklist()
@@ -109,7 +110,7 @@ export function CenterChecklist({
       const { error } = await createClient().rpc('acknowledge_requirement', { p_requirement_id: req.id, p_signature: signature.trim() })
       setBusy(false)
       if (error) {
-         alert(error.message)
+         showAlert(error.message)
          return
       }
       setSigningReq(null)

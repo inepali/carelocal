@@ -18,6 +18,7 @@ import {
   Plus, Edit2, Trash2, Loader2, ClipboardCheck, X, CheckCircle2, History,
   AlertTriangle, Clock, CalendarCheck, Search, Paperclip, FileText, Upload,
 } from 'lucide-react'
+import { showAlert, showConfirm } from '@/lib/dialog'
 
 const OTHER = '__other__'
 const INTERVAL_UNITS: InspectionIntervalUnit[] = ['days', 'weeks', 'months', 'years']
@@ -307,7 +308,7 @@ export default function InspectionsPage() {
 
     if (editFiles.length > 0) {
       const failures = await attachReports(inspectionId, logId, editFiles)
-      if (failures.length) alert('The inspection was saved, but some reports could not be attached:\n' + failures.join('\n') + '\n\nYou can attach them from History.')
+      if (failures.length) showAlert('The inspection was saved, but some reports could not be attached:\n' + failures.join('\n') + '\n\nYou can attach them from History.')
     }
 
     setSaving(false)
@@ -317,11 +318,11 @@ export default function InspectionsPage() {
   }
 
   async function handleDelete(inspection: Inspection) {
-    if (!confirm(`Delete "${inspection.inspection_type}"${inspection.title ? ` (${inspection.title})` : ''} and its history? This can't be undone.`)) return
+    if (!await showConfirm(`Delete "${inspection.inspection_type}"${inspection.title ? ` (${inspection.title})` : ''} and its history? This can't be undone.`)) return
     const { error: err } = await supabase.from('center_inspections').delete().eq('id', inspection.id)
     if (err) {
       // Reports are kept as records: the database refuses to delete an inspection that has them
-      alert(err.code === '23503'
+      showAlert(err.code === '23503'
         ? 'This inspection has attached reports, which are kept as records. Delete the reports in History first, or keep the inspection.'
         : 'Failed to delete inspection: ' + err.message)
     } else loadData()
@@ -360,15 +361,15 @@ export default function InspectionsPage() {
     setUploadingFor(logId ?? 'other')
     const failures = await attachReports(historyFor.id, logId, Array.from(files))
     setUploadingFor(null)
-    if (failures.length) alert('Some files could not be attached:\n' + failures.join('\n'))
+    if (failures.length) showAlert('Some files could not be attached:\n' + failures.join('\n'))
     openHistory(historyFor)
     loadData()
   }
 
   async function removeReport(file: InspectionFile) {
-    if (!confirm(`Delete "${file.file_name}"? The file will be permanently removed.`)) return
+    if (!await showConfirm(`Delete "${file.file_name}"? The file will be permanently removed.`)) return
     const res = await deleteInspectionFile(file.id)
-    if (!res.success) { alert(res.error); return }
+    if (!res.success) { showAlert(res.error); return }
     if (historyFor) openHistory(historyFor)
     loadData()
   }
@@ -429,7 +430,7 @@ export default function InspectionsPage() {
     // Attach the inspection report(s) to this history entry
     if (recordFiles.length > 0) {
       const failures = await attachReports(recording.id, log.id, recordFiles)
-      if (failures.length) alert('The inspection was recorded, but some reports could not be attached:\n' + failures.join('\n') + '\n\nYou can attach them from History.')
+      if (failures.length) showAlert('The inspection was recorded, but some reports could not be attached:\n' + failures.join('\n') + '\n\nYou can attach them from History.')
     }
 
     // Only advance the inspection if this is the most recent one (back-filling older history shouldn't move the due date)
@@ -477,9 +478,9 @@ export default function InspectionsPage() {
 
   async function deleteLog(log: InspectionLog) {
     const attached = historyFiles.filter(f => f.log_id === log.id).length
-    if (!confirm(`Remove the ${formatDate(log.performed_on)} entry from history? The inspection's due date won't change.${attached ? ` Its ${attached} attached report${attached === 1 ? '' : 's'} will be kept under "Other reports".` : ''}`)) return
+    if (!await showConfirm(`Remove the ${formatDate(log.performed_on)} entry from history? The inspection's due date won't change.${attached ? ` Its ${attached} attached report${attached === 1 ? '' : 's'} will be kept under "Other reports".` : ''}`)) return
     const { error: err } = await supabase.from('center_inspection_logs').delete().eq('id', log.id)
-    if (err) alert('Failed to remove entry: ' + err.message)
+    if (err) showAlert('Failed to remove entry: ' + err.message)
     else if (historyFor) openHistory(historyFor)
   }
 

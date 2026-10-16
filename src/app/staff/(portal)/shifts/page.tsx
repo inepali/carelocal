@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import { payStaffBalance } from '@/app/actions/staff-billing.actions'
 import { useLookups } from '@/hooks/use-lookups'
 import { lookupLabel } from '@/lib/lookups'
+import { showAlert } from '@/lib/dialog'
 
 export default function StaffShiftsPage() {
   const { data: roleLookups } = useLookups('Role')
@@ -133,11 +134,12 @@ export default function StaffShiftsPage() {
         .insert({
           center_id: centerId,
           staff_id: myProfile.id,
-          status: 'invited'
+          status: 'invited',
+          requested_employment_class: myProfile.requested_employment_class ?? 'substitute'
         })
 
       if (error) {
-        alert("Failed to start onboarding: " + error.message)
+        showAlert("Failed to start onboarding: " + error.message)
         setJoiningCenterId(null)
         return
       }
@@ -156,7 +158,7 @@ export default function StaffShiftsPage() {
       claimed_at: new Date().toISOString(),
     })
     if (error) {
-      alert('Failed to express interest: ' + error.message)
+      showAlert('Failed to express interest: ' + error.message)
     } else {
       setInterestedShiftIds(prev => new Set([...prev, shiftId]))
     }
@@ -187,7 +189,7 @@ export default function StaffShiftsPage() {
         })
 
     if (error) {
-      alert('Failed to claim shift: ' + error.message)
+      showAlert('Failed to claim shift: ' + error.message)
     } else {
       setClaimedShiftIds(prev => new Set([...prev, shiftId]))
       setInterestedShiftIds(prev => { const s = new Set(prev); s.delete(shiftId); return s })
@@ -201,7 +203,7 @@ export default function StaffShiftsPage() {
     try {
       const result = await payStaffBalance(myProfile.id)
       if (result.error) {
-        alert('Payment failed: ' + result.error)
+        showAlert('Payment failed: ' + result.error)
       } else {
         setMyProfile((prev: any) => ({ ...prev, balance_due: 0.00 }))
         setPaymentSuccessMessage('Your balance has been successfully cleared! You can now claim shifts.')
@@ -209,7 +211,7 @@ export default function StaffShiftsPage() {
         setIsPaymentModalOpen(false)
       }
     } catch (err: any) {
-      alert('An error occurred during payment processing: ' + err.message)
+      showAlert('An error occurred during payment processing: ' + err.message)
     } finally {
       setIsProcessingPayment(false)
     }

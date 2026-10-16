@@ -9,6 +9,7 @@ import { deleteVaultDocument } from '@/app/actions/storage.actions'
 import { openStoredFile, uploadStoredFile, DOCUMENT_ACCEPT } from '@/lib/files'
 import { useLookups } from '@/hooks/use-lookups'
 import { ACADEMIC_CATEGORY } from '@/components/staff/AcademicQualificationsTab'
+import { showAlert, showConfirm } from '@/lib/dialog'
 
 export default function StaffDocumentsPage() {
   return (
@@ -72,7 +73,7 @@ function DocumentsContent() {
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault()
     if (!selectedFile) {
-      alert('Please select a file first')
+      showAlert('Please select a file first')
       return
     }
 
@@ -112,24 +113,24 @@ function DocumentsContent() {
         loadDocuments()
       } else {
         console.error('Database save error:', error)
-        alert('Failed to save document info')
+        showAlert('Failed to save document info')
       }
     } catch (err) {
       console.error('Upload error:', err)
-      alert(err instanceof Error ? err.message : 'File upload failed')
+      showAlert(err instanceof Error ? err.message : 'File upload failed')
     } finally {
       setUploading(false)
     }
   }
 
   async function deleteDoc(id: string) {
-    if (!confirm('Are you sure you want to delete this document?')) return
+    if (!await showConfirm('Are you sure you want to delete this document?')) return
 
     const res = await deleteVaultDocument(id)
     if (res.success) {
       setDocuments(documents.filter(d => d.id !== id))
     } else {
-      alert(res.error)
+      showAlert(res.error)
     }
   }
 

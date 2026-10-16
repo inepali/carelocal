@@ -13,6 +13,7 @@ import {
 import Link from 'next/link'
 import { useLookups } from '@/hooks/use-lookups'
 import { useCenterContext } from '../../context'
+import { showAlert } from '@/lib/dialog'
 
 export default function ShiftDetailPage() {
   const { staffTerm, workAreaTerm } = useCenterContext()
@@ -136,7 +137,7 @@ export default function ShiftDetailPage() {
       setIsEditing(false)
       loadShiftData()
     } catch (err: any) {
-      alert("Failed to update: " + err.message)
+      showAlert("Failed to update: " + err.message)
     } finally {
       setSaving(false)
     }
@@ -161,7 +162,7 @@ export default function ShiftDetailPage() {
 
       loadShiftData()
     } catch (err: any) {
-      alert("Action failed: " + err.message)
+      showAlert("Action failed: " + err.message)
     }
   }
 

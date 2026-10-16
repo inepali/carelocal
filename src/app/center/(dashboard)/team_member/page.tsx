@@ -10,6 +10,7 @@ import { useCenterContext } from '../context'
 import { StaffAvatar } from '@/components/StaffAvatar'
 import { useLookups } from '@/hooks/use-lookups'
 import { lookupLabel } from '@/lib/lookups'
+import { showAlert } from '@/lib/dialog'
 
 export default function StaffPoolPage() {
   const { staffTerm } = useCenterContext()
@@ -59,6 +60,7 @@ export default function StaffPoolPage() {
         .select(`
           status,
           employment_class,
+          requested_employment_class,
           added_at,
           staff_profiles (
              id,
@@ -104,7 +106,7 @@ export default function StaffPoolPage() {
       })
 
     if (error) {
-      alert("Failed to invite staff: " + error.message)
+      showAlert("Failed to invite staff: " + error.message)
     } else {
       const profile = nearbyStaff.find(s => s.id === staffId)
       if (profile) {
@@ -150,7 +152,7 @@ export default function StaffPoolPage() {
 
   // Filter staff by status and search
   const myPool = staff.filter(s => s.status === 'active')
-  const onboardingRequests = staff.filter(s => s.status === 'invited')
+  const onboardingRequests = staff.filter(s => s.status === 'invited' || s.status === 'applying')
 
   const filterList = (list: any[]) => {
       const searchStr = searchTerm.toLowerCase()
@@ -292,18 +294,18 @@ export default function StaffPoolPage() {
                                 <div className="inline-flex items-center px-3 py-1 bg-[#f8faf9] text-[#3d5a4f] rounded-lg text-xs font-black uppercase tracking-widest border border-[#e2e8e4]">
                                    {lookupLabel(roleLookups, profile.staff_type)}
                                 </div>
-                                {item.employment_class && (
+                                {(item.status === 'active' ? item.employment_class : (item.requested_employment_class ?? item.employment_class)) && (
                                   <div className={`inline-flex items-center ml-2 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border ${
-                                    item.employment_class === 'regular' ? 'bg-[#edf7f3] text-[#157354] border-[#d4ede4]' : 'bg-white text-[#6b7a73] border-[#e2e8e4]'
+                                    (item.status === 'active' ? item.employment_class : (item.requested_employment_class ?? item.employment_class)) === 'regular' ? 'bg-[#edf7f3] text-[#157354] border-[#d4ede4]' : 'bg-white text-[#6b7a73] border-[#e2e8e4]'
                                   }`}>
-                                     {EMPLOYMENT_CLASS_LABELS[item.employment_class as EmploymentClass]}
+                                     {EMPLOYMENT_CLASS_LABELS[(item.status === 'active' ? item.employment_class : (item.requested_employment_class ?? item.employment_class)) as EmploymentClass]}{item.status !== 'active' && ' (requested)'}
                                   </div>
                                 )}
                             </td>
                             <td className="px-8 py-6">
-                                {status === 'invited' ? (
+                                {status === 'invited' || status === 'applying' ? (
                                   <div className="flex items-center gap-2 text-amber-600 font-black text-xs uppercase tracking-widest">
-                                     <Clock className="w-4 h-4" /> Pending Review
+                                     <Clock className="w-4 h-4" /> {status === 'applying' ? 'Applied · Pending Review' : 'Pending Review'}
                                   </div>
                                 ) : status === 'active' ? (
                                   <div className="flex items-center gap-2 text-[#16a34a] font-black text-xs uppercase tracking-widest">

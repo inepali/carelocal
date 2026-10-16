@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Edit2, Trash2, Loader2, X, ArrowUp, ArrowDown, type LucideIcon } from 'lucide-react'
+import { showAlert, showConfirm } from '@/lib/dialog'
 
 export type AboutField = {
   key: string
@@ -124,19 +125,19 @@ export default function AboutListEditor<T extends AboutRow>({
       setIsModalOpen(false)
       loadData()
     } else {
-      alert(`Failed to save ${itemLabel.toLowerCase()}: ${error.message}`)
+      showAlert(`Failed to save ${itemLabel.toLowerCase()}: ${error.message}`)
     }
     setSaving(false)
   }
 
   async function handleDelete(id: string) {
-    if (!confirm(`Are you sure you want to delete this ${itemLabel.toLowerCase()}?`)) return
+    if (!await showConfirm(`Are you sure you want to delete this ${itemLabel.toLowerCase()}?`)) return
 
     const { error } = await supabase.from(table).delete().eq('id', id)
     if (!error) {
       loadData()
     } else {
-      alert(`Failed to delete ${itemLabel.toLowerCase()}: ${error.message}`)
+      showAlert(`Failed to delete ${itemLabel.toLowerCase()}: ${error.message}`)
     }
   }
 
@@ -156,7 +157,7 @@ export default function AboutListEditor<T extends AboutRow>({
           : supabase.from(table).update({ sort_order: i }).eq('id', item.id)
       )
     )
-    if (results.some(r => r.error)) alert(`Failed to reorder ${itemLabel.toLowerCase()} list.`)
+    if (results.some(r => r.error)) showAlert(`Failed to reorder ${itemLabel.toLowerCase()} list.`)
     loadData()
   }
 

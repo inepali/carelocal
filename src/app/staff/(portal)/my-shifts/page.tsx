@@ -10,6 +10,7 @@ import { submitReview } from '@/app/actions/reviews.actions'
 import { ReviewModal } from '@/components/ReviewModal'
 import { useLookups } from '@/hooks/use-lookups'
 import { lookupLabel } from '@/lib/lookups'
+import { showAlert } from '@/lib/dialog'
 
 export default function MyShiftsPage() {
   const { data: roleLookups } = useLookups('Role')
@@ -116,11 +117,12 @@ export default function MyShiftsPage() {
         .insert({
           center_id: centerId,
           staff_id: myProfile.id,
-          status: 'invited'
+          status: 'invited',
+          requested_employment_class: myProfile.requested_employment_class ?? 'substitute'
         })
 
       if (error) {
-        alert("Failed to start onboarding: " + error.message)
+        showAlert("Failed to start onboarding: " + error.message)
         setJoiningCenterId(null)
         return
       }
@@ -139,7 +141,7 @@ export default function MyShiftsPage() {
       claimed_at: new Date().toISOString(),
     })
     if (error) {
-      alert('Failed to express interest: ' + error.message)
+      showAlert('Failed to express interest: ' + error.message)
     } else {
       setInterestedShiftIds(prev => new Set([...prev, shiftId]))
     }
@@ -156,7 +158,7 @@ export default function MyShiftsPage() {
       .eq('staff_id', myProfile.id)
 
     if (error) {
-      alert('Failed to withdraw claim: ' + error.message)
+      showAlert('Failed to withdraw claim: ' + error.message)
     } else {
       setClaimedShiftIds(prev => { const s = new Set(prev); s.delete(shiftId); return s })
       setInterestedShiftIds(prev => new Set([...prev, shiftId]))
@@ -188,7 +190,7 @@ export default function MyShiftsPage() {
         })
 
     if (error) {
-      alert('Failed to claim shift: ' + error.message)
+      showAlert('Failed to claim shift: ' + error.message)
     } else {
       setClaimedShiftIds(prev => new Set([...prev, shiftId]))
       setInterestedShiftIds(prev => { const s = new Set(prev); s.delete(shiftId); return s })

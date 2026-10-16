@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff, ArrowRight, Loader2, Building2, User } from 'lucide-react'
 import { getDomainConfig, getDomainKey, type DomainKey } from '@/lib/domain-config'
+import { EMPLOYMENT_CLASS_LABELS, type EmploymentClass } from '@/lib/types'
 
 function RegisterForm() {
   const router = useRouter()
@@ -47,8 +48,24 @@ function RegisterForm() {
   const [lastName, setLastName] = useState('')
   const [city, setCity] = useState('')
   const [zip, setZip] = useState('')
+  const [employmentClass, setEmploymentClass] = useState<EmploymentClass | ''>('')
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [showTermsModal, setShowTermsModal] = useState(false)
+
+  // Metro area (centers and staff)
+  const [metros, setMetros] = useState<{ id: string; name: string; state_code: string }[]>([])
+  const [metroId, setMetroId] = useState('')
+
+  useEffect(() => {
+    supabase.rpc('list_active_metros').then(({ data }) => {
+      const list = data ?? []
+      setMetros(list)
+      // Charlotte is the default (the launch market); visitors can pick another
+      const charlotte = list.find((m: { name: string }) => /charlotte/i.test(m.name))
+      if (charlotte) setMetroId(current => current || charlotte.id)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
@@ -84,6 +101,8 @@ function RegisterForm() {
           email,
           city,
           zip,
+          metro_area_id: metroId,
+          requested_employment_class: employmentClass || null,
           staff_type: config.onboarding.defaultStaffRole, // Default based on active vertical config!
           is_active: true,
           domain_key: domainKey
@@ -123,6 +142,7 @@ function RegisterForm() {
           email,
           phone,
           director_name: directorName,
+          metro_area_id: metroId,
           domain_key: domainKey,
           staff_term: config.staffTerm,
           work_area_term: config.workAreaTerm
@@ -287,6 +307,14 @@ function RegisterForm() {
                   </div>
                 </div>
 
+                <div>
+                  <label htmlFor="metro" className="block text-sm font-medium text-[#1a2e25] mb-1.5">Metro Area</label>
+                  <select id="metro" required value={metroId} onChange={(e) => setMetroId(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-[#1a2e25]">
+                    <option value="" disabled>Select your metro area…</option>
+                    {metros.map(m => <option key={m.id} value={m.id}>{m.name}, {m.state_code}</option>)}
+                  </select>
+                </div>
+
                 <button
                   type="submit"
                   className="w-full flex items-center justify-center gap-2 bg-brand-600 text-white font-semibold py-3 rounded-xl hover:bg-brand-800 transition-colors shadow-sm"
@@ -339,6 +367,25 @@ function RegisterForm() {
                           className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-[#1a2e25]"
                         />
                       </div>
+                    </div>
+                    <div>
+                      <label htmlFor="metro" className="block text-sm font-medium text-[#1a2e25] mb-1.5">Metro Area</label>
+                      <select id="metro" required value={metroId} onChange={(e) => setMetroId(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-[#1a2e25]">
+                        <option value="" disabled>Select your metro area…</option>
+                        {metros.map(m => <option key={m.id} value={m.id}>{m.name}, {m.state_code}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <span className="block text-sm font-medium text-[#1a2e25] mb-1.5">Job Classification</span>
+                      <div className="grid grid-cols-2 gap-3">
+                        {(Object.entries(EMPLOYMENT_CLASS_LABELS) as [EmploymentClass, string][]).map(([value, label]) => (
+                          <label key={value} className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 cursor-pointer transition-all text-sm font-medium ${employmentClass === value ? 'border-brand-600 bg-brand-50 text-brand-900' : 'border-[#e2e8e4] bg-white text-[#6b7a73] hover:border-brand-600/50'}`}>
+                            <input type="radio" name="employmentClass" required value={value} checked={employmentClass === value} onChange={() => setEmploymentClass(value)} className="accent-brand-600" />
+                            {label}
+                          </label>
+                        ))}
+                      </div>
+                      <p className="text-xs text-[#6b7a73] mt-2">Your center confirms your classification when it adds you to its team.</p>
                     </div>
                   </>
                 )}

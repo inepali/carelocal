@@ -8,6 +8,7 @@ import { EMPLOYMENT_CLASS_LABELS, type EmploymentClass, type RequirementSection 
 import { sectionsFor, COMPLIANCE_STATE_STYLE, formatDate, type ComplianceState } from '@/lib/compliance'
 import { loadCenterCompliance, countStates, type CenterCompliance } from '@/lib/compliance-data'
 import { RequestDocumentsDialog } from '@/components/center/RequestDocumentsDialog'
+import { showAlert } from '@/lib/dialog'
 
 const CELL: Record<ComplianceState, string> = {
   current: 'bg-emerald-500',
@@ -180,7 +181,7 @@ export default function CompliancePage() {
           onClose={() => setRequestFor(null)}
           onCreated={count => {
             setRequestFor(null)
-            alert(count > 0 ? `Sent ${count} request${count === 1 ? '' : 's'}.` : 'Everyone selected already has an open request for this item.')
+            showAlert(count > 0 ? `Sent ${count} request${count === 1 ? '' : 's'}.` : 'Everyone selected already has an open request for this item.')
           }}
         />
       )}

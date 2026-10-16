@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Star, Loader2, X, AlertTriangle } from 'lucide-react'
+import { showAlert } from '@/lib/dialog'
 
 interface ReviewModalProps {
   isOpen: boolean
@@ -34,7 +35,7 @@ export function ReviewModal({ isOpen, onClose, onSubmit, reviewerType, title }: 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (rating === 0) {
-      alert('Please provide a star rating.')
+      showAlert('Please provide a star rating.')
       return
     }
 
@@ -56,7 +57,7 @@ export function ReviewModal({ isOpen, onClose, onSubmit, reviewerType, title }: 
       setPunctual(true)
       setDoNotReturn(false)
     } catch (error) {
-      alert('Failed to submit review.')
+      showAlert('Failed to submit review.')
     } finally {
       setSubmitting(false)
     }

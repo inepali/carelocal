@@ -6,6 +6,7 @@ import type { StaffDocument } from '@/lib/types'
 import { GraduationCap, Plus, Trash2, Eye, Upload, CheckCircle2, Loader2, AlertCircle, X } from 'lucide-react'
 import { deleteVaultDocument } from '@/app/actions/storage.actions'
 import { openStoredFile, uploadStoredFile, DOCUMENT_ACCEPT } from '@/lib/files'
+import { showAlert, showConfirm } from '@/lib/dialog'
 
 export const ACADEMIC_CATEGORY = 'academic_qualification'
 
@@ -40,7 +41,7 @@ export function AcademicQualificationsTab({ staffId }: { staffId: string }) {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
-    if (!file) { alert('Please select a file first'); return }
+    if (!file) { showAlert('Please select a file first'); return }
     setSaving(true)
     try {
       const { fileKey, bucketName } = await uploadStoredFile('vault', file)
@@ -54,21 +55,21 @@ export function AcademicQualificationsTab({ staffId }: { staffId: string }) {
         bucket_name: bucketName,
         file_name: file.name,
       })
-      if (error) { alert('Failed to save document info'); return }
+      if (error) { showAlert('Failed to save document info'); return }
       closeForm()
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'File upload failed')
+      showAlert(err instanceof Error ? err.message : 'File upload failed')
     } finally {
       setSaving(false)
     }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Are you sure you want to delete this document?')) return
+    if (!await showConfirm('Are you sure you want to delete this document?')) return
     const res = await deleteVaultDocument(id)
     if (res.success) setDocs(prev => prev.filter(d => d.id !== id))
-    else alert(res.error)
+    else showAlert(res.error)
   }
 
   if (loading) return <div className="h-40 animate-pulse rounded-2xl border border-[#e2e8e4] bg-white" />
@@ -77,7 +78,7 @@ export function AcademicQualificationsTab({ staffId }: { staffId: string }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="flex items-center gap-2 text-lg font-bold text-[#1a2e25]"><GraduationCap className="h-5 w-5 text-[#157354]" /> Academic Qualifications</h2>
+          <h2 className="flex items-center gap-2 text-lg font-bold text-[#1a2e25]"><GraduationCap className="h-5 w-5 text-[#157354]" /> Education</h2>
           <p className="text-xs text-[#6b7a73]">Degrees, diplomas and transcripts. Visible to centers you work with.</p>
         </div>
         <button type="button" onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 rounded-xl bg-[#157354] px-4 py-2 text-xs font-bold text-white hover:bg-[#0f4a36]">
@@ -89,7 +90,7 @@ export function AcademicQualificationsTab({ staffId }: { staffId: string }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0b3828]/40 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="academic-title">
           <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[#e2e8e4] bg-white p-6 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
-              <h3 id="academic-title" className="text-lg font-bold text-[#1a2e25]">Add Academic Qualification</h3>
+              <h3 id="academic-title" className="text-lg font-bold text-[#1a2e25]">Add Education</h3>
               <button type="button" onClick={closeForm} className="rounded-lg p-1.5 text-[#6b7a73] hover:bg-[#f8faf9]" aria-label="Close"><X className="h-4 w-4" /></button>
             </div>
             <form onSubmit={handleSave} className="space-y-4">

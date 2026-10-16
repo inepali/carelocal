@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   StaffProfile, CenterDocumentRequirement, StaffDocument,
   CenterStaffDocumentStatus,
-  StaffExperience, StaffCredential,
+  StaffExperience, StaffCredential, StaffReference, MIN_STAFF_REFERENCES,
   AGE_GROUP_LABELS, AgeGroup,
   EmploymentClass, EMPLOYMENT_CLASS_LABELS, appliesToEmploymentClass, DocumentRequest
 } from '@/lib/types'
@@ -13,7 +13,7 @@ import {
   ArrowLeft, CheckCircle2, XCircle, Clock, FileText,
   MessageSquare, Loader2, ShieldCheck, User, Briefcase,
   Award, CalendarDays, MapPin, Phone, Mail, CreditCard,
-  AlertTriangle, Star
+  AlertTriangle, Star, GraduationCap, Eye
 } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
@@ -22,8 +22,10 @@ import { StaffAvatar } from '@/components/StaffAvatar'
 import { ComplianceRecord } from './_components/ComplianceRecord'
 import { RequestDocumentsDialog } from '@/components/center/RequestDocumentsDialog'
 import { computeCompliance } from '@/lib/compliance'
+import { openStoredFile } from '@/lib/files'
 import { useLookups } from '@/hooks/use-lookups'
 import { lookupLabel } from '@/lib/lookups'
+import { showAlert, showConfirm } from '@/lib/dialog'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -54,7 +56,7 @@ const DAYS_MAP: Record<string, string> = {
 }
 
 
-type TabId = 'overview' | 'experience' | 'credentials' | 'availability' | 'documents'
+type TabId = 'overview' | 'education' | 'experience' | 'references' | 'credentials' | 'availability' | 'documents' | 'carescore'
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
@@ -71,10 +73,14 @@ export default function StaffReviewPage() {
   const [uploads, setUploads]         = useState<StaffDocument[]>([])
   const [statuses, setStatuses]       = useState<CenterStaffDocumentStatus[]>([])
   const [experiences, setExperiences] = useState<StaffExperience[]>([])
+  const [references, setReferences] = useState<StaffReference[]>([])
   const [credentials, setCredentials] = useState<StaffCredential[]>([])
   const [centerId, setCenterId]       = useState<string | null>(null)
   const [activeTab, setActiveTab]     = useState<TabId>('overview')
   const [showActivationModal, setShowActivationModal] = useState(false)
+  const [memberStatus, setMemberStatus] = useState<string | null>(null)
+  const [requestedClass, setRequestedClass] = useState<EmploymentClass | null>(null)
+  const [approveClass, setApproveClass] = useState<EmploymentClass>('substitute')
   const [activating, setActivating]   = useState(false)
   const [reviews, setReviews]         = useState<any[]>([])
   const [internalDocs, setInternalDocs] = useState<any[]>([])
@@ -121,12 +127,15 @@ export default function StaffReviewPage() {
       // 2. Employment class at this center + requirements that apply to it
       const { data: membership } = await supabase
         .from('center_staff')
-        .select('employment_class, employment_start_date')
+        .select('status, employment_class, employment_start_date, requested_employment_class')
         .eq('center_id', admin.center_id)
         .eq('staff_id', staffId)
         .maybeSingle()
       const memberClass: EmploymentClass = membership?.employment_class || 'substitute'
       setEmploymentClass(memberClass)
+      setMemberStatus(membership?.status ?? null)
+      setRequestedClass((membership?.requested_employment_class as EmploymentClass | null) ?? staffProfile.requested_employment_class ?? null)
+      setApproveClass((membership?.requested_employment_class as EmploymentClass | null) ?? memberClass)
       setStartDate(membership?.employment_start_date ?? '')
 
       const { data: reqs } = await supabase
@@ -166,6 +175,13 @@ export default function StaffReviewPage() {
         .eq('staff_id', staffId)
         .order('sort_order', { ascending: true })
       setExperiences(exp || [])
+
+      const { data: refs } = await supabase
+        .from('staff_references')
+        .select('*')
+        .eq('staff_id', staffId)
+        .order('created_at', { ascending: true })
+      setReferences(refs || [])
 
       // 6. Credentials (with linked docs)
       const { data: creds } = await supabase
@@ -209,16 +225,31 @@ export default function StaffReviewPage() {
     setLoading(false)
   }
 
+  // Applicant flow: applying -> (start onboarding) invited -> (approve) active
   async function handleActivateStaff() {
     setActivating(true)
     const { data: { user } } = await supabase.auth.getUser()
     const { data: admin } = await supabase.from('center_admins').select('center_id').eq('user_id', user!.id).single()
-    const { error } = await supabase.from('center_staff').update({ status: 'active', added_at: new Date().toISOString() })
+    const starting = memberStatus === 'applying'
+    const { error } = await supabase.from('center_staff')
+      .update(starting
+        ? { status: 'invited', employment_class: approveClass }
+        : { status: 'active', employment_class: approveClass, added_at: new Date().toISOString() })
       .eq('center_id', admin!.center_id).eq('staff_id', staffId)
     setActivating(false)
     setShowActivationModal(false)
     if (!error) { loadData() }
-    else alert('Failed to approve: ' + error.message)
+    else showAlert((starting ? 'Failed to start onboarding: ' : 'Failed to approve: ') + error.message)
+  }
+
+  async function handleDeclineApplication() {
+    if (!await showConfirm('Decline this application? They will no longer appear in your onboarding list.')) return
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data: admin } = await supabase.from('center_admins').select('center_id').eq('user_id', user!.id).single()
+    const { error } = await supabase.from('center_staff').update({ status: 'removed' })
+      .eq('center_id', admin!.center_id).eq('staff_id', staffId)
+    if (error) showAlert('Failed to decline: ' + error.message)
+    else window.location.href = '/center/team_member'
   }
 
   async function handleChangeEmploymentClass(next: EmploymentClass) {
@@ -226,14 +257,14 @@ export default function StaffReviewPage() {
     const message = next === 'regular'
       ? `Mark as Regular employee? They will no longer see, claim, or be notified about open shifts at this center, any pending shift requests here will be withdrawn, and their document checklist will switch to Regular requirements.`
       : `Mark as Substitute? They will see and be notified about open shifts at this center again, and their document checklist will switch to Substitute requirements.`
-    if (!confirm(message)) return
+    if (!await showConfirm(message)) return
 
     setSavingClass(true)
     const { error } = await supabase.from('center_staff').update({ employment_class: next })
       .eq('center_id', centerId).eq('staff_id', staffId)
     setSavingClass(false)
     if (!error) { loadData() }
-    else alert('Failed to update employee class: ' + error.message)
+    else showAlert('Failed to update employee class: ' + error.message)
   }
 
   async function handleToggleAdmin(makeAdmin: boolean) {
@@ -242,12 +273,12 @@ export default function StaffReviewPage() {
     const message = makeAdmin
       ? `Make ${name} an Admin? They will be able to manage this center, including staff documents and confidential medical files. Their own checklist still applies and they cannot approve their own documents.`
       : `Remove Admin access for ${name}? They will remain an employee.`
-    if (!confirm(message)) return
+    if (!await showConfirm(message)) return
 
     setSavingAccess(true)
     const { error } = await supabase.rpc('set_center_admin_access', { p_center_id: centerId, p_staff_id: staffId, p_is_admin: makeAdmin })
     setSavingAccess(false)
-    if (error) alert(error.message)
+    if (error) showAlert(error.message)
     else loadData()
   }
 
@@ -259,7 +290,7 @@ export default function StaffReviewPage() {
       .eq('center_id', centerId).eq('staff_id', staffId)
     if (error) {
       setStartDate(previous)
-      alert('Failed to update employment start date: ' + error.message)
+      showAlert('Failed to update employment start date: ' + error.message)
     }
   }
 
@@ -274,10 +305,13 @@ export default function StaffReviewPage() {
 
   const TABS: { id: TabId; label: string; Icon: any }[] = [
     { id: 'overview',     label: 'Overview',     Icon: User },
+    { id: 'education',    label: 'Education',    Icon: GraduationCap },
     { id: 'experience',   label: 'Experience',   Icon: Briefcase },
+    { id: 'references',   label: 'References',   Icon: Phone },
     { id: 'credentials',  label: 'Credentials',  Icon: Award },
     { id: 'availability', label: 'Availability', Icon: CalendarDays },
     { id: 'documents',    label: 'Documents',    Icon: ShieldCheck },
+    { id: 'carescore',    label: 'Care Score',   Icon: Star },
   ]
 
   // Compliance progress: every applicable requirement (incl. center records), N/A excluded
@@ -327,6 +361,11 @@ export default function StaffReviewPage() {
                   <option key={value} value={value}>{label}</option>
                 ))}
               </select>
+              {requestedClass && requestedClass !== employmentClass && (
+                <span className="bg-amber-50 text-amber-700 px-3 py-1 rounded-lg text-xs font-bold border border-amber-200" title="Chosen by the employee at sign-up. Change the class here to confirm.">
+                  Requested: {EMPLOYMENT_CLASS_LABELS[requestedClass]}
+                </span>
+              )}
               <label className="inline-flex items-center gap-2 bg-white px-3 py-1 rounded-lg text-xs font-bold text-[#6b7a73] border border-[#d4ede4]" title="Due dates are counted from this date">
                 Started
                 <input
@@ -376,36 +415,56 @@ export default function StaffReviewPage() {
               )}
             </div>
           </div>
-          <button
-            onClick={() => setShowActivationModal(true)}
-            className="bg-[#157354] text-white font-black px-8 py-4 rounded-2xl hover:bg-[#0f4a36] shadow-lg shadow-[#157354]/20 transition-all flex items-center gap-2 active:scale-95 shrink-0"
-          >
-            <CheckCircle2 className="w-5 h-5" /> Approve & Activate
-          </button>
+          {(memberStatus === 'applying' || memberStatus === 'invited') && (
+            <div className="flex items-center gap-3 shrink-0">
+              {memberStatus === 'applying' && (
+                <button
+                  onClick={handleDeclineApplication}
+                  className="px-5 py-4 rounded-2xl font-black text-[#6b7a73] bg-white border-2 border-[#f0f4f2] hover:bg-[#f8faf9] transition-colors"
+                >
+                  Decline
+                </button>
+              )}
+              <button
+                onClick={() => setShowActivationModal(true)}
+                className="bg-[#157354] text-white font-black px-8 py-4 rounded-2xl hover:bg-[#0f4a36] shadow-lg shadow-[#157354]/20 transition-all flex items-center gap-2 active:scale-95"
+              >
+                <CheckCircle2 className="w-5 h-5" /> {memberStatus === 'applying' ? 'Start Onboarding' : 'Approve & Activate'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-2 overflow-x-auto pb-1 mb-6 scrollbar-none">
-        {TABS.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-black whitespace-nowrap transition-all shrink-0 border-2 ${
-              activeTab === tab.id
-                ? 'bg-[#157354] text-white border-[#157354] shadow-lg shadow-[#157354]/20'
-                : 'bg-white text-[#6b7a73] border-[#f0f4f2] hover:border-[#157354]/30 hover:text-[#0b3828]'
-            }`}
-          >
-            <tab.Icon className="w-4 h-4" />
-            {tab.label}
-            {tab.id === 'documents' && attentionCount > 0 && (
-              <span className="ml-1 bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full" title="Overdue or needs review">
-                {attentionCount}
-              </span>
-            )}
-          </button>
-        ))}
+      <div className="border-b border-gray-200 mb-8">
+        <nav className="-mb-px flex space-x-8 overflow-x-auto scrollbar-none" aria-label="Tabs">
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`group inline-flex items-center border-b-2 py-4 px-1 text-sm font-medium whitespace-nowrap transition-colors ${
+                activeTab === tab.id
+                  ? 'border-[#157354] text-[#157354]'
+                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+              }`}
+              aria-current={activeTab === tab.id ? 'page' : undefined}
+            >
+              <tab.Icon
+                className={`-ml-0.5 mr-2 h-5 w-5 ${
+                  activeTab === tab.id ? 'text-[#157354]' : 'text-gray-400 group-hover:text-gray-500'
+                }`}
+                aria-hidden="true"
+              />
+              <span>{tab.label}</span>
+              {tab.id === 'documents' && attentionCount > 0 && (
+                <span className="ml-2 bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full" title="Overdue or needs review">
+                  {attentionCount}
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
       </div>
 
       {/* ── Overview Tab ───────────────────────────────────────────── */}
@@ -454,16 +513,64 @@ export default function StaffReviewPage() {
               <div className="text-xs font-black text-[#6b7a73] uppercase tracking-widest">Days Available</div>
             </div>
           </div>
+        </div>
+      )}
 
-          {/* Reviews */}
-          {reviews.length > 0 && (
-            <div className="bg-white border-2 border-[#f0f4f2] rounded-[2rem] p-8 mt-6">
-              <h2 className="text-lg font-black text-[#0b3828] mb-4 flex items-center gap-2">
-                <Star className="w-5 h-5 text-[#fbbf24] fill-[#fbbf24]" /> Reviews from Centers
-              </h2>
+      {/* ── Education Tab ──────────────────────────────────────────── */}
+      {activeTab === 'education' && (
+        <div className="space-y-4">
+          {uploads.filter(d => d.document_category === 'academic_qualification').length === 0 ? (
+            <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-[#e2e8e4]">
+              <GraduationCap className="w-10 h-10 text-[#a8b5ae] mx-auto mb-3" />
+              <p className="text-[#6b7a73] font-bold">No education added yet.</p>
+            </div>
+          ) : (
+            uploads.filter(d => d.document_category === 'academic_qualification').map(doc => (
+              <div key={doc.id} className="bg-white border-2 border-[#f0f4f2] rounded-2xl p-6 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-[#edf7f3] flex items-center justify-center shrink-0">
+                  <GraduationCap className="w-5 h-5 text-[#157354]" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-black text-[#0b3828] text-lg leading-tight">{doc.document_name}</div>
+                  <div className="text-xs font-bold text-[#a8b5ae] uppercase tracking-wider mt-1">
+                    Uploaded {new Date(doc.uploaded_at).toLocaleDateString()}
+                    {doc.expiry_date ? ` · Expires ${new Date(doc.expiry_date).toLocaleDateString()}` : ''}
+                  </div>
+                </div>
+                <button onClick={() => openStoredFile('vault', doc.id)} className="rounded-lg p-2 text-[#157354] hover:bg-[#edf7f3]" title="View Document">
+                  <Eye className="w-5 h-5" />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* ── Care Score Tab ─────────────────────────────────────────── */}
+      {activeTab === 'carescore' && (
+        <div className="space-y-4">
+          {reviews.length === 0 ? (
+            <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-[#e2e8e4]">
+              <Star className="w-10 h-10 text-[#a8b5ae] mx-auto mb-3" />
+              <p className="text-[#6b7a73] font-bold">No Care Score ratings yet.</p>
+            </div>
+          ) : (
+            <>
+              <div className="bg-white border-2 border-[#f0f4f2] rounded-2xl p-6 flex items-center gap-4">
+                <Star className="w-8 h-8 text-[#fbbf24] fill-[#fbbf24]" />
+                <div>
+                  <div className="text-3xl font-black text-[#0b3828] leading-none">
+                    {(reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)}
+                    <span className="text-base text-[#a8b5ae] font-bold"> / 5</span>
+                  </div>
+                  <div className="text-xs font-black text-[#6b7a73] uppercase tracking-widest mt-1">
+                    {reviews.length} rating{reviews.length === 1 ? '' : 's'} from centers
+                  </div>
+                </div>
+              </div>
               <div className="grid sm:grid-cols-2 gap-4">
                 {reviews.map(review => (
-                  <div key={review.id} className="p-5 rounded-2xl bg-[#f8faf9] border border-[#e2e8e4]">
+                  <div key={review.id} className="p-5 rounded-2xl bg-white border-2 border-[#f0f4f2]">
                     <div className="flex items-center justify-between mb-3">
                       <div className="font-black text-[#1a2e25] text-sm">{review.reviewer_name}</div>
                       <div className="flex gap-1">
@@ -482,12 +589,12 @@ export default function StaffReviewPage() {
                       </div>
                     )}
                     {review.public_comment && (
-                      <p className="text-sm text-[#3d5a4f] italic bg-white p-3 rounded-xl border border-[#e2e8e4]">"{review.public_comment}"</p>
+                      <p className="text-sm text-[#3d5a4f] italic bg-[#f8faf9] p-3 rounded-xl border border-[#e2e8e4]">"{review.public_comment}"</p>
                     )}
                   </div>
                 ))}
               </div>
-            </div>
+            </>
           )}
         </div>
       )}
@@ -527,6 +634,34 @@ export default function StaffReviewPage() {
                     )}
                   </div>
                   {item.description && <p className="text-sm text-[#6b7a73] mt-3 leading-relaxed">{item.description}</p>}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* ── References Tab ─────────────────────────────────────────── */}
+      {activeTab === 'references' && (
+        <div className="space-y-4">
+          {references.length < MIN_STAFF_REFERENCES && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3 text-sm font-medium text-amber-800">
+              {references.length} of {MIN_STAFF_REFERENCES} required references provided.
+            </div>
+          )}
+          {references.length === 0 ? (
+            <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-[#e2e8e4]">
+              <Phone className="w-10 h-10 text-[#a8b5ae] mx-auto mb-3" />
+              <p className="text-[#6b7a73] font-bold">No references added yet.</p>
+            </div>
+          ) : (
+            references.map(ref => (
+              <div key={ref.id} className="bg-white border-2 border-[#f0f4f2] rounded-2xl p-6">
+                <div className="font-black text-[#0b3828] text-lg leading-tight">{ref.full_name}</div>
+                <div className="font-bold text-[#6b7a73] mb-3">{ref.title} · {ref.business}</div>
+                <div className="flex flex-wrap gap-4 text-sm text-[#6b7a73] font-medium">
+                  <a href={`mailto:${ref.email}`} className="flex items-center gap-1.5 hover:text-[#157354]"><Mail className="w-4 h-4 text-[#a8b5ae]" />{ref.email}</a>
+                  <a href={`tel:${ref.phone}`} className="flex items-center gap-1.5 hover:text-[#157354]"><Phone className="w-4 h-4 text-[#a8b5ae]" />{ref.phone}</a>
                 </div>
               </div>
             ))
@@ -678,7 +813,7 @@ export default function StaffReviewPage() {
           onClose={() => setRequestFor(null)}
           onCreated={(count) => {
             setRequestFor(null)
-            if (count === 0) alert('There is already an open request for this item.')
+            if (count === 0) showAlert('There is already an open request for this item.')
             loadData()
           }}
         />
@@ -691,10 +826,19 @@ export default function StaffReviewPage() {
             <div className="w-16 h-16 bg-[#edf7f3] rounded-2xl flex items-center justify-center mb-6 border-2 border-[#d4ede4]">
               <ShieldCheck className="w-8 h-8 text-[#157354]" />
             </div>
-            <h2 className="text-2xl font-black text-[#0b3828] mb-2">Approve Staff Member?</h2>
+            <h2 className="text-2xl font-black text-[#0b3828] mb-2">{memberStatus === 'applying' ? 'Start Onboarding?' : 'Approve Staff Member?'}</h2>
             <p className="text-[#6b7a73] font-medium leading-relaxed mb-8">
-              By approving <span className="font-bold text-[#1a2e25]">{profile.first_name} {profile.last_name}</span>, they will instantly be able to view and claim open shifts at your center.
+              {memberStatus === 'applying'
+                ? <>Accepting <span className="font-bold text-[#1a2e25]">{profile.first_name} {profile.last_name}</span>&apos;s application starts their onboarding: they complete the checklist for the class you choose below. They cannot claim shifts until you approve them.</>
+                : <>By approving <span className="font-bold text-[#1a2e25]">{profile.first_name} {profile.last_name}</span>, they will instantly be able to view and claim open shifts at your center.</>}
             </p>
+            <label className="block text-xs font-black text-[#0b3828] uppercase tracking-widest mb-2">Employee class</label>
+            <select value={approveClass} onChange={(e) => setApproveClass(e.target.value as EmploymentClass)} className="w-full mb-2 px-4 py-3 rounded-xl border-2 border-[#f0f4f2] bg-white font-bold text-[#0b3828] focus:outline-none focus:border-[#157354]">
+              {(Object.entries(EMPLOYMENT_CLASS_LABELS) as [EmploymentClass, string][]).map(([value, label]) => (
+                <option key={value} value={value}>{label}{requestedClass === value ? ' (requested)' : ''}</option>
+              ))}
+            </select>
+            <p className="text-xs text-[#6b7a73] mb-8">Regular employees can work at only one center and do not pick up marketplace shifts.</p>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowActivationModal(false)}
@@ -708,7 +852,7 @@ export default function StaffReviewPage() {
                 disabled={activating}
                 className="flex-[2] flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-black text-white bg-[#157354] hover:bg-[#0f4a36] disabled:opacity-70 transition-colors shadow-lg shadow-[#157354]/20"
               >
-                {activating ? <Loader2 className="w-5 h-5 animate-spin" /> : <><CheckCircle2 className="w-5 h-5" /> Confirm Activation</>}
+                {activating ? <Loader2 className="w-5 h-5 animate-spin" /> : <><CheckCircle2 className="w-5 h-5" /> {memberStatus === 'applying' ? 'Start Onboarding' : 'Confirm Activation'}</>}
               </button>
             </div>
           </div>

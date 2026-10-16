@@ -1,6 +1,7 @@
 'use client'
 
 import { getFileViewUrl, getUploadUrl, type FileKind } from '@/app/actions/storage.actions'
+import { showAlert } from '@/lib/dialog'
 
 /**
  * Opens a stored document in a new tab. The tab is opened before the (async) permission
@@ -14,7 +15,7 @@ export async function openStoredFile(kind: FileKind, id: string) {
     else window.open(res.url, '_blank')
   } else {
     tab?.close()
-    alert(res.error)
+    showAlert(res.error)
   }
 }
 

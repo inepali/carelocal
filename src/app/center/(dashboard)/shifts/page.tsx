@@ -9,6 +9,7 @@ import { checkInStaff, checkOutStaff } from '@/app/actions/timeclock.actions'
 import { ReviewModal } from '@/components/ReviewModal'
 import { useLookups } from '@/hooks/use-lookups'
 import { useCenterContext } from '../context'
+import { showAlert } from '@/lib/dialog'
 
 export default function CenterShiftsPage() {
   const { staffTerm, workAreaTerm } = useCenterContext()
@@ -205,13 +206,13 @@ export default function CenterShiftsPage() {
       })
       const data = await response.json()
       if (data.success) {
-        alert(`Success! Notified ${data.notifiedCount || 0} eligible staff members.`)
+        showAlert(`Success! Notified ${data.notifiedCount || 0} eligible staff members.`)
       } else {
-        alert(`Failed to notify: ${data.message || data.error || 'Unknown error'}`)
+        showAlert(`Failed to notify: ${data.message || data.error || 'Unknown error'}`)
       }
     } catch (err: any) {
       console.error(err)
-      alert(`Error: ${err.message || String(err)}`)
+      showAlert(`Error: ${err.message || String(err)}`)
     } finally {
       setNotifyingShiftId(null)
     }

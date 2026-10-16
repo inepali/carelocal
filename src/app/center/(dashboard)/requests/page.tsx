@@ -9,6 +9,7 @@ import { resolveDocumentRequest } from '@/app/actions/document-requests.actions'
 import { RequestDocumentsDialog } from '@/components/center/RequestDocumentsDialog'
 import { openStoredFile } from '@/lib/files'
 import { formatDate } from '@/lib/compliance'
+import { showAlert, showConfirm, showPrompt } from '@/lib/dialog'
 
 type Row = DocumentRequest & { staff: { id: string; first_name: string; last_name: string } | null }
 
@@ -50,14 +51,14 @@ export default function DocumentRequestsPage() {
   async function act(row: Row, action: 'accept' | 'reject' | 'cancel') {
     let note: string | undefined
     if (action === 'reject') {
-      note = prompt('What should the employee send instead?') ?? undefined
+      note = (await showPrompt('What should the employee send instead?', '', { title: 'Reject document' })) ?? undefined
       if (!note?.trim()) return
     }
-    if (action === 'cancel' && !confirm(`Cancel the request for "${row.title}"?`)) return
+    if (action === 'cancel' && !await showConfirm(`Cancel the request for "${row.title}"?`)) return
     setBusyId(row.id)
     const res = await resolveDocumentRequest(row.id, action, note)
     setBusyId(null)
-    if (!res.success) alert(res.error)
+    if (!res.success) showAlert(res.error)
     else load()
   }
 

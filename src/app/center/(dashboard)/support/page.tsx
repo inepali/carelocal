@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, LifeBuoy, AlertCircle, Loader2, CheckCircle2, MessageSquare, Clock } from 'lucide-react'
+import { showAlert } from '@/lib/dialog'
 
 export default function CenterSupportPage() {
   const supabase = createClient()
@@ -69,7 +70,7 @@ export default function CenterSupportPage() {
       setPriority('medium')
       loadData()
     } else {
-      alert("Failed to create ticket: " + error.message)
+      showAlert("Failed to create ticket: " + error.message)
     }
     setSubmitting(false)
   }

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Vendor } from '@/lib/types'
 import { Plus, Edit2, Trash2, Loader2, Truck, Phone, Mail, Globe, X, Search, User } from 'lucide-react'
+import { showAlert, showConfirm } from '@/lib/dialog'
 
 type VendorForm = {
   name: string
@@ -139,9 +140,9 @@ export default function VendorsPage() {
     const msg = linked
       ? `"${vendor.name}" is assigned to ${linked} inspection${linked === 1 ? '' : 's'}. Deleting will clear the vendor on those inspections. Consider marking it inactive instead.\n\nDelete anyway?`
       : `Delete vendor "${vendor.name}"?`
-    if (!confirm(msg)) return
+    if (!await showConfirm(msg)) return
     const { error: err } = await supabase.from('center_vendors').delete().eq('id', vendor.id)
-    if (err) alert('Failed to delete vendor: ' + err.message)
+    if (err) showAlert('Failed to delete vendor: ' + err.message)
     else loadData()
   }
 

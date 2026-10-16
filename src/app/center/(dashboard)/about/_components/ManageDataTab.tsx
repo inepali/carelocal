@@ -11,6 +11,7 @@ import { invalidateLookupCache } from '@/hooks/use-lookups'
 import type { DomainKey } from '@/lib/domain-config'
 import { useCenterContext } from '../../context'
 import { WorkAreasPanel } from './WorkAreasPanel'
+import { showConfirm } from '@/lib/dialog'
 
 // Work areas (Classrooms, Care Areas …) live in their own table but are managed here too
 const WORK_AREAS_TAB = 'work_areas'
@@ -160,7 +161,7 @@ export default function ManageDataTab() {
     const message = item.source === 'override'
       ? `Reset "${item.label}" to the platform default "${item.defaultRow?.label}"?`
       : `Delete "${item.label}"? Records already using it will show its raw value.`
-    if (!confirm(message)) return
+    if (!await showConfirm(message)) return
     const { error } = await supabase.from('center_lookups').delete().eq('id', item.centerRowId)
     await afterChange(error)
   }

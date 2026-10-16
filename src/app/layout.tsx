@@ -4,6 +4,7 @@ import { headers } from 'next/headers'
 import { getDomainKey, getDomainConfig, type DomainKey } from '@/lib/domain-config'
 import { siteUrl, SEO_KEYWORDS } from '@/lib/site'
 import { Analytics } from '@vercel/analytics/next'
+import { DialogHost } from '@/components/ui/DialogHost'
 import './globals.css'
 
 const inter = Inter({
@@ -79,6 +80,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} ${themeClass}`}>
       <body className="antialiased">
         {children}
+        <DialogHost />
         <Analytics />
       </body>
     </html>

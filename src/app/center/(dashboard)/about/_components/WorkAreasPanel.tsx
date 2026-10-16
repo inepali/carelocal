@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { WorkArea } from '@/lib/types'
 import { Plus, Edit2, Trash2, Save, X, Loader2, Home, Users } from 'lucide-react'
+import { showConfirm } from '@/lib/dialog'
 
 type FormState = { name: string; ageGroup: string; capacity: string }
 const EMPTY_FORM: FormState = { name: '', ageGroup: '', capacity: '' }
@@ -75,7 +76,7 @@ export function WorkAreasPanel({ centerId, workAreaTerm }: { centerId: string; w
   }
 
   async function handleDelete(area: WorkArea) {
-    if (!confirm(`Delete "${area.name}"? Shifts assigned to it will lose their ${term}. Deactivate it instead to keep past shifts intact.`)) return
+    if (!await showConfirm(`Delete "${area.name}"? Shifts assigned to it will lose their ${term}. Deactivate it instead to keep past shifts intact.`)) return
     const { error } = await supabase.from('work_areas').delete().eq('id', area.id)
     if (error) setError(`Failed to delete ${term}. It might be in use — try deactivating it instead.`)
     else loadData()

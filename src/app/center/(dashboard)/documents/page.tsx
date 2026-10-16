@@ -20,6 +20,7 @@ import {
 } from '@/lib/compliance'
 import { templateItemKey, type RequirementTemplate } from '@/lib/requirement-templates'
 import { useCenterContext } from '../context'
+import { showAlert, showConfirm } from '@/lib/dialog'
 
 const NEW_SECTION = '__new__'
 
@@ -214,7 +215,7 @@ export default function CenterDocumentsConfigPage() {
           template_file_name: templateFile.name,
         }
       } catch (err) {
-        alert(err instanceof Error ? err.message : 'Failed to upload template file')
+        showAlert(err instanceof Error ? err.message : 'Failed to upload template file')
         setSaving(false)
         return
       }
@@ -250,7 +251,7 @@ export default function CenterDocumentsConfigPage() {
 
     setSaving(false)
     if (error) {
-      alert(`Failed to ${editingId ? 'update' : 'create'} requirement: ${error.message}`)
+      showAlert(`Failed to ${editingId ? 'update' : 'create'} requirement: ${error.message}`)
       return
     }
     cancelEdit()
@@ -262,7 +263,7 @@ export default function CenterDocumentsConfigPage() {
       setExistingTemplate(null)
       return
     }
-    if (!confirm('Are you sure you want to remove the template from this requirement?')) return
+    if (!await showConfirm('Are you sure you want to remove the template from this requirement?')) return
 
     setDeletingTemplate(true)
     const res = await removeRequirementTemplate(editingId)
@@ -270,26 +271,26 @@ export default function CenterDocumentsConfigPage() {
       setExistingTemplate(null)
       loadRequirements()
     } else {
-      alert(res.error)
+      showAlert(res.error)
     }
     setDeletingTemplate(false)
   }
 
   async function deleteRequirement(req: CenterDocumentRequirement) {
-    if (!confirm(`Delete "${req.document_name}"? It will be removed from every staff member's checklist.`)) return
+    if (!await showConfirm(`Delete "${req.document_name}"? It will be removed from every staff member's checklist.`)) return
 
     // Remove the template file while the row (used for the permission check) still exists
     if (req.template_file_key) {
       const res = await removeRequirementTemplate(req.id)
       if (!res.success) {
-        alert(res.error)
+        showAlert(res.error)
         return
       }
     }
 
     const { error } = await supabase.from('center_document_requirements').delete().eq('id', req.id)
     if (error) {
-      alert('Failed to delete requirement: ' + error.message)
+      showAlert('Failed to delete requirement: ' + error.message)
       return
     }
     if (editingId === req.id) cancelEdit()
@@ -297,9 +298,9 @@ export default function CenterDocumentsConfigPage() {
   }
 
   async function publishPolicyUpdate(req: CenterDocumentRequirement) {
-    if (!confirm(`Mark "${req.document_name}" as updated? Every employee it applies to will need to acknowledge the new version (currently version ${req.policy_version}). Attach the updated document first if it changed.`)) return
+    if (!await showConfirm(`Mark "${req.document_name}" as updated? Every employee it applies to will need to acknowledge the new version (currently version ${req.policy_version}). Attach the updated document first if it changed.`)) return
     const { error } = await supabase.rpc('publish_policy_update', { p_requirement_id: req.id })
-    if (error) alert('Failed to publish update: ' + error.message)
+    if (error) showAlert('Failed to publish update: ' + error.message)
     else loadRequirements()
   }
 
@@ -324,7 +325,7 @@ export default function CenterDocumentsConfigPage() {
       supabase.from('center_document_requirements').update({ sort_order: c.sort_order }).eq('id', c.id)
     ))
     if (results.some(r => r.error)) {
-      alert('Failed to save the new order')
+      showAlert('Failed to save the new order')
       loadRequirements()
     }
   }
@@ -340,7 +341,7 @@ export default function CenterDocumentsConfigPage() {
     if (!centerId) return
     const items = newItems(template)
     if (items.length === 0) return
-    if (!confirm(`Add ${items.length} requirement${items.length === 1 ? '' : 's'} from "${template.name}"? You can edit or remove them afterwards.`)) return
+    if (!await showConfirm(`Add ${items.length} requirement${items.length === 1 ? '' : 's'} from "${template.name}"? You can edit or remove them afterwards.`)) return
 
     setApplyingTemplate(template.id)
     const nextSort: Partial<Record<RequirementSection, number>> = {}
@@ -371,7 +372,7 @@ export default function CenterDocumentsConfigPage() {
     const { error } = await supabase.from('center_document_requirements').insert(rows)
     setApplyingTemplate(null)
     if (error) {
-      alert('Failed to import template: ' + error.message)
+      showAlert('Failed to import template: ' + error.message)
       return
     }
     setShowTemplates(false)

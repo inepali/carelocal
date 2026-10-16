@@ -15,6 +15,7 @@ import {
   Info
 } from 'lucide-react'
 import Link from 'next/link'
+import { showAlert } from '@/lib/dialog'
 
 export default function StaffAccountPage() {
   const supabase = createClient()
@@ -50,7 +51,7 @@ export default function StaffAccountPage() {
     try {
       const result = await payStaffBalance(profile.id)
       if (result.error) {
-        alert('Payment failed: ' + result.error)
+        showAlert('Payment failed: ' + result.error)
       } else {
         setProfile((prev: any) => ({ ...prev, balance_due: 0.00 }))
         setPaymentSuccessMessage('Your balance has been successfully cleared!')
@@ -58,7 +59,7 @@ export default function StaffAccountPage() {
         setIsPaymentModalOpen(false)
       }
     } catch (err: any) {
-      alert('An error occurred during payment processing: ' + err.message)
+      showAlert('An error occurred during payment processing: ' + err.message)
     } finally {
       setIsProcessingPayment(false)
     }

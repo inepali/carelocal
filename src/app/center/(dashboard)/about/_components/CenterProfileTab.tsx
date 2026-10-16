@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Center, SubscriptionTier, getTierLimits, MetroArea } from '@/lib/types'
 import { Building2, Save, MapPin, ShieldCheck, Loader2, ExternalLink, Clock, Globe, ArrowRight } from 'lucide-react'
 import { getDomainKey, type DomainKey } from '@/lib/domain-config'
+import { showAlert } from '@/lib/dialog'
 
 export default function CenterProfileTab() {
   const supabase = createClient()
@@ -128,11 +129,11 @@ export default function CenterProfileTab() {
       if (data.url) {
         window.location.href = data.url
       } else {
-        alert(data.error || 'Failed to open subscription portal')
+        showAlert(data.error || 'Failed to open subscription portal')
       }
     } catch (err) {
       console.error(err)
-      alert('An error occurred while opening the portal')
+      showAlert('An error occurred while opening the portal')
     } finally {
       setPortalLoading(false)
     }

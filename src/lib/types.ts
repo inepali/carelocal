@@ -67,6 +67,7 @@ export interface StaffProfile {
   staff_type?: StaffType
   bio?: string
   metro_area_id?: string
+  requested_employment_class?: EmploymentClass | null  // chosen at sign-up; the center sets the real class
   available_days: string[]
   available_from?: string
   available_to?: string
@@ -106,6 +107,19 @@ export interface StaffExperience {
   sort_order: number
   created_at: string
 }
+
+export interface StaffReference {
+  id: string
+  staff_id: string
+  full_name: string
+  email: string
+  phone: string
+  business: string
+  title: string
+  created_at: string
+}
+
+export const MIN_STAFF_REFERENCES = 2
 
 export interface StaffCredential {
   id: string
