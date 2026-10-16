@@ -13,6 +13,8 @@ function RegisterForm() {
   const searchParams = useSearchParams()
   const inviteSlug = searchParams.get('invite')
   const isStaffInvite = !!inviteSlug
+  // /register?type=staff opens straight on the staff sign-up (no invite needed; they apply to centers afterwards)
+  const startsAsStaff = isStaffInvite || searchParams.get('type') === 'staff'
 
   const supabase = createClient()
   
@@ -28,8 +30,8 @@ function RegisterForm() {
   const config = getDomainConfig(domainKey)
 
   // New State
-  const [accountType, setAccountType] = useState<'center' | 'staff' | null>(isStaffInvite ? 'staff' : null)
-  const [step, setStep] = useState(isStaffInvite ? 2 : 0) // Step 0 is selection
+  const [accountType, setAccountType] = useState<'center' | 'staff' | null>(startsAsStaff ? 'staff' : null)
+  const [step, setStep] = useState(startsAsStaff ? 2 : 0) // Step 0 is selection
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 

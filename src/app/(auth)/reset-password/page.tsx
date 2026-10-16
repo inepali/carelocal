@@ -1,16 +1,16 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, useEffect, useRef, Suspense } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
+import { createLinkVerificationClient } from '@/lib/supabase/client'
 import { Eye, EyeOff, Loader2, CheckCircle2, AlertCircle, Lock } from 'lucide-react'
 import { getDomainConfig, getDomainKey, type DomainKey } from '@/lib/domain-config'
 
 function ResetPasswordForm() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const supabase = createClient()
+  // detectSessionInUrl is off: this page exchanges the link's token itself (see verify below)
+  const [supabase] = useState(() => createLinkVerificationClient())
 
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -34,32 +34,73 @@ function ResetPasswordForm() {
   const isHealthcare = domainKey === 'healthcare'
   const domainLabel = domainKey === 'healthcare' ? 'carelocal.net' : domainKey === 'senior' ? 'carelocalsenior.com' : 'carelocal.co'
 
-  // Supabase sends the token as a hash fragment which it auto-exchanges.
-  // We just need to wait for the session to settle then allow the update.
+  // Verify the reset link ourselves instead of waiting for the client to do it silently.
+  // Links arrive in one of three shapes: ?code= (PKCE), ?token_hash= (email template), or a
+  // #access_token hash (implicit). Anything else falls back to an existing session.
+  // A link's token works once, so this must run exactly once (React dev mode runs effects twice).
+  const verifyStarted = useRef(false)
+
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setVerifying(false)
-      }
-    })
+    if (verifyStarted.current) return
+    verifyStarted.current = true
 
-    // Also handle the case where the user lands and the session is already set
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setVerifying(false)
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
-
-  // Check for error in URL (e.g. expired link)
-  useEffect(() => {
-    const errorCode = searchParams.get('error_code')
-    const errorDesc = searchParams.get('error_description')
-    if (errorCode) {
-      setError(errorDesc?.replace(/\+/g, ' ') || 'This reset link is invalid or has expired.')
+    const EXPIRED = 'This reset link is invalid or has expired. Please request a new one.'
+    const fail = (message: string, detail?: unknown) => {
+      if (detail) console.error('[reset-password]', detail)
+      setError(message)
       setVerifying(false)
     }
-  }, [searchParams])
+
+    // Never leave the visitor on an endless spinner
+    const timeout = setTimeout(() => fail('Verifying your link is taking too long. Please request a new one.'), 15000)
+
+    async function verify() {
+      const query = new URLSearchParams(window.location.search)
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+
+      // Supabase reports a bad or already-used link in the query or in the hash fragment
+      const linkError = query.get('error_code') || hash.get('error_code') || query.get('error') || hash.get('error')
+      if (linkError) {
+        const description = query.get('error_description') || hash.get('error_description')
+        fail(description ? description.replace(/\+/g, ' ') : EXPIRED)
+        return
+      }
+
+      const code = query.get('code')
+      const tokenHash = query.get('token_hash')
+      const accessToken = hash.get('access_token')
+      const refreshToken = hash.get('refresh_token')
+
+      try {
+        if (code) {
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+          if (exchangeError) {
+            fail('This link has expired, was already used, or was opened in a different browser than the one you requested it from. Please request a new link and open it in the same browser.', exchangeError)
+            return
+          }
+        } else if (tokenHash) {
+          const { error: otpError } = await supabase.auth.verifyOtp({ type: 'recovery', token_hash: tokenHash })
+          if (otpError) { fail(EXPIRED, otpError); return }
+        } else if (accessToken && refreshToken) {
+          const { error: sessionError } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+          if (sessionError) { fail(EXPIRED, sessionError); return }
+        } else {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (!session) { fail(EXPIRED); return }
+        }
+        // Remove the one-time token from the address bar
+        window.history.replaceState(null, '', window.location.pathname)
+        setVerifying(false)
+      } catch (err) {
+        fail('We could not verify this link. Please request a new one.', err)
+      } finally {
+        clearTimeout(timeout)
+      }
+    }
+
+    verify()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handleReset(e: React.FormEvent) {
     e.preventDefault()

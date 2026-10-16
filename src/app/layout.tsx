@@ -5,6 +5,7 @@ import { getDomainKey, getDomainConfig, type DomainKey } from '@/lib/domain-conf
 import { siteUrl, SEO_KEYWORDS } from '@/lib/site'
 import { Analytics } from '@vercel/analytics/next'
 import { DialogHost } from '@/components/ui/DialogHost'
+import { RecoveryRedirect } from '@/components/auth/RecoveryRedirect'
 import './globals.css'
 
 const inter = Inter({
@@ -81,6 +82,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="antialiased">
         {children}
         <DialogHost />
+        <RecoveryRedirect />
         <Analytics />
       </body>
     </html>

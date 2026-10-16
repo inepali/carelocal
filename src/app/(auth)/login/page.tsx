@@ -198,12 +198,6 @@ export default function LoginPage() {
               Get started free
             </Link>
           </p>
-          <p className="text-center text-sm text-[#6b7a73] mt-2">
-            Are you a staff member with an invite?{' '}
-            <Link href="/staff/join" className="text-brand-600 font-semibold hover:underline">
-              Join here →
-            </Link>
-          </p>
         </div>
       </div>
 
