@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from 'next/font/google'
 import { headers } from 'next/headers'
 import { getDomainKey, getDomainConfig, type DomainKey } from '@/lib/domain-config'
 import { siteUrl, SEO_KEYWORDS } from '@/lib/site'
+import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
 const inter = Inter({
@@ -76,7 +77,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} ${themeClass}`}>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        {children}
+        <Analytics />
+      </body>
     </html>
   )
 }
