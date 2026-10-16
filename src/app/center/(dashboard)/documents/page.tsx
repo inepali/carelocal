@@ -16,15 +16,18 @@ import { openStoredFile, uploadStoredFile, DOCUMENT_ACCEPT } from '@/lib/files'
 import { useLookups } from '@/hooks/use-lookups'
 import { lookupLabel } from '@/lib/lookups'
 import {
-  SECTIONS, EVIDENCE_TYPES, RENEWAL_TYPES, DUE_PRESETS, describeDue, describeRenewal, evidenceLabel,
+  sectionsFor, customSectionId, EVIDENCE_TYPES, RENEWAL_TYPES, DUE_PRESETS, describeDue, describeRenewal, evidenceLabel,
 } from '@/lib/compliance'
-import { COMPLIANCE_TEMPLATES, type ComplianceTemplate } from '@/lib/compliance-templates'
+import { templateItemKey, type RequirementTemplate } from '@/lib/requirement-templates'
 import { useCenterContext } from '../context'
 
-const SECTION_ICONS: Record<RequirementSection, React.ElementType> = {
+const NEW_SECTION = '__new__'
+
+const SECTION_ICONS: Record<string, React.ElementType> = {
   personnel: UserSquare2,
   health: HeartPulse,
   training: GraduationCap,
+  health_safety: ShieldCheck,
   policies: ClipboardList,
   evaluations: FileText,
 }
@@ -39,7 +42,8 @@ type FormState = {
   name: string
   notes: string
   category: DocumentCategory | ''
-  section: RequirementSection
+  section: RequirementSection   // a section id, or NEW_SECTION while naming a new one
+  newSectionName: string
   evidenceType: EvidenceType
   isRequired: boolean
   isConfidential: boolean
@@ -53,7 +57,7 @@ type FormState = {
 }
 
 const EMPTY_FORM: FormState = {
-  name: '', notes: '', category: '', section: 'personnel', evidenceType: 'staff_document',
+  name: '', notes: '', category: '', section: 'personnel', newSectionName: '', evidenceType: 'staff_document',
   isRequired: true, isConfidential: false, isConditional: false, dueDays: '', renewalType: 'none',
   renewalMonths: '12', groupLabel: '', roles: [], classes: [],
 }
@@ -82,7 +86,7 @@ export default function CenterDocumentsConfigPage() {
   const [existingTemplate, setExistingTemplate] = useState<{ key: string, bucket: string, name: string } | null>(null)
   const [deletingTemplate, setDeletingTemplate] = useState(false)
 
-  const templates = COMPLIANCE_TEMPLATES[domainKey] ?? []
+  const [templates, setTemplates] = useState<RequirementTemplate[]>([])
 
   useEffect(() => {
     loadRequirements()
@@ -107,22 +111,36 @@ export default function CenterDocumentsConfigPage() {
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true })
       setRequirements(data || [])
+
+      const { data: saved } = await supabase
+        .from('requirement_templates')
+        .select('id, name, description, domain_key, items, created_at')
+        .eq('domain_key', domainKey)
+        .order('created_at', { ascending: false })
+      setTemplates((saved as RequirementTemplate[] | null) ?? [])
     }
     setLoading(false)
   }
 
+  const sectionList = useMemo(() => sectionsFor(requirements), [requirements])
+
   const bySection = useMemo(() => {
     const map = new Map<RequirementSection, CenterDocumentRequirement[]>()
-    SECTIONS.forEach(s => map.set(s.id, []))
-    requirements.forEach(r => (map.get(r.section) ?? map.get('personnel')!).push(r))
+    sectionList.forEach(s => map.set(s.id, []))
+    requirements.forEach(r => map.get(r.section)?.push(r))
     return map
-  }, [requirements])
+  }, [requirements, sectionList])
 
   // ── Form ──
 
   function openNew(section?: RequirementSection) {
     cancelEdit()
-    setForm({ ...EMPTY_FORM, section: section ?? 'personnel', isConfidential: section === 'health' })
+    setForm({
+      ...EMPTY_FORM,
+      section: section ?? 'personnel',
+      isConfidential: section === 'health',
+      groupLabel: section === 'health_safety' ? 'Health & Safety Training' : '',
+    })
     setShowForm(true)
     setShowTemplates(false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -135,6 +153,7 @@ export default function CenterDocumentsConfigPage() {
       notes: req.notes || '',
       category: req.document_category,
       section: req.section,
+      newSectionName: '',
       evidenceType: req.evidence_type,
       isRequired: req.is_required,
       isConfidential: req.is_confidential,
@@ -169,6 +188,13 @@ export default function CenterDocumentsConfigPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!centerId) return
+
+    const creatingSection = form.section === NEW_SECTION
+    const newName = form.newSectionName.trim()
+    if (creatingSection && !newName) return
+    const sectionId = creatingSection ? customSectionId(newName) : form.section
+    const sectionMeta = sectionList.find(s => s.id === sectionId)
+    const sectionLabel = creatingSection ? newName : sectionMeta?.custom ? sectionMeta.label : null
     setSaving(true)
 
     let templateData: Record<string, string | null | undefined> = editingId ? {
@@ -199,7 +225,8 @@ export default function CenterDocumentsConfigPage() {
       document_name: form.name.trim(),
       notes: form.notes.trim() || null,
       document_category: form.category,
-      section: form.section,
+      section: sectionId,
+      section_label: sectionLabel,
       evidence_type: form.evidenceType,
       is_internal: form.evidenceType === 'center_record', // center records are hidden from staff
       is_required: form.isRequired,
@@ -218,7 +245,7 @@ export default function CenterDocumentsConfigPage() {
       ? await supabase.from('center_document_requirements').update(payload).eq('id', editingId)
       : await supabase.from('center_document_requirements').insert({
           ...payload,
-          sort_order: (bySection.get(form.section)?.length ?? 0),
+          sort_order: (bySection.get(sectionId)?.length ?? 0),
         })
 
     setSaving(false)
@@ -304,47 +331,47 @@ export default function CenterDocumentsConfigPage() {
 
   // ── Templates ──
 
-  function newItemCount(template: ComplianceTemplate) {
+  function newItems(template: RequirementTemplate) {
     const existing = new Set(requirements.map(r => r.template_key).filter(Boolean))
-    return template.items.filter(i => !existing.has(i.key)).length
+    return template.items.filter(i => !existing.has(templateItemKey(template.id, i)))
   }
 
-  async function applyTemplate(template: ComplianceTemplate) {
+  async function applyTemplate(template: RequirementTemplate) {
     if (!centerId) return
-    const existing = new Set(requirements.map(r => r.template_key).filter(Boolean))
-    const items = template.items.filter(i => !existing.has(i.key))
+    const items = newItems(template)
     if (items.length === 0) return
     if (!confirm(`Add ${items.length} requirement${items.length === 1 ? '' : 's'} from "${template.name}"? You can edit or remove them afterwards.`)) return
 
     setApplyingTemplate(template.id)
     const nextSort: Partial<Record<RequirementSection, number>> = {}
-    SECTIONS.forEach(s => { nextSort[s.id] = bySection.get(s.id)?.length ?? 0 })
+    sectionList.forEach(s => { nextSort[s.id] = bySection.get(s.id)?.length ?? 0 })
 
     const rows = items.map(item => ({
       center_id: centerId,
-      template_key: item.key,
-      document_name: item.name,
-      notes: item.notes ?? null,
+      template_key: templateItemKey(template.id, item),
+      document_name: item.document_name,
+      notes: item.notes,
       document_category: item.document_category,
       section: item.section,
+      section_label: item.section_label,
       evidence_type: item.evidence_type,
       is_internal: item.evidence_type === 'center_record',
       is_required: !item.is_conditional,
-      is_confidential: !!item.is_confidential,
-      is_conditional: !!item.is_conditional,
+      is_confidential: item.is_confidential,
+      is_conditional: item.is_conditional,
       due_within_days: item.due_within_days,
       renewal_type: item.renewal_type,
       renewal_months: item.renewal_type === 'interval' ? item.renewal_months ?? 12 : null,
-      group_label: item.group_label ?? null,
+      group_label: item.group_label,
       applies_to: null,
-      applies_to_class: item.classes ?? null,
+      applies_to_class: item.applies_to_class,
       sort_order: nextSort[item.section] = (nextSort[item.section] ?? 0) + 1,
     }))
 
     const { error } = await supabase.from('center_document_requirements').insert(rows)
     setApplyingTemplate(null)
     if (error) {
-      alert('Failed to add template: ' + error.message)
+      alert('Failed to import template: ' + error.message)
       return
     }
     setShowTemplates(false)
@@ -370,9 +397,15 @@ export default function CenterDocumentsConfigPage() {
               onClick={() => { setShowTemplates(v => !v); setShowForm(false) }}
               className="inline-flex items-center gap-2 font-semibold px-5 py-3 rounded-xl border border-[#e2e8e4] bg-white text-[#157354] hover:bg-[#edf7f3] transition-colors"
             >
-              <LayoutTemplate className="w-5 h-5" /> Templates
+              <LayoutTemplate className="w-5 h-5" /> Import Template
             </button>
           )}
+          <button
+            onClick={() => openNew(NEW_SECTION)}
+            className="inline-flex items-center gap-2 font-semibold px-5 py-3 rounded-xl border border-[#e2e8e4] bg-white text-[#157354] hover:bg-[#edf7f3] transition-colors"
+          >
+            <Plus className="w-5 h-5" /> New Section
+          </button>
           <button
             onClick={showForm ? cancelEdit : () => openNew()}
             className={`inline-flex items-center justify-center gap-2 font-semibold px-5 py-3 rounded-xl shadow-sm transition-colors ${showForm ? 'bg-white text-[#6b7a73] border border-[#e2e8e4] hover:bg-gray-50' : 'bg-[#157354] text-white hover:bg-[#0f4a36]'}`}
@@ -386,14 +419,14 @@ export default function CenterDocumentsConfigPage() {
       {showTemplates && (
         <div className="mb-8 grid gap-4 md:grid-cols-2">
           {templates.map(t => {
-            const count = newItemCount(t)
+            const count = newItems(t).length
             return (
               <div key={t.id} className="rounded-2xl border border-[#e2e8e4] bg-white p-6 shadow-sm flex flex-col">
                 <div className="flex items-start gap-3 mb-3">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#edf7f3] text-[#157354]"><LayoutTemplate className="h-5 w-5" /></span>
                   <div>
                     <h3 className="font-bold text-[#1a2e25]">{t.name}</h3>
-                    <p className="text-sm text-[#6b7a73] mt-0.5">{t.description}</p>
+                    <p className="text-sm text-[#6b7a73] mt-0.5">{t.description || 'Shared checklist'}</p>
                   </div>
                 </div>
                 <div className="mt-auto flex items-center justify-between pt-3">
@@ -404,14 +437,14 @@ export default function CenterDocumentsConfigPage() {
                     className="inline-flex items-center gap-2 rounded-xl bg-[#157354] px-4 py-2 text-xs font-bold text-white hover:bg-[#0f4a36] disabled:opacity-50"
                   >
                     {applyingTemplate === t.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                    {count === 0 ? 'Added' : 'Add to checklist'}
+                    {count === 0 ? 'Imported' : 'Import'}
                   </button>
                 </div>
               </div>
             )
           })}
           <p className="md:col-span-2 text-xs text-[#a8b5ae]">
-            Based on NC DCDEE center checklists. Verify against current state rules; every item can be edited after it is added.
+            Verify imported items against your state&apos;s current rules; every item can be edited after it is added.
           </p>
         </div>
       )}
@@ -446,8 +479,19 @@ export default function CenterDocumentsConfigPage() {
                   }}
                   className={FLD}
                 >
-                  {SECTIONS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                  {sectionList.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                  <option value={NEW_SECTION}>+ New section…</option>
                 </select>
+                {form.section === NEW_SECTION && (
+                  <input
+                    required
+                    autoFocus
+                    value={form.newSectionName}
+                    onChange={e => setForm({ ...form, newSectionName: e.target.value })}
+                    placeholder="Section name, e.g. Licensing & Clearances"
+                    className={`${FLD} mt-2`}
+                  />
+                )}
               </div>
               <div className="md:col-span-2">
                 <label className={LBL}>How it is fulfilled</label>
@@ -582,7 +626,7 @@ export default function CenterDocumentsConfigPage() {
 
             <div className="flex justify-end gap-2 pt-1">
               <button type="button" onClick={cancelEdit} className="px-5 py-2.5 rounded-xl border border-[#e2e8e4] text-sm font-medium text-[#6b7a73] hover:bg-[#f8faf9]">Cancel</button>
-              <button type="submit" disabled={saving || !form.name.trim() || !form.category} className="inline-flex items-center gap-2 bg-[#157354] text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:bg-[#0f4a36] disabled:opacity-50">
+              <button type="submit" disabled={saving || !form.name.trim() || !form.category || (form.section === NEW_SECTION && !form.newSectionName.trim())} className="inline-flex items-center gap-2 bg-[#157354] text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:bg-[#0f4a36] disabled:opacity-50">
                 {saving && <Loader2 className="w-4 h-4 animate-spin" />} {editingId ? 'Update Requirement' : 'Create Requirement'}
               </button>
             </div>
@@ -602,10 +646,10 @@ export default function CenterDocumentsConfigPage() {
       )}
 
       <div className="space-y-8">
-        {SECTIONS.map(section => {
+        {sectionList.map(section => {
           const items = bySection.get(section.id) ?? []
-          if (items.length === 0) return null
-          const Icon = SECTION_ICONS[section.id]
+          if (requirements.length === 0 || (items.length === 0 && section.custom)) return null
+          const Icon = SECTION_ICONS[section.id] ?? ClipboardList
           return (
             <section key={section.id} className="overflow-hidden rounded-2xl border border-[#e2e8e4] bg-white shadow-sm">
               <div className="flex flex-col gap-3 border-b border-[#e2e8e4] bg-[#f8faf9] px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
@@ -624,6 +668,9 @@ export default function CenterDocumentsConfigPage() {
                 </button>
               </div>
 
+              {items.length === 0 ? (
+                <p className="px-6 py-5 text-sm text-[#6b7a73]">Nothing here yet. Use Add New to add the first item.</p>
+              ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[760px] text-left">
                   <thead>
@@ -658,6 +705,7 @@ export default function CenterDocumentsConfigPage() {
                   </tbody>
                 </table>
               </div>
+              )}
             </section>
           )
         })}

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2, Lock, Send, ShieldCheck } from 'lucide-react'
 import { EMPLOYMENT_CLASS_LABELS, type EmploymentClass, type RequirementSection } from '@/lib/types'
-import { SECTIONS, COMPLIANCE_STATE_STYLE, formatDate, type ComplianceState } from '@/lib/compliance'
+import { sectionsFor, COMPLIANCE_STATE_STYLE, formatDate, type ComplianceState } from '@/lib/compliance'
 import { loadCenterCompliance, countStates, type CenterCompliance } from '@/lib/compliance-data'
 import { RequestDocumentsDialog } from '@/components/center/RequestDocumentsDialog'
 
@@ -45,10 +45,12 @@ export default function CompliancePage() {
 
   useEffect(() => { load() }, [load])
 
+  const sections = useMemo(() => sectionsFor(data?.requirements ?? []), [data])
+
   const columns = useMemo(() => (data?.requirements ?? [])
     .filter(r => sectionFilter === 'all' || r.section === sectionFilter)
-    .sort((a, b) => SECTIONS.findIndex(s => s.id === a.section) - SECTIONS.findIndex(s => s.id === b.section) || a.sort_order - b.sort_order),
-  [data, sectionFilter])
+    .sort((a, b) => sections.findIndex(s => s.id === a.section) - sections.findIndex(s => s.id === b.section) || a.sort_order - b.sort_order),
+  [data, sectionFilter, sections])
 
   const rows = useMemo(() => (data?.employees ?? [])
     .filter(e => classFilter === 'all' || e.employmentClass === classFilter)
@@ -82,7 +84,7 @@ export default function CompliancePage() {
         </select>
         <select value={sectionFilter} onChange={e => setSectionFilter(e.target.value as 'all' | RequirementSection)} className="rounded-xl border border-[#e2e8e4] bg-white px-3 py-2 text-sm">
           <option value="all">All sections</option>
-          {SECTIONS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+          {sections.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
         </select>
         <label className="flex items-center gap-2 text-sm text-[#1a2e25]">
           <input type="checkbox" checked={attentionOnly} onChange={e => setAttentionOnly(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-[#157354] focus:ring-[#157354]" />

@@ -712,7 +712,7 @@ export default function InspectionsPage() {
                 {form.type_choice === OTHER && (
                   <input autoFocus required value={form.type_other} onChange={e => updateForm({ type_other: e.target.value })} placeholder="Inspection type" className={`${inputClass} mt-2`} />
                 )}
-                <p className="text-xs text-[#6b7a73] mt-2">Manage the type list in <Link href="/center/settings/data" className="text-[#157354] font-bold hover:underline">Manage Data</Link>.</p>
+                <p className="text-xs text-[#6b7a73] mt-2">Manage the type list in <Link href="/center/about#data" className="text-[#157354] font-bold hover:underline">Manage Data</Link>.</p>
               </div>
 
               <div>

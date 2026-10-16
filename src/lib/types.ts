@@ -8,7 +8,8 @@ export type CenterStaffStatus = 'invited' | 'applying' | 'active' | 'inactive' |
 export type EmploymentClass = 'regular' | 'substitute'
 export type DocumentCategory = string  // A 'Document Type' value from center_lookups
 export type DocReviewStatus = 'missing' | 'pending_review' | 'accepted' | 'rejected' | 'expired'
-export type RequirementSection = 'personnel' | 'health' | 'training' | 'policies' | 'evaluations'
+/** Built-in ids ('personnel' | 'health' | 'training' | 'health_safety' | 'policies' | 'evaluations') or a center's own 'custom:<slug>' */
+export type RequirementSection = string
 export type EvidenceType = 'staff_document' | 'center_record' | 'acknowledgement' | 'training'
 export type RenewalType = 'none' | 'interval' | 'document_expiry' | 'policy_change'
 export type ShiftStatus = 'open' | 'filled' | 'cancelled' | 'unfilled'
@@ -169,6 +170,7 @@ export interface CenterDocumentRequirement {
   template_file_name?: string
   // Compliance rules (see src/lib/compliance.ts)
   section: RequirementSection
+  section_label?: string | null     // display name of a custom section
   evidence_type: EvidenceType
   is_confidential: boolean
   due_within_days?: number | null   // days after employment start; 0 = by day 1; null = no deadline

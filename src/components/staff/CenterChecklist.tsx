@@ -12,7 +12,7 @@ import {
    appliesToEmploymentClass
 } from '@/lib/types'
 import {
-   SECTIONS, COMPLIANCE_STATE_STYLE, computeCompliance, describeDue, describeRenewal, formatDate,
+   sectionsFor, COMPLIANCE_STATE_STYLE, computeCompliance, describeDue, describeRenewal, formatDate,
 } from '@/lib/compliance'
 
 /**
@@ -137,7 +137,7 @@ export function CenterChecklist({
             </div>
          ) : (
             <div className="space-y-6">
-               {SECTIONS.map(section => {
+               {sectionsFor(requirements).map(section => {
                   const sectionRows = rows.filter(r => r.req.section === section.id)
                   if (sectionRows.length === 0) return null
                   return (

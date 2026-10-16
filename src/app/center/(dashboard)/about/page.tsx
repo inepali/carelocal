@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { CenterProgram, CenterTeamMember, CenterAboutItem } from '@/lib/types'
-import { Building2, BookOpen, Users, ListPlus, Clock, Mail, CreditCard } from 'lucide-react'
+import { Building2, BookOpen, Users, ListPlus, Clock, Mail, CreditCard, Database } from 'lucide-react'
 import CenterProfileTab from './_components/CenterProfileTab'
 import AboutListEditor from './_components/AboutListEditor'
 import SubscriptionTab from './_components/SubscriptionTab'
+import ManageDataTab from './_components/ManageDataTab'
 import { useLookups } from '@/hooks/use-lookups'
 import { lookupLabel } from '@/lib/lookups'
 
@@ -14,6 +15,7 @@ const TABS = [
   { id: 'profile', name: 'Center Profile', icon: Building2 },
   { id: 'programs', name: 'Programs', icon: BookOpen },
   { id: 'team', name: 'Team', icon: Users },
+  { id: 'data', name: 'Manage Data', icon: Database },
   { id: 'subscription', name: 'Subscription', icon: CreditCard },
   { id: 'others', name: 'Others', icon: ListPlus },
 ] as const
@@ -205,6 +207,10 @@ export default function CenterAboutPage() {
                 </>
               )}
             />
+          </div>
+
+          <div role="tabpanel" id="about-panel-data" aria-labelledby="about-tab-data" hidden={activeTab !== 'data'}>
+            {activeTab === 'data' && <ManageDataTab />}
           </div>
 
           <div role="tabpanel" id="about-panel-subscription" aria-labelledby="about-tab-subscription" hidden={activeTab !== 'subscription'}>

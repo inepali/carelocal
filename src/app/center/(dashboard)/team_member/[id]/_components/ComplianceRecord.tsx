@@ -6,7 +6,7 @@ import type {
   CenterDocumentRequirement, CenterStaffDocumentStatus, DocumentRequest, RequirementSection, StaffDocument,
 } from '@/lib/types'
 import {
-  SECTIONS, COMPLIANCE_STATE_STYLE, computeCompliance, describeDue, describeRenewal, formatDate,
+  sectionsFor, COMPLIANCE_STATE_STYLE, computeCompliance, describeDue, describeRenewal, formatDate,
   type ComplianceState,
 } from '@/lib/compliance'
 import { deleteInternalDocument } from '@/app/actions/storage.actions'
@@ -25,7 +25,7 @@ export interface CenterFile {
 }
 
 const SECTION_ICONS: Record<RequirementSection, React.ElementType> = {
-  personnel: UserSquare2, health: HeartPulse, training: GraduationCap, policies: ClipboardList, evaluations: FileText,
+  personnel: UserSquare2, health: HeartPulse, training: GraduationCap, health_safety: ShieldAlert, policies: ClipboardList, evaluations: FileText,
 }
 
 const STATE_ORDER: ComplianceState[] = ['overdue', 'due_soon', 'pending_review', 'rejected', 'missing', 'current', 'not_applicable']
@@ -208,10 +208,10 @@ export function ComplianceRecord({
         </div>
       )}
 
-      {SECTIONS.map(section => {
+      {sectionsFor(requirements).map(section => {
         const sectionRows = rows.filter(r => r.req.section === section.id)
         if (sectionRows.length === 0) return null
-        const Icon = SECTION_ICONS[section.id]
+        const Icon = SECTION_ICONS[section.id] ?? ClipboardList
         const isMedical = section.id === 'health'
         const restricted = isMedical && !canViewConfidential
         const collapsed = isMedical && !showMedical

@@ -10,7 +10,7 @@ import {
 import { invalidateLookupCache } from '@/hooks/use-lookups'
 import type { DomainKey } from '@/lib/domain-config'
 import { useCenterContext } from '../../context'
-import { WorkAreasPanel } from './_components/WorkAreasPanel'
+import { WorkAreasPanel } from './WorkAreasPanel'
 
 // Work areas (Classrooms, Care Areas …) live in their own table but are managed here too
 const WORK_AREAS_TAB = 'work_areas'
@@ -26,7 +26,7 @@ function toValue(label: string) {
   return label.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
 }
 
-export default function ManageDataPage() {
+export default function ManageDataTab() {
   const supabase = createClient()
   const { workAreaTerm } = useCenterContext()
   const [activeGroup, setActiveGroup] = useState<ActiveTab>(WORK_AREAS_TAB)
@@ -169,11 +169,11 @@ export default function ManageDataPage() {
   const tabs: { id: ActiveTab; label: string }[] = [{ id: WORK_AREAS_TAB, label: workAreaTerm }, ...LOOKUP_GROUPS]
 
   return (
-    <div className="max-w-5xl mx-auto px-6 md:px-8 py-8">
+    <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-black text-[#0b3828] tracking-tight mb-2 flex items-center gap-3">
-          <Database className="w-8 h-8 text-[#157354]" /> Manage System Data
-        </h1>
+        <h2 className="text-2xl font-black text-[#0b3828] tracking-tight mb-2 flex items-center gap-3">
+          <Database className="w-7 h-7 text-[#157354]" /> Manage System Data
+        </h2>
         <p className="text-[#6b7a73] font-medium">
           Configure the dropdowns and choices used across your center. Platform defaults can be renamed or
           deactivated for your center without affecting anyone else.

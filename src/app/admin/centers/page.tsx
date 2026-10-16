@@ -12,9 +12,11 @@ import {
   ShieldCheck,
   CreditCard,
   MapPin,
-  Calendar
+  Calendar,
+  FileDown
 } from 'lucide-react'
 import Link from 'next/link'
+import { exportCenterRequirementsAsTemplate } from '@/app/actions/requirement-templates.actions'
 
 export default function AdminCentersPage() {
   const supabase = createClient()
@@ -71,6 +73,14 @@ export default function AdminCentersPage() {
     } else {
       alert('Failed to update trial months')
     }
+  }
+
+  const exportChecklist = async (center: { id: string; name: string }) => {
+    const name = prompt(`Template name for ${center.name}'s document requirements:`, `${center.name} checklist`)
+    if (!name?.trim()) return
+    const description = prompt('Short description (optional):') ?? ''
+    const res = await exportCenterRequirementsAsTemplate(center.id, name, description)
+    alert(res.success ? `Saved "${name.trim()}" with ${res.count} requirements. Other centers can now import it from Document Requirements.` : res.error)
   }
 
   if (loading) {
@@ -193,6 +203,9 @@ export default function AdminCentersPage() {
                      </td>
                      <td className="px-8 py-6 text-right">
                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                         <button onClick={() => exportChecklist(center)} className="p-2 text-slate-400 hover:text-violet-600 hover:bg-violet-50 rounded-xl transition-all" title="Export document requirements as a template">
+                           <FileDown className="w-5 h-5" />
+                         </button>
                          <button className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all" title="View Records">
                            <ExternalLink className="w-5 h-5" />
                          </button>

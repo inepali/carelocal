@@ -9,6 +9,7 @@ export const SECTIONS: { id: RequirementSection; label: string; description: str
   { id: 'personnel',   label: 'Personnel File',           description: 'Application, background clearance, emergency information' },
   { id: 'health',      label: 'Health (Confidential)',    description: 'Medical records kept in a separate confidential file' },
   { id: 'training',    label: 'Training & Certifications', description: 'Required trainings, CPR / First Aid, safe sleep' },
+  { id: 'health_safety', label: 'Health & Safety Training', description: 'Topic-level health and safety training record' },
   { id: 'policies',    label: 'Policies & Acknowledgements', description: 'Policies and plans staff must receive or review' },
   { id: 'evaluations', label: 'Evaluations & Development', description: 'Evaluations and professional development plans' },
 ]
@@ -37,6 +38,27 @@ export const DUE_PRESETS: { days: number | null; label: string }[] = [
   { days: 180,  label: 'Within 6 months' },
   { days: 365,  label: 'Within 1 year' },
 ]
+
+export type SectionDef = { id: RequirementSection; label: string; description: string; custom?: boolean }
+
+export const CUSTOM_SECTION_PREFIX = 'custom:'
+
+/** Id for a section a center creates itself, derived from its name */
+export function customSectionId(name: string) {
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40)
+  return `${CUSTOM_SECTION_PREFIX}${slug || 'section'}`
+}
+
+/** The built-in sections followed by any custom sections the center's requirements use */
+export function sectionsFor(requirements: Pick<CenterDocumentRequirement, 'section' | 'section_label'>[]): SectionDef[] {
+  const known = new Set<string>(SECTIONS.map(s => s.id))
+  const custom = new Map<string, SectionDef>()
+  for (const r of requirements) {
+    if (known.has(r.section) || custom.has(r.section)) continue
+    custom.set(r.section, { id: r.section, label: r.section_label || r.section.replace(CUSTOM_SECTION_PREFIX, ''), description: 'Custom section', custom: true })
+  }
+  return [...SECTIONS, ...custom.values()]
+}
 
 export function sectionLabel(id: RequirementSection) {
   return SECTIONS.find(s => s.id === id)?.label ?? id
