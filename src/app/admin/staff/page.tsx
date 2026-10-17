@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { setStaffEnabled } from '@/app/actions/account-status.actions'
 import { showAlert, showConfirm } from '@/lib/dialog'
+import { purgeStaff } from '@/app/actions/data-cleanup.actions'
+import { PurgeDialog } from '@/components/admin/PurgeDialog'
 import { 
   Users, 
   Search, 
@@ -12,7 +14,8 @@ import {
   Clock, 
   FileText,
   Mail,
-  Phone
+  Phone,
+  Trash2
 } from 'lucide-react'
 
 export default function AdminStaffPage() {
@@ -20,6 +23,7 @@ export default function AdminStaffPage() {
   const [staff, setStaff] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [purging, setPurging] = useState<{ id: string; email: string } | null>(null)
 
   useEffect(() => {
     async function loadStaff() {
@@ -138,6 +142,9 @@ export default function AdminStaffPage() {
                       <button className="text-slate-400 hover:text-blue-600 font-bold text-xs uppercase tracking-widest transition-colors flex items-center gap-1">
                         Profile <ChevronRight className="w-4 h-4" />
                       </button>
+                      <button onClick={() => setPurging({ id: person.id, email: person.email })} className="p-1.5 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all" title="Delete staff member and all their data">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -146,6 +153,26 @@ export default function AdminStaffPage() {
           </table>
         </div>
       </div>
+
+      {purging && (
+        <PurgeDialog
+          title="Delete staff member and all data"
+          targetLabel={purging.email}
+          confirmHint="Type the staff member's email to confirm"
+          consequences={[
+            'Their profile, experience, education, references and credentials',
+            'Their uploaded documents, including the files in storage, and profile photo',
+            'Their links to every center, shift claims, time records, requests and ratings',
+            'Their sign-in account and notifications',
+          ]}
+          onClose={() => setPurging(null)}
+          onConfirm={async ({ confirmName, pin }) => {
+            const res = await purgeStaff(purging.id, { confirmName, pin })
+            if (res.success) setStaff(prev => prev.filter(s => s.id !== purging.id))
+            return res
+          }}
+        />
+      )}
     </div>
   )
 }

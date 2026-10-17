@@ -13,11 +13,14 @@ import {
   CreditCard,
   MapPin,
   Calendar,
-  FileDown
+  FileDown,
+  Trash2
 } from 'lucide-react'
 import Link from 'next/link'
 import { exportCenterRequirementsAsTemplate } from '@/app/actions/requirement-templates.actions'
 import { setCenterEnabled } from '@/app/actions/account-status.actions'
+import { purgeCenter } from '@/app/actions/data-cleanup.actions'
+import { PurgeDialog } from '@/components/admin/PurgeDialog'
 import { showAlert, showConfirm, showPrompt } from '@/lib/dialog'
 
 export default function AdminCentersPage() {
@@ -25,6 +28,7 @@ export default function AdminCentersPage() {
   const [centers, setCenters] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [purging, setPurging] = useState<{ id: string; name: string } | null>(null)
 
   useEffect(() => {
     async function loadCenters() {
@@ -233,6 +237,9 @@ export default function AdminCentersPage() {
                          <button onClick={() => exportChecklist(center)} className="p-2 text-slate-400 hover:text-violet-600 hover:bg-violet-50 rounded-xl transition-all" title="Export document requirements as a template">
                            <FileDown className="w-5 h-5" />
                          </button>
+                         <button onClick={() => setPurging({ id: center.id, name: center.name })} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all" title="Delete center and all its data">
+                           <Trash2 className="w-5 h-5" />
+                         </button>
                          <button className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all" title="View Records">
                            <ExternalLink className="w-5 h-5" />
                          </button>
@@ -264,6 +271,27 @@ export default function AdminCentersPage() {
            </div>
          )}
       </div>
+
+      {purging && (
+        <PurgeDialog
+          title="Delete center and all data"
+          targetLabel={purging.name}
+          confirmHint="Type the center name to confirm"
+          consequences={[
+            'The center, its profile, programs, team and subscription record',
+            'All shifts, claims, time records, requests and support tickets',
+            'Document requirements, compliance records, inspections, vendors and their uploaded files',
+            "Staff links to this center (the staff members' own accounts and documents stay)",
+          ]}
+          option={{ label: "Also delete the center admins' sign-in accounts (skips anyone who is also staff or runs another center)", defaultChecked: false }}
+          onClose={() => setPurging(null)}
+          onConfirm={async ({ confirmName, pin, option }) => {
+            const res = await purgeCenter(purging.id, { confirmName, pin, deleteAdminAccounts: option })
+            if (res.success) setCenters(prev => prev.filter(c => c.id !== purging.id))
+            return res
+          }}
+        />
+      )}
     </div>
   )
 }
