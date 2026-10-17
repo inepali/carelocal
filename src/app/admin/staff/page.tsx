@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { setStaffEnabled } from '@/app/actions/account-status.actions'
+import { showAlert, showConfirm } from '@/lib/dialog'
 import { 
   Users, 
   Search, 
@@ -31,6 +33,21 @@ export default function AdminStaffPage() {
     }
     loadStaff()
   }, [])
+
+  async function toggleEnabled(person: any) {
+    const enabling = person.is_active === false
+    const name = `${person.first_name} ${person.last_name}`
+    const ok = await showConfirm(
+      enabling
+        ? `Enable ${name}? They will be able to sign in again.`
+        : `Disable ${name}? They will be signed out and cannot sign in until you enable them again.`,
+      { title: enabling ? 'Enable account' : 'Disable account', tone: enabling ? 'default' : 'danger', confirmLabel: enabling ? 'Enable' : 'Disable' },
+    )
+    if (!ok) return
+    const res = await setStaffEnabled(person.id, enabling)
+    if (!res.success) { showAlert(res.error); return }
+    setStaff(prev => prev.map(s => s.id === person.id ? { ...s, is_active: enabling } : s))
+  }
 
   const filteredStaff = staff.filter(s => 
     `${s.first_name} ${s.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -101,14 +118,27 @@ export default function AdminStaffPage() {
                     </div>
                   </td>
                   <td className="px-8 py-6">
-                    <div className="flex items-center gap-1.5 text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-emerald-100 max-w-fit">
-                      <ShieldCheck className="w-3.5 h-3.5" /> Verified
+                    <div className="flex flex-col items-start gap-1.5">
+                      <div className="flex items-center gap-1.5 text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-emerald-100 max-w-fit">
+                        <ShieldCheck className="w-3.5 h-3.5" /> Verified
+                      </div>
+                      {person.is_active === false && (
+                        <div className="text-rose-600 bg-rose-50 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-rose-100">Disabled</div>
+                      )}
                     </div>
                   </td>
                   <td className="px-8 py-6 text-right">
-                    <button className="text-slate-400 hover:text-blue-600 font-bold text-xs uppercase tracking-widest transition-colors flex items-center gap-1 ml-auto">
-                       Profile <ChevronRight className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center justify-end gap-4">
+                      <button
+                        onClick={() => toggleEnabled(person)}
+                        className={`font-bold text-xs uppercase tracking-widest transition-colors ${person.is_active === false ? 'text-emerald-600 hover:text-emerald-700' : 'text-slate-400 hover:text-rose-600'}`}
+                      >
+                        {person.is_active === false ? 'Enable' : 'Disable'}
+                      </button>
+                      <button className="text-slate-400 hover:text-blue-600 font-bold text-xs uppercase tracking-widest transition-colors flex items-center gap-1">
+                        Profile <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

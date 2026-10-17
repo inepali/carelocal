@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { getDomainKey, type DomainKey } from '@/lib/domain-config'
 import { siteUrl } from '@/lib/site'
-import { canAccessDomain, WRONG_DOMAIN_ERROR } from '@/lib/supabase/user-domain'
+import { canAccessDomain, WRONG_DOMAIN_ERROR, ACCOUNT_DISABLED_ERROR, CENTER_DISABLED_ERROR } from '@/lib/supabase/user-domain'
 
 export async function updateSession(request: NextRequest) {
   const host = request.headers.get('host') || ''
@@ -81,6 +81,35 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/login' // Or a "forbidden" page
     return NextResponse.redirect(url)
+  }
+
+  // 2b. Disabled accounts and centers (set by a super admin). Super admins are never locked out.
+  const isMobilePortal = request.nextUrl.pathname.startsWith('/mobile') && request.nextUrl.pathname !== '/mobile/login'
+  if (user && user.app_metadata?.is_super_admin !== true && (isCenterRoute || isStaffRoute || isMobilePortal)) {
+    let disabledError: string | null = user.app_metadata?.disabled === true ? ACCOUNT_DISABLED_ERROR : null
+
+    if (!disabledError && isCenterRoute) {
+      const { data: membership } = await supabase
+        .from('center_admins')
+        .select('centers(is_active)')
+        .eq('user_id', user.id)
+        .limit(1)
+        .maybeSingle()
+      const center = membership?.centers as { is_active?: boolean } | { is_active?: boolean }[] | null | undefined
+      const active = Array.isArray(center) ? center[0]?.is_active : center?.is_active
+      if (active === false) disabledError = CENTER_DISABLED_ERROR
+    }
+
+    if (disabledError) {
+      await supabase.auth.signOut()
+      const url = request.nextUrl.clone()
+      url.pathname = isMobilePortal ? '/mobile/login' : '/login'
+      url.search = ''
+      url.searchParams.set('error', disabledError)
+      const redirect = NextResponse.redirect(url)
+      supabaseResponse.cookies.getAll().forEach(cookie => redirect.cookies.set(cookie))
+      return redirect
+    }
   }
 
   // 3. Vertical Lock: accounts may only use the vertical (childcare/healthcare/senior) they signed up on

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react'
 import { getDomainConfig, getDomainKey, type DomainKey } from '@/lib/domain-config'
-import { canAccessDomain, wrongDomainMessage, WRONG_DOMAIN_ERROR } from '@/lib/supabase/user-domain'
+import { canAccessDomain, wrongDomainMessage, WRONG_DOMAIN_ERROR, DISABLED_MESSAGES } from '@/lib/supabase/user-domain'
 
 const LOGIN_CONTENT = {
   childcare: {
@@ -58,8 +58,11 @@ export default function LoginPage() {
       const host = window.location.host
       const siteDomain = getDomainKey(host)
       setDomainKey(siteDomain)
-      if (new URLSearchParams(window.location.search).get('error') === WRONG_DOMAIN_ERROR) {
+      const errorParam = new URLSearchParams(window.location.search).get('error')
+      if (errorParam === WRONG_DOMAIN_ERROR) {
         setError(wrongDomainMessage(siteDomain))
+      } else if (errorParam && DISABLED_MESSAGES[errorParam]) {
+        setError(DISABLED_MESSAGES[errorParam])
       }
     }
   }, [])
@@ -75,7 +78,7 @@ export default function LoginPage() {
     const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
 
     if (authError) {
-      setError(authError.message)
+      setError(/banned/i.test(authError.message) ? DISABLED_MESSAGES.account_disabled : authError.message)
       setLoading(false)
       return
     }

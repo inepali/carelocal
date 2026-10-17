@@ -17,7 +17,8 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { exportCenterRequirementsAsTemplate } from '@/app/actions/requirement-templates.actions'
-import { showAlert, showPrompt } from '@/lib/dialog'
+import { setCenterEnabled } from '@/app/actions/account-status.actions'
+import { showAlert, showConfirm, showPrompt } from '@/lib/dialog'
 
 export default function AdminCentersPage() {
   const supabase = createClient()
@@ -74,6 +75,20 @@ export default function AdminCentersPage() {
     } else {
       showAlert('Failed to update trial months')
     }
+  }
+
+  const toggleEnabled = async (center: { id: string; name: string; is_active?: boolean }) => {
+    const enabling = center.is_active === false
+    const ok = await showConfirm(
+      enabling
+        ? `Enable ${center.name}? Its admins will be able to use the center portal again.`
+        : `Disable ${center.name}? Its admins will be signed out and cannot use the center portal until you enable it again.`,
+      { title: enabling ? 'Enable center' : 'Disable center', tone: enabling ? 'default' : 'danger', confirmLabel: enabling ? 'Enable' : 'Disable' },
+    )
+    if (!ok) return
+    const res = await setCenterEnabled(center.id, enabling)
+    if (!res.success) { showAlert(res.error); return }
+    setCenters(prev => prev.map(c => c.id === center.id ? { ...c, is_active: enabling } : c))
   }
 
   const exportChecklist = async (center: { id: string; name: string }) => {
@@ -201,9 +216,20 @@ export default function AdminCentersPage() {
                        <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${getStatusColor(sub?.status || 'inactive')}`}>
                          {sub?.status || 'No Sub'}
                        </span>
+                       {center.is_active === false && (
+                         <span className="ml-2 inline-flex items-center px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-rose-50 text-rose-600 border border-rose-100">Disabled</span>
+                       )}
                      </td>
                      <td className="px-8 py-6 text-right">
-                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                       <div className="flex items-center justify-end gap-2">
+                         <button
+                           onClick={() => toggleEnabled(center)}
+                           className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${center.is_active === false ? 'text-emerald-600 border-emerald-200 hover:bg-emerald-50' : 'text-slate-500 border-slate-200 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50'}`}
+                         >
+                           {center.is_active === false ? 'Enable' : 'Disable'}
+                         </button>
+                       </div>
+                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity mt-1">
                          <button onClick={() => exportChecklist(center)} className="p-2 text-slate-400 hover:text-violet-600 hover:bg-violet-50 rounded-xl transition-all" title="Export document requirements as a template">
                            <FileDown className="w-5 h-5" />
                          </button>
