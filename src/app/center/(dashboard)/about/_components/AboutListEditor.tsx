@@ -4,11 +4,12 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Edit2, Trash2, Loader2, X, ArrowUp, ArrowDown, type LucideIcon } from 'lucide-react'
 import { showAlert, showConfirm } from '@/lib/dialog'
+import { normalizeWebUrl } from '@/lib/utils'
 
 export type AboutField = {
   key: string
   label: string
-  type?: 'text' | 'email' | 'number' | 'textarea' | 'checkbox' | 'select'
+  type?: 'text' | 'email' | 'number' | 'textarea' | 'checkbox' | 'select' | 'url'
   /** Choices for type 'select' (the placeholder becomes the empty option) */
   options?: { value: string; label: string }[]
   placeholder?: string
@@ -100,6 +101,15 @@ export default function AboutListEditor<T extends AboutRow>({
         payload[field.key] = Boolean(value)
       } else if (field.type === 'number') {
         payload[field.key] = value === '' || value == null ? null : parseInt(String(value), 10)
+      } else if (field.type === 'url') {
+        const text = String(value ?? '').trim()
+        const normalized = normalizeWebUrl(text)
+        if (text && !normalized) {
+          showAlert(`${field.label} must be a valid web address, for example https://www.yourcenter.com/enroll`)
+          setSaving(false)
+          return
+        }
+        payload[field.key] = normalized
       } else {
         const text = String(value ?? '').trim()
         payload[field.key] = text === '' ? null : text
@@ -268,7 +278,8 @@ export default function AboutListEditor<T extends AboutRow>({
                         ) : (
                           <input
                             autoFocus={i === 0}
-                            type={field.type || 'text'}
+                            type={field.type === 'url' ? 'text' : field.type || 'text'}
+                            inputMode={field.type === 'url' ? 'url' : undefined}
                             min={field.type === 'number' ? 0 : undefined}
                             required={field.required}
                             value={String(form[field.key] ?? '')}

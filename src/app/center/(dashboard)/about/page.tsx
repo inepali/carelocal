@@ -3,13 +3,14 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { CenterProgram, CenterTeamMember, CenterAboutItem } from '@/lib/types'
-import { Building2, BookOpen, Users, ListPlus, Clock, Mail, CreditCard, Database } from 'lucide-react'
+import { Building2, BookOpen, Users, ListPlus, Clock, Mail, CreditCard, Database, ExternalLink } from 'lucide-react'
 import CenterProfileTab from './_components/CenterProfileTab'
 import AboutListEditor from './_components/AboutListEditor'
 import SubscriptionTab from './_components/SubscriptionTab'
 import ManageDataTab from './_components/ManageDataTab'
 import { useLookups } from '@/hooks/use-lookups'
 import { lookupLabel } from '@/lib/lookups'
+import { normalizeWebUrl } from '@/lib/utils'
 
 const TABS = [
   { id: 'profile', name: 'Center Profile', icon: Building2 },
@@ -126,6 +127,7 @@ export default function CenterAboutPage() {
                 { key: 'capacity', label: 'Capacity', type: 'number', placeholder: 'e.g. 20', half: true },
                 { key: 'schedule', label: 'Schedule', placeholder: 'e.g. Mon–Fri, 7:30am–5:30pm' },
                 { key: 'description', label: 'Description', type: 'textarea', placeholder: 'What does this program include?' },
+                { key: 'more_info_url', label: 'More Info Link', type: 'url', placeholder: 'e.g. https://www.yourcenter.com/pre-k' },
                 { key: 'is_active', label: 'Currently offered', type: 'checkbox' },
               ]}
               renderItem={(program) => (
@@ -148,6 +150,16 @@ export default function CenterAboutPage() {
                     <p className="flex items-center gap-1.5 text-xs text-[#6b7a73] font-medium mb-2"><Clock className="w-3.5 h-3.5" /> {program.schedule}</p>
                   )}
                   {program.description && <p className="text-sm text-[#4a5a52] leading-relaxed whitespace-pre-line">{program.description}</p>}
+                  {normalizeWebUrl(program.more_info_url) && (
+                    <a
+                      href={normalizeWebUrl(program.more_info_url)!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 inline-flex items-center gap-1.5 text-sm font-bold text-[#157354] hover:underline"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" /> More info
+                    </a>
+                  )}
                 </>
               )}
             />
