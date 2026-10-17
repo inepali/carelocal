@@ -7,7 +7,7 @@ import type { PurgeResult } from '@/app/actions/data-cleanup.actions'
 /**
  * Two-step confirmation for permanently deleting a center or staff member and all their data.
  *   Step 1: read what will be removed and type the exact name / email back.
- *   Step 2: enter today's date as the PIN (YYYYMMDD).
+ *   Step 2: re-enter your own password.
  */
 export function PurgeDialog({
   title, targetLabel, confirmHint, consequences, option, onClose, onConfirm,
@@ -19,11 +19,11 @@ export function PurgeDialog({
   consequences: string[]
   option?: { label: string; defaultChecked: boolean }
   onClose: () => void
-  onConfirm: (input: { confirmName: string; pin: string; option: boolean }) => Promise<PurgeResult>
+  onConfirm: (input: { confirmName: string; password: string; option: boolean }) => Promise<PurgeResult>
 }) {
   const [step, setStep] = useState<1 | 2>(1)
   const [typed, setTyped] = useState('')
-  const [pin, setPin] = useState('')
+  const [password, setPassword] = useState('')
   const [optionOn, setOptionOn] = useState(option?.defaultChecked ?? false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -34,7 +34,7 @@ export function PurgeDialog({
   async function run() {
     setBusy(true)
     setError('')
-    const res = await onConfirm({ confirmName: typed, pin, option: optionOn })
+    const res = await onConfirm({ confirmName: typed, password, option: optionOn })
     setBusy(false)
     if (res.success) setResult(res)
     else setError(res.error)
@@ -100,24 +100,23 @@ export function PurgeDialog({
             ) : (
               <>
                 <p className="text-sm text-slate-600 font-medium mb-4">
-                  Enter the security PIN to confirm deleting <span className="font-bold text-slate-900">{targetLabel}</span>.
+                  Enter your password to confirm deleting <span className="font-bold text-slate-900">{targetLabel}</span>.
                 </p>
                 <input
                   autoFocus
                   type="password"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  value={pin}
-                  onChange={e => setPin(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && pin && !busy) run() }}
-                  placeholder="PIN"
-                  className="w-full mb-3 px-4 py-3 rounded-xl border border-slate-200 tracking-widest focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && password && !busy) run() }}
+                  placeholder="Your password"
+                  className="w-full mb-3 px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500"
                 />
                 {error && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{error}</div>}
                 <div className="flex items-center gap-3 mt-3">
-                  <button disabled={busy} onClick={() => { setStep(1); setError(''); setPin('') }} className="flex-1 px-5 py-3 rounded-xl font-bold text-slate-500 bg-slate-50 border-2 border-slate-100 hover:bg-slate-100 transition-colors">Back</button>
+                  <button disabled={busy} onClick={() => { setStep(1); setError(''); setPassword('') }} className="flex-1 px-5 py-3 rounded-xl font-bold text-slate-500 bg-slate-50 border-2 border-slate-100 hover:bg-slate-100 transition-colors">Back</button>
                   <button
-                    disabled={!pin || busy}
+                    disabled={!password || busy}
                     onClick={run}
                     className="flex-[2] flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-black text-white bg-red-600 hover:bg-red-700 disabled:opacity-40 transition-colors"
                   >

@@ -285,8 +285,8 @@ export default function AdminCentersPage() {
           ]}
           option={{ label: "Also delete the center admins' sign-in accounts (skips anyone who is also staff or runs another center)", defaultChecked: false }}
           onClose={() => setPurging(null)}
-          onConfirm={async ({ confirmName, pin, option }) => {
-            const res = await purgeCenter(purging.id, { confirmName, pin, deleteAdminAccounts: option })
+          onConfirm={async ({ confirmName, password, option }) => {
+            const res = await purgeCenter(purging.id, { confirmName, password, deleteAdminAccounts: option })
             if (res.success) setCenters(prev => prev.filter(c => c.id !== purging.id))
             return res
           }}

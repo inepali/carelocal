@@ -166,8 +166,8 @@ export default function AdminStaffPage() {
             'Their sign-in account and notifications',
           ]}
           onClose={() => setPurging(null)}
-          onConfirm={async ({ confirmName, pin }) => {
-            const res = await purgeStaff(purging.id, { confirmName, pin })
+          onConfirm={async ({ confirmName, password }) => {
+            const res = await purgeStaff(purging.id, { confirmName, password })
             if (res.success) setStaff(prev => prev.filter(s => s.id !== purging.id))
             return res
           }}

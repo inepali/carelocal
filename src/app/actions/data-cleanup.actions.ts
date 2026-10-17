@@ -1,6 +1,5 @@
 'use server'
 
-import { timingSafeEqual } from 'node:crypto'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { DeleteObjectCommand } from '@aws-sdk/client-s3'
 import { r2 } from '@/lib/r2'
@@ -10,9 +9,7 @@ import { createClient } from '@/lib/supabase/server'
  * Permanent removal of a center or a staff member and everything that belongs to them, for data
  * cleanup only. Super admins only, behind two checks:
  *   1. the exact name (center) / email (staff) typed back, and
- *   2. today's date as a PIN (YYYYMMDD).
- * The PIN is derived from the date on the server; nothing is stored. It is a stop-and-think guard,
- * not strong security: anyone who knows the convention can compute it.
+ *   2. the super admin's own password, re-entered and verified against their account.
  */
 
 const admin = () => createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
@@ -23,36 +20,35 @@ async function requireSuperAdmin() {
   return user?.app_metadata?.is_super_admin === true ? user : null
 }
 
-// ─── PIN ─────────────────────────────────────────────────────────────────────
+// ─── Password re-entry ───────────────────────────────────────────────────────
 
-/** Today's date in the business timezone as YYYYMMDD (the server itself runs in UTC) */
-function todaysPin() {
-  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' })
-    .formatToParts(new Date())
-  const get = (type: string) => parts.find(p => p.type === type)!.value
-  return `${get('year')}${get('month')}${get('day')}`
-}
-
-// Wrong PINs lock the caller out for a while (kept in memory: resets on restart, per server instance)
+// Wrong passwords lock the caller out for a while (kept in memory: resets on restart, per server instance)
 const attempts = new Map<string, { fails: number; lockedUntil: number }>()
 const MAX_FAILS = 5
 const LOCK_MS = 15 * 60 * 1000
 
-function checkPin(userId: string, pin: string): string | null {
-  const state = attempts.get(userId) ?? { fails: 0, lockedUntil: 0 }
+/** Verifies the signed-in super admin's password. Returns an error message, or null when it is correct. */
+async function verifyPassword(user: { id: string; email?: string }, password: string): Promise<string | null> {
+  const state = attempts.get(user.id) ?? { fails: 0, lockedUntil: 0 }
   if (state.lockedUntil > Date.now()) {
-    return `Too many wrong PINs. Try again in ${Math.ceil((state.lockedUntil - Date.now()) / 60000)} minutes.`
+    return `Too many wrong passwords. Try again in ${Math.ceil((state.lockedUntil - Date.now()) / 60000)} minutes.`
   }
-  const expected = Buffer.from(todaysPin())
-  const given = Buffer.from(pin.trim())
-  if (given.length === expected.length && timingSafeEqual(given, expected)) {
-    attempts.delete(userId)
+  if (!user.email || !password) return 'Enter your password.'
+
+  // A throwaway client that never stores a session, so this check does not touch the browser session
+  const verifier = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  })
+  const { data, error } = await verifier.auth.signInWithPassword({ email: user.email, password })
+  if (!error && data.user?.id === user.id) {
+    attempts.delete(user.id)
     return null
   }
+
   state.fails += 1
   if (state.fails >= MAX_FAILS) { state.lockedUntil = Date.now() + LOCK_MS; state.fails = 0 }
-  attempts.set(userId, state)
-  return 'Incorrect PIN.'
+  attempts.set(user.id, state)
+  return 'Incorrect password.'
 }
 
 // ─── Storage ─────────────────────────────────────────────────────────────────
@@ -86,7 +82,7 @@ const fail = (error: string): { success: false; error: string } => ({ success: f
 
 export async function purgeCenter(
   centerId: string,
-  input: { confirmName: string; pin: string; deleteAdminAccounts: boolean },
+  input: { confirmName: string; password: string; deleteAdminAccounts: boolean },
 ): Promise<PurgeResult> {
   const caller = await requireSuperAdmin()
   if (!caller) return fail('Not allowed')
@@ -96,8 +92,8 @@ export async function purgeCenter(
   if (!center) return fail('Center not found')
 
   if (input.confirmName.trim() !== center.name) return fail('The name you typed does not match this center.')
-  const pinError = checkPin(caller.id, input.pin)
-  if (pinError) return fail(pinError)
+  const passwordError = await verifyPassword(caller, input.password)
+  if (passwordError) return fail(passwordError)
 
   // A live Stripe subscription would keep billing a center that no longer exists
   const { data: subs } = await db.from('subscriptions').select('status, stripe_subscription_id').eq('center_id', centerId)
@@ -151,7 +147,7 @@ export async function purgeCenter(
 
 export async function purgeStaff(
   staffId: string,
-  input: { confirmName: string; pin: string },
+  input: { confirmName: string; password: string },
 ): Promise<PurgeResult> {
   const caller = await requireSuperAdmin()
   if (!caller) return fail('Not allowed')
@@ -164,8 +160,8 @@ export async function purgeStaff(
     return fail('The email you typed does not match this staff member.')
   }
   if (staff.user_id === caller.id) return fail('You cannot delete your own account')
-  const pinError = checkPin(caller.id, input.pin)
-  if (pinError) return fail(pinError)
+  const passwordError = await verifyPassword(caller, input.password)
+  if (passwordError) return fail(passwordError)
 
   // Someone who also runs a center would take the center's admin access with them
   const { data: adminRow } = await db.from('center_admins').select('center_id').eq('user_id', staff.user_id).limit(1).maybeSingle()
