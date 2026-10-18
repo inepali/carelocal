@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { rejectUnauthorizedCron } from '@/lib/server/cron-auth'
 import { loadCenterCompliance, countStates, daysUntil } from '@/lib/compliance-data'
 import { notifyUsers } from '@/lib/server/notify'
+import { runJobsMaintenance } from '@/lib/server/jobs-cron'
 
 /**
  * Daily compliance reminders (Vercel Cron).
@@ -110,7 +111,16 @@ export async function GET(request: Request) {
       summary.adminDigests++
     }
 
-    return NextResponse.json({ success: true, ...summary })
+    // Regular hiring upkeep (auto-close, readiness, expiry nudges, 30-day access release)
+    let jobs: Awaited<ReturnType<typeof runJobsMaintenance>> | { error: string }
+    try {
+      jobs = await runJobsMaintenance(supabase)
+    } catch (err) {
+      console.error('Jobs maintenance failed:', err)
+      jobs = { error: err instanceof Error ? err.message : 'failed' }
+    }
+
+    return NextResponse.json({ success: true, ...summary, jobs })
   } catch (err) {
     console.error('Compliance reminders failed:', err)
     return NextResponse.json({ error: err instanceof Error ? err.message : 'Internal Server Error', ...summary }, { status: 500 })

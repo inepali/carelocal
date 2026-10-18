@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, Calendar, FileText, UserCircle, Globe, Search, CreditCard, Building, LayoutDashboard, Inbox } from 'lucide-react'
+import { LogOut, Calendar, FileText, UserCircle, Globe, Search, CreditCard, Building, LayoutDashboard, Inbox, Briefcase, ClipboardList } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { useIsRegularOnly, isSubstituteOnlyRoute, isRegularOnlyRoute } from '@/lib/hooks/useIsRegularOnly'
@@ -63,6 +63,8 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
     { name: 'My Centers', href: '/staff/centers', icon: Globe },
     { name: 'Available Shifts', href: '/staff/shifts', icon: Search },
     { name: 'My Shifts', href: '/staff/my-shifts', icon: Calendar },
+    { name: 'Jobs', href: '/staff/jobs', icon: Briefcase },
+    { name: 'Applications', href: '/staff/applications', icon: ClipboardList },
     { name: 'My Documents', href: '/staff/documents', icon: FileText },
     { name: 'Requests', href: '/staff/requests', icon: Inbox },
     { name: 'My Profile', href: '/staff/profile', icon: UserCircle },

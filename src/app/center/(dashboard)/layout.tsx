@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, LayoutDashboard, Users, UserPlus, Info, Calendar, Tags, LifeBuoy, ClipboardCheck, Truck, Baby, Building2, UserCircle, Inbox, ShieldCheck } from 'lucide-react'
+import { LogOut, LayoutDashboard, Users, UserPlus, Info, Calendar, Tags, LifeBuoy, ClipboardCheck, Truck, Baby, Building2, UserCircle, Inbox, ShieldCheck, Briefcase } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { CenterContext } from './context'
@@ -28,6 +28,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
   const [workAreaTerm, setWorkAreaTerm] = useState('Classrooms')
   const [domainKey, setDomainKey] = useState<DomainKey>('childcare')
   const [hasStaffProfile, setHasStaffProfile] = useState(false)
+  const [jobsEnabled, setJobsEnabled] = useState(false)
 
   useEffect(() => {
     async function loadCenter() {
@@ -41,7 +42,8 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
             name,
             staff_term,
             work_area_term,
-            domain_key
+            domain_key,
+            jobs_enabled
           )
         `)
         .eq('user_id', user.id)
@@ -56,6 +58,8 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
         if (data.centers.work_area_term) setWorkAreaTerm(data.centers.work_area_term)
         // @ts-ignore
         if (data.centers.domain_key) setDomainKey(data.centers.domain_key)
+        // @ts-ignore
+        setJobsEnabled(!!data.centers.jobs_enabled)
       }
 
       // Admins who are also employees can switch to their own staff portal
@@ -87,6 +91,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
     { name: 'Dashboard', href: '/center/dashboard', icon: LayoutDashboard },
     { name: 'Shifts', href: '/center/shifts', icon: Calendar },
     { name: staffTerm, href: '/center/team_member', icon: Users },
+    ...(jobsEnabled ? [{ name: 'Jobs', href: '/center/jobs', icon: Briefcase }] : []),
     { name: 'Requests', href: '/center/requests', icon: Inbox },
     { name: 'Compliance', href: '/center/compliance', icon: ShieldCheck },
     { name: 'Inspections', href: '/center/inspections', icon: ClipboardCheck },

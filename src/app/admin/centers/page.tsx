@@ -19,6 +19,7 @@ import {
 import Link from 'next/link'
 import { exportCenterRequirementsAsTemplate } from '@/app/actions/requirement-templates.actions'
 import { setCenterEnabled } from '@/app/actions/account-status.actions'
+import { setCenterJobsEnabled } from '@/app/actions/jobs.actions'
 import { purgeCenter } from '@/app/actions/data-cleanup.actions'
 import { PurgeDialog } from '@/components/admin/PurgeDialog'
 import { showAlert, showConfirm, showPrompt } from '@/lib/dialog'
@@ -93,6 +94,14 @@ export default function AdminCentersPage() {
     const res = await setCenterEnabled(center.id, enabling)
     if (!res.success) { showAlert(res.error); return }
     setCenters(prev => prev.map(c => c.id === center.id ? { ...c, is_active: enabling } : c))
+  }
+
+  const toggleJobs = async (center: { id: string; name: string; jobs_enabled?: boolean }) => {
+    const enabling = !center.jobs_enabled
+    if (!await showConfirm(enabling ? `Turn on job postings for ${center.name}?` : `Turn off job postings for ${center.name}? Existing postings stay as they are.`, { title: 'Hiring pilot', confirmLabel: enabling ? 'Turn on' : 'Turn off', tone: 'default' })) return
+    const res = await setCenterJobsEnabled(center.id, enabling)
+    if (!res.success) { showAlert(res.error); return }
+    setCenters(prev => prev.map(c => c.id === center.id ? { ...c, jobs_enabled: enabling } : c))
   }
 
   const exportChecklist = async (center: { id: string; name: string }) => {
@@ -226,6 +235,13 @@ export default function AdminCentersPage() {
                      </td>
                      <td className="px-8 py-6 text-right">
                        <div className="flex items-center justify-end gap-2">
+                         <button
+                           onClick={() => toggleJobs(center)}
+                           title="Job postings (hiring pilot)"
+                           className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${center.jobs_enabled ? 'text-violet-700 border-violet-200 bg-violet-50 hover:bg-violet-100' : 'text-slate-500 border-slate-200 hover:text-violet-700 hover:border-violet-200'}`}
+                         >
+                           {center.jobs_enabled ? 'Jobs on' : 'Jobs off'}
+                         </button>
                          <button
                            onClick={() => toggleEnabled(center)}
                            className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${center.is_active === false ? 'text-emerald-600 border-emerald-200 hover:bg-emerald-50' : 'text-slate-500 border-slate-200 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50'}`}
