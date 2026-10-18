@@ -67,7 +67,7 @@ export default function DashboardOverview() {
         const isActive = centerData.subscription_status === 'active' || (sub && sub.status === 'active')
         
         if (!isActive) {
-          const trialMonths = centerData.trial_months || 6
+          const trialMonths = centerData.trial_months || 3
           const trialEnd = new Date(centerData.created_at)
           trialEnd.setMonth(trialEnd.getMonth() + trialMonths)
           trialDaysLeft = Math.ceil((trialEnd.getTime() - new Date().getTime()) / (1000 * 3600 * 24))
@@ -184,11 +184,11 @@ export default function DashboardOverview() {
     <div className="max-w-6xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
         <div>
-          <div className="flex items-center gap-2 text-[#157354] font-black uppercase tracking-[0.3em] text-[10px] mb-2">
+          <div className="flex items-center gap-2 text-brand-600 font-black uppercase tracking-[0.3em] text-[10px] mb-2">
              <Globe className="w-3.5 h-3.5" /> Expansion Region
           </div>
-          <h1 className="text-4xl font-black text-[#0b3828] tracking-tight mb-2">Overview</h1>
-          <p className="text-[#6b7a73] font-medium">Real-time status of your center's staffing and compliance.</p>
+          <h1 className="text-4xl font-black text-heading tracking-tight mb-2">Overview</h1>
+          <p className="text-muted font-medium">Real-time status of your center's staffing and compliance.</p>
         </div>
       </div>
 
@@ -196,14 +196,14 @@ export default function DashboardOverview() {
         <div className="mb-10 bg-[#fffbeb] border border-[#fcd34d] p-4 rounded-[1.5rem] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-in fade-in slide-in-from-bottom-2">
            <div className="flex items-center gap-4">
              <div className="w-12 h-12 rounded-xl bg-[#fde68a] flex items-center justify-center shrink-0">
-               <AlertCircle className="w-6 h-6 text-[#d97706]" />
+               <AlertCircle className="w-6 h-6 text-amber-600" />
              </div>
              <div>
                <div className="font-black text-[#b45309] text-lg">Free Trial Active</div>
-               <div className="text-sm font-bold text-[#d97706]">You have {stats.trialDaysLeft} days remaining on your free trial.</div>
+               <div className="text-sm font-bold text-amber-600">You have {stats.trialDaysLeft} days remaining on your free trial.</div>
              </div>
            </div>
-           <Link href="/center/settings/billing" className="bg-[#d97706] text-white px-6 py-3 rounded-xl font-bold hover:bg-[#b45309] transition-colors shadow-sm whitespace-nowrap text-center">
+           <Link href="/center/settings/billing" className="bg-amber-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-[#b45309] transition-colors shadow-sm whitespace-nowrap text-center">
              Subscribe Now
            </Link>
         </div>
@@ -213,56 +213,56 @@ export default function DashboardOverview() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
         <div className="bg-white p-7 rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300 group">
           <div className="flex items-start justify-between mb-6">
-            <div className="p-4 rounded-2xl bg-[#edf7f3] text-[#157354] shadow-sm group-hover:bg-[#157354] group-hover:text-white transition-colors">
+            <div className="p-4 rounded-2xl bg-brand-50 text-brand-600 shadow-sm group-hover:bg-brand-600 group-hover:text-white transition-colors">
               <Calendar className="w-6 h-6" />
             </div>
-            <div className="text-[10px] font-black uppercase tracking-widest text-[#a8b5ae]">Active</div>
+            <div className="text-[10px] font-black uppercase tracking-widest text-subtle">Active</div>
           </div>
           <div>
-            <div className="text-4xl font-black text-[#0b3828] mb-1">{stats.openShifts}</div>
-            <div className="text-sm font-bold text-[#6b7a73]">Open Shifts Today</div>
+            <div className="text-4xl font-black text-heading mb-1">{stats.openShifts}</div>
+            <div className="text-sm font-bold text-muted">Open Shifts Today</div>
           </div>
         </div>
 
         <div className="bg-white p-7 rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300 group">
           <div className="flex items-start justify-between mb-6">
-            <div className="p-4 rounded-2xl bg-[#f0fdf4] text-[#16a34a] shadow-sm group-hover:bg-[#16a34a] group-hover:text-white transition-colors">
+            <div className="p-4 rounded-2xl bg-brand-50 text-[#16a34a] shadow-sm group-hover:bg-[#16a34a] group-hover:text-white transition-colors">
               <Users className="w-6 h-6" />
             </div>
-            <div className="text-[10px] font-black uppercase tracking-widest text-[#a8b5ae]">Network</div>
+            <div className="text-[10px] font-black uppercase tracking-widest text-subtle">Network</div>
           </div>
           <div>
-            <div className="text-4xl font-black text-[#0b3828] mb-1">{stats.activeStaff}</div>
-            <div className="text-sm font-bold text-[#6b7a73]">Verified {staffTerm}</div>
+            <div className="text-4xl font-black text-heading mb-1">{stats.activeStaff}</div>
+            <div className="text-sm font-bold text-muted">Verified {staffTerm}</div>
           </div>
         </div>
 
         <div className="bg-white p-7 rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300 group">
           <div className="flex items-start justify-between mb-6">
-            <div className="p-4 rounded-2xl bg-[#fffbeb] text-[#d97706] shadow-sm group-hover:bg-[#d97706] group-hover:text-white transition-colors">
+            <div className="p-4 rounded-2xl bg-[#fffbeb] text-amber-600 shadow-sm group-hover:bg-amber-600 group-hover:text-white transition-colors">
               <FileText className="w-6 h-6" />
             </div>
             <div className="text-[10px] font-black uppercase tracking-widest text-amber-500">Urgent</div>
           </div>
           <div>
-            <div className="text-4xl font-black text-[#0b3828] mb-1">{stats.missingDocs}</div>
-            <div className="text-sm font-bold text-[#6b7a73]">Docs Pending Review</div>
+            <div className="text-4xl font-black text-heading mb-1">{stats.missingDocs}</div>
+            <div className="text-sm font-bold text-muted">Docs Pending Review</div>
           </div>
         </div>
 
         <div className="bg-white p-7 rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300 group">
           <div className="flex items-start justify-between mb-6">
-            <div className="p-4 rounded-2xl bg-[#fefce8] text-[#fbbf24] shadow-sm group-hover:bg-[#fbbf24] group-hover:text-white transition-colors">
+            <div className="p-4 rounded-2xl bg-[#fefce8] text-amber-400 shadow-sm group-hover:bg-amber-400 group-hover:text-white transition-colors">
               <Star className="w-6 h-6" />
             </div>
             <div className="text-[10px] font-black uppercase tracking-widest text-amber-500">Reputation</div>
           </div>
           <div>
-            <div className="text-4xl font-black text-[#0b3828] mb-1 flex items-baseline gap-1">
+            <div className="text-4xl font-black text-heading mb-1 flex items-baseline gap-1">
               {stats.avgRating > 0 ? stats.avgRating.toFixed(1) : '—'}
-              <Star className="w-5 h-5 text-[#fbbf24] fill-[#fbbf24]" />
+              <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
             </div>
-            <div className="text-sm font-bold text-[#6b7a73]">{stats.totalReviews} {staffTerm} Review{stats.totalReviews !== 1 ? 's' : ''}</div>
+            <div className="text-sm font-bold text-muted">{stats.totalReviews} {staffTerm} Review{stats.totalReviews !== 1 ? 's' : ''}</div>
           </div>
         </div>
       </div>
@@ -289,7 +289,7 @@ export default function DashboardOverview() {
           tiles={[
             { label: 'Overdue', value: inspectionCounts.overdue, icon: AlertTriangle, tone: 'text-red-600 bg-red-50', href: '/center/inspections?filter=overdue' },
             { label: `Due in ${DUE_SOON_DAYS} days`, value: inspectionCounts.due_soon, icon: Clock, tone: 'text-amber-600 bg-amber-50', href: '/center/inspections?filter=due_soon' },
-            { label: 'Current', value: inspectionCounts.ok, icon: CalendarCheck, tone: 'text-[#157354] bg-[#edf7f3]', href: '/center/inspections?filter=ok' },
+            { label: 'Current', value: inspectionCounts.ok, icon: CalendarCheck, tone: 'text-brand-600 bg-brand-50', href: '/center/inspections?filter=ok' },
           ]}
         />
       )}
@@ -297,36 +297,36 @@ export default function DashboardOverview() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Upcoming Shifts */}
         <div className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm flex flex-col">
-          <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-[#f8faf9]/50">
-            <h2 className="text-xl font-black text-[#0b3828] tracking-tight">Upcoming Open Shifts</h2>
-            <Link href="/center/shifts" className="text-[#157354] font-black text-xs uppercase tracking-widest hover:underline">View All</Link>
+          <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-surface/50">
+            <h2 className="text-xl font-black text-heading tracking-tight">Upcoming Open Shifts</h2>
+            <Link href="/center/shifts" className="text-brand-600 font-black text-xs uppercase tracking-widest hover:underline">View All</Link>
           </div>
           <div className="p-6 flex-1 space-y-4">
             {upcomingShifts.length === 0 ? (
               <div className="py-12 text-center">
-                <CheckCircle2 className="w-12 h-12 text-[#a9dac9] mx-auto mb-3 opacity-50" />
-                <p className="text-sm font-bold text-[#6b7a73]">You're all set! No open shifts.</p>
+                <CheckCircle2 className="w-12 h-12 text-brand-200 mx-auto mb-3 opacity-50" />
+                <p className="text-sm font-bold text-muted">You're all set! No open shifts.</p>
               </div>
             ) : (
               upcomingShifts.map((shift) => (
-                <div key={shift.id} className="flex items-center gap-4 p-5 rounded-2xl bg-[#f8faf9] border border-[#e2e8e4] hover:border-[#157354] transition-all group">
-                  <div className="w-12 h-12 rounded-xl bg-white border border-[#e2e8e4] flex flex-col items-center justify-center shrink-0">
-                    <span className="text-[10px] font-black text-[#157354] uppercase tracking-tighter">
+                <div key={shift.id} className="flex items-center gap-4 p-5 rounded-2xl bg-surface border border-border hover:border-brand-600 transition-all group">
+                  <div className="w-12 h-12 rounded-xl bg-white border border-border flex flex-col items-center justify-center shrink-0">
+                    <span className="text-[10px] font-black text-brand-600 uppercase tracking-tighter">
                       {new Date(shift.shift_date).toLocaleDateString('en-US', { month: 'short' })}
                     </span>
-                    <span className="text-lg font-black text-[#0b3828] leading-none">
+                    <span className="text-lg font-black text-heading leading-none">
                       {new Date(shift.shift_date).getDate()}
                     </span>
                   </div>
                   <div className="flex-1">
-                    <div className="font-black text-[#1a2e25] text-sm group-hover:text-[#157354] transition-colors">
+                    <div className="font-black text-text-main text-sm group-hover:text-brand-600 transition-colors">
                       {shift.work_areas?.name || 'Any Room'}
                     </div>
-                    <div className="text-[11px] font-bold text-[#6b7a73] flex items-center gap-1.5 mt-0.5">
+                    <div className="text-[11px] font-bold text-muted flex items-center gap-1.5 mt-0.5">
                       <Clock className="w-3 h-3" /> {shift.start_time.substring(0,5)} - {shift.end_time.substring(0,5)}
                     </div>
                   </div>
-                  <ArrowRight className="w-5 h-5 text-[#a8b5ae] group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="w-5 h-5 text-subtle group-hover:translate-x-1 transition-transform" />
                 </div>
               ))
             )}
@@ -335,24 +335,24 @@ export default function DashboardOverview() {
 
         {/* Recent Activity */}
         <div className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm flex flex-col">
-          <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-[#f8faf9]/50">
-             <h2 className="text-xl font-black text-[#0b3828] tracking-tight">Recent Activity</h2>
+          <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-surface/50">
+             <h2 className="text-xl font-black text-heading tracking-tight">Recent Activity</h2>
           </div>
           <div className="p-6 flex-1 space-y-2">
             {recentActivity.length === 0 ? (
               <div className="py-12 text-center">
-                <Clock className="w-12 h-12 text-[#e2e8e4] mx-auto mb-3 opacity-50" />
-                <p className="text-sm font-bold text-[#6b7a73]">No recent activity to show.</p>
+                <Clock className="w-12 h-12 text-border mx-auto mb-3 opacity-50" />
+                <p className="text-sm font-bold text-muted">No recent activity to show.</p>
               </div>
             ) : (
               recentActivity.map((item, i) => (
                 <div key={i} className="flex items-center gap-4 p-4 rounded-2xl hover:bg-slate-50 transition-colors group">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.type === 'claim' ? 'bg-[#edf7f3] text-[#157354]' : 'bg-[#f0fdf4] text-[#16a34a]'}`}>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.type === 'claim' ? 'bg-brand-50 text-brand-600' : 'bg-brand-50 text-[#16a34a]'}`}>
                     <item.icon className="w-5 h-5" />
                   </div>
                   <div className="flex-1">
-                    <div className="font-bold text-[#1a2e25] text-sm">{item.text}</div>
-                    <div className="text-[10px] font-black text-[#a8b5ae] uppercase tracking-widest mt-0.5">
+                    <div className="font-bold text-text-main text-sm">{item.text}</div>
+                    <div className="text-[10px] font-black text-subtle uppercase tracking-widest mt-0.5">
                       {new Date(item.time).toLocaleDateString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
@@ -361,7 +361,7 @@ export default function DashboardOverview() {
             )}
           </div>
           <div className="p-6 mt-auto">
-             <button className="w-full py-4 bg-[#f8faf9] rounded-2xl text-[#157354] font-black text-xs uppercase tracking-widest hover:bg-[#edf7f3] transition-all border border-[#e2e8e4]">
+             <button className="w-full py-4 bg-surface rounded-2xl text-brand-600 font-black text-xs uppercase tracking-widest hover:bg-brand-50 transition-all border border-border">
                 Download Activity Report
              </button>
           </div>
@@ -369,17 +369,17 @@ export default function DashboardOverview() {
       </div>
       
       {stats.activeStaff === 0 && (
-        <div className="mt-8 bg-[#edf7f3] border border-[#a9dac9] rounded-[2.5rem] p-8 text-center">
-          <div className="w-16 h-16 bg-[#157354] rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+        <div className="mt-8 bg-brand-50 border border-brand-200 rounded-[2.5rem] p-8 text-center">
+          <div className="w-16 h-16 bg-brand-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
             <Users className="w-8 h-8 text-white" />
           </div>
-          <h2 className="text-2xl font-black text-[#0b3828] mb-2 tracking-tight">Build your staff pool</h2>
-          <p className="text-[#3d5a4f] max-w-lg mx-auto mb-6 font-medium">
+          <h2 className="text-2xl font-black text-heading mb-2 tracking-tight">Build your staff pool</h2>
+          <p className="text-text-muted max-w-lg mx-auto mb-6 font-medium">
             You can't post a shift until you invite staff to your center. Invite your existing subs, floaters, and teachers to get started.
           </p>
           <Link 
             href="/center/team_member" 
-            className="inline-flex items-center gap-2 bg-[#157354] text-white font-black px-8 py-4 rounded-2xl hover:bg-[#0f4a36] transition-all shadow-lg active:scale-95"
+            className="inline-flex items-center gap-2 bg-brand-600 text-white font-black px-8 py-4 rounded-2xl hover:bg-brand-800 transition-all shadow-lg active:scale-95"
           >
             Invite {staffTerm} <ArrowRight className="w-5 h-5" />
           </Link>
@@ -399,8 +399,8 @@ function SummaryRow({ title, linkLabel, href, tiles }: {
   return (
     <div className="mb-10">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-lg font-bold text-[#0b3828]">{title}</h2>
-        <Link href={href} className="inline-flex items-center gap-1.5 text-sm font-bold text-[#157354] hover:underline">
+        <h2 className="text-lg font-bold text-heading">{title}</h2>
+        <Link href={href} className="inline-flex items-center gap-1.5 text-sm font-bold text-brand-600 hover:underline">
           {linkLabel} <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
@@ -409,14 +409,14 @@ function SummaryRow({ title, linkLabel, href, tiles }: {
           <Link
             key={tile.label}
             href={tile.href}
-            className="bg-white border border-[#e2e8e4] rounded-2xl p-5 flex items-center gap-4 transition-all hover:shadow-md hover:border-[#157354]"
+            className="bg-white border border-border rounded-2xl p-5 flex items-center gap-4 transition-all hover:shadow-md hover:border-brand-600"
           >
             <div className={`w-11 h-11 shrink-0 rounded-xl flex items-center justify-center ${tile.tone}`}>
               <tile.icon className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-2xl font-black text-[#0b3828]">{tile.value}</div>
-              <div className="text-xs font-bold uppercase tracking-widest text-[#6b7a73]">{tile.label}</div>
+              <div className="text-2xl font-black text-heading">{tile.value}</div>
+              <div className="text-xs font-bold uppercase tracking-widest text-muted">{tile.label}</div>
             </div>
           </Link>
         ))}

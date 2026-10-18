@@ -47,7 +47,7 @@ export function PhoneUploadDialog({
     setHandoffId(res.handoffId)
     setExpiresAt(new Date(res.expiresAt).getTime())
     setNow(Date.now())
-    setQr(await QRCode.toDataURL(res.url, { width: 280, margin: 1, color: { dark: '#0b3828', light: '#ffffff' } }))
+    setQr(await QRCode.toDataURL(res.url, { width: 280, margin: 1, color: { dark: '#243746', light: '#ffffff' } }))
     setStatus('pending')
   }
 
@@ -118,18 +118,18 @@ export function PhoneUploadDialog({
   const secondsLeft = Math.max(0, Math.round((expiresAt - now) / 1000))
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[#0b3828]/40 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="phone-upload-title">
-      <div className="w-full max-w-md rounded-3xl border border-[#e2e8e4] bg-white p-7 shadow-2xl">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-brand-900/40 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="phone-upload-title">
+      <div className="w-full max-w-md rounded-3xl border border-border bg-white p-7 shadow-2xl">
         <div className="mb-5 flex items-start justify-between gap-3">
           <div>
-            <h2 id="phone-upload-title" className="flex items-center gap-2 text-xl font-black text-[#0b3828]"><Smartphone className="h-5 w-5 text-[#157354]" /> Upload from phone</h2>
-            <p className="mt-1 text-sm text-[#6b7a73]">{label}</p>
+            <h2 id="phone-upload-title" className="flex items-center gap-2 text-xl font-black text-heading"><Smartphone className="h-5 w-5 text-brand-600" /> Upload from phone</h2>
+            <p className="mt-1 text-sm text-muted">{label}</p>
           </div>
-          <button onClick={close} className="rounded-lg p-1.5 text-[#6b7a73] hover:bg-[#f8faf9]" aria-label="Close"><X className="h-5 w-5" /></button>
+          <button onClick={close} className="rounded-lg p-1.5 text-muted hover:bg-surface" aria-label="Close"><X className="h-5 w-5" /></button>
         </div>
 
         {status === 'starting' && (
-          <div className="flex flex-col items-center py-14 text-[#6b7a73]"><Loader2 className="mb-3 h-8 w-8 animate-spin text-[#157354]" /> Preparing…</div>
+          <div className="flex flex-col items-center py-14 text-muted"><Loader2 className="mb-3 h-8 w-8 animate-spin text-brand-600" /> Preparing…</div>
         )}
 
         {status === 'error' && (
@@ -139,15 +139,15 @@ export function PhoneUploadDialog({
         {status === 'pending' && qr && (
           <div className="text-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qr} alt="QR code to upload from your phone" className="mx-auto h-64 w-64 rounded-2xl border border-[#e2e8e4] p-2" />
-            <ol className="mx-auto mt-5 max-w-xs space-y-1 text-left text-sm text-[#3d5a4f]">
+            <img src={qr} alt="QR code to upload from your phone" className="mx-auto h-64 w-64 rounded-2xl border border-border p-2" />
+            <ol className="mx-auto mt-5 max-w-xs space-y-1 text-left text-sm text-text-muted">
               <li>1. Scan the code with your phone camera.</li>
               <li>2. Take a photo of each page.</li>
               <li>3. Tap Send. It will appear here.</li>
             </ol>
-            <p className="mt-5 flex items-center justify-center gap-2 text-sm font-medium text-[#6b7a73]">
-              <Loader2 className="h-4 w-4 animate-spin text-[#157354]" /> Waiting for your phone…
-              <span className="inline-flex items-center gap-1 text-[#a8b5ae]"><Clock className="h-3.5 w-3.5" />{Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, '0')}</span>
+            <p className="mt-5 flex items-center justify-center gap-2 text-sm font-medium text-muted">
+              <Loader2 className="h-4 w-4 animate-spin text-brand-600" /> Waiting for your phone…
+              <span className="inline-flex items-center gap-1 text-subtle"><Clock className="h-3.5 w-3.5" />{Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, '0')}</span>
             </p>
           </div>
         )}
@@ -156,32 +156,32 @@ export function PhoneUploadDialog({
           <div className="py-8 text-center">
             {error
               ? <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-left text-sm text-red-700">{error}</div>
-              : <p className="mb-4 text-[#6b7a73]">This code has expired.</p>}
-            <button onClick={retake} className="inline-flex items-center gap-2 rounded-xl bg-[#157354] px-5 py-3 font-bold text-white hover:bg-[#0f4a36]"><RefreshCw className="h-4 w-4" /> New code</button>
+              : <p className="mb-4 text-muted">This code has expired.</p>}
+            <button onClick={retake} className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 font-bold text-white hover:bg-brand-800"><RefreshCw className="h-4 w-4" /> New code</button>
           </div>
         )}
 
         {status === 'uploaded' && (
           <div className="space-y-4">
-            <div className="flex items-center gap-2 text-sm font-bold text-[#157354]"><CheckCircle2 className="h-5 w-5" /> Received from your phone</div>
+            <div className="flex items-center gap-2 text-sm font-bold text-brand-600"><CheckCircle2 className="h-5 w-5" /> Received from your phone</div>
             {preview.url && preview.type?.startsWith('image/') ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={preview.url} alt="Uploaded document" className="max-h-72 w-full rounded-xl border border-[#e2e8e4] object-contain" />
+              <img src={preview.url} alt="Uploaded document" className="max-h-72 w-full rounded-xl border border-border object-contain" />
             ) : preview.url ? (
-              <a href={preview.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-xl border border-[#e2e8e4] p-4 text-sm font-semibold text-[#157354] hover:bg-[#edf7f3]">
+              <a href={preview.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-xl border border-border p-4 text-sm font-semibold text-brand-600 hover:bg-brand-50">
                 <FileText className="h-5 w-5" /> Open {preview.name ?? 'document'} to check it
               </a>
             ) : null}
             {askName && (
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-[#1a2e25]">Document name</label>
-                <input value={name} onChange={e => setName(e.target.value)} className="w-full rounded-xl border border-[#e2e8e4] px-4 py-3 text-sm focus:border-[#157354] focus:outline-none focus:ring-2 focus:ring-[#157354]/30" />
+                <label className="mb-1.5 block text-sm font-medium text-text-main">Document name</label>
+                <input value={name} onChange={e => setName(e.target.value)} className="w-full rounded-xl border border-border px-4 py-3 text-sm focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30" />
               </div>
             )}
             {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
             <div className="flex gap-3">
-              <button onClick={retake} disabled={busy} className="flex-1 rounded-xl border-2 border-[#f0f4f2] bg-[#f8faf9] px-4 py-3 font-bold text-[#6b7a73] hover:bg-[#f0f4f2]">Discard & retake</button>
-              <button onClick={confirm} disabled={busy} className="flex flex-[2] items-center justify-center gap-2 rounded-xl bg-[#157354] px-4 py-3 font-black text-white hover:bg-[#0f4a36] disabled:opacity-60">
+              <button onClick={retake} disabled={busy} className="flex-1 rounded-xl border-2 border-border bg-surface px-4 py-3 font-bold text-muted hover:bg-surface-2">Discard & retake</button>
+              <button onClick={confirm} disabled={busy} className="flex flex-[2] items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 font-black text-white hover:bg-brand-800 disabled:opacity-60">
                 {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <><CheckCircle2 className="h-5 w-5" /> {confirmLabel}</>}
               </button>
             </div>
@@ -211,7 +211,7 @@ export function PhoneUploadButton({
         type="button"
         disabled={disabled}
         onClick={() => setOpen(true)}
-        className={className ?? 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#e2e8e4] bg-white px-3 py-2 text-xs font-bold text-[#157354] transition-colors hover:bg-[#edf7f3] disabled:opacity-50'}
+        className={className ?? 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-white px-3 py-2 text-xs font-bold text-brand-600 transition-colors hover:bg-brand-50 disabled:opacity-50'}
       >
         <Smartphone className="h-3.5 w-3.5" /> {text}
       </button>

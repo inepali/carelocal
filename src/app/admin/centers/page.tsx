@@ -215,7 +215,7 @@ export default function AdminCentersPage() {
                      </td>
                      <td className="px-8 py-6">
                        <select 
-                         value={center.trial_months || 6} 
+                         value={center.trial_months || 3} 
                          onChange={(e) => updateTrialMonths(center.id, parseInt(e.target.value))}
                          className="bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 px-2 py-1 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                        >

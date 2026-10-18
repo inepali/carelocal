@@ -312,11 +312,11 @@ export default function StaffReviewPage() {
   if (loading) return (
     <div className="max-w-5xl mx-auto p-8 animate-pulse space-y-6">
       <div className="h-8 w-40 bg-slate-200 rounded" />
-      <div className="h-40 bg-white rounded-3xl border border-[#e2e8e4]" />
-      <div className="h-72 bg-white rounded-3xl border border-[#e2e8e4]" />
+      <div className="h-40 bg-white rounded-3xl border border-border" />
+      <div className="h-72 bg-white rounded-3xl border border-border" />
     </div>
   )
-  if (!profile) return <div className="p-8 text-[#6b7a73] font-medium">{staffTerm} member not found.</div>
+  if (!profile) return <div className="p-8 text-muted font-medium">{staffTerm} member not found.</div>
 
   const TABS: { id: TabId; label: string; Icon: any }[] = [
     { id: 'overview',     label: 'Overview',     Icon: User },
@@ -343,26 +343,26 @@ export default function StaffReviewPage() {
     <div className="max-w-5xl mx-auto pb-20 px-4">
       {/* Back */}
       <div className="mb-8">
-        <Link href="/center/team_member" className="inline-flex items-center gap-2 text-sm text-[#6b7a73] hover:text-[#157354] transition-colors font-bold">
+        <Link href="/center/team_member" className="inline-flex items-center gap-2 text-sm text-muted hover:text-brand-600 transition-colors font-bold">
           <ArrowLeft className="w-4 h-4" /> Back to {staffTerm} Pool
         </Link>
       </div>
 
       {/* Header card */}
-      <div className="bg-white border-2 border-[#f0f4f2] rounded-[2.5rem] shadow-sm mb-8 overflow-hidden">
-        <div className="p-8 bg-[#f8faf9] border-b-2 border-[#f0f4f2] flex flex-col md:flex-row items-start md:items-center gap-6">
+      <div className="bg-white border-2 border-border rounded-[2.5rem] shadow-sm mb-8 overflow-hidden">
+        <div className="p-8 bg-surface border-b-2 border-border flex flex-col md:flex-row items-start md:items-center gap-6">
           <StaffAvatar
             avatarKey={profile.avatar_url}
             firstName={profile.first_name}
             lastName={profile.last_name}
-            className="w-24 h-24 rounded-[2rem] bg-[#157354] text-white text-4xl font-black shadow-xl shadow-[#157354]/25"
+            className="w-24 h-24 rounded-[2rem] bg-brand-600 text-white text-4xl font-black shadow-xl shadow-brand-600/25"
           />
           <div className="flex-1">
-            <h1 className="text-3xl font-black text-[#0b3828] tracking-tight mb-1">
+            <h1 className="text-3xl font-black text-heading tracking-tight mb-1">
               {profile.first_name} {profile.last_name}
             </h1>
             <div className="flex flex-wrap items-center gap-3 mb-3">
-              <span className="bg-[#edf7f3] text-[#157354] px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border border-[#d4ede4]">
+              <span className="bg-brand-50 text-brand-600 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border border-brand-100">
                 {lookupLabel(roleLookups, profile.staff_type)}
               </span>
               <select
@@ -370,7 +370,7 @@ export default function StaffReviewPage() {
                 disabled={savingClass}
                 onChange={(e) => handleChangeEmploymentClass(e.target.value as EmploymentClass)}
                 title="Employee class at this center"
-                className="bg-white text-[#157354] px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border border-[#d4ede4] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 disabled:opacity-50"
+                className="bg-white text-brand-600 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border border-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-600/30 disabled:opacity-50"
               >
                 {(Object.entries(EMPLOYMENT_CLASS_LABELS) as [EmploymentClass, string][]).map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>
@@ -381,17 +381,17 @@ export default function StaffReviewPage() {
                   Requested: {EMPLOYMENT_CLASS_LABELS[requestedClass]}
                 </span>
               )}
-              <label className="inline-flex items-center gap-2 bg-white px-3 py-1 rounded-lg text-xs font-bold text-[#6b7a73] border border-[#d4ede4]" title="Due dates are counted from this date">
+              <label className="inline-flex items-center gap-2 bg-white px-3 py-1 rounded-lg text-xs font-bold text-muted border border-brand-100" title="Due dates are counted from this date">
                 Started
                 <input
                   type="date"
                   value={startDate}
                   onChange={(e) => handleChangeStartDate(e.target.value)}
-                  className="bg-transparent text-[#157354] font-black focus:outline-none"
+                  className="bg-transparent text-brand-600 font-black focus:outline-none"
                 />
               </label>
               {targetCenterRole === 'owner' ? (
-                <span className="inline-flex items-center gap-1.5 bg-[#0b3828] text-white px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest">
+                <span className="inline-flex items-center gap-1.5 bg-brand-900 text-white px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest">
                   <ShieldCheck className="w-3.5 h-3.5" /> Owner
                 </span>
               ) : viewerRole === 'owner' ? (
@@ -402,15 +402,15 @@ export default function StaffReviewPage() {
                   title={targetCenterRole !== 'admin' && employmentClass !== 'regular' ? 'Only Regular employees can be made Admin' : undefined}
                   className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border transition-colors disabled:opacity-50 ${
                     targetCenterRole === 'admin'
-                      ? 'bg-[#0b3828] text-white border-[#0b3828] hover:bg-[#157354]'
-                      : 'bg-white text-[#157354] border-[#d4ede4] hover:bg-[#edf7f3]'
+                      ? 'bg-brand-900 text-white border-brand-900 hover:bg-brand-600'
+                      : 'bg-white text-brand-600 border-brand-100 hover:bg-brand-50'
                   }`}
                 >
                   {savingAccess ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
                   {targetCenterRole === 'admin' ? 'Admin · Remove' : 'Make Admin'}
                 </button>
               ) : targetCenterRole === 'admin' ? (
-                <span className="inline-flex items-center gap-1.5 bg-[#0b3828] text-white px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest">
+                <span className="inline-flex items-center gap-1.5 bg-brand-900 text-white px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest">
                   <ShieldCheck className="w-3.5 h-3.5" /> Admin
                 </span>
               ) : null}
@@ -422,11 +422,11 @@ export default function StaffReviewPage() {
                 </span>
               )}
             </div>
-            <div className="flex flex-wrap gap-4 text-sm text-[#6b7a73] font-medium">
-              <span className="flex items-center gap-1.5"><Mail className="w-4 h-4 text-[#a8b5ae]" />{profile.email}</span>
-              {profile.phone && <span className="flex items-center gap-1.5"><Phone className="w-4 h-4 text-[#a8b5ae]" />{profile.phone}</span>}
+            <div className="flex flex-wrap gap-4 text-sm text-muted font-medium">
+              <span className="flex items-center gap-1.5"><Mail className="w-4 h-4 text-subtle" />{profile.email}</span>
+              {profile.phone && <span className="flex items-center gap-1.5"><Phone className="w-4 h-4 text-subtle" />{profile.phone}</span>}
               {(profile.city || profile.state) && (
-                <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-[#a8b5ae]" />{profile.city}{profile.city && profile.state ? ', ' : ''}{profile.state}</span>
+                <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-subtle" />{profile.city}{profile.city && profile.state ? ', ' : ''}{profile.state}</span>
               )}
             </div>
           </div>
@@ -435,14 +435,14 @@ export default function StaffReviewPage() {
               {memberStatus === 'applying' && (
                 <button
                   onClick={handleDeclineApplication}
-                  className="px-5 py-4 rounded-2xl font-black text-[#6b7a73] bg-white border-2 border-[#f0f4f2] hover:bg-[#f8faf9] transition-colors"
+                  className="px-5 py-4 rounded-2xl font-black text-muted bg-white border-2 border-border hover:bg-surface transition-colors"
                 >
                   Decline
                 </button>
               )}
               <button
                 onClick={() => setShowActivationModal(true)}
-                className="bg-[#157354] text-white font-black px-8 py-4 rounded-2xl hover:bg-[#0f4a36] shadow-lg shadow-[#157354]/20 transition-all flex items-center gap-2 active:scale-95"
+                className="bg-brand-600 text-white font-black px-8 py-4 rounded-2xl hover:bg-brand-800 shadow-lg shadow-brand-600/20 transition-all flex items-center gap-2 active:scale-95"
               >
                 <CheckCircle2 className="w-5 h-5" /> {memberStatus === 'applying' ? 'Start Onboarding' : 'Approve & Activate'}
               </button>
@@ -460,14 +460,14 @@ export default function StaffReviewPage() {
               onClick={() => setActiveTab(tab.id)}
               className={`group inline-flex items-center border-b-2 py-4 px-1 text-sm font-medium whitespace-nowrap transition-colors ${
                 activeTab === tab.id
-                  ? 'border-[#157354] text-[#157354]'
+                  ? 'border-brand-600 text-brand-600'
                   : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
               }`}
               aria-current={activeTab === tab.id ? 'page' : undefined}
             >
               <tab.Icon
                 className={`-ml-0.5 mr-2 h-5 w-5 ${
-                  activeTab === tab.id ? 'text-[#157354]' : 'text-gray-400 group-hover:text-gray-500'
+                  activeTab === tab.id ? 'text-brand-600' : 'text-gray-400 group-hover:text-gray-500'
                 }`}
                 aria-hidden="true"
               />
@@ -486,26 +486,26 @@ export default function StaffReviewPage() {
       {activeTab === 'overview' && (
         <div className="space-y-6">
           {/* Bio */}
-          <div className="bg-white border-2 border-[#f0f4f2] rounded-[2rem] p-8">
-            <h2 className="text-lg font-black text-[#0b3828] mb-4 flex items-center gap-2">
-              <User className="w-5 h-5 text-[#157354]" /> About
+          <div className="bg-white border-2 border-border rounded-[2rem] p-8">
+            <h2 className="text-lg font-black text-heading mb-4 flex items-center gap-2">
+              <User className="w-5 h-5 text-brand-600" /> About
             </h2>
             {profile.bio ? (
-              <p className="text-[#3d5a4f] leading-relaxed">{profile.bio}</p>
+              <p className="text-text-muted leading-relaxed">{profile.bio}</p>
             ) : (
-              <p className="text-[#a8b5ae] italic text-sm">No bio provided.</p>
+              <p className="text-subtle italic text-sm">No bio provided.</p>
             )}
           </div>
 
           {/* Payment preferences */}
           {(profile as any).preferred_payment_methods?.length > 0 && (
-            <div className="bg-white border-2 border-[#f0f4f2] rounded-[2rem] p-8">
-              <h2 className="text-lg font-black text-[#0b3828] mb-4 flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-[#157354]" /> Payment Preferences
+            <div className="bg-white border-2 border-border rounded-[2rem] p-8">
+              <h2 className="text-lg font-black text-heading mb-4 flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-brand-600" /> Payment Preferences
               </h2>
               <div className="flex flex-wrap gap-2">
                 {(profile as any).preferred_payment_methods.map((m: string) => (
-                  <span key={m} className="px-4 py-2 bg-[#edf7f3] text-[#157354] border border-[#d4ede4] rounded-xl text-sm font-black">
+                  <span key={m} className="px-4 py-2 bg-brand-50 text-brand-600 border border-brand-100 rounded-xl text-sm font-black">
                     {lookupLabel(paymentLookups, m)}
                   </span>
                 ))}
@@ -515,17 +515,17 @@ export default function StaffReviewPage() {
 
           {/* Quick stats */}
           <div className="grid sm:grid-cols-3 gap-4">
-            <div className="bg-white border-2 border-[#f0f4f2] rounded-2xl p-6 text-center">
-              <div className="text-3xl font-black text-[#157354] mb-1">{experiences.length}</div>
-              <div className="text-xs font-black text-[#6b7a73] uppercase tracking-widest">Work Experiences</div>
+            <div className="bg-white border-2 border-border rounded-2xl p-6 text-center">
+              <div className="text-3xl font-black text-brand-600 mb-1">{experiences.length}</div>
+              <div className="text-xs font-black text-muted uppercase tracking-widest">Work Experiences</div>
             </div>
-            <div className="bg-white border-2 border-[#f0f4f2] rounded-2xl p-6 text-center">
-              <div className="text-3xl font-black text-[#157354] mb-1">{credentials.length}</div>
-              <div className="text-xs font-black text-[#6b7a73] uppercase tracking-widest">Credentials</div>
+            <div className="bg-white border-2 border-border rounded-2xl p-6 text-center">
+              <div className="text-3xl font-black text-brand-600 mb-1">{credentials.length}</div>
+              <div className="text-xs font-black text-muted uppercase tracking-widest">Credentials</div>
             </div>
-            <div className="bg-white border-2 border-[#f0f4f2] rounded-2xl p-6 text-center">
-              <div className="text-3xl font-black text-[#157354] mb-1">{(profile as any).available_days?.length || 0}</div>
-              <div className="text-xs font-black text-[#6b7a73] uppercase tracking-widest">Days Available</div>
+            <div className="bg-white border-2 border-border rounded-2xl p-6 text-center">
+              <div className="text-3xl font-black text-brand-600 mb-1">{(profile as any).available_days?.length || 0}</div>
+              <div className="text-xs font-black text-muted uppercase tracking-widest">Days Available</div>
             </div>
           </div>
         </div>
@@ -535,24 +535,24 @@ export default function StaffReviewPage() {
       {activeTab === 'education' && (
         <div className="space-y-4">
           {uploads.filter(d => d.document_category === 'academic_qualification').length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-[#e2e8e4]">
-              <GraduationCap className="w-10 h-10 text-[#a8b5ae] mx-auto mb-3" />
-              <p className="text-[#6b7a73] font-bold">No education added yet.</p>
+            <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-border">
+              <GraduationCap className="w-10 h-10 text-subtle mx-auto mb-3" />
+              <p className="text-muted font-bold">No education added yet.</p>
             </div>
           ) : (
             uploads.filter(d => d.document_category === 'academic_qualification').map(doc => (
-              <div key={doc.id} className="bg-white border-2 border-[#f0f4f2] rounded-2xl p-6 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-[#edf7f3] flex items-center justify-center shrink-0">
-                  <GraduationCap className="w-5 h-5 text-[#157354]" />
+              <div key={doc.id} className="bg-white border-2 border-border rounded-2xl p-6 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-brand-50 flex items-center justify-center shrink-0">
+                  <GraduationCap className="w-5 h-5 text-brand-600" />
                 </div>
                 <div className="flex-1">
-                  <div className="font-black text-[#0b3828] text-lg leading-tight">{doc.document_name}</div>
-                  <div className="text-xs font-bold text-[#a8b5ae] uppercase tracking-wider mt-1">
+                  <div className="font-black text-heading text-lg leading-tight">{doc.document_name}</div>
+                  <div className="text-xs font-bold text-subtle uppercase tracking-wider mt-1">
                     Uploaded {new Date(doc.uploaded_at).toLocaleDateString()}
                     {doc.expiry_date ? ` · Expires ${new Date(doc.expiry_date).toLocaleDateString()}` : ''}
                   </div>
                 </div>
-                <button onClick={() => openStoredFile('vault', doc.id)} className="rounded-lg p-2 text-[#157354] hover:bg-[#edf7f3]" title="View Document">
+                <button onClick={() => openStoredFile('vault', doc.id)} className="rounded-lg p-2 text-brand-600 hover:bg-brand-50" title="View Document">
                   <Eye className="w-5 h-5" />
                 </button>
               </div>
@@ -565,46 +565,46 @@ export default function StaffReviewPage() {
       {activeTab === 'carescore' && (
         <div className="space-y-4">
           {reviews.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-[#e2e8e4]">
-              <Star className="w-10 h-10 text-[#a8b5ae] mx-auto mb-3" />
-              <p className="text-[#6b7a73] font-bold">No Care Score ratings yet.</p>
+            <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-border">
+              <Star className="w-10 h-10 text-subtle mx-auto mb-3" />
+              <p className="text-muted font-bold">No Care Score ratings yet.</p>
             </div>
           ) : (
             <>
-              <div className="bg-white border-2 border-[#f0f4f2] rounded-2xl p-6 flex items-center gap-4">
-                <Star className="w-8 h-8 text-[#fbbf24] fill-[#fbbf24]" />
+              <div className="bg-white border-2 border-border rounded-2xl p-6 flex items-center gap-4">
+                <Star className="w-8 h-8 text-amber-400 fill-amber-400" />
                 <div>
-                  <div className="text-3xl font-black text-[#0b3828] leading-none">
+                  <div className="text-3xl font-black text-heading leading-none">
                     {(reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)}
-                    <span className="text-base text-[#a8b5ae] font-bold"> / 5</span>
+                    <span className="text-base text-subtle font-bold"> / 5</span>
                   </div>
-                  <div className="text-xs font-black text-[#6b7a73] uppercase tracking-widest mt-1">
+                  <div className="text-xs font-black text-muted uppercase tracking-widest mt-1">
                     {reviews.length} rating{reviews.length === 1 ? '' : 's'} from centers
                   </div>
                 </div>
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
                 {reviews.map(review => (
-                  <div key={review.id} className="p-5 rounded-2xl bg-white border-2 border-[#f0f4f2]">
+                  <div key={review.id} className="p-5 rounded-2xl bg-white border-2 border-border">
                     <div className="flex items-center justify-between mb-3">
-                      <div className="font-black text-[#1a2e25] text-sm">{review.reviewer_name}</div>
+                      <div className="font-black text-text-main text-sm">{review.reviewer_name}</div>
                       <div className="flex gap-1">
                         {[...Array(5)].map((_, i) => (
-                          <Star key={i} className={`w-4 h-4 ${i < review.rating ? 'text-[#fbbf24] fill-[#fbbf24]' : 'text-[#e2e8e4] fill-transparent'}`} />
+                          <Star key={i} className={`w-4 h-4 ${i < review.rating ? 'text-amber-400 fill-amber-400' : 'text-border fill-transparent'}`} />
                         ))}
                       </div>
                     </div>
                     {review.tags && review.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mb-3">
                         {review.tags.map((tag: string) => (
-                          <span key={tag} className="text-[9px] font-black uppercase tracking-widest bg-[#edf7f3] text-[#157354] px-2 py-1 rounded-md border border-[#d4ede4]">
+                          <span key={tag} className="text-[9px] font-black uppercase tracking-widest bg-brand-50 text-brand-600 px-2 py-1 rounded-md border border-brand-100">
                             {tag}
                           </span>
                         ))}
                       </div>
                     )}
                     {review.public_comment && (
-                      <p className="text-sm text-[#3d5a4f] italic bg-[#f8faf9] p-3 rounded-xl border border-[#e2e8e4]">"{review.public_comment}"</p>
+                      <p className="text-sm text-text-muted italic bg-surface p-3 rounded-xl border border-border">"{review.public_comment}"</p>
                     )}
                   </div>
                 ))}
@@ -618,27 +618,27 @@ export default function StaffReviewPage() {
       {activeTab === 'experience' && (
         <div className="space-y-4">
           {experiences.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-[#e2e8e4]">
-              <Briefcase className="w-10 h-10 text-[#a8b5ae] mx-auto mb-3" />
-              <p className="text-[#6b7a73] font-bold">No work experience added yet.</p>
+            <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-border">
+              <Briefcase className="w-10 h-10 text-subtle mx-auto mb-3" />
+              <p className="text-muted font-bold">No work experience added yet.</p>
             </div>
           ) : (
             experiences.map(item => (
-              <div key={item.id} className="bg-white border-2 border-[#f0f4f2] rounded-2xl p-6 flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-[#edf7f3] flex items-center justify-center shrink-0">
-                  <Briefcase className="w-5 h-5 text-[#157354]" />
+              <div key={item.id} className="bg-white border-2 border-border rounded-2xl p-6 flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-brand-50 flex items-center justify-center shrink-0">
+                  <Briefcase className="w-5 h-5 text-brand-600" />
                 </div>
                 <div className="flex-1">
-                  <div className="font-black text-[#0b3828] text-lg leading-tight">{item.employer}</div>
-                  <div className="font-bold text-[#6b7a73] mb-2">{item.role}</div>
+                  <div className="font-black text-heading text-lg leading-tight">{item.employer}</div>
+                  <div className="font-bold text-muted mb-2">{item.role}</div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[10px] font-bold text-[#a8b5ae] uppercase tracking-wider">
+                    <span className="text-[10px] font-bold text-subtle uppercase tracking-wider">
                       {monthYearStr(item.start_month, item.start_year)}
                       {(item.start_month || item.start_year) ? ' – ' : ''}
                       {monthYearStr(item.end_month, item.end_year, item.is_current)}
                     </span>
                     {item.age_group && (
-                      <span className="bg-[#f8faf9] text-[#6b7a73] border border-[#e2e8e4] px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest">
+                      <span className="bg-surface text-muted border border-border px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest">
                         {AGE_GROUP_LABELS[item.age_group as AgeGroup]}
                       </span>
                     )}
@@ -648,7 +648,7 @@ export default function StaffReviewPage() {
                       </span>
                     )}
                   </div>
-                  {item.description && <p className="text-sm text-[#6b7a73] mt-3 leading-relaxed">{item.description}</p>}
+                  {item.description && <p className="text-sm text-muted mt-3 leading-relaxed">{item.description}</p>}
                 </div>
               </div>
             ))
@@ -665,18 +665,18 @@ export default function StaffReviewPage() {
             </div>
           )}
           {references.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-[#e2e8e4]">
-              <Phone className="w-10 h-10 text-[#a8b5ae] mx-auto mb-3" />
-              <p className="text-[#6b7a73] font-bold">No references added yet.</p>
+            <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-border">
+              <Phone className="w-10 h-10 text-subtle mx-auto mb-3" />
+              <p className="text-muted font-bold">No references added yet.</p>
             </div>
           ) : (
             references.map(ref => (
-              <div key={ref.id} className="bg-white border-2 border-[#f0f4f2] rounded-2xl p-6">
-                <div className="font-black text-[#0b3828] text-lg leading-tight">{ref.full_name}</div>
-                <div className="font-bold text-[#6b7a73] mb-3">{ref.title} · {ref.business}</div>
-                <div className="flex flex-wrap gap-4 text-sm text-[#6b7a73] font-medium">
-                  <a href={`mailto:${ref.email}`} className="flex items-center gap-1.5 hover:text-[#157354]"><Mail className="w-4 h-4 text-[#a8b5ae]" />{ref.email}</a>
-                  <a href={`tel:${ref.phone}`} className="flex items-center gap-1.5 hover:text-[#157354]"><Phone className="w-4 h-4 text-[#a8b5ae]" />{ref.phone}</a>
+              <div key={ref.id} className="bg-white border-2 border-border rounded-2xl p-6">
+                <div className="font-black text-heading text-lg leading-tight">{ref.full_name}</div>
+                <div className="font-bold text-muted mb-3">{ref.title} · {ref.business}</div>
+                <div className="flex flex-wrap gap-4 text-sm text-muted font-medium">
+                  <a href={`mailto:${ref.email}`} className="flex items-center gap-1.5 hover:text-brand-600"><Mail className="w-4 h-4 text-subtle" />{ref.email}</a>
+                  <a href={`tel:${ref.phone}`} className="flex items-center gap-1.5 hover:text-brand-600"><Phone className="w-4 h-4 text-subtle" />{ref.phone}</a>
                 </div>
               </div>
             ))
@@ -688,9 +688,9 @@ export default function StaffReviewPage() {
       {activeTab === 'credentials' && (
         <div className="space-y-4">
           {credentials.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-[#e2e8e4]">
-              <Award className="w-10 h-10 text-[#a8b5ae] mx-auto mb-3" />
-              <p className="text-[#6b7a73] font-bold">No credentials added yet.</p>
+            <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-border">
+              <Award className="w-10 h-10 text-subtle mx-auto mb-3" />
+              <p className="text-muted font-bold">No credentials added yet.</p>
             </div>
           ) : (
             credentials.map(item => {
@@ -700,24 +700,24 @@ export default function StaffReviewPage() {
                 <div key={item.id} className={`bg-white border-2 rounded-2xl p-6 flex items-start gap-4 ${
                   status === 'expired' ? 'border-red-100 bg-red-50/20' :
                   status === 'soon'    ? 'border-amber-100 bg-amber-50/10' :
-                  'border-[#f0f4f2]'
+                  'border-border'
                 }`}>
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
-                    status === 'expired' ? 'bg-red-100' : status === 'soon' ? 'bg-amber-100' : 'bg-[#edf7f3]'
+                    status === 'expired' ? 'bg-red-100' : status === 'soon' ? 'bg-amber-100' : 'bg-brand-50'
                   }`}>
-                    <Award className={`w-5 h-5 ${status === 'expired' ? 'text-red-500' : status === 'soon' ? 'text-amber-500' : 'text-[#157354]'}`} />
+                    <Award className={`w-5 h-5 ${status === 'expired' ? 'text-red-500' : status === 'soon' ? 'text-amber-500' : 'text-brand-600'}`} />
                   </div>
                   <div className="flex-1">
-                    <div className="font-black text-[#0b3828] text-lg leading-tight">{item.credential_name}</div>
-                    {item.issuing_body && <div className="font-bold text-[#6b7a73] mb-2">{item.issuing_body}</div>}
+                    <div className="font-black text-heading text-lg leading-tight">{item.credential_name}</div>
+                    {item.issuing_body && <div className="font-bold text-muted mb-2">{item.issuing_body}</div>}
                     <div className="flex flex-wrap items-center gap-2 mt-1">
                       {item.issue_date && (
-                        <span className="text-[10px] font-bold text-[#a8b5ae]">
+                        <span className="text-[10px] font-bold text-subtle">
                           Issued {new Date(item.issue_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                         </span>
                       )}
                       {item.expiry_date && (
-                        <span className="text-[10px] font-bold text-[#a8b5ae]">
+                        <span className="text-[10px] font-bold text-subtle">
                           · Expires {new Date(item.expiry_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                         </span>
                       )}
@@ -728,10 +728,10 @@ export default function StaffReviewPage() {
                       )}
                     </div>
                     {item.credential_number && (
-                      <div className="text-[10px] text-[#a8b5ae] font-bold mt-1">#{item.credential_number}</div>
+                      <div className="text-[10px] text-subtle font-bold mt-1">#{item.credential_number}</div>
                     )}
                     {item.linked_document && (
-                      <div className="mt-2 inline-flex items-center gap-1.5 text-[10px] font-black text-[#157354] bg-[#edf7f3] border border-[#d4ede4] px-3 py-1 rounded-lg">
+                      <div className="mt-2 inline-flex items-center gap-1.5 text-[10px] font-black text-brand-600 bg-brand-50 border border-brand-100 px-3 py-1 rounded-lg">
                         <FileText className="w-3 h-3" /> {(item.linked_document as any).document_name}
                       </div>
                     )}
@@ -745,35 +745,35 @@ export default function StaffReviewPage() {
 
       {/* ── Availability Tab ───────────────────────────────────────── */}
       {activeTab === 'availability' && (
-        <div className="bg-white border-2 border-[#f0f4f2] rounded-[2rem] p-8 space-y-8">
+        <div className="bg-white border-2 border-border rounded-[2rem] p-8 space-y-8">
           {/* Days */}
           <div>
-            <h3 className="text-sm font-black text-[#0b3828] uppercase tracking-widest mb-4 flex items-center gap-2">
-              <CalendarDays className="w-4 h-4 text-[#157354]" /> Available Days
+            <h3 className="text-sm font-black text-heading uppercase tracking-widest mb-4 flex items-center gap-2">
+              <CalendarDays className="w-4 h-4 text-brand-600" /> Available Days
             </h3>
             {(profile as any).available_days?.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {(profile as any).available_days.map((d: string) => (
-                  <span key={d} className="w-14 h-14 rounded-2xl bg-[#157354] text-white flex items-center justify-center font-black text-sm shadow-md shadow-[#157354]/20">
+                  <span key={d} className="w-14 h-14 rounded-2xl bg-brand-600 text-white flex items-center justify-center font-black text-sm shadow-md shadow-brand-600/20">
                     {DAYS_MAP[d] || d}
                   </span>
                 ))}
               </div>
-            ) : <p className="text-[#a8b5ae] italic text-sm">No days specified.</p>}
+            ) : <p className="text-subtle italic text-sm">No days specified.</p>}
           </div>
 
           {/* Hours */}
           {((profile as any).available_from || (profile as any).available_to) && (
             <div>
-              <h3 className="text-sm font-black text-[#0b3828] uppercase tracking-widest mb-4 flex items-center gap-2">
-                <Clock className="w-4 h-4 text-[#157354]" /> Preferred Shift Hours
+              <h3 className="text-sm font-black text-heading uppercase tracking-widest mb-4 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-brand-600" /> Preferred Shift Hours
               </h3>
               <div className="flex items-center gap-3">
-                <span className="bg-[#f8faf9] border-2 border-[#f0f4f2] px-5 py-3 rounded-xl font-black text-[#0b3828]">
+                <span className="bg-surface border-2 border-border px-5 py-3 rounded-xl font-black text-heading">
                   {(profile as any).available_from || '–'}
                 </span>
-                <span className="text-[#a8b5ae] font-black">→</span>
-                <span className="bg-[#f8faf9] border-2 border-[#f0f4f2] px-5 py-3 rounded-xl font-black text-[#0b3828]">
+                <span className="text-subtle font-black">→</span>
+                <span className="bg-surface border-2 border-border px-5 py-3 rounded-xl font-black text-heading">
                   {(profile as any).available_to || '–'}
                 </span>
               </div>
@@ -783,10 +783,10 @@ export default function StaffReviewPage() {
           {/* Notes */}
           {(profile as any).availability_notes && (
             <div>
-              <h3 className="text-sm font-black text-[#0b3828] uppercase tracking-widest mb-3 flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-[#157354]" /> Availability Notes
+              <h3 className="text-sm font-black text-heading uppercase tracking-widest mb-3 flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-brand-600" /> Availability Notes
               </h3>
-              <p className="text-[#3d5a4f] leading-relaxed bg-[#f8faf9] p-4 rounded-xl border-2 border-[#f0f4f2]">
+              <p className="text-text-muted leading-relaxed bg-surface p-4 rounded-xl border-2 border-border">
                 {(profile as any).availability_notes}
               </p>
             </div>
@@ -794,8 +794,8 @@ export default function StaffReviewPage() {
 
           {!(profile as any).available_days?.length && !(profile as any).available_from && !(profile as any).availability_notes && (
             <div className="text-center py-12">
-              <CalendarDays className="w-10 h-10 text-[#a8b5ae] mx-auto mb-3" />
-              <p className="text-[#6b7a73] font-bold">No availability information provided yet.</p>
+              <CalendarDays className="w-10 h-10 text-subtle mx-auto mb-3" />
+              <p className="text-muted font-bold">No availability information provided yet.</p>
             </div>
           )}
         </div>
@@ -837,35 +837,35 @@ export default function StaffReviewPage() {
       {/* ── Activation Modal ───────────────────────────────────────── */}
       {showActivationModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-[#e2e8e4]">
-            <div className="w-16 h-16 bg-[#edf7f3] rounded-2xl flex items-center justify-center mb-6 border-2 border-[#d4ede4]">
-              <ShieldCheck className="w-8 h-8 text-[#157354]" />
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-border">
+            <div className="w-16 h-16 bg-brand-50 rounded-2xl flex items-center justify-center mb-6 border-2 border-brand-100">
+              <ShieldCheck className="w-8 h-8 text-brand-600" />
             </div>
-            <h2 className="text-2xl font-black text-[#0b3828] mb-2">{memberStatus === 'applying' ? 'Start Onboarding?' : 'Approve Staff Member?'}</h2>
-            <p className="text-[#6b7a73] font-medium leading-relaxed mb-8">
+            <h2 className="text-2xl font-black text-heading mb-2">{memberStatus === 'applying' ? 'Start Onboarding?' : 'Approve Staff Member?'}</h2>
+            <p className="text-muted font-medium leading-relaxed mb-8">
               {memberStatus === 'applying'
-                ? <>Accepting <span className="font-bold text-[#1a2e25]">{profile.first_name} {profile.last_name}</span>&apos;s application starts their onboarding: they complete the checklist for the class you choose below. They cannot claim shifts until you approve them.</>
-                : <>By approving <span className="font-bold text-[#1a2e25]">{profile.first_name} {profile.last_name}</span>, they will instantly be able to view and claim open shifts at your center.</>}
+                ? <>Accepting <span className="font-bold text-text-main">{profile.first_name} {profile.last_name}</span>&apos;s application starts their onboarding: they complete the checklist for the class you choose below. They cannot claim shifts until you approve them.</>
+                : <>By approving <span className="font-bold text-text-main">{profile.first_name} {profile.last_name}</span>, they will instantly be able to view and claim open shifts at your center.</>}
             </p>
-            <label className="block text-xs font-black text-[#0b3828] uppercase tracking-widest mb-2">Employee class</label>
-            <select value={approveClass} onChange={(e) => setApproveClass(e.target.value as EmploymentClass)} className="w-full mb-2 px-4 py-3 rounded-xl border-2 border-[#f0f4f2] bg-white font-bold text-[#0b3828] focus:outline-none focus:border-[#157354]">
+            <label className="block text-xs font-black text-heading uppercase tracking-widest mb-2">Employee class</label>
+            <select value={approveClass} onChange={(e) => setApproveClass(e.target.value as EmploymentClass)} className="w-full mb-2 px-4 py-3 rounded-xl border-2 border-border bg-white font-bold text-heading focus:outline-none focus:border-brand-600">
               {(Object.entries(EMPLOYMENT_CLASS_LABELS) as [EmploymentClass, string][]).map(([value, label]) => (
                 <option key={value} value={value}>{label}{requestedClass === value ? ' (requested)' : ''}</option>
               ))}
             </select>
-            <p className="text-xs text-[#6b7a73] mb-8">Regular employees can work at only one center and do not pick up marketplace shifts.</p>
+            <p className="text-xs text-muted mb-8">Regular employees can work at only one center and do not pick up marketplace shifts.</p>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowActivationModal(false)}
                 disabled={activating}
-                className="flex-1 px-5 py-3 rounded-xl font-bold text-[#6b7a73] bg-[#f8faf9] border-2 border-[#f0f4f2] hover:bg-[#f0f4f2] transition-colors"
+                className="flex-1 px-5 py-3 rounded-xl font-bold text-muted bg-surface border-2 border-border hover:bg-surface-2 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleActivateStaff}
                 disabled={activating}
-                className="flex-[2] flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-black text-white bg-[#157354] hover:bg-[#0f4a36] disabled:opacity-70 transition-colors shadow-lg shadow-[#157354]/20"
+                className="flex-[2] flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-black text-white bg-brand-600 hover:bg-brand-800 disabled:opacity-70 transition-colors shadow-lg shadow-brand-600/20"
               >
                 {activating ? <Loader2 className="w-5 h-5 animate-spin" /> : <><CheckCircle2 className="w-5 h-5" /> {memberStatus === 'applying' ? 'Start Onboarding' : 'Confirm Activation'}</>}
               </button>

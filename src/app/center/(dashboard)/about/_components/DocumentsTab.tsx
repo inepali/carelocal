@@ -34,11 +34,11 @@ const SECTION_ICONS: Record<string, React.ElementType> = {
   evaluations: FileText,
 }
 
-const LBL = 'block text-sm font-medium text-[#1a2e25] mb-1.5'
-const FLD = 'w-full px-3.5 py-2.5 rounded-xl border border-[#e2e8e4] bg-white text-sm text-[#1a2e25] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354]'
+const LBL = 'block text-sm font-medium text-text-main mb-1.5'
+const FLD = 'w-full px-3.5 py-2.5 rounded-xl border border-border bg-white text-sm text-text-main focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600'
 const CHIP = (on: boolean) => `px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${on
-  ? 'bg-[#157354] text-white border-[#157354]'
-  : 'bg-white text-[#6b7a73] border-[#e2e8e4] hover:bg-gray-50'}`
+  ? 'bg-brand-600 text-white border-brand-600'
+  : 'bg-white text-muted border-border hover:bg-gray-50'}`
 
 type FormState = {
   name: string
@@ -382,7 +382,7 @@ export default function DocumentsTab() {
 
   if (loading) {
     return <div className="animate-pulse space-y-4">
-      <div className="h-64 bg-white rounded-2xl border border-[#e2e8e4]"></div>
+      <div className="h-64 bg-white rounded-2xl border border-border"></div>
     </div>
   }
 
@@ -390,27 +390,27 @@ export default function DocumentsTab() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-2xl font-extrabold text-[#0b3828] mb-1">Document Requirements</h2>
-          <p className="text-[#6b7a73]">The personnel file checklist for your staff — what is needed, when it is due and when it renews.</p>
+          <h2 className="text-2xl font-extrabold text-heading mb-1">Document Requirements</h2>
+          <p className="text-muted">The personnel file checklist for your staff — what is needed, when it is due and when it renews.</p>
         </div>
         <div className="flex gap-2">
           {templates.length > 0 && (
             <button
               onClick={() => { setShowTemplates(v => !v); setShowForm(false) }}
-              className="inline-flex items-center gap-2 font-semibold px-5 py-3 rounded-xl border border-[#e2e8e4] bg-white text-[#157354] hover:bg-[#edf7f3] transition-colors"
+              className="inline-flex items-center gap-2 font-semibold px-5 py-3 rounded-xl border border-border bg-white text-brand-600 hover:bg-brand-50 transition-colors"
             >
               <LayoutTemplate className="w-5 h-5" /> Import Template
             </button>
           )}
           <button
             onClick={() => openNew(NEW_SECTION)}
-            className="inline-flex items-center gap-2 font-semibold px-5 py-3 rounded-xl border border-[#e2e8e4] bg-white text-[#157354] hover:bg-[#edf7f3] transition-colors"
+            className="inline-flex items-center gap-2 font-semibold px-5 py-3 rounded-xl border border-border bg-white text-brand-600 hover:bg-brand-50 transition-colors"
           >
             <Plus className="w-5 h-5" /> New Section
           </button>
           <button
             onClick={showForm ? cancelEdit : () => openNew()}
-            className={`inline-flex items-center justify-center gap-2 font-semibold px-5 py-3 rounded-xl shadow-sm transition-colors ${showForm ? 'bg-white text-[#6b7a73] border border-[#e2e8e4] hover:bg-gray-50' : 'bg-[#157354] text-white hover:bg-[#0f4a36]'}`}
+            className={`inline-flex items-center justify-center gap-2 font-semibold px-5 py-3 rounded-xl shadow-sm transition-colors ${showForm ? 'bg-white text-muted border border-border hover:bg-gray-50' : 'bg-brand-600 text-white hover:bg-brand-800'}`}
           >
             {showForm ? 'Cancel' : <><Plus className="w-5 h-5" /> Add Requirement</>}
           </button>
@@ -423,20 +423,20 @@ export default function DocumentsTab() {
           {templates.map(t => {
             const count = newItems(t).length
             return (
-              <div key={t.id} className="rounded-2xl border border-[#e2e8e4] bg-white p-6 shadow-sm flex flex-col">
+              <div key={t.id} className="rounded-2xl border border-border bg-white p-6 shadow-sm flex flex-col">
                 <div className="flex items-start gap-3 mb-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#edf7f3] text-[#157354]"><LayoutTemplate className="h-5 w-5" /></span>
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600"><LayoutTemplate className="h-5 w-5" /></span>
                   <div>
-                    <h3 className="font-bold text-[#1a2e25]">{t.name}</h3>
-                    <p className="text-sm text-[#6b7a73] mt-0.5">{t.description || 'Shared checklist'}</p>
+                    <h3 className="font-bold text-text-main">{t.name}</h3>
+                    <p className="text-sm text-muted mt-0.5">{t.description || 'Shared checklist'}</p>
                   </div>
                 </div>
                 <div className="mt-auto flex items-center justify-between pt-3">
-                  <span className="text-xs text-[#6b7a73]">{t.items.length} items · {count === 0 ? 'all added' : `${count} new`}</span>
+                  <span className="text-xs text-muted">{t.items.length} items · {count === 0 ? 'all added' : `${count} new`}</span>
                   <button
                     onClick={() => applyTemplate(t)}
                     disabled={count === 0 || applyingTemplate !== null}
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#157354] px-4 py-2 text-xs font-bold text-white hover:bg-[#0f4a36] disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-xs font-bold text-white hover:bg-brand-800 disabled:opacity-50"
                   >
                     {applyingTemplate === t.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                     {count === 0 ? 'Imported' : 'Import'}
@@ -445,7 +445,7 @@ export default function DocumentsTab() {
               </div>
             )
           })}
-          <p className="md:col-span-2 text-xs text-[#a8b5ae]">
+          <p className="md:col-span-2 text-xs text-subtle">
             Verify imported items against your state&apos;s current rules; every item can be edited after it is added.
           </p>
         </div>
@@ -453,8 +453,8 @@ export default function DocumentsTab() {
 
       {/* ── Add / edit form ── */}
       {showForm && (
-        <div className="mb-8 bg-white border-2 border-[#157354] rounded-2xl p-6 shadow-lg">
-          <h2 className="text-lg font-bold text-[#1a2e25] mb-5">{editingId ? 'Edit Requirement' : 'New Requirement'}</h2>
+        <div className="mb-8 bg-white border-2 border-brand-600 rounded-2xl p-6 shadow-lg">
+          <h2 className="text-lg font-bold text-text-main mb-5">{editingId ? 'Edit Requirement' : 'New Requirement'}</h2>
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="grid gap-4 md:grid-cols-3">
               <div className="md:col-span-2">
@@ -517,7 +517,7 @@ export default function DocumentsTab() {
                 {!DUE_PRESETS.some(p => String(p.days ?? '') === form.dueDays) && (
                   <input type="number" min={0} value={form.dueDays} onChange={e => setForm({ ...form, dueDays: e.target.value })} className={`${FLD} mt-2`} placeholder="Days after employment start" />
                 )}
-                <p className="text-[11px] text-[#a8b5ae] mt-1.5">Counted from each employee&apos;s employment start date.</p>
+                <p className="text-[11px] text-subtle mt-1.5">Counted from each employee&apos;s employment start date.</p>
               </div>
               <div>
                 <label className={LBL}>Renewal</label>
@@ -526,9 +526,9 @@ export default function DocumentsTab() {
                 </select>
                 {form.renewalType === 'interval' && (
                   <div className="mt-2 flex items-center gap-2">
-                    <span className="text-sm text-[#6b7a73]">Every</span>
+                    <span className="text-sm text-muted">Every</span>
                     <input type="number" min={1} value={form.renewalMonths} onChange={e => setForm({ ...form, renewalMonths: e.target.value })} className={`${FLD} w-24`} />
-                    <span className="text-sm text-[#6b7a73]">months</span>
+                    <span className="text-sm text-muted">months</span>
                   </div>
                 )}
               </div>
@@ -544,16 +544,16 @@ export default function DocumentsTab() {
             </div>
 
             <div className="flex flex-wrap gap-x-6 gap-y-3">
-              <label className="flex items-center gap-2 text-sm text-[#1a2e25]">
-                <input type="checkbox" checked={form.isRequired} onChange={e => setForm({ ...form, isRequired: e.target.checked })} className="w-4 h-4 rounded border-gray-300 text-[#157354] focus:ring-[#157354]" />
+              <label className="flex items-center gap-2 text-sm text-text-main">
+                <input type="checkbox" checked={form.isRequired} onChange={e => setForm({ ...form, isRequired: e.target.checked })} className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-600" />
                 Mandatory
               </label>
-              <label className="flex items-center gap-2 text-sm text-[#1a2e25]">
-                <input type="checkbox" checked={form.isConditional} onChange={e => setForm({ ...form, isConditional: e.target.checked })} className="w-4 h-4 rounded border-gray-300 text-[#157354] focus:ring-[#157354]" />
+              <label className="flex items-center gap-2 text-sm text-text-main">
+                <input type="checkbox" checked={form.isConditional} onChange={e => setForm({ ...form, isConditional: e.target.checked })} className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-600" />
                 If applicable (can be marked N/A per employee)
               </label>
-              <label className="flex items-center gap-2 text-sm text-[#1a2e25]">
-                <input type="checkbox" checked={form.isConfidential} onChange={e => setForm({ ...form, isConfidential: e.target.checked })} className="w-4 h-4 rounded border-gray-300 text-[#157354] focus:ring-[#157354]" />
+              <label className="flex items-center gap-2 text-sm text-text-main">
+                <input type="checkbox" checked={form.isConfidential} onChange={e => setForm({ ...form, isConfidential: e.target.checked })} className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-600" />
                 <Lock className="w-3.5 h-3.5 text-amber-600" /> Confidential — only Owner/Admin roles can open files
               </label>
             </div>
@@ -568,7 +568,7 @@ export default function DocumentsTab() {
                     </button>
                   ))}
                 </div>
-                <p className="text-[11px] text-[#a8b5ae] mt-1.5">None selected = all roles.</p>
+                <p className="text-[11px] text-subtle mt-1.5">None selected = all roles.</p>
               </div>
               <div>
                 <label className={LBL}>Applies to employee class</label>
@@ -579,41 +579,41 @@ export default function DocumentsTab() {
                     </button>
                   ))}
                 </div>
-                <p className="text-[11px] text-[#a8b5ae] mt-1.5">None selected = regular and substitute staff.</p>
+                <p className="text-[11px] text-subtle mt-1.5">None selected = regular and substitute staff.</p>
               </div>
             </div>
 
-            <div className="border-t border-[#e2e8e4] pt-5">
+            <div className="border-t border-border pt-5">
               <label className={LBL}>Blank form or instructions (optional)</label>
               {existingTemplate && !templateFile ? (
-                <div className="flex items-center justify-between p-3 bg-[#f8faf9] rounded-xl border border-[#e2e8e4]">
+                <div className="flex items-center justify-between p-3 bg-surface rounded-xl border border-border">
                   <div className="flex items-center gap-3">
-                    <FileText className="w-5 h-5 text-[#157354]" />
+                    <FileText className="w-5 h-5 text-brand-600" />
                     <div>
-                      <p className="text-xs font-bold text-[#1a2e25]">{existingTemplate.name}</p>
-                      <button type="button" onClick={() => editingId && openStoredFile('template', editingId)} className="text-[11px] text-[#157354] hover:underline font-bold">
+                      <p className="text-xs font-bold text-text-main">{existingTemplate.name}</p>
+                      <button type="button" onClick={() => editingId && openStoredFile('template', editingId)} className="text-[11px] text-brand-600 hover:underline font-bold">
                         View attached file
                       </button>
                     </div>
                   </div>
-                  <button type="button" disabled={deletingTemplate} onClick={handleRemoveTemplate} className="p-1.5 text-[#6b7a73] hover:text-red-500 transition-colors" title="Remove file">
+                  <button type="button" disabled={deletingTemplate} onClick={handleRemoveTemplate} className="p-1.5 text-muted hover:text-red-500 transition-colors" title="Remove file">
                     {deletingTemplate ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
                   </button>
                 </div>
               ) : (
                 <div className="space-y-2">
                   <input type="file" id="template_upload" className="hidden" accept={DOCUMENT_ACCEPT} onChange={e => setTemplateFile(e.target.files?.[0] || null)} />
-                  <label htmlFor="template_upload" className="flex items-center gap-3 w-full p-4 border-2 border-dashed border-[#e2e8e4] rounded-xl cursor-pointer hover:border-[#157354] hover:bg-[#f8faf9] transition-all">
+                  <label htmlFor="template_upload" className="flex items-center gap-3 w-full p-4 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-brand-600 hover:bg-surface transition-all">
                     {templateFile ? (
                       <>
-                        <CheckCircle2 className="w-5 h-5 text-[#157354]" />
-                        <span className="text-sm font-bold text-[#1a2e25] flex-1">{templateFile.name}</span>
+                        <CheckCircle2 className="w-5 h-5 text-brand-600" />
+                        <span className="text-sm font-bold text-text-main flex-1">{templateFile.name}</span>
                         <button type="button" onClick={e => { e.preventDefault(); setTemplateFile(null) }} className="text-xs text-red-500 font-bold hover:underline">Remove</button>
                       </>
                     ) : (
                       <>
-                        <Upload className="w-5 h-5 text-[#a8b5ae]" />
-                        <span className="text-sm text-[#6b7a73]">Upload a blank form staff can download (PDF, Word or image, up to 15 MB)</span>
+                        <Upload className="w-5 h-5 text-subtle" />
+                        <span className="text-sm text-muted">Upload a blank form staff can download (PDF, Word or image, up to 15 MB)</span>
                       </>
                     )}
                   </label>
@@ -630,8 +630,8 @@ export default function DocumentsTab() {
             </div>
 
             <div className="flex justify-end gap-2 pt-1">
-              <button type="button" onClick={cancelEdit} className="px-5 py-2.5 rounded-xl border border-[#e2e8e4] text-sm font-medium text-[#6b7a73] hover:bg-[#f8faf9]">Cancel</button>
-              <button type="submit" disabled={saving || !form.name.trim() || !form.category || (form.section === NEW_SECTION && !form.newSectionName.trim())} className="inline-flex items-center gap-2 bg-[#157354] text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:bg-[#0f4a36] disabled:opacity-50">
+              <button type="button" onClick={cancelEdit} className="px-5 py-2.5 rounded-xl border border-border text-sm font-medium text-muted hover:bg-surface">Cancel</button>
+              <button type="submit" disabled={saving || !form.name.trim() || !form.category || (form.section === NEW_SECTION && !form.newSectionName.trim())} className="inline-flex items-center gap-2 bg-brand-600 text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:bg-brand-800 disabled:opacity-50">
                 {saving && <Loader2 className="w-4 h-4 animate-spin" />} {editingId ? 'Update Requirement' : 'Create Requirement'}
               </button>
             </div>
@@ -641,10 +641,10 @@ export default function DocumentsTab() {
 
       {/* ── Sections ── */}
       {requirements.length === 0 && !showForm && (
-        <div className="mb-8 bg-[#edf7f3] border border-dashed border-[#a9dac9] rounded-2xl p-8 text-center">
-          <Settings2 className="w-10 h-10 text-[#157354] mx-auto mb-3" />
-          <h2 className="text-xl font-bold text-[#0b3828] mb-2">No requirements yet</h2>
-          <p className="text-[#3d5a4f] max-w-md mx-auto">
+        <div className="mb-8 bg-brand-50 border border-dashed border-brand-200 rounded-2xl p-8 text-center">
+          <Settings2 className="w-10 h-10 text-brand-600 mx-auto mb-3" />
+          <h2 className="text-xl font-bold text-heading mb-2">No requirements yet</h2>
+          <p className="text-text-muted max-w-md mx-auto">
             {templates.length > 0 ? 'Start from a template to add the state checklist in one click, or add requirements one by one.' : 'Add the documents and trainings your staff need.'}
           </p>
         </div>
@@ -656,30 +656,30 @@ export default function DocumentsTab() {
           if (requirements.length === 0 || (items.length === 0 && section.custom)) return null
           const Icon = SECTION_ICONS[section.id] ?? ClipboardList
           return (
-            <section key={section.id} className="overflow-hidden rounded-2xl border border-[#e2e8e4] bg-white shadow-sm">
-              <div className="flex flex-col gap-3 border-b border-[#e2e8e4] bg-[#f8faf9] px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+            <section key={section.id} className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+              <div className="flex flex-col gap-3 border-b border-border bg-surface px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#edf7f3] text-[#157354]"><Icon className="h-5 w-5" /></span>
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600"><Icon className="h-5 w-5" /></span>
                   <div>
-                    <h2 className="text-lg font-bold text-[#1a2e25] flex items-center gap-2">
+                    <h2 className="text-lg font-bold text-text-main flex items-center gap-2">
                       {section.label}
                       {section.id === 'health' && <Lock className="h-4 w-4 text-amber-600" />}
                     </h2>
-                    <p className="text-xs text-[#6b7a73]">{items.length} item{items.length === 1 ? '' : 's'} · {section.description}</p>
+                    <p className="text-xs text-muted">{items.length} item{items.length === 1 ? '' : 's'} · {section.description}</p>
                   </div>
                 </div>
-                <button type="button" onClick={() => openNew(section.id)} className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#157354] px-4 py-2 text-xs font-bold text-white hover:bg-[#0f4a36]">
+                <button type="button" onClick={() => openNew(section.id)} className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-xs font-bold text-white hover:bg-brand-800">
                   <Plus className="h-4 w-4" /> Add New
                 </button>
               </div>
 
               {items.length === 0 ? (
-                <p className="px-6 py-5 text-sm text-[#6b7a73]">Nothing here yet. Use Add New to add the first item.</p>
+                <p className="px-6 py-5 text-sm text-muted">Nothing here yet. Use Add New to add the first item.</p>
               ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[760px] text-left">
                   <thead>
-                    <tr className="border-b border-[#e2e8e4] text-[15px] font-bold text-[#1a2e25]">
+                    <tr className="border-b border-border text-[15px] font-bold text-text-main">
                       <th scope="col" className="px-6 py-4">Requirement</th>
                       <th scope="col" className="px-4 py-4">Applies to</th>
                       <th scope="col" className="px-4 py-4">Due</th>
@@ -688,7 +688,7 @@ export default function DocumentsTab() {
                       <th scope="col" className="px-6 py-4 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#e2e8e4] text-sm font-normal text-[#3d5a4f]">
+                  <tbody className="divide-y divide-border text-sm font-normal text-text-muted">
                     {items.map((req, index) => {
                       const showGroup = req.group_label && req.group_label !== items[index - 1]?.group_label
                       return (
@@ -716,7 +716,7 @@ export default function DocumentsTab() {
         })}
       </div>
 
-      <p className="mt-6 text-xs text-[#a8b5ae] flex items-center gap-1.5">
+      <p className="mt-6 text-xs text-subtle flex items-center gap-1.5">
         <ShieldCheck className="h-3.5 w-3.5" /> You are responsible for verifying that documents meet your state&apos;s requirements.
       </p>
     </div>
@@ -744,34 +744,34 @@ function RequirementRow({ req, groupHeading, roleLabel, isFirst, isLast, onUp, o
   return (
     <>
       {groupHeading && (
-        <tr className="bg-[#fbfcfb]">
-          <td colSpan={6} className="px-6 py-2 text-xs font-bold uppercase tracking-wider text-[#157354]">{groupHeading}</td>
+        <tr className="bg-surface">
+          <td colSpan={6} className="px-6 py-2 text-xs font-bold uppercase tracking-wider text-brand-600">{groupHeading}</td>
         </tr>
       )}
-      <tr className="align-top hover:bg-[#fbfcfb] transition-colors">
+      <tr className="align-top hover:bg-surface transition-colors">
         <td className="px-6 py-4">
-          <div className="flex flex-wrap items-center gap-1.5 text-[#1a2e25]">
+          <div className="flex flex-wrap items-center gap-1.5 text-text-main">
             {req.document_name}
             {req.is_confidential && <Lock className="h-3.5 w-3.5 text-amber-600" aria-label="Confidential" />}
             {req.is_conditional && <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-600">If applicable</span>}
             {!req.is_required && !req.is_conditional && <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-600">Optional</span>}
-            {req.template_file_key && <span className="inline-flex items-center gap-1 rounded-full border border-[#a9dac9] bg-[#edf7f3] px-2 py-0.5 text-[11px] text-[#157354]"><Download className="h-3 w-3" /> Form</span>}
+            {req.template_file_key && <span className="inline-flex items-center gap-1 rounded-full border border-brand-200 bg-brand-50 px-2 py-0.5 text-[11px] text-brand-600"><Download className="h-3 w-3" /> Form</span>}
           </div>
-          {req.notes && <div className="mt-0.5 max-w-md text-xs text-[#6b7a73] line-clamp-2">{req.notes}</div>}
+          {req.notes && <div className="mt-0.5 max-w-md text-xs text-muted line-clamp-2">{req.notes}</div>}
         </td>
         <td className="px-4 py-4 text-xs">{appliesTo}</td>
         <td className="px-4 py-4 whitespace-nowrap">{describeDue(req.due_within_days)}</td>
-        <td className="px-4 py-4 whitespace-nowrap">{renewal || '—'}{req.evidence_type === 'acknowledgement' && req.policy_version > 1 && <div className="text-xs text-[#6b7a73]">Version {req.policy_version}</div>}</td>
+        <td className="px-4 py-4 whitespace-nowrap">{renewal || '—'}{req.evidence_type === 'acknowledgement' && req.policy_version > 1 && <div className="text-xs text-muted">Version {req.policy_version}</div>}</td>
         <td className="px-4 py-4 text-xs">{evidenceLabel(req.evidence_type)}</td>
         <td className="px-6 py-4">
           <div className="flex items-center justify-end gap-1">
             {onPublish && (
-              <button onClick={onPublish} className="rounded-lg px-2 py-1 text-[11px] font-bold text-[#157354] hover:bg-[#edf7f3]" title="Policy changed: ask everyone to acknowledge again">Policy updated</button>
+              <button onClick={onPublish} className="rounded-lg px-2 py-1 text-[11px] font-bold text-brand-600 hover:bg-brand-50" title="Policy changed: ask everyone to acknowledge again">Policy updated</button>
             )}
-            <button onClick={onUp} disabled={isFirst} className="rounded-lg p-1.5 text-[#6b7a73] hover:bg-[#edf7f3] disabled:opacity-30" title="Move up"><ChevronUp className="h-4 w-4" /></button>
-            <button onClick={onDown} disabled={isLast} className="rounded-lg p-1.5 text-[#6b7a73] hover:bg-[#edf7f3] disabled:opacity-30" title="Move down"><ChevronDown className="h-4 w-4" /></button>
-            <button onClick={onEdit} className="rounded-lg p-1.5 text-[#157354] hover:bg-[#edf7f3]" title="Edit"><Settings2 className="h-4 w-4" /></button>
-            <button onClick={onDelete} className="rounded-lg p-1.5 text-[#a8b5ae] hover:bg-red-50 hover:text-red-500" title="Delete"><Trash2 className="h-4 w-4" /></button>
+            <button onClick={onUp} disabled={isFirst} className="rounded-lg p-1.5 text-muted hover:bg-brand-50 disabled:opacity-30" title="Move up"><ChevronUp className="h-4 w-4" /></button>
+            <button onClick={onDown} disabled={isLast} className="rounded-lg p-1.5 text-muted hover:bg-brand-50 disabled:opacity-30" title="Move down"><ChevronDown className="h-4 w-4" /></button>
+            <button onClick={onEdit} className="rounded-lg p-1.5 text-brand-600 hover:bg-brand-50" title="Edit"><Settings2 className="h-4 w-4" /></button>
+            <button onClick={onDelete} className="rounded-lg p-1.5 text-subtle hover:bg-red-50 hover:text-red-500" title="Delete"><Trash2 className="h-4 w-4" /></button>
           </div>
         </td>
       </tr>

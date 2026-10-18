@@ -27,8 +27,8 @@ type StatusRow = {
 }
 
 const NEEDS: ComplianceState[] = ['missing', 'overdue', 'due_soon', 'rejected']
-const FLD = 'w-full px-3.5 py-2.5 rounded-xl border border-[#e2e8e4] bg-white text-sm text-[#1a2e25] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354]'
-const LBL = 'block text-sm font-medium text-[#1a2e25] mb-1.5'
+const FLD = 'w-full px-3.5 py-2.5 rounded-xl border border-border bg-white text-sm text-text-main focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600'
+const LBL = 'block text-sm font-medium text-text-main mb-1.5'
 
 function inTwoWeeks() {
   const d = new Date()
@@ -129,15 +129,15 @@ export function RequestDocumentsDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0b3828]/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-900/50 backdrop-blur-sm">
       <div className="w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-2xl bg-white shadow-2xl flex flex-col">
-        <div className="flex items-center justify-between border-b border-[#e2e8e4] bg-[#f8faf9] px-6 py-4">
-          <h2 className="text-lg font-bold text-[#1a2e25]">Request documents</h2>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-[#6b7a73] hover:bg-[#e2e8e4]" title="Close"><X className="h-5 w-5" /></button>
+        <div className="flex items-center justify-between border-b border-border bg-surface px-6 py-4">
+          <h2 className="text-lg font-bold text-text-main">Request documents</h2>
+          <button onClick={onClose} className="rounded-lg p-1.5 text-muted hover:bg-border" title="Close"><X className="h-5 w-5" /></button>
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-16"><Loader2 className="h-7 w-7 animate-spin text-[#157354]" /></div>
+          <div className="flex justify-center py-16"><Loader2 className="h-7 w-7 animate-spin text-brand-600" /></div>
         ) : (
           <div className="overflow-y-auto p-6 space-y-5">
             <div className="grid gap-4 sm:grid-cols-2">
@@ -173,48 +173,48 @@ export function RequestDocumentsDialog({
 
             <div>
               <div className="mb-2 flex flex-wrap items-center gap-2">
-                <span className="text-sm font-medium text-[#1a2e25] mr-1">Send to</span>
-                <button type="button" onClick={() => pick(eligible.map(e => e.staffId))} className="rounded-lg border border-[#e2e8e4] px-2.5 py-1 text-xs font-semibold text-[#3d5a4f] hover:bg-[#f8faf9]">Everyone</button>
+                <span className="text-sm font-medium text-text-main mr-1">Send to</span>
+                <button type="button" onClick={() => pick(eligible.map(e => e.staffId))} className="rounded-lg border border-border px-2.5 py-1 text-xs font-semibold text-text-muted hover:bg-surface">Everyone</button>
                 {(['regular', 'substitute'] as EmploymentClass[]).map(c => (
-                  <button key={c} type="button" onClick={() => pick(eligible.filter(e => e.employmentClass === c).map(e => e.staffId))} className="rounded-lg border border-[#e2e8e4] px-2.5 py-1 text-xs font-semibold text-[#3d5a4f] hover:bg-[#f8faf9]">
+                  <button key={c} type="button" onClick={() => pick(eligible.filter(e => e.employmentClass === c).map(e => e.staffId))} className="rounded-lg border border-border px-2.5 py-1 text-xs font-semibold text-text-muted hover:bg-surface">
                     {EMPLOYMENT_CLASS_LABELS[c]}
                   </button>
                 ))}
                 {requirement && (
-                  <button type="button" onClick={() => pick([...needing])} className="rounded-lg border border-[#157354] bg-[#edf7f3] px-2.5 py-1 text-xs font-semibold text-[#157354]">
+                  <button type="button" onClick={() => pick([...needing])} className="rounded-lg border border-brand-600 bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-600">
                     Needs this item ({needing.size})
                   </button>
                 )}
-                <button type="button" onClick={() => pick([])} className="text-xs text-[#6b7a73] hover:underline">Clear</button>
+                <button type="button" onClick={() => pick([])} className="text-xs text-muted hover:underline">Clear</button>
               </div>
-              <div className="max-h-56 overflow-y-auto rounded-xl border border-[#e2e8e4] divide-y divide-[#e2e8e4]">
-                {eligible.length === 0 && <p className="p-4 text-sm text-[#6b7a73]">No active employees this applies to.</p>}
+              <div className="max-h-56 overflow-y-auto rounded-xl border border-border divide-y divide-border">
+                {eligible.length === 0 && <p className="p-4 text-sm text-muted">No active employees this applies to.</p>}
                 {eligible.map(e => (
-                  <label key={e.staffId} className="flex cursor-pointer items-center justify-between gap-3 px-4 py-2.5 text-sm hover:bg-[#fbfcfb]">
+                  <label key={e.staffId} className="flex cursor-pointer items-center justify-between gap-3 px-4 py-2.5 text-sm hover:bg-surface">
                     <span className="flex items-center gap-3">
                       <input type="checkbox" checked={selected.includes(e.staffId)}
                         onChange={() => setSelected(s => s.includes(e.staffId) ? s.filter(x => x !== e.staffId) : [...s, e.staffId])}
-                        className="h-4 w-4 rounded border-gray-300 text-[#157354] focus:ring-[#157354]" />
-                      <span className="text-[#1a2e25]">{e.name}</span>
+                        className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-600" />
+                      <span className="text-text-main">{e.name}</span>
                     </span>
-                    <span className="flex items-center gap-2 text-xs text-[#6b7a73]">
+                    <span className="flex items-center gap-2 text-xs text-muted">
                       {needing.has(e.staffId) && <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-700">Needs it</span>}
                       {EMPLOYMENT_CLASS_LABELS[e.employmentClass]}
                     </span>
                   </label>
                 ))}
               </div>
-              <p className="mt-1.5 text-xs text-[#a8b5ae]">Employees who already have an open request for this item are skipped.</p>
+              <p className="mt-1.5 text-xs text-subtle">Employees who already have an open request for this item are skipped.</p>
             </div>
 
             {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
           </div>
         )}
 
-        <div className="flex justify-end gap-2 border-t border-[#e2e8e4] px-6 py-4">
-          <button onClick={onClose} className="rounded-xl border border-[#e2e8e4] px-5 py-2.5 text-sm font-medium text-[#6b7a73] hover:bg-[#f8faf9]">Cancel</button>
+        <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
+          <button onClick={onClose} className="rounded-xl border border-border px-5 py-2.5 text-sm font-medium text-muted hover:bg-surface">Cancel</button>
           <button onClick={handleSend} disabled={sending || loading || selected.length === 0}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#157354] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#0f4a36] disabled:opacity-50">
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-50">
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Send {selected.length > 0 ? `${selected.length} request${selected.length === 1 ? '' : 's'}` : 'requests'}
           </button>

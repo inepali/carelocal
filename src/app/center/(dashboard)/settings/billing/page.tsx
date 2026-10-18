@@ -148,14 +148,14 @@ export default function BillingPage() {
   return (
     <div className="max-w-5xl mx-auto pb-24 px-6 md:px-10">
       <div className="mb-12 text-center max-w-2xl mx-auto">
-        <h1 className="text-4xl font-extrabold text-[#0b3828] mb-4">Choose Your Plan</h1>
-        <p className="text-[#6b7a73] text-lg mb-8">Select the right plan to manage your staff, compliance, and shifts effectively.</p>
+        <h1 className="text-4xl font-extrabold text-heading mb-4">Choose Your Plan</h1>
+        <p className="text-muted text-lg mb-8">Select the right plan to manage your staff, compliance, and shifts effectively.</p>
         
-        <div className="inline-flex items-center p-1 bg-[#f0f4f2] rounded-xl relative">
+        <div className="inline-flex items-center p-1 bg-surface-2 rounded-xl relative">
           <button
             onClick={() => setBillingCycle('monthly')}
             className={`relative w-32 py-2.5 text-sm font-bold rounded-lg transition-all z-10 ${
-              billingCycle === 'monthly' ? 'text-[#0b3828]' : 'text-[#6b7a73] hover:text-[#1a2e25]'
+              billingCycle === 'monthly' ? 'text-heading' : 'text-muted hover:text-text-main'
             }`}
           >
             Monthly
@@ -163,7 +163,7 @@ export default function BillingPage() {
           <button
             onClick={() => setBillingCycle('yearly')}
             className={`relative w-40 py-2.5 text-sm font-bold rounded-lg transition-all z-10 flex items-center justify-center gap-1.5 ${
-              billingCycle === 'yearly' ? 'text-[#0b3828]' : 'text-[#6b7a73] hover:text-[#1a2e25]'
+              billingCycle === 'yearly' ? 'text-heading' : 'text-muted hover:text-text-main'
             }`}
           >
             Yearly <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full uppercase tracking-tighter">2 Months Free</span>
@@ -186,17 +186,17 @@ export default function BillingPage() {
 
       <div className="grid md:grid-cols-3 gap-8">
         {tiers.map((tier) => (
-          <div key={tier.id} className="bg-white border-2 border-[#f0f4f2] rounded-3xl p-8 shadow-sm hover:shadow-lg transition-all flex flex-col relative overflow-hidden group">
+          <div key={tier.id} className="bg-white border-2 border-border rounded-3xl p-8 shadow-sm hover:shadow-lg transition-all flex flex-col relative overflow-hidden group">
             <div className="mb-6">
-              <h3 className="text-xl font-black text-[#1a2e25] capitalize mb-2">{tier.name}</h3>
-              <p className="text-[#6b7a73] text-sm h-10">{tier.description}</p>
+              <h3 className="text-xl font-black text-text-main capitalize mb-2">{tier.name}</h3>
+              <p className="text-muted text-sm h-10">{tier.description}</p>
             </div>
             
             <div className="mb-8">
               <span className="text-4xl font-black text-brand-900">
                 ${billingCycle === 'monthly' ? getTierLimits(domainKey)[tier.id].pricePerMonth : (getTierLimits(domainKey)[tier.id].pricePerMonth * 10)}
               </span>
-              <span className="text-[#a8b5ae] font-bold">/{billingCycle === 'monthly' ? 'mo' : 'yr'}</span>
+              <span className="text-subtle font-bold">/{billingCycle === 'monthly' ? 'mo' : 'yr'}</span>
               {billingCycle === 'yearly' && (
                 <div className="text-xs text-brand-600 font-bold mt-1">Billed annually</div>
               )}
@@ -205,8 +205,8 @@ export default function BillingPage() {
             <ul className="space-y-4 mb-8 flex-1">
               {tier.features.map((feature, i) => (
                 <li key={i} className="flex items-start gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-[#157354] shrink-0" />
-                  <span className="text-sm font-medium text-[#1a2e25]">{feature}</span>
+                  <CheckCircle2 className="w-5 h-5 text-brand-600 shrink-0" />
+                  <span className="text-sm font-medium text-text-main">{feature}</span>
                 </li>
               ))}
             </ul>
@@ -218,7 +218,7 @@ export default function BillingPage() {
                 <div className="flex flex-col gap-3">
                   <button
                     disabled
-                    className="w-full py-4 rounded-xl font-black flex items-center justify-center gap-2 bg-[#edf7f3] text-[#157354] opacity-80 cursor-not-allowed"
+                    className="w-full py-4 rounded-xl font-black flex items-center justify-center gap-2 bg-brand-50 text-brand-600 opacity-80 cursor-not-allowed"
                   >
                     <CheckCircle2 className="w-5 h-5" /> Current Plan
                   </button>
@@ -237,8 +237,8 @@ export default function BillingPage() {
                     disabled={portalLoading}
                     className={`w-full py-4 rounded-xl font-black flex items-center justify-center gap-2 transition-all ${
                       tier.id === 'growth' 
-                        ? 'bg-[#157354] text-white hover:bg-[#0f4a36] shadow-md' 
-                        : 'bg-[#edf7f3] text-[#157354] hover:bg-[#d4ede4]'
+                        ? 'bg-brand-600 text-white hover:bg-brand-800 shadow-md' 
+                        : 'bg-brand-50 text-brand-600 hover:bg-brand-100'
                     }`}
                   >
                     {portalLoading ? (
@@ -258,8 +258,8 @@ export default function BillingPage() {
                   disabled={loading !== null}
                   className={`w-full py-4 rounded-xl font-black flex items-center justify-center gap-2 transition-all ${
                     tier.id === 'growth' 
-                      ? 'bg-[#157354] text-white hover:bg-[#0f4a36] shadow-md' 
-                      : 'bg-[#edf7f3] text-[#157354] hover:bg-[#d4ede4]'
+                      ? 'bg-brand-600 text-white hover:bg-brand-800 shadow-md' 
+                      : 'bg-brand-50 text-brand-600 hover:bg-brand-100'
                   }`}
                 >
                   {loading === tier.id ? (
@@ -277,18 +277,18 @@ export default function BillingPage() {
       </div>
 
       {/* Enterprise Card */}
-      <div className="mt-8 bg-[#0b3828] text-white rounded-3xl p-10 flex flex-col md:flex-row items-center justify-between gap-8 shadow-xl relative overflow-hidden">
-        <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#157354] rounded-full blur-[100px] opacity-30 pointer-events-none"></div>
+      <div className="mt-8 bg-brand-900 text-white rounded-3xl p-10 flex flex-col md:flex-row items-center justify-between gap-8 shadow-xl relative overflow-hidden">
+        <div className="absolute -top-24 -right-24 w-64 h-64 bg-brand-600 rounded-full blur-[100px] opacity-30 pointer-events-none"></div>
         <div className="relative z-10">
-          <div className="flex items-center gap-2 text-[#74c3a8] font-black uppercase tracking-widest text-xs mb-2">
+          <div className="flex items-center gap-2 text-brand-300 font-black uppercase tracking-widest text-xs mb-2">
             <ShieldCheck className="w-4 h-4" /> Enterprise Edition
           </div>
           <h3 className="text-2xl font-black mb-2">Need unlimited capacity?</h3>
-          <p className="text-[#a9dac9] max-w-md">Custom onboarding, SLA guarantees, and unlimited locations and staff for large enterprises.</p>
+          <p className="text-brand-200 max-w-md">Custom onboarding, SLA guarantees, and unlimited locations and staff for large enterprises.</p>
         </div>
         <button
           onClick={() => handleSubscribe('enterprise')}
-          className="relative z-10 shrink-0 bg-white text-[#0b3828] font-black px-8 py-4 rounded-xl hover:bg-gray-100 transition-colors"
+          className="relative z-10 shrink-0 bg-white text-heading font-black px-8 py-4 rounded-xl hover:bg-gray-100 transition-colors"
         >
           Contact Sales
         </button>

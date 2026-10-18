@@ -216,8 +216,8 @@ export default function MyShiftsPage() {
   if (loading) {
      return (
        <div className="max-w-5xl animate-pulse">
-         <div className="h-40 bg-white rounded-3xl border border-[#e2e8e4] mb-8"></div>
-         <div className="h-64 bg-white rounded-3xl border border-[#e2e8e4]"></div>
+         <div className="h-40 bg-white rounded-3xl border border-border mb-8"></div>
+         <div className="h-64 bg-white rounded-3xl border border-border"></div>
        </div>
      )
   }
@@ -254,8 +254,8 @@ export default function MyShiftsPage() {
   return (
     <div className="max-w-5xl pb-32">
       <div className="mb-10">
-        <h1 className="text-4xl font-black text-[#0b3828] mb-2 tracking-tight">My Shifts</h1>
-        <p className="text-[#6b7a73] text-lg font-medium">
+        <h1 className="text-4xl font-black text-heading mb-2 tracking-tight">My Shifts</h1>
+        <p className="text-muted text-lg font-medium">
           A personal overview of shifts you have claimed or are booked for.
         </p>
       </div>
@@ -271,7 +271,7 @@ export default function MyShiftsPage() {
             key={tab.value}
             type="button"
             onClick={() => setStatusFilter(tab.value as typeof statusFilter)}
-            className={`rounded-full px-4 py-2 text-xs font-black uppercase tracking-wider transition-colors ${statusFilter === tab.value ? 'bg-[#157354] text-white shadow-sm' : 'border border-[#e2e8e4] bg-white text-[#6b7a73] hover:bg-[#edf7f3] hover:text-[#157354]'}`}
+            className={`rounded-full px-4 py-2 text-xs font-black uppercase tracking-wider transition-colors ${statusFilter === tab.value ? 'bg-brand-600 text-white shadow-sm' : 'border border-border bg-white text-muted hover:bg-brand-50 hover:text-brand-600'}`}
           >
             {tab.label}
           </button>
@@ -279,18 +279,18 @@ export default function MyShiftsPage() {
       </div>
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-2xl font-black text-[#0b3828]">{monthLabel}</h2>
+        <h2 className="text-2xl font-black text-heading">{monthLabel}</h2>
         <div className="flex items-center gap-2">
-          <button type="button" aria-label="Previous month" onClick={() => changeMonth(-1)} className="rounded-xl border border-[#e2e8e4] bg-white p-2 text-[#157354] hover:bg-[#edf7f3]"><ChevronLeft className="h-5 w-5" /></button>
-          <button type="button" onClick={() => setSelectedMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1))} className="rounded-xl border border-[#e2e8e4] bg-white px-4 py-2 text-sm font-bold text-[#157354] hover:bg-[#edf7f3]">Today</button>
-          <button type="button" aria-label="Next month" onClick={() => changeMonth(1)} className="rounded-xl border border-[#e2e8e4] bg-white p-2 text-[#157354] hover:bg-[#edf7f3]"><ChevronRight className="h-5 w-5" /></button>
+          <button type="button" aria-label="Previous month" onClick={() => changeMonth(-1)} className="rounded-xl border border-border bg-white p-2 text-brand-600 hover:bg-brand-50"><ChevronLeft className="h-5 w-5" /></button>
+          <button type="button" onClick={() => setSelectedMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1))} className="rounded-xl border border-border bg-white px-4 py-2 text-sm font-bold text-brand-600 hover:bg-brand-50">Today</button>
+          <button type="button" aria-label="Next month" onClick={() => changeMonth(1)} className="rounded-xl border border-border bg-white p-2 text-brand-600 hover:bg-brand-50"><ChevronRight className="h-5 w-5" /></button>
         </div>
       </div>
 
-      <div className="w-full overflow-x-auto rounded-2xl border border-[#e2e8e4] bg-white shadow-sm">
+      <div className="w-full overflow-x-auto rounded-2xl border border-border bg-white shadow-sm">
         <div className="min-w-[760px] lg:min-w-0">
-          <div className="grid grid-cols-7 border-b border-[#e2e8e4] bg-[#f8faf9]">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => <div key={day} className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-[#6b7a73]">{day}</div>)}
+          <div className="grid grid-cols-7 border-b border-border bg-surface">
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => <div key={day} className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-muted">{day}</div>)}
           </div>
           <div className="grid grid-cols-7">
             {Array.from({ length: calendarCellCount }, (_, index) => {
@@ -301,8 +301,8 @@ export default function MyShiftsPage() {
               const selectedId = selectedShiftByDate[dateKey] || dayShifts[0]?.id
               const visibleShifts = dayShifts.filter(shift => dayShifts.length === 1 || shift.id === selectedId)
               return (
-                <div key={index} className={`min-h-[230px] border-b border-r border-[#e2e8e4] p-2 ${isCurrentMonthDay ? 'bg-white' : 'bg-[#fbfcfb]'}`}>
-                  {isCurrentMonthDay && <div className={`mb-2 flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold ${dateKey === todayKey ? 'bg-[#157354] text-white' : 'text-[#1a2e25]'}`}>{dayNumber}</div>}
+                <div key={index} className={`min-h-[230px] border-b border-r border-border p-2 ${isCurrentMonthDay ? 'bg-white' : 'bg-surface'}`}>
+                  {isCurrentMonthDay && <div className={`mb-2 flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold ${dateKey === todayKey ? 'bg-brand-600 text-white' : 'text-text-main'}`}>{dayNumber}</div>}
                   <div className="space-y-2">
                     {visibleShifts.map((shift: any) => {
                       const connectionStatus = myConnections[shift.center_id]
@@ -315,29 +315,29 @@ export default function MyShiftsPage() {
                       const timeLabel = `${shift.start_time.substring(0, 5)}–${shift.end_time.substring(0, 5)}`
                       const roomLabel = [shift.work_areas?.name, shift.work_areas?.age_group].filter(Boolean).join(' · ') || 'Any room'
                       return (
-                        <div key={shift.id} className="rounded-xl border border-[#dce8e2] bg-[#fcfefd] p-2.5 shadow-sm">
+                        <div key={shift.id} className="rounded-xl border border-border bg-surface p-2.5 shadow-sm">
                           <div className="space-y-1 text-[11px]">
-                            <div className="flex items-center gap-1 font-bold text-[#1a2e25]"><Clock className="h-3 w-3 text-[#157354]" />{timeLabel}</div>
-                            <div><span className={`inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-bold ${isCompleted ? 'bg-[#f8faf9] text-[#6b7a73]' : isConfirmed ? 'bg-[#f0fdf4] text-[#16a34a]' : isClaimed ? 'bg-[#fefce8] text-[#854d0e]' : 'bg-[#d4ede4] text-[#0f4a36]'}`}>{isCompleted ? 'Completed' : isConfirmed ? 'Assigned' : isClaimed ? 'Pending' : 'Open'}</span></div>
-                            <div className="truncate text-xs font-black text-[#0b3828]">{shift.centers?.name}</div>
-                            <div className="truncate text-[11px] text-[#3d5a4f]">{roomLabel}</div>
-                            <div className="font-bold text-[#157354]">${shift.hourly_rate ?? '0.00'}/hr</div>
+                            <div className="flex items-center gap-1 font-bold text-text-main"><Clock className="h-3 w-3 text-brand-600" />{timeLabel}</div>
+                            <div><span className={`inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-bold ${isCompleted ? 'bg-surface text-muted' : isConfirmed ? 'bg-brand-50 text-[#16a34a]' : isClaimed ? 'bg-[#fefce8] text-[#854d0e]' : 'bg-brand-100 text-brand-800'}`}>{isCompleted ? 'Completed' : isConfirmed ? 'Assigned' : isClaimed ? 'Pending' : 'Open'}</span></div>
+                            <div className="truncate text-xs font-black text-heading">{shift.centers?.name}</div>
+                            <div className="truncate text-[11px] text-text-muted">{roomLabel}</div>
+                            <div className="font-bold text-brand-600">${shift.hourly_rate ?? '0.00'}/hr</div>
                           </div>
                           <div className="mt-2 flex flex-col gap-1.5">
                             {isCompleted ? (
-                              isReviewed ? <div className="rounded-lg bg-[#f8faf9] px-2 py-1.5 text-center text-[10px] font-bold text-[#6b7a73]">Reviewed</div> : <button type="button" onClick={() => setReviewingShift(shift)} className="flex items-center justify-center gap-1 rounded-lg bg-[#fbbf24] px-2 py-1.5 text-[10px] font-bold text-[#0b3828]"><Star className="h-3 w-3" /> Review</button>
+                              isReviewed ? <div className="rounded-lg bg-surface px-2 py-1.5 text-center text-[10px] font-bold text-muted">Reviewed</div> : <button type="button" onClick={() => setReviewingShift(shift)} className="flex items-center justify-center gap-1 rounded-lg bg-amber-400 px-2 py-1.5 text-[10px] font-bold text-heading"><Star className="h-3 w-3" /> Review</button>
                             ) : isConfirmed ? (
-                              <div className="rounded-lg bg-[#f0fdf4] px-2 py-1.5 text-center text-[10px] font-bold text-[#157354]">Confirmed</div>
+                              <div className="rounded-lg bg-brand-50 px-2 py-1.5 text-center text-[10px] font-bold text-brand-600">Confirmed</div>
                             ) : isClaimed ? (
                               <button type="button" onClick={() => handleWithdraw(shift.id)} disabled={withdrawingShiftId === shift.id} className="flex items-center justify-center gap-1 rounded-lg bg-[#fee2e2] px-2 py-1.5 text-[10px] font-bold text-[#991b1b] disabled:opacity-50">{withdrawingShiftId === shift.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />} Withdraw</button>
                             ) : isInterested ? (
-                              <button type="button" onClick={() => handleClaim(shift.id)} disabled={claimingShiftId === shift.id} className="flex items-center justify-center gap-1 rounded-lg bg-[#fbbf24] px-2 py-1.5 text-[10px] font-bold text-[#0b3828] disabled:opacity-50">
+                              <button type="button" onClick={() => handleClaim(shift.id)} disabled={claimingShiftId === shift.id} className="flex items-center justify-center gap-1 rounded-lg bg-amber-400 px-2 py-1.5 text-[10px] font-bold text-heading disabled:opacity-50">
                                 {claimingShiftId === shift.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />} Claim shift
                               </button>
                             ) : connectionStatus === 'active' ? (
-                              <button type="button" onClick={() => handleExpressInterest(shift.id)} disabled={expressingInterestId === shift.id} className="flex items-center justify-center gap-1 rounded-lg border border-[#157354] px-2 py-1.5 text-[10px] font-bold text-[#157354] disabled:opacity-50">{expressingInterestId === shift.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Heart className="h-3 w-3" />} Interested</button>
+                              <button type="button" onClick={() => handleExpressInterest(shift.id)} disabled={expressingInterestId === shift.id} className="flex items-center justify-center gap-1 rounded-lg border border-brand-600 px-2 py-1.5 text-[10px] font-bold text-brand-600 disabled:opacity-50">{expressingInterestId === shift.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Heart className="h-3 w-3" />} Interested</button>
                             ) : (
-                              <button type="button" onClick={() => handleStartOnboarding(shift.center_id, shift.centers?.slug)} disabled={joiningCenterId === shift.center_id} className="flex items-center justify-center gap-1 rounded-lg bg-[#157354] px-2 py-1.5 text-[10px] font-bold text-white disabled:opacity-50">{joiningCenterId === shift.center_id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ShieldCheck className="h-3 w-3" />} Join center</button>
+                              <button type="button" onClick={() => handleStartOnboarding(shift.center_id, shift.centers?.slug)} disabled={joiningCenterId === shift.center_id} className="flex items-center justify-center gap-1 rounded-lg bg-brand-600 px-2 py-1.5 text-[10px] font-bold text-white disabled:opacity-50">{joiningCenterId === shift.center_id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ShieldCheck className="h-3 w-3" />} Join center</button>
                             )}
                           </div>
                         </div>
@@ -345,7 +345,7 @@ export default function MyShiftsPage() {
                     })}
                   </div>
                   {dayShifts.length > 1 && <div className="mt-2 flex justify-center gap-1.5" aria-label="Select shift">
-                    {dayShifts.map((shift: any, shiftIndex: number) => <button key={shift.id} type="button" aria-label={`Select shift ${shiftIndex + 1}`} aria-pressed={selectedId === shift.id} title={`Select shift ${shiftIndex + 1}`} onClick={() => setSelectedShiftByDate(current => ({ ...current, [dateKey]: shift.id }))} className={`h-2 w-2 rounded-full border ${selectedId === shift.id ? 'border-[#157354] bg-[#157354]' : 'border-[#9fc8b7] bg-white'}`} />)}
+                    {dayShifts.map((shift: any, shiftIndex: number) => <button key={shift.id} type="button" aria-label={`Select shift ${shiftIndex + 1}`} aria-pressed={selectedId === shift.id} title={`Select shift ${shiftIndex + 1}`} onClick={() => setSelectedShiftByDate(current => ({ ...current, [dateKey]: shift.id }))} className={`h-2 w-2 rounded-full border ${selectedId === shift.id ? 'border-brand-600 bg-brand-600' : 'border-brand-200 bg-white'}`} />)}
                   </div>}
                 </div>
               )
@@ -357,10 +357,10 @@ export default function MyShiftsPage() {
       {/* Legacy list markup retained below temporarily while calendar behavior is verified. */}
       {/*
       {shifts.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-[#e2e8e4]">
-          <Calendar className="w-12 h-12 text-[#a8b5ae] mx-auto mb-4" />
-          <h3 className="text-xl font-black text-[#0b3828] mb-2">No booked shifts yet</h3>
-          <p className="text-[#6b7a73] font-medium max-w-sm mx-auto">
+        <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-border">
+          <Calendar className="w-12 h-12 text-subtle mx-auto mb-4" />
+          <h3 className="text-xl font-black text-heading mb-2">No booked shifts yet</h3>
+          <p className="text-muted font-medium max-w-sm mx-auto">
             Try checking the Available Shifts tabs to discover and claim your first shift!
           </p>
         </div>
@@ -378,8 +378,8 @@ export default function MyShiftsPage() {
                 onClick={() => setStatusFilter(tab.value as any)}
                 className={`px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-200 cursor-pointer ${
                   statusFilter === tab.value
-                    ? 'bg-[#157354] text-white shadow-md'
-                    : 'bg-white text-[#6b7a73] border border-[#e2e8e4] hover:bg-[#edf7f3] hover:text-[#157354]'
+                    ? 'bg-brand-600 text-white shadow-md'
+                    : 'bg-white text-muted border border-border hover:bg-brand-50 hover:text-brand-600'
                 }`}
               >
                 {tab.label}
@@ -387,15 +387,15 @@ export default function MyShiftsPage() {
             ))}
           </div>
 
-          <h2 className="text-2xl font-black text-[#0b3828] mb-6 px-2 capitalize">
+          <h2 className="text-2xl font-black text-heading mb-6 px-2 capitalize">
             {statusFilter === 'all' ? 'Booked & Pending' : statusFilter} Shifts
           </h2>
 
           {filteredShifts.length === 0 ? (
-            <div className="text-center py-16 bg-white rounded-[2rem] border-2 border-dashed border-[#e2e8e4] px-4">
-              <Calendar className="w-12 h-12 text-[#a8b5ae] mx-auto mb-4" />
-              <h3 className="text-xl font-black text-[#0b3828] mb-2">No shifts found</h3>
-              <p className="text-[#6b7a73] font-medium max-w-sm mx-auto">
+            <div className="text-center py-16 bg-white rounded-[2rem] border-2 border-dashed border-border px-4">
+              <Calendar className="w-12 h-12 text-subtle mx-auto mb-4" />
+              <h3 className="text-xl font-black text-heading mb-2">No shifts found</h3>
+              <p className="text-muted font-medium max-w-sm mx-auto">
                 There are no {statusFilter !== 'all' ? statusFilter : ''} shifts matching your selection.
               </p>
             </div>
@@ -435,16 +435,16 @@ export default function MyShiftsPage() {
             return (
               <div
                 key={shift.id}
-                className="bg-white rounded-[1.5rem] border border-[#e6ece9] px-5 py-4 shadow-sm hover:shadow-md transition-shadow"
+                className="bg-white rounded-[1.5rem] border border-border px-5 py-4 shadow-sm hover:shadow-md transition-shadow"
               >
                 <div className="flex min-w-0 justify-center md:justify-start mb-3">
                   <div className="flex max-w-full flex-nowrap items-center gap-1.5 overflow-x-auto pb-1 [scrollbar-width:thin]">
                     {isCompleted ? (
-                      <span className="shrink-0 rounded-full border border-[#e2e8e4] bg-[#f8faf9] px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-[#6b7a73]">
+                      <span className="shrink-0 rounded-full border border-border bg-surface px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-muted">
                         Completed
                       </span>
                     ) : isConfirmed ? (
-                      <span className="shrink-0 rounded-full border border-[#dcfce7] bg-[#f0fdf4] px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-[#157354]">
+                      <span className="shrink-0 rounded-full border border-[#dcfce7] bg-brand-50 px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-brand-600">
                         Assigned
                       </span>
                     ) : isClaimed ? (
@@ -457,26 +457,26 @@ export default function MyShiftsPage() {
                       </span>
                     )}
                     {isInterested && !isClaimed && (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#d4ede4] bg-[#edf7f3] px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-[#157354]">
-                        <Heart className="h-4 w-4 fill-[#157354]" /> Interested
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-brand-100 bg-brand-50 px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-brand-600">
+                        <Heart className="h-4 w-4 fill-brand-600" /> Interested
                       </span>
                     )}
                     {isActive && (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#dcfce7] bg-[#f0fdf4] px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-[#157354]">
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#dcfce7] bg-brand-50 px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-brand-600">
                         <CheckCircle2 className="h-4 w-4" /> Match
                       </span>
                     )}
-                    <span className="shrink-0 whitespace-nowrap rounded-full border border-[#d4ede4] bg-[#edf7f3] px-4 py-2 text-xs font-black uppercase tracking-widest text-[#157354]">
+                    <span className="shrink-0 whitespace-nowrap rounded-full border border-brand-100 bg-brand-50 px-4 py-2 text-xs font-black uppercase tracking-widest text-brand-600">
                       ${shift.hourly_rate ?? '20.00'}/hr
                     </span>
-                    <span className="shrink-0 whitespace-nowrap rounded-full border border-[#e2e8e4] bg-[#f8faf9] px-4 py-2 text-xs font-black uppercase tracking-widest text-[#6b7a73]">
+                    <span className="shrink-0 whitespace-nowrap rounded-full border border-border bg-surface px-4 py-2 text-xs font-black uppercase tracking-widest text-muted">
                       {lookupLabel(roleLookups, shift.staff_type_needed) || 'Professional'}
                     </span>
-                    <span className="shrink-0 whitespace-nowrap rounded-full border border-[#e2e8e4] bg-[#f8faf9] px-4 py-2 text-xs font-black uppercase tracking-widest text-[#6b7a73] capitalize">
+                    <span className="shrink-0 whitespace-nowrap rounded-full border border-border bg-surface px-4 py-2 text-xs font-black uppercase tracking-widest text-muted capitalize">
                       {payLabel}
                     </span>
                     {centerMetro && (
-                      <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-[#e2e8e4] bg-[#f8faf9] px-4 py-2 text-xs font-black uppercase tracking-widest text-[#6b7a73]">
+                      <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-border bg-surface px-4 py-2 text-xs font-black uppercase tracking-widest text-muted">
                         <Globe className="h-4 w-4 shrink-0" /> {centerMetro.name}
                       </span>
                     )}
@@ -485,26 +485,26 @@ export default function MyShiftsPage() {
 
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div className="min-w-0 text-center md:text-left">
-                    <h3 className="text-xl font-black leading-tight text-[#0b3828] truncate">{shift.centers?.name}</h3>
-                    <p className="mt-1 text-xs text-[#6b7a73] font-medium">
-                      <MapPin className="inline w-3.5 h-3.5 text-[#a8b5ae] mr-1" />
+                    <h3 className="text-xl font-black leading-tight text-heading truncate">{shift.centers?.name}</h3>
+                    <p className="mt-1 text-xs text-muted font-medium">
+                      <MapPin className="inline w-3.5 h-3.5 text-subtle mr-1" />
                       {locationLine}{zipPart}
                     </p>
                     {roomLabel && (
-                      <p className="mt-1 text-[11px] text-[#3d5a4f]">
-                        <span className="font-black uppercase tracking-widest text-[#a8b5ae] text-[10px]">Room</span> {roomLabel}
+                      <p className="mt-1 text-[11px] text-text-muted">
+                        <span className="font-black uppercase tracking-widest text-subtle text-[10px]">Room</span> {roomLabel}
                       </p>
                     )}
                     
                     {myClaim?.check_in_time && (
-                      <div className="mt-3 p-3 bg-[#f8faf9] rounded-xl border border-[#e2e8e4] inline-flex flex-col gap-1">
-                        <div className="text-xs text-[#6b7a73] font-medium flex items-center gap-2">
-                          <LogIn className="w-3.5 h-3.5 text-[#157354]" /> In: {new Date(myClaim.check_in_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                      <div className="mt-3 p-3 bg-surface rounded-xl border border-border inline-flex flex-col gap-1">
+                        <div className="text-xs text-muted font-medium flex items-center gap-2">
+                          <LogIn className="w-3.5 h-3.5 text-brand-600" /> In: {new Date(myClaim.check_in_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                         </div>
                         {myClaim.check_out_time && (
-                          <div className="text-xs text-[#6b7a73] font-medium flex items-center gap-2">
+                          <div className="text-xs text-muted font-medium flex items-center gap-2">
                             <LogOut className="w-3.5 h-3.5 text-rose-600" /> Out: {new Date(myClaim.check_out_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                            <span className="font-black text-[#157354] ml-2">
+                            <span className="font-black text-brand-600 ml-2">
                               {((new Date(myClaim.check_out_time).getTime() - new Date(myClaim.check_in_time).getTime()) / 3600000).toFixed(2)} hrs
                             </span>
                           </div>
@@ -516,20 +516,20 @@ export default function MyShiftsPage() {
                   <div className="flex flex-col items-stretch sm:items-end gap-2 w-full md:w-auto shrink-0">
                     {isCompleted ? (
                       isReviewed ? (
-                        <div className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#f8faf9] text-[#6b7a73] border border-[#e2e8e4] font-black text-xs uppercase tracking-widest whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-surface text-muted border border-border font-black text-xs uppercase tracking-widest whitespace-nowrap">
                           <CheckCircle2 className="w-4 h-4" /> Reviewed
                         </div>
                       ) : (
                         <button
                           type="button"
                           onClick={() => setReviewingShift(shift)}
-                          className="px-5 py-2.5 bg-[#fbbf24] text-[#0b3828] font-black text-xs uppercase tracking-widest rounded-xl hover:bg-[#f59e0b] shadow-lg shadow-amber-200/30 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
+                          className="px-5 py-2.5 bg-amber-400 text-heading font-black text-xs uppercase tracking-widest rounded-xl hover:bg-amber-500 shadow-lg shadow-amber-200/30 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
                         >
                           <Star className="w-4 h-4" /> Leave Review
                         </button>
                       )
                     ) : isConfirmed ? (
-                      <div className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#f0fdf4] text-[#157354] border border-[#dcfce7] font-black text-xs uppercase tracking-widest whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-brand-50 text-brand-600 border border-[#dcfce7] font-black text-xs uppercase tracking-widest whitespace-nowrap">
                         <CheckCircle2 className="w-4 h-4" /> Assigned
                       </div>
                     ) : isClaimed ? (
@@ -549,14 +549,14 @@ export default function MyShiftsPage() {
                       </button>
                     ) : isInterested ? (
                       <>
-                        <p className="text-center md:text-right text-[10px] font-bold text-[#6b7a73] uppercase tracking-wide max-w-[220px]">
+                        <p className="text-center md:text-right text-[10px] font-bold text-muted uppercase tracking-wide max-w-[220px]">
                           Interest saved — claim to commit
                         </p>
                         <button
                           type="button"
                           onClick={() => handleClaim(shift.id)}
                           disabled={claimingShiftId === shift.id}
-                          className="px-5 py-2.5 bg-[#fbbf24] text-[#0b3828] font-black text-xs uppercase tracking-widest rounded-xl hover:bg-[#f59e0b] shadow-lg shadow-amber-200/30 transition-all disabled:opacity-50 flex items-center justify-center gap-2 whitespace-nowrap"
+                          className="px-5 py-2.5 bg-amber-400 text-heading font-black text-xs uppercase tracking-widest rounded-xl hover:bg-amber-500 shadow-lg shadow-amber-200/30 transition-all disabled:opacity-50 flex items-center justify-center gap-2 whitespace-nowrap"
                         >
                           {claimingShiftId === shift.id ? (
                             <Loader2 className="w-5 h-5 animate-spin" />
@@ -572,7 +572,7 @@ export default function MyShiftsPage() {
                         type="button"
                         onClick={() => handleExpressInterest(shift.id)}
                         disabled={expressingInterestId === shift.id}
-                        className="px-5 py-2.5 border border-[#157354] text-[#157354] font-black text-xs uppercase tracking-widest rounded-xl hover:bg-[#edf7f3] transition-all disabled:opacity-50 flex items-center justify-center gap-2 whitespace-nowrap"
+                        className="px-5 py-2.5 border border-brand-600 text-brand-600 font-black text-xs uppercase tracking-widest rounded-xl hover:bg-brand-50 transition-all disabled:opacity-50 flex items-center justify-center gap-2 whitespace-nowrap"
                       >
                         {expressingInterestId === shift.id ? (
                           <Loader2 className="w-5 h-5 animate-spin" />
@@ -594,7 +594,7 @@ export default function MyShiftsPage() {
                         type="button"
                         disabled={joiningCenterId === shift.centers?.id}
                         onClick={() => handleStartOnboarding(shift.center_id, shift.centers?.slug)}
-                        className="px-5 py-2.5 bg-[#157354] text-white font-black text-xs uppercase tracking-widest rounded-xl hover:bg-[#0f4a36] shadow-lg shadow-[#157354]/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2 whitespace-nowrap"
+                        className="px-5 py-2.5 bg-brand-600 text-white font-black text-xs uppercase tracking-widest rounded-xl hover:bg-brand-800 shadow-lg shadow-brand-600/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2 whitespace-nowrap"
                       >
                         {joiningCenterId === shift.centers?.id ? (
                           <Loader2 className="w-5 h-5 animate-spin" />
@@ -605,19 +605,19 @@ export default function MyShiftsPage() {
                         )}
                       </button>
                     )}
-                    <p className="text-center md:text-right text-[10px] text-[#a8b5ae] font-bold uppercase tracking-wide max-w-[240px]">
+                    <p className="text-center md:text-right text-[10px] text-subtle font-bold uppercase tracking-wide max-w-[240px]">
                       {actionHint}
                     </p>
                   </div>
                 </div>
 
-                <div className="mt-3 flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-1.5 text-xs font-black tracking-wide text-[#6b7a73]">
+                <div className="mt-3 flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-1.5 text-xs font-black tracking-wide text-muted">
                   <span className="inline-flex items-center gap-1.5">
-                    <Calendar className="w-4 h-4 text-[#a8b5ae]" />
+                    <Calendar className="w-4 h-4 text-subtle" />
                     {dateLabel}
                   </span>
                   <span className="inline-flex items-center gap-1.5">
-                    <Clock className="w-4 h-4 text-[#a8b5ae]" />
+                    <Clock className="w-4 h-4 text-subtle" />
                     {timeLabel}
                   </span>
                 </div>
@@ -631,7 +631,7 @@ export default function MyShiftsPage() {
       {/* ── Outstanding Balance Warning Modal ── */}
       {showBalanceModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-[2rem] border-2 border-[#e6ece9] max-w-md w-full p-8 shadow-2xl relative animate-slide-up text-left">
+          <div className="bg-white rounded-[2rem] border-2 border-border max-w-md w-full p-8 shadow-2xl relative animate-slide-up text-left">
             <button 
               onClick={() => setShowBalanceModal(false)}
               className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 cursor-pointer"
@@ -641,9 +641,9 @@ export default function MyShiftsPage() {
             <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-6">
               <AlertCircle className="w-6 h-6 text-red-600" />
             </div>
-            <h3 className="text-2xl font-black text-[#0b3828] mb-3">Clear Outstanding Due</h3>
-            <p className="text-[#3d5a4f] text-sm leading-relaxed mb-6">
-              You cannot claim this shift because you have an outstanding Staff Maintenance Fee balance of <strong className="text-[#0b3828]">${myProfile?.balance_due ? parseFloat(myProfile.balance_due.toString()).toFixed(2) : '0.00'}</strong>. You must pay your balance on the Account page before you can claim new shifts.
+            <h3 className="text-2xl font-black text-heading mb-3">Clear Outstanding Due</h3>
+            <p className="text-text-muted text-sm leading-relaxed mb-6">
+              You cannot claim this shift because you have an outstanding Staff Maintenance Fee balance of <strong className="text-heading">${myProfile?.balance_due ? parseFloat(myProfile.balance_due.toString()).toFixed(2) : '0.00'}</strong>. You must pay your balance on the Account page before you can claim new shifts.
             </p>
             <div className="flex flex-col gap-2.5">
               <button
@@ -651,13 +651,13 @@ export default function MyShiftsPage() {
                   setShowBalanceModal(false)
                   router.push('/staff/account')
                 }}
-                className="w-full bg-[#157354] text-white font-bold py-3.5 px-4 rounded-xl hover:bg-[#0f4a36] transition-colors text-sm cursor-pointer text-center"
+                className="w-full bg-brand-600 text-white font-bold py-3.5 px-4 rounded-xl hover:bg-brand-800 transition-colors text-sm cursor-pointer text-center"
               >
                 Go to Account & Pay
               </button>
               <button
                 onClick={() => setShowBalanceModal(false)}
-                className="w-full text-[#6b7a73] font-bold py-2 text-sm hover:text-[#0b3828] transition-colors cursor-pointer text-center"
+                className="w-full text-muted font-bold py-2 text-sm hover:text-heading transition-colors cursor-pointer text-center"
               >
                 Cancel
               </button>

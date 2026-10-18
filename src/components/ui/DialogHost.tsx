@@ -5,9 +5,9 @@ import { AlertCircle, AlertTriangle, CheckCircle2, HelpCircle } from 'lucide-rea
 import { subscribeDialogs, type DialogRequest, type DialogTone } from '@/lib/dialog'
 
 const TONE: Record<DialogTone, { tile: string; button: string; Icon: React.ElementType; title: string }> = {
-  default: { tile: 'bg-[#edf7f3] border-[#d4ede4] text-[#157354]', button: 'bg-[#157354] hover:bg-[#0f4a36] shadow-[#157354]/20', Icon: CheckCircle2, title: 'Notice' },
+  default: { tile: 'bg-brand-50 border-brand-100 text-brand-600', button: 'bg-brand-600 hover:bg-brand-800 shadow-brand-600/20', Icon: CheckCircle2, title: 'Notice' },
   danger:  { tile: 'bg-red-50 border-red-100 text-red-600',        button: 'bg-red-600 hover:bg-red-700 shadow-red-600/20',         Icon: AlertTriangle, title: 'Are you sure?' },
-  error:   { tile: 'bg-amber-50 border-amber-100 text-amber-600',   button: 'bg-[#157354] hover:bg-[#0f4a36] shadow-[#157354]/20',   Icon: AlertCircle,   title: 'Something went wrong' },
+  error:   { tile: 'bg-amber-50 border-amber-100 text-amber-600',   button: 'bg-brand-600 hover:bg-brand-800 shadow-brand-600/20',   Icon: AlertCircle,   title: 'Something went wrong' },
 }
 
 /** Renders alert / confirm / prompt requests from src/lib/dialog.ts. Mounted once in the root layout. */
@@ -57,16 +57,16 @@ export function DialogHost() {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#0b3828]/40 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-brand-900/40 backdrop-blur-sm animate-in fade-in duration-200"
       role="alertdialog" aria-modal="true" aria-labelledby="app-dialog-title" aria-describedby="app-dialog-message"
       onMouseDown={e => { if (e.target === e.currentTarget && current.kind !== 'alert') cancel() }}
     >
-      <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-[#e2e8e4] animate-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-border animate-in zoom-in-95 duration-200">
         <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-5 border-2 ${tone.tile}`}>
           <Icon className="w-7 h-7" />
         </div>
-        <h2 id="app-dialog-title" className="text-xl font-black text-[#0b3828] mb-2">{title}</h2>
-        <p id="app-dialog-message" className="text-[#6b7a73] font-medium leading-relaxed whitespace-pre-line break-words mb-6">{current.message}</p>
+        <h2 id="app-dialog-title" className="text-xl font-black text-heading mb-2">{title}</h2>
+        <p id="app-dialog-message" className="text-muted font-medium leading-relaxed whitespace-pre-line break-words mb-6">{current.message}</p>
 
         {current.kind === 'prompt' && (
           <input
@@ -74,7 +74,7 @@ export function DialogHost() {
             value={value}
             onChange={e => setValue(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); accept() } }}
-            className="w-full mb-6 px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white text-[#1a2e25] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354]"
+            className="w-full mb-6 px-4 py-3 rounded-xl border border-border bg-white text-text-main focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600"
           />
         )}
 
@@ -82,7 +82,7 @@ export function DialogHost() {
           {current.kind !== 'alert' && (
             <button
               onClick={cancel}
-              className="flex-1 px-5 py-3 rounded-xl font-bold text-[#6b7a73] bg-[#f8faf9] border-2 border-[#f0f4f2] hover:bg-[#f0f4f2] transition-colors"
+              className="flex-1 px-5 py-3 rounded-xl font-bold text-muted bg-surface border-2 border-border hover:bg-surface-2 transition-colors"
             >
               Cancel
             </button>

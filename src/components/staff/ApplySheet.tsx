@@ -100,36 +100,36 @@ export function ApplySheet({
     return (
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" disabled={uploadingFor !== null} onClick={() => pickFile(target)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-[#e2e8e4] bg-white px-2.5 py-1.5 text-xs font-bold text-[#157354] hover:bg-[#edf7f3] disabled:opacity-50">
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-2.5 py-1.5 text-xs font-bold text-brand-600 hover:bg-brand-50 disabled:opacity-50">
           {uploadingFor === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />} Upload
         </button>
         <PhoneUploadButton kind="vault" label={label} text="Phone" disabled={uploadingFor !== null}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-[#e2e8e4] bg-white px-2.5 py-1.5 text-xs font-bold text-[#157354] hover:bg-[#edf7f3] disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-2.5 py-1.5 text-xs font-bold text-brand-600 hover:bg-brand-50 disabled:opacity-50"
           onReceived={upload => addDocument(upload, target)} />
       </div>
     )
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#0b3828]/40 p-0 backdrop-blur-sm sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="apply-title">
-      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl border border-[#e2e8e4] bg-white p-6 shadow-2xl sm:rounded-3xl">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-brand-900/40 p-0 backdrop-blur-sm sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="apply-title">
+      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl border border-border bg-white p-6 shadow-2xl sm:rounded-3xl">
         <div className="mb-1 flex items-start justify-between gap-3">
-          <h2 id="apply-title" className="text-xl font-black text-[#0b3828]">Apply: {job.title}</h2>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-[#6b7a73] hover:bg-[#f8faf9]" aria-label="Close"><X className="h-5 w-5" /></button>
+          <h2 id="apply-title" className="text-xl font-black text-heading">Apply: {job.title}</h2>
+          <button onClick={onClose} className="rounded-lg p-1.5 text-muted hover:bg-surface" aria-label="Close"><X className="h-5 w-5" /></button>
         </div>
-        <p className="mb-5 text-sm text-[#6b7a73]">Documents are checked against the start date ({startLabel}). Your profile, experience and references are included automatically.</p>
+        <p className="mb-5 text-sm text-muted">Documents are checked against the start date ({startLabel}). Your profile, experience and references are included automatically.</p>
 
-        <div className="divide-y divide-[#e2e8e4] rounded-2xl border border-[#e2e8e4]">
+        <div className="divide-y divide-border rounded-2xl border border-border">
           {/* Resume: always first, always required */}
           <div className="space-y-2 p-4">
             <div className="flex items-center gap-2">
               {resumeId ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <XCircle className="h-5 w-5 text-red-600" />}
-              <span className="flex-1 text-sm font-bold text-[#1a2e25]">Resume</span>
+              <span className="flex-1 text-sm font-bold text-text-main">Resume</span>
               <span className={`rounded-full border px-2 py-0.5 text-[11px] ${resumeId ? ITEM_STATE_STYLE.ready.className : ITEM_STATE_STYLE.missing.className}`}>{resumeId ? 'Ready' : 'Missing'}</span>
             </div>
             <div className="flex flex-wrap items-center gap-2 pl-7">
               {resumes.length > 0 && (
-                <select value={resumeId ?? ''} onChange={e => setResumeId(e.target.value || null)} className="rounded-lg border border-[#e2e8e4] bg-white px-2 py-1.5 text-xs">
+                <select value={resumeId ?? ''} onChange={e => setResumeId(e.target.value || null)} className="rounded-lg border border-border bg-white px-2 py-1.5 text-xs">
                   {resumes.map(d => <option key={d.id} value={d.id}>{d.document_name} · {new Date(d.uploaded_at).toLocaleDateString()}</option>)}
                 </select>
               )}
@@ -144,16 +144,16 @@ export function ApplySheet({
               <div key={item.requirement.id} className="space-y-2 p-4">
                 <div className="flex items-center gap-2">
                   <Icon className={`h-5 w-5 ${item.state === 'ready' ? 'text-emerald-600' : item.state === 'missing' ? 'text-red-600' : item.state === 'expiring' ? 'text-amber-600' : 'text-slate-400'}`} />
-                  <span className="flex-1 text-sm font-bold text-[#1a2e25]">{item.requirement.document_name}</span>
+                  <span className="flex-1 text-sm font-bold text-text-main">{item.requirement.document_name}</span>
                   <span className={`rounded-full border px-2 py-0.5 text-[11px] ${style.className}`}>{style.label}</span>
                 </div>
                 {item.onFile ? (
-                  <p className="pl-7 text-xs text-[#6b7a73]">Already on file at this center{item.document ? `: ${item.document.document_name}` : ''}.</p>
+                  <p className="pl-7 text-xs text-muted">Already on file at this center{item.document ? `: ${item.document.document_name}` : ''}.</p>
                 ) : (
                   <div className="flex flex-wrap items-center gap-2 pl-7">
                     {docs.length > 0 && (
                       <select value={item.document?.id ?? ''} onChange={e => setPicks(prev => ({ ...prev, [item.requirement.id]: e.target.value || null }))}
-                        className="max-w-[260px] rounded-lg border border-[#e2e8e4] bg-white px-2 py-1.5 text-xs">
+                        className="max-w-[260px] rounded-lg border border-border bg-white px-2 py-1.5 text-xs">
                         <option value="">Choose from my documents…</option>
                         {docs.map(d => <option key={d.id} value={d.id}>{d.document_name}{d.expiry_date ? ` · exp. ${new Date(`${d.expiry_date}T00:00:00`).toLocaleDateString()}` : ''}</option>)}
                       </select>
@@ -169,24 +169,24 @@ export function ApplySheet({
 
         {laterItems.length > 0 && (
           <div className="mt-5">
-            <h3 className="mb-2 text-sm font-bold text-[#1a2e25]">After you’re hired</h3>
-            <ul className="space-y-1 text-sm text-[#6b7a73]">
-              {laterItems.map(i => <li key={i.requirement.id}>• {i.requirement.document_name} <span className="text-xs text-[#a8b5ae]">({NEEDED_AT_LABELS[i.neededAt].toLowerCase()})</span></li>)}
+            <h3 className="mb-2 text-sm font-bold text-text-main">After you’re hired</h3>
+            <ul className="space-y-1 text-sm text-muted">
+              {laterItems.map(i => <li key={i.requirement.id}>• {i.requirement.document_name} <span className="text-xs text-subtle">({NEEDED_AT_LABELS[i.neededAt].toLowerCase()})</span></li>)}
             </ul>
           </div>
         )}
 
         <div className="mt-5">
-          <label className="mb-1.5 block text-sm font-medium text-[#1a2e25]">Note to the center (optional)</label>
+          <label className="mb-1.5 block text-sm font-medium text-text-main">Note to the center (optional)</label>
           <textarea rows={3} maxLength={2000} value={note} onChange={e => setNote(e.target.value)}
-            className="w-full resize-none rounded-xl border border-[#e2e8e4] px-3.5 py-2.5 text-sm focus:border-[#157354] focus:outline-none focus:ring-2 focus:ring-[#157354]/30"
+            className="w-full resize-none rounded-xl border border-border px-3.5 py-2.5 text-sm focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30"
             placeholder="Why you are a good fit, availability, anything else…" />
         </div>
 
         <div className="mt-5 flex gap-3">
-          <button onClick={onClose} className="flex-1 rounded-xl border-2 border-[#f0f4f2] bg-[#f8faf9] px-4 py-3 font-bold text-[#6b7a73]">Cancel</button>
+          <button onClick={onClose} className="flex-1 rounded-xl border-2 border-border bg-surface px-4 py-3 font-bold text-muted">Cancel</button>
           <button disabled={blocked || submitting || uploadingFor !== null} onClick={submit}
-            className="flex flex-[2] items-center justify-center gap-2 rounded-xl bg-[#157354] px-4 py-3 font-black text-white hover:bg-[#0f4a36] disabled:opacity-50">
+            className="flex flex-[2] items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 font-black text-white hover:bg-brand-800 disabled:opacity-50">
             {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Submit application'}
           </button>
         </div>

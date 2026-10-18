@@ -72,7 +72,7 @@ export const DOMAIN_CONFIGS: Record<DomainKey, DomainConfig> = {
     themeClass: 'theme-childcare',
     appName: 'CareLocal',
     title: 'CareLocal — All-in-One Childcare Staffing & Compliance Platform',
-    description: 'The all-in-one platform for childcare staffing and compliance. Fill daycare shifts by text in minutes and keep staff files, training records, policy sign-offs and facility inspections current. 6-month free trial.',
+    description: 'The all-in-one platform for childcare staffing and compliance. Fill daycare shifts by text in minutes and keep staff files, training records, policy sign-offs and facility inspections current. 3-month free trial.',
     staffTerm: 'Staffs',
     workAreaTerm: 'Classrooms',
     logoShort: 'CL',
@@ -85,7 +85,7 @@ export const DOMAIN_CONFIGS: Record<DomainKey, DomainConfig> = {
       subtitle: 'CareLocal is the staffing coordination platform built exclusively for childcare centers. Post a shift, blast your staff pool via SMS, and get confirmation — before you finish your coffee.',
       ctaPrimary: 'Start your free trial',
       ctaSecondary: 'See how it works',
-      footnote: '6-month free trial · No credit card required · Staff accounts always free'
+      footnote: '3-month free trial · No credit card required · Staff accounts always free'
     },
     stats: [
       { val: '< 4 hrs', label: 'Avg. shift fill time' },
@@ -162,8 +162,8 @@ export const DOMAIN_CONFIGS: Record<DomainKey, DomainConfig> = {
         a: "Yes! Teacher, floater, and substitute accounts are 100% free. Childcare staff can create profiles, upload certifications, and claim shifts from any mobile browser without paying any fees or subscriptions. While account usage has no limits, a small platform maintenance fee is applied to the staff member's balance for each assigned shift."
       },
       {
-        q: 'How does the 6-month free trial work?',
-        a: 'We want center directors to experience the benefits risk-free. You get full access to CareLocal\'s staff scheduling features, SMS blasting, and document management for 6 months. No credit card is required to sign up, and you can cancel anytime.'
+        q: 'How does the 3-month free trial work?',
+        a: 'We want center directors to experience the benefits risk-free. You get full access to CareLocal\'s staff scheduling features, SMS blasting, and document management for 3 months. No credit card is required to sign up, and you can cancel anytime.'
       }
     ],
     pricing: [
@@ -230,7 +230,7 @@ export const DOMAIN_CONFIGS: Record<DomainKey, DomainConfig> = {
       subtitle: 'CareLocal Health is the staffing coordination platform built exclusively for healthcare facilities. Post a shift, blast your credentialed nursing pool via SMS, and get shifts claimed instantly.',
       ctaPrimary: 'Start free clinic trial',
       ctaSecondary: 'Learn details',
-      footnote: '6-month free trial · No setup fees · Nursing accounts always 100% free'
+      footnote: '3-month free trial · No setup fees · Nursing accounts always 100% free'
     },
     stats: [
       { val: '< 15 mins', label: 'Avg. shift fill time' },
@@ -307,8 +307,8 @@ export const DOMAIN_CONFIGS: Record<DomainKey, DomainConfig> = {
         a: "Yes! Nurse, CNA, and caregiver accounts are 100% free. Health staff can create profiles, upload certifications, and claim shifts from any mobile browser without paying any fees or subscriptions. While account usage has no limits, a small platform maintenance fee is applied to the staff member's balance for each assigned shift."
       },
       {
-        q: 'How does the 6-month free trial work?',
-        a: 'We want healthcare administrators to experience the benefits risk-free. You get full access to CareLocal Health\'s staff scheduling features, SMS blasting, and compliance management for 6 months. No credit card is required to sign up, and you can cancel anytime.'
+        q: 'How does the 3-month free trial work?',
+        a: 'We want healthcare administrators to experience the benefits risk-free. You get full access to CareLocal Health\'s staff scheduling features, SMS blasting, and compliance management for 3 months. No credit card is required to sign up, and you can cancel anytime.'
       }
     ],
     pricing: [
@@ -379,7 +379,7 @@ DOMAIN_CONFIGS.senior = {
     subtitle: 'CareLocal Senior helps home-care agencies, assisted-living communities, and senior-care teams fill call-outs with a trusted, qualified caregiver network.',
     ctaPrimary: 'Start your free trial',
     ctaSecondary: 'See how it works',
-    footnote: '6-month free trial · No setup fees · Caregiver accounts always free'
+    footnote: '3-month free trial · No setup fees · Caregiver accounts always free'
   },
   stats: [
     { val: '< 2 hrs', label: 'Avg. coverage response' },

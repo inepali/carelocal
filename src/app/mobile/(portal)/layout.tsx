@@ -58,7 +58,7 @@ export default function MobilePortalLayout({ children }: { children: React.React
       </main>
 
       {/* Bottom tab bar */}
-      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-md border-t border-[#e2e8e4] flex justify-around items-center z-50 max-w-md mx-auto shadow-lg">
+      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-md border-t border-border flex justify-around items-center z-50 max-w-md mx-auto shadow-lg">
         {!classLoading && tabs.map((tab) => {
           const Icon = tab.icon
           const isActive = pathname === tab.href
@@ -68,7 +68,7 @@ export default function MobilePortalLayout({ children }: { children: React.React
               key={tab.href}
               href={tab.href}
               className={`flex flex-col items-center justify-center flex-1 h-full select-none active:scale-95 transition-all ${
-                isActive ? 'text-[#157354]' : 'text-slate-400 hover:text-slate-600'
+                isActive ? 'text-brand-600' : 'text-slate-400 hover:text-slate-600'
               }`}
             >
               <Icon className="w-5 h-5 mb-1" />

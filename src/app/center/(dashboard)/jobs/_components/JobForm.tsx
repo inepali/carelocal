@@ -15,8 +15,8 @@ import {
   type EmploymentType, type JobPosting, type NeededAt,
 } from '@/lib/jobs'
 
-const LBL = 'block text-sm font-medium text-[#1a2e25] mb-1.5'
-const FLD = 'w-full px-3.5 py-2.5 rounded-xl border border-[#e2e8e4] bg-white text-sm text-[#1a2e25] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354]'
+const LBL = 'block text-sm font-medium text-text-main mb-1.5'
+const FLD = 'w-full px-3.5 py-2.5 rounded-xl border border-border bg-white text-sm text-text-main focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600'
 
 type Form = {
   title: string
@@ -138,8 +138,8 @@ export function JobForm({ job, jobItems }: { job?: JobPosting; jobItems?: { requ
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
       <div className="space-y-6">
-        <section className="rounded-2xl border border-[#e2e8e4] bg-white p-6 shadow-sm space-y-4">
-          <h2 className="text-lg font-bold text-[#1a2e25]">The job</h2>
+        <section className="rounded-2xl border border-border bg-white p-6 shadow-sm space-y-4">
+          <h2 className="text-lg font-bold text-text-main">The job</h2>
           <div className="grid gap-4 md:grid-cols-3">
             <div className="md:col-span-2">
               <label className={LBL}>Job title *</label>
@@ -175,12 +175,12 @@ export function JobForm({ job, jobItems }: { job?: JobPosting; jobItems?: { requ
           </div>
         </section>
 
-        <section className="rounded-2xl border border-[#e2e8e4] bg-white p-6 shadow-sm space-y-4">
-          <h2 className="text-lg font-bold text-[#1a2e25]">Pay and start</h2>
+        <section className="rounded-2xl border border-border bg-white p-6 shadow-sm space-y-4">
+          <h2 className="text-lg font-bold text-text-main">Pay and start</h2>
           <div className="flex flex-wrap gap-2">
             {(['range', 'fixed'] as const).map(m => (
               <button key={m} type="button" onClick={() => setForm({ ...form, pay_mode: m })}
-                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${form.pay_mode === m ? 'border-[#157354] bg-[#157354] text-white' : 'border-[#e2e8e4] bg-white text-[#6b7a73]'}`}>
+                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${form.pay_mode === m ? 'border-brand-600 bg-brand-600 text-white' : 'border-border bg-white text-muted'}`}>
                 {m === 'range' ? 'Pay range' : 'Fixed pay'}
               </button>
             ))}
@@ -212,7 +212,7 @@ export function JobForm({ job, jobItems }: { job?: JobPosting; jobItems?: { requ
             <div>
               <label className={LBL}>Start date</label>
               <input type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} className={FLD} />
-              <p className="mt-1 text-[11px] text-[#a8b5ae]">Leave empty for “as soon as possible”. Documents are checked against this date.</p>
+              <p className="mt-1 text-[11px] text-subtle">Leave empty for “as soon as possible”. Documents are checked against this date.</p>
             </div>
             <div>
               <label className={LBL}>Close applications on (optional)</label>
@@ -227,7 +227,7 @@ export function JobForm({ job, jobItems }: { job?: JobPosting; jobItems?: { requ
                 return (
                   <button key={b.value} type="button"
                     onClick={() => setForm({ ...form, benefits: on ? form.benefits.filter(x => x !== b.value) : [...form.benefits, b.value] })}
-                    className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${on ? 'border-[#157354] bg-[#157354] text-white' : 'border-[#e2e8e4] bg-white text-[#6b7a73] hover:bg-gray-50'}`}>
+                    className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${on ? 'border-brand-600 bg-brand-600 text-white' : 'border-border bg-white text-muted hover:bg-gray-50'}`}>
                     {b.label}
                   </button>
                 )
@@ -236,15 +236,15 @@ export function JobForm({ job, jobItems }: { job?: JobPosting; jobItems?: { requ
           </div>
         </section>
 
-        <section className="rounded-2xl border border-[#e2e8e4] bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-[#1a2e25]">Required documents</h2>
-          <p className="mb-4 text-sm text-[#6b7a73]">
+        <section className="rounded-2xl border border-border bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-bold text-text-main">Required documents</h2>
+          <p className="mb-4 text-sm text-muted">
             Picked from your compliance checklist. “To apply” items must be ready before someone can apply ({applyCount} selected); the others are collected after the offer or before the start date. Every application also includes a resume.
           </p>
           {loading ? (
-            <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-[#157354]" /></div>
+            <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-brand-600" /></div>
           ) : requirements.length === 0 ? (
-            <p className="text-sm text-[#6b7a73]">Your checklist is empty. Add document requirements in About → Documents first.</p>
+            <p className="text-sm text-muted">Your checklist is empty. Add document requirements in About → Documents first.</p>
           ) : (
             <div className="space-y-5">
               {sections.map(section => {
@@ -252,20 +252,20 @@ export function JobForm({ job, jobItems }: { job?: JobPosting; jobItems?: { requ
                 if (reqs.length === 0) return null
                 return (
                   <div key={section.id}>
-                    <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-[#157354]">{section.label}</h3>
-                    <div className="divide-y divide-[#e2e8e4] rounded-xl border border-[#e2e8e4]">
+                    <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-brand-600">{section.label}</h3>
+                    <div className="divide-y divide-border rounded-xl border border-border">
                       {reqs.map(req => {
                         const neededAt = items[req.id]
                         return (
                           <div key={req.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5">
-                            <label className="flex flex-1 min-w-[200px] items-center gap-2 text-sm text-[#1a2e25]">
-                              <input type="checkbox" checked={!!neededAt} onChange={e => toggleItem(req.id, e.target.checked, req)} className="h-4 w-4 rounded border-gray-300 text-[#157354] focus:ring-[#157354]" />
+                            <label className="flex flex-1 min-w-[200px] items-center gap-2 text-sm text-text-main">
+                              <input type="checkbox" checked={!!neededAt} onChange={e => toggleItem(req.id, e.target.checked, req)} className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-600" />
                               {req.document_name}
                               {req.is_confidential && <Lock className="h-3.5 w-3.5 text-amber-600" aria-label="Confidential" />}
                             </label>
                             {neededAt && (
                               <select value={neededAt} onChange={e => setItems(prev => ({ ...prev, [req.id]: e.target.value as NeededAt }))}
-                                className="rounded-lg border border-[#e2e8e4] bg-white px-2 py-1 text-xs font-semibold text-[#157354]">
+                                className="rounded-lg border border-border bg-white px-2 py-1 text-xs font-semibold text-brand-600">
                                 {(Object.keys(NEEDED_AT_LABELS) as NeededAt[]).map(n => <option key={n} value={n}>{NEEDED_AT_LABELS[n]}</option>)}
                               </select>
                             )}
@@ -281,17 +281,17 @@ export function JobForm({ job, jobItems }: { job?: JobPosting; jobItems?: { requ
         </section>
 
         <div className="flex flex-wrap justify-end gap-3">
-          <button type="button" onClick={() => router.back()} className="rounded-xl border border-[#e2e8e4] px-5 py-2.5 text-sm font-medium text-[#6b7a73] hover:bg-[#f8faf9]">Cancel</button>
+          <button type="button" onClick={() => router.back()} className="rounded-xl border border-border px-5 py-2.5 text-sm font-medium text-muted hover:bg-surface">Cancel</button>
           {job ? (
-            <button type="button" disabled={saving !== null} onClick={() => save(false)} className="inline-flex items-center gap-2 rounded-xl bg-[#157354] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#0f4a36] disabled:opacity-50">
+            <button type="button" disabled={saving !== null} onClick={() => save(false)} className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-50">
               {saving && <Loader2 className="h-4 w-4 animate-spin" />} Save changes
             </button>
           ) : (
             <>
-              <button type="button" disabled={saving !== null} onClick={() => save(false)} className="inline-flex items-center gap-2 rounded-xl border border-[#157354] px-5 py-2.5 text-sm font-semibold text-[#157354] hover:bg-[#edf7f3] disabled:opacity-50">
+              <button type="button" disabled={saving !== null} onClick={() => save(false)} className="inline-flex items-center gap-2 rounded-xl border border-brand-600 px-5 py-2.5 text-sm font-semibold text-brand-600 hover:bg-brand-50 disabled:opacity-50">
                 {saving === 'draft' && <Loader2 className="h-4 w-4 animate-spin" />} Save draft
               </button>
-              <button type="button" disabled={saving !== null} onClick={() => save(true)} className="inline-flex items-center gap-2 rounded-xl bg-[#157354] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#0f4a36] disabled:opacity-50">
+              <button type="button" disabled={saving !== null} onClick={() => save(true)} className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-50">
                 {saving === 'publish' && <Loader2 className="h-4 w-4 animate-spin" />} Publish
               </button>
             </>
@@ -300,21 +300,21 @@ export function JobForm({ job, jobItems }: { job?: JobPosting; jobItems?: { requ
       </div>
 
       {/* Live preview of what staff will see */}
-      <aside className="lg:sticky lg:top-6 h-fit rounded-2xl border border-[#e2e8e4] bg-white p-6 shadow-sm">
-        <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#a8b5ae]">Preview</p>
-        <h3 className="text-xl font-extrabold text-[#0b3828]">{form.title || 'Job title'}</h3>
-        <p className="mt-1 text-sm text-[#6b7a73]">
+      <aside className="lg:sticky lg:top-6 h-fit rounded-2xl border border-border bg-white p-6 shadow-sm">
+        <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-subtle">Preview</p>
+        <h3 className="text-xl font-extrabold text-heading">{form.title || 'Job title'}</h3>
+        <p className="mt-1 text-sm text-muted">
           {[form.role_value ? lookupLabel(roles, form.role_value) : null, EMPLOYMENT_TYPE_LABELS[form.employment_type]].filter(Boolean).join(' · ')}
         </p>
-        <p className="mt-3 text-lg font-bold text-[#157354]">{formatPay(preview)}</p>
-        {form.schedule_summary && <p className="mt-1 text-sm text-[#3d5a4f]">{form.schedule_summary}{form.hours_per_week ? ` · ${form.hours_per_week} hrs/week` : ''}</p>}
-        <p className="mt-1 text-sm text-[#3d5a4f]">Starts {form.start_date ? new Date(`${form.start_date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'as soon as possible'}</p>
+        <p className="mt-3 text-lg font-bold text-brand-600">{formatPay(preview)}</p>
+        {form.schedule_summary && <p className="mt-1 text-sm text-text-muted">{form.schedule_summary}{form.hours_per_week ? ` · ${form.hours_per_week} hrs/week` : ''}</p>}
+        <p className="mt-1 text-sm text-text-muted">Starts {form.start_date ? new Date(`${form.start_date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'as soon as possible'}</p>
         {form.benefits.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5">
-            {form.benefits.map(b => <span key={b} className="rounded-full border border-[#d4ede4] bg-[#edf7f3] px-2 py-0.5 text-[11px] text-[#157354]">{benefitLabel(b)}</span>)}
+            {form.benefits.map(b => <span key={b} className="rounded-full border border-brand-100 bg-brand-50 px-2 py-0.5 text-[11px] text-brand-600">{benefitLabel(b)}</span>)}
           </div>
         )}
-        {form.description && <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-[#3d5a4f] line-clamp-[10]">{form.description}</p>}
+        {form.description && <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-text-muted line-clamp-[10]">{form.description}</p>}
       </aside>
     </div>
   )

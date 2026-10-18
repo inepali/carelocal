@@ -29,11 +29,11 @@ export default function EditJobPage() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <Link href={`/center/jobs/${id}`} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-[#6b7a73] hover:text-[#157354]"><ArrowLeft className="h-4 w-4" /> Back to the job</Link>
-      <h1 className="mb-8 text-3xl font-extrabold text-[#0b3828]">Edit job</h1>
-      {missing ? <p className="text-[#6b7a73]">Job not found.</p>
+      <Link href={`/center/jobs/${id}`} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-muted hover:text-brand-600"><ArrowLeft className="h-4 w-4" /> Back to the job</Link>
+      <h1 className="mb-8 text-3xl font-extrabold text-heading">Edit job</h1>
+      {missing ? <p className="text-muted">Job not found.</p>
         : job && items ? <JobForm job={job} jobItems={items} />
-        : <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-[#157354]" /></div>}
+        : <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-brand-600" /></div>}
     </div>
   )
 }

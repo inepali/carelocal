@@ -109,22 +109,20 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
       <div className="center-shell min-h-screen bg-surface flex font-sans">
       {/* ── Sidebar ── */}
       <aside className="w-64 bg-brand-900 text-white flex flex-col fixed inset-y-0 z-10">
-        <div className="h-16 flex items-center px-6 border-b border-white/10 shrink-0">
+        <div className="h-20 flex items-center px-6 border-b border-white/10 shrink-0">
           <Link href="/center/dashboard" className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md bg-brand-600 flex items-center justify-center">
-              <span className="text-white font-bold text-xs">{domainKey === 'healthcare' ? 'CLH' : domainKey === 'senior' ? 'CLS' : 'CL'}</span>
-            </div>
+            {domainKey === 'childcare' ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src="/logo.jpg" alt="CareLocal" width={64} height={64} className="h-16 w-16 rounded-xl object-contain bg-white" />
+            ) : (
+              <div className="w-7 h-7 rounded-md bg-brand-600 flex items-center justify-center">
+                <span className="text-white font-bold text-xs">{domainKey === 'healthcare' ? 'CLH' : 'CLS'}</span>
+              </div>
+            )}
             <span className="font-semibold text-lg tracking-tight truncate">
-              {domainKey === 'healthcare' ? 'CareLocal Health' : domainKey === 'senior' ? 'CareLocal Senior' : 'CareLocal'}
+              {domainKey === 'healthcare' ? 'CareLocal Health' : domainKey === 'senior' ? 'CareLocal Senior' : ''}
             </span>
           </Link>
-        </div>
-
-        <div className="px-6 py-4 border-b border-white/10 shrink-0">
-          <div className="text-xs text-brand-300 uppercase tracking-wider font-semibold mb-1">
-            {domainKey === 'healthcare' ? 'Facility' : domainKey === 'senior' ? 'Care Organization' : 'Center'}
-          </div>
-          <div className="font-medium truncate">{centerName}</div>
         </div>
 
         {SHOW_VERTICAL_SWITCHER && (
@@ -172,30 +170,35 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
           })}
         </nav>
 
-        <div className="p-4 border-t border-white/10 shrink-0">
-          {hasStaffProfile && (
-            <Link
-              href="/staff/documents"
-              className="flex items-center gap-3 px-3 py-2 w-full text-sm text-brand-200 hover:bg-white/5 hover:text-white rounded-lg transition-colors"
-            >
-              <UserCircle className="w-4 h-4" />
-              My staff portal
-            </Link>
-          )}
-          <button
-            onClick={handleSignOut}
-            className="flex items-center gap-3 px-3 py-2 w-full text-sm text-brand-200 hover:bg-white/5 hover:text-white rounded-lg transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            Sign out
-          </button>
-        </div>
       </aside>
 
       {/* ── Main Content ── */}
       <main className="flex-1 ml-64 flex flex-col min-h-screen overflow-x-hidden">
-        <header className="h-16 glass border-b border-[#e2e8e4] flex items-center px-8 sticky top-0 z-10">
-          {/* Breadcrumbs or page title could go here */}
+        <header className="h-20 glass border-b border-border flex items-center justify-between gap-4 px-8 sticky top-0 z-10">
+          <div className="min-w-0">
+            <div className="text-xs text-muted uppercase tracking-wider font-semibold">
+              {domainKey === 'healthcare' ? 'Facility' : domainKey === 'senior' ? 'Care Organization' : 'Center'}
+            </div>
+            <div className="truncate text-lg font-bold text-heading">{centerName}</div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {hasStaffProfile && (
+              <Link
+                href="/staff/documents"
+                className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-brand-50 hover:text-brand-600"
+              >
+                <UserCircle className="h-4 w-4" />
+                My staff portal
+              </Link>
+            )}
+            <button
+              onClick={handleSignOut}
+              className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-muted transition-colors hover:border-brand-600 hover:text-brand-600"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign out
+            </button>
+          </div>
         </header>
         <div className="p-8 flex-1">
           {children}

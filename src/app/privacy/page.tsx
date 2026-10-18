@@ -65,7 +65,7 @@ export default async function PrivacyPage() {
           <div className="mb-12 text-center">
             <Lock className="w-16 h-16 text-brand-600 mx-auto mb-6" />
             <h1 className="text-4xl md:text-5xl font-black text-brand-900 mb-4 tracking-tight">Privacy Policy</h1>
-            <p className="text-[#6b7a73] text-lg font-medium">Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+            <p className="text-muted text-lg font-medium">Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
           </div>
 
           <div className="bg-white rounded-[2rem] border-2 border-brand-100 p-8 md:p-12 shadow-xl shadow-brand-600/5">

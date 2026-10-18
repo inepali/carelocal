@@ -170,15 +170,15 @@ export default function PostShiftPage() {
       <div className="mb-6">
         <Link
           href="/center/shifts"
-          className="inline-flex items-center gap-2 text-sm text-[#6b7a73] hover:text-[#157354] transition-colors mb-4"
+          className="inline-flex items-center gap-2 text-sm text-muted hover:text-brand-600 transition-colors mb-4"
         >
           <ArrowLeft className="w-4 h-4" /> Back to Shifts
         </Link>
-        <h1 className="text-3xl font-extrabold text-[#0b3828] mb-1">{isHealthcare ? 'Post a New Clinical Shift' : 'Post a New Shift'}</h1>
-        <p className="text-[#6b7a73]">Create a shift to instantly notify your eligible {isHealthcare ? 'medical staff' : 'staff'} pool.</p>
+        <h1 className="text-3xl font-extrabold text-heading mb-1">{isHealthcare ? 'Post a New Clinical Shift' : 'Post a New Shift'}</h1>
+        <p className="text-muted">Create a shift to instantly notify your eligible {isHealthcare ? 'medical staff' : 'staff'} pool.</p>
       </div>
 
-      <div className="bg-white border border-[#e2e8e4] rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white border border-border rounded-2xl shadow-sm overflow-hidden">
         <form onSubmit={handleSubmit} className="p-8 space-y-8">
           {error && (
             <div className="bg-red-50 text-red-700 p-4 rounded-xl text-sm border border-red-200">
@@ -188,40 +188,40 @@ export default function PostShiftPage() {
 
           {/* Date & Time - Interactive Calendar */}
           <div className="space-y-4">
-            <h2 className="text-lg font-bold text-[#1a2e25] flex items-center gap-2 border-b border-[#e2e8e4] pb-2">
-              <CalendarIcon className="w-5 h-5 text-[#157354]" /> When is the shift?
+            <h2 className="text-lg font-bold text-text-main flex items-center gap-2 border-b border-border pb-2">
+              <CalendarIcon className="w-5 h-5 text-brand-600" /> When is the shift?
             </h2>
 
             <div>
-              <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Date</label>
+              <label className="block text-sm font-medium text-text-main mb-1.5">Date</label>
               <Calendar
                 value={shiftDate}
                 onChange={(date) => setShiftDate(date as Date)}
                 minDate={new Date()}
-                className="w-full sm:w-1/2 px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition"
+                className="w-full sm:w-1/2 px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition"
                 locale="en-US"
               />
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
-                <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Start Time</label>
+                <label className="block text-sm font-medium text-text-main mb-1.5">Start Time</label>
                 <input
                   type="time"
                   required
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main"
                 />
               </div>
               <div className="flex-1">
-                <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">End Time</label>
+                <label className="block text-sm font-medium text-text-main mb-1.5">End Time</label>
                 <input
                   type="time"
                   required
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main"
                 />
               </div>
             </div>
@@ -229,17 +229,17 @@ export default function PostShiftPage() {
 
           {/* Details */}
           <div className="space-y-4">
-            <h2 className="text-lg font-bold text-[#1a2e25] flex items-center gap-2 border-b border-[#e2e8e4] pb-2">
-              <Clock className="w-5 h-5 text-[#157354]" /> Assignment Details
+            <h2 className="text-lg font-bold text-text-main flex items-center gap-2 border-b border-border pb-2">
+              <Clock className="w-5 h-5 text-brand-600" /> Assignment Details
             </h2>
 
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
-                <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Role Needed</label>
+                <label className="block text-sm font-medium text-text-main mb-1.5">Role Needed</label>
                 <select
                   value={staffType}
                   onChange={(e) => setStaffType(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main"
                 >
                   <option value="any">{isHealthcare ? 'Any Clinical Role' : 'Any Role'}</option>
                   {staffRoles.filter(r => r.is_active !== false).map(role => (
@@ -249,11 +249,11 @@ export default function PostShiftPage() {
               </div>
 
               <div className="flex-1">
-                <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">{workAreaTerm} (Optional)</label>
+                <label className="block text-sm font-medium text-text-main mb-1.5">{workAreaTerm} (Optional)</label>
                 <select
                   value={workAreaId}
                   onChange={(e) => setWorkAreaId(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main"
                 >
                   <option value="any">{isHealthcare ? 'Any Care Area' : 'Float / No specific area'}</option>
                   {workAreas.filter(room => room.is_active).map((room) => (
@@ -266,7 +266,7 @@ export default function PostShiftPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Notes for {staffTerm} (Optional)</label>
+              <label className="block text-sm font-medium text-text-main mb-1.5">Notes for {staffTerm} (Optional)</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -274,39 +274,39 @@ export default function PostShiftPage() {
                   ? 'E.g., Report to the charge nurse and bring your current credentials.'
                   : 'E.g., Park in the back lot, arrive 10 mins early for a quick rundown.'}
                 rows={3}
-                className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25] resize-none"
+                className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main resize-none"
               />
             </div>
           </div>
 
           {/* Compensation */}
           <div className="space-y-4 pt-4">
-            <h2 className="text-lg font-bold text-[#1a2e25] flex items-center gap-2 border-b border-[#e2e8e4] pb-2">
+            <h2 className="text-lg font-bold text-text-main flex items-center gap-2 border-b border-border pb-2">
               <span className="text-xl">💰</span> Pay & Payment
             </h2>
 
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
-                <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Hourly Rate ($)</label>
+                <label className="block text-sm font-medium text-text-main mb-1.5">Hourly Rate ($)</label>
                 <div className="relative">
-                  <span className="absolute left-4 top-3.5 text-[#6b7a73] font-bold">$</span>
+                  <span className="absolute left-4 top-3.5 text-muted font-bold">$</span>
                   <input
                     type="number"
                     step="0.50"
                     required
                     value={hourlyRate}
                     onChange={(e) => setHourlyRate(e.target.value)}
-                    className="w-full pl-8 pr-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25] font-bold"
+                    className="w-full pl-8 pr-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main font-bold"
                   />
                 </div>
               </div>
 
               <div className="flex-1">
-                <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Payment Method</label>
+                <label className="block text-sm font-medium text-text-main mb-1.5">Payment Method</label>
                 <select
                   value={paymentMode}
                   onChange={(e) => setPaymentMode(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25] font-semibold"
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main font-semibold"
                 >
                   {paymentMethods.map(p => (
                     <option key={p.value} value={p.value}>{p.label}</option>
@@ -314,24 +314,24 @@ export default function PostShiftPage() {
                 </select>
               </div>
             </div>
-            <p className="text-[11px] text-[#6b7a73] italic">
+            <p className="text-[11px] text-muted italic">
               Transparency on pay and payment methods helps attract the best {staffTerm.toLowerCase()} to your {isHealthcare ? 'facility' : 'center'}.
             </p>
           </div>
 
           {/* Actions */}
-          <div className="pt-6 border-t border-[#e2e8e4] flex items-center justify-end gap-3">
+          <div className="pt-6 border-t border-border flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={() => router.back()}
-              className="px-6 py-3 rounded-xl border border-[#e2e8e4] text-[#6b7a73] font-semibold hover:bg-[#f8faf9] transition-colors"
+              className="px-6 py-3 rounded-xl border border-border text-muted font-semibold hover:bg-surface transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading || !shiftDate || !startTime || !endTime}
-              className="flex items-center justify-center gap-2 bg-[#157354] text-white font-semibold px-8 py-3 rounded-xl hover:bg-[#0f4a36] transition-colors disabled:opacity-60 shadow-sm"
+              className="flex items-center justify-center gap-2 bg-brand-600 text-white font-semibold px-8 py-3 rounded-xl hover:bg-brand-800 transition-colors disabled:opacity-60 shadow-sm"
             >
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : `Post & Notify ${staffTerm}`}
             </button>

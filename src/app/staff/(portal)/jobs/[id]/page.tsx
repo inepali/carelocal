@@ -64,66 +64,66 @@ export default function StaffJobDetailPage() {
   const preview = useMemo(() => computeReadiness({ items, records, vaultDocs: docs, startDate: job?.start_date }), [items, records, docs, job])
   const missing = preview.filter(r => r.neededAt === 'apply' && r.state === 'missing').length + (findResume(docs) ? 0 : 1)
 
-  if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-[#157354]" /></div>
-  if (!job) return <p className="text-[#6b7a73]">This job is no longer available, or it is outside your metro area.</p>
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-brand-600" /></div>
+  if (!job) return <p className="text-muted">This job is no longer available, or it is outside your metro area.</p>
 
   const canApply = job.status === 'published' && (!stage || stage === 'withdrawn')
 
   return (
     <div className="max-w-5xl pb-32">
-      <Link href="/staff/jobs" className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-[#6b7a73] hover:text-[#157354]"><ArrowLeft className="h-4 w-4" /> All jobs</Link>
+      <Link href="/staff/jobs" className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-muted hover:text-brand-600"><ArrowLeft className="h-4 w-4" /> All jobs</Link>
 
-      <div className="mb-8 rounded-[2rem] border-2 border-[#f0f4f2] bg-white p-8 shadow-sm">
+      <div className="mb-8 rounded-[2rem] border-2 border-border bg-white p-8 shadow-sm">
         <div className="flex flex-col gap-6 md:flex-row md:items-start">
-          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#157354] text-white shadow-lg shadow-[#157354]/20"><Briefcase className="h-8 w-8" /></span>
+          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-brand-600 text-white shadow-lg shadow-brand-600/20"><Briefcase className="h-8 w-8" /></span>
           <div className="flex-1">
-            <h1 className="text-3xl font-black tracking-tight text-[#0b3828]">{job.title}</h1>
-            <p className="mt-1 flex flex-wrap items-center gap-3 text-[#6b7a73]">
-              <span className="font-bold text-[#1a2e25]">{center?.name}</span>
+            <h1 className="text-3xl font-black tracking-tight text-heading">{job.title}</h1>
+            <p className="mt-1 flex flex-wrap items-center gap-3 text-muted">
+              <span className="font-bold text-text-main">{center?.name}</span>
               {center?.city && <span className="inline-flex items-center gap-1"><MapPin className="h-4 w-4" />{center.city}{center.state ? `, ${center.state}` : ''}</span>}
             </p>
             <div className="mt-3 flex flex-wrap gap-2 text-sm">
-              <span className="rounded-full border border-[#d4ede4] bg-[#edf7f3] px-3 py-1 font-bold text-[#157354]">{formatPay(job)}</span>
-              <span className="rounded-full border border-[#e2e8e4] px-3 py-1 text-[#3d5a4f]">{EMPLOYMENT_TYPE_LABELS[job.employment_type]}</span>
-              {job.role_value && <span className="rounded-full border border-[#e2e8e4] px-3 py-1 text-[#3d5a4f]">{lookupLabel(roleLookups, job.role_value)}</span>}
+              <span className="rounded-full border border-brand-100 bg-brand-50 px-3 py-1 font-bold text-brand-600">{formatPay(job)}</span>
+              <span className="rounded-full border border-border px-3 py-1 text-text-muted">{EMPLOYMENT_TYPE_LABELS[job.employment_type]}</span>
+              {job.role_value && <span className="rounded-full border border-border px-3 py-1 text-text-muted">{lookupLabel(roleLookups, job.role_value)}</span>}
             </div>
-            <div className="mt-3 flex flex-wrap gap-4 text-sm text-[#6b7a73]">
+            <div className="mt-3 flex flex-wrap gap-4 text-sm text-muted">
               <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-4 w-4" />Starts {job.start_date ? new Date(`${job.start_date}T00:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'as soon as possible'}</span>
               {(job.schedule_summary || job.hours_per_week) && <span className="inline-flex items-center gap-1.5"><Clock className="h-4 w-4" />{[job.schedule_summary, job.hours_per_week ? `${job.hours_per_week} hrs/week` : null].filter(Boolean).join(' · ')}</span>}
             </div>
           </div>
           <div className="md:text-right">
             {stage && stage !== 'withdrawn' ? (
-              <Link href="/staff/applications" className="inline-flex rounded-xl border-2 border-[#157354] px-6 py-3 text-sm font-black text-[#157354] hover:bg-[#edf7f3]">{STAGE_LABELS[stage]} · View</Link>
+              <Link href="/staff/applications" className="inline-flex rounded-xl border-2 border-brand-600 px-6 py-3 text-sm font-black text-brand-600 hover:bg-brand-50">{STAGE_LABELS[stage]} · View</Link>
             ) : canApply ? (
-              <button onClick={() => setApplying(true)} className="rounded-xl bg-[#157354] px-8 py-3 text-sm font-black text-white shadow-lg shadow-[#157354]/20 hover:bg-[#0f4a36]">Apply</button>
+              <button onClick={() => setApplying(true)} className="rounded-xl bg-brand-600 px-8 py-3 text-sm font-black text-white shadow-lg shadow-brand-600/20 hover:bg-brand-800">Apply</button>
             ) : (
-              <span className="text-sm text-[#6b7a73]">No longer accepting applications</span>
+              <span className="text-sm text-muted">No longer accepting applications</span>
             )}
-            {canApply && <p className="mt-2 text-xs text-[#6b7a73]">{missing === 0 ? 'You have everything needed to apply.' : `${missing} item${missing === 1 ? '' : 's'} to add before you apply.`}</p>}
+            {canApply && <p className="mt-2 text-xs text-muted">{missing === 0 ? 'You have everything needed to apply.' : `${missing} item${missing === 1 ? '' : 's'} to add before you apply.`}</p>}
           </div>
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-6">
-          <section className="rounded-2xl border border-[#e2e8e4] bg-white p-6 shadow-sm">
-            <h2 className="mb-3 text-lg font-bold text-[#1a2e25]">About the job</h2>
-            <p className="whitespace-pre-line text-sm leading-relaxed text-[#3d5a4f]">{job.description}</p>
+          <section className="rounded-2xl border border-border bg-white p-6 shadow-sm">
+            <h2 className="mb-3 text-lg font-bold text-text-main">About the job</h2>
+            <p className="whitespace-pre-line text-sm leading-relaxed text-text-muted">{job.description}</p>
             {job.benefits.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-1.5">
-                {job.benefits.map(b => <span key={b} className="rounded-full border border-[#d4ede4] bg-[#edf7f3] px-2.5 py-1 text-xs text-[#157354]">{benefitLabel(b)}</span>)}
+                {job.benefits.map(b => <span key={b} className="rounded-full border border-brand-100 bg-brand-50 px-2.5 py-1 text-xs text-brand-600">{benefitLabel(b)}</span>)}
               </div>
             )}
           </section>
           {programs.length > 0 && (
-            <section className="rounded-2xl border border-[#e2e8e4] bg-white p-6 shadow-sm">
-              <h2 className="mb-3 text-lg font-bold text-[#1a2e25]">About {center?.name ?? 'the center'}</h2>
+            <section className="rounded-2xl border border-border bg-white p-6 shadow-sm">
+              <h2 className="mb-3 text-lg font-bold text-text-main">About {center?.name ?? 'the center'}</h2>
               <ul className="space-y-3">
                 {programs.map(p => (
                   <li key={p.id}>
-                    <div className="font-semibold text-[#1a2e25]">{p.name}{p.age_range ? <span className="font-normal text-[#6b7a73]"> · {p.age_range}</span> : null}</div>
-                    {p.description && <p className="text-sm text-[#6b7a73]">{p.description}</p>}
+                    <div className="font-semibold text-text-main">{p.name}{p.age_range ? <span className="font-normal text-muted"> · {p.age_range}</span> : null}</div>
+                    {p.description && <p className="text-sm text-muted">{p.description}</p>}
                   </li>
                 ))}
               </ul>
@@ -131,16 +131,16 @@ export default function StaffJobDetailPage() {
           )}
         </div>
 
-        <aside className="h-fit rounded-2xl border border-[#e2e8e4] bg-white p-5 shadow-sm">
-          <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-[#6b7a73]">What you’ll need</h2>
+        <aside className="h-fit rounded-2xl border border-border bg-white p-5 shadow-sm">
+          <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted">What you’ll need</h2>
           <ul className="space-y-2 text-sm">
             <li className="flex items-center justify-between gap-2">
-              <span className="text-[#1a2e25]">Resume</span>
+              <span className="text-text-main">Resume</span>
               <span className={`rounded-full border px-2 py-0.5 text-[11px] ${findResume(docs) ? ITEM_STATE_STYLE.ready.className : ITEM_STATE_STYLE.missing.className}`}>{findResume(docs) ? 'Ready' : 'Missing'}</span>
             </li>
             {preview.map(item => (
               <li key={item.requirement.id} className="flex items-center justify-between gap-2">
-                <span className="text-[#1a2e25]">{item.requirement.document_name}</span>
+                <span className="text-text-main">{item.requirement.document_name}</span>
                 <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] ${ITEM_STATE_STYLE[item.state].className}`}>{ITEM_STATE_STYLE[item.state].label}</span>
               </li>
             ))}

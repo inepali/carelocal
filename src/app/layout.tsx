@@ -22,9 +22,9 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 const THEME_COLOR: Record<DomainKey, string> = {
-  childcare: '#157354',
+  childcare: '#0f766e',
   healthcare: '#4f46e5',
-  senior: '#157354',
+  senior: '#0f766e',
 }
 
 async function currentDomain() {

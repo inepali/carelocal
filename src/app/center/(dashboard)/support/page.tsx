@@ -76,54 +76,54 @@ export default function CenterSupportPage() {
   }
 
   if (loading) {
-    return <div className="flex justify-center py-20"><Loader2 className="w-10 h-10 animate-spin text-[#157354]" /></div>
+    return <div className="flex justify-center py-20"><Loader2 className="w-10 h-10 animate-spin text-brand-600" /></div>
   }
 
   return (
     <div className="max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
         <div>
-          <h1 className="text-3xl font-extrabold text-[#0b3828] mb-1">Support</h1>
-          <p className="text-[#6b7a73]">Need help? Open a ticket and our support team will assist you.</p>
+          <h1 className="text-3xl font-extrabold text-heading mb-1">Support</h1>
+          <p className="text-muted">Need help? Open a ticket and our support team will assist you.</p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center justify-center gap-2 bg-[#157354] text-white font-bold px-6 py-3 rounded-xl hover:bg-[#0f4a36] shadow-sm transition-all active:scale-95"
+          className="inline-flex items-center justify-center gap-2 bg-brand-600 text-white font-bold px-6 py-3 rounded-xl hover:bg-brand-800 shadow-sm transition-all active:scale-95"
         >
           <Plus className="w-5 h-5" /> Open Ticket
         </button>
       </div>
 
-      <div className="bg-white border border-[#e2e8e4] rounded-[2rem] shadow-sm overflow-hidden">
+      <div className="bg-white border border-border rounded-[2rem] shadow-sm overflow-hidden">
         {tickets.length === 0 ? (
           <div className="py-20 text-center">
-            <LifeBuoy className="w-16 h-16 text-[#e2e8e4] mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-[#0b3828] mb-2">No support tickets</h3>
-            <p className="text-[#6b7a73] max-w-sm mx-auto mb-6">You haven't opened any support tickets yet. We're here if you need us!</p>
+            <LifeBuoy className="w-16 h-16 text-border mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-heading mb-2">No support tickets</h3>
+            <p className="text-muted max-w-sm mx-auto mb-6">You haven't opened any support tickets yet. We're here if you need us!</p>
           </div>
         ) : (
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-[#f8faf9] border-b border-[#e2e8e4] text-[#6b7a73] font-medium text-sm">
+              <tr className="bg-surface border-b border-border text-muted font-medium text-sm">
                 <th className="px-6 py-4">Ticket</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Priority</th>
                 <th className="px-6 py-4">Created On</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#e2e8e4]">
+            <tbody className="divide-y divide-border">
               {tickets.map((t) => (
-                <tr key={t.id} className="hover:bg-[#f8faf9] transition-colors">
+                <tr key={t.id} className="hover:bg-surface transition-colors">
                   <td className="px-6 py-6">
-                    <div className="font-bold text-[#1a2e25] mb-1 flex items-center gap-2">
-                      <MessageSquare className="w-4 h-4 text-[#a8b5ae]" /> {t.subject}
+                    <div className="font-bold text-text-main mb-1 flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4 text-subtle" /> {t.subject}
                     </div>
-                    <div className="text-xs text-[#6b7a73] truncate max-w-xs">{t.description}</div>
+                    <div className="text-xs text-muted truncate max-w-xs">{t.description}</div>
                   </td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-widest ${
-                      t.status === 'open' ? 'bg-[#d4ede4] text-[#0f4a36]' :
-                      t.status === 'resolved' ? 'bg-[#f0fdf4] text-[#16a34a]' :
+                      t.status === 'open' ? 'bg-brand-100 text-brand-800' :
+                      t.status === 'resolved' ? 'bg-brand-50 text-[#16a34a]' :
                       'bg-amber-100 text-amber-800'
                     }`}>
                       {t.status === 'resolved' ? <CheckCircle2 className="w-3 h-3 mr-1" /> : <Clock className="w-3 h-3 mr-1" />}
@@ -134,12 +134,12 @@ export default function CenterSupportPage() {
                     <span className={`text-xs font-bold uppercase tracking-widest ${
                       t.priority === 'urgent' ? 'text-rose-500' :
                       t.priority === 'high' ? 'text-amber-500' :
-                      'text-[#6b7a73]'
+                      'text-muted'
                     }`}>
                       {t.priority}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-[#6b7a73] font-medium">
+                  <td className="px-6 py-4 text-sm text-muted font-medium">
                     {new Date(t.created_at).toLocaleDateString()}
                   </td>
                 </tr>
@@ -151,32 +151,32 @@ export default function CenterSupportPage() {
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0b3828]/40 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-900/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-8 border-b border-[#e2e8e4] bg-[#f8faf9]">
-              <h2 className="text-2xl font-black text-[#0b3828] tracking-tight">Open Support Ticket</h2>
-              <p className="text-[#6b7a73] text-sm mt-1">Describe your issue and we'll get back to you shortly.</p>
+            <div className="p-8 border-b border-border bg-surface">
+              <h2 className="text-2xl font-black text-heading tracking-tight">Open Support Ticket</h2>
+              <p className="text-muted text-sm mt-1">Describe your issue and we'll get back to you shortly.</p>
             </div>
             
             <form onSubmit={handleSubmit} className="p-8 space-y-6">
               <div>
-                <label className="block text-sm font-bold text-[#1a2e25] mb-2 uppercase tracking-widest text-[10px]">Subject</label>
+                <label className="block text-sm font-bold text-text-main mb-2 uppercase tracking-widest text-[10px]">Subject</label>
                 <input 
                   required
                   autoFocus
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
                   placeholder="What do you need help with?"
-                  className="w-full px-5 py-4 rounded-2xl border border-[#e2e8e4] focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all font-medium"
+                  className="w-full px-5 py-4 rounded-2xl border border-border focus:outline-none focus:ring-4 focus:ring-brand-600/10 focus:border-brand-600 transition-all font-medium"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-[#1a2e25] mb-2 uppercase tracking-widest text-[10px]">Priority</label>
+                <label className="block text-sm font-bold text-text-main mb-2 uppercase tracking-widest text-[10px]">Priority</label>
                 <select 
                   value={priority}
                   onChange={(e) => setPriority(e.target.value)}
-                  className="w-full px-5 py-4 rounded-2xl border border-[#e2e8e4] focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all font-medium bg-white"
+                  className="w-full px-5 py-4 rounded-2xl border border-border focus:outline-none focus:ring-4 focus:ring-brand-600/10 focus:border-brand-600 transition-all font-medium bg-white"
                 >
                   <option value="low">Low - Not urgent</option>
                   <option value="medium">Medium - Normal issue</option>
@@ -186,14 +186,14 @@ export default function CenterSupportPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-[#1a2e25] mb-2 uppercase tracking-widest text-[10px]">Description</label>
+                <label className="block text-sm font-bold text-text-main mb-2 uppercase tracking-widest text-[10px]">Description</label>
                 <textarea 
                   required
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Provide as much detail as possible..."
                   rows={5}
-                  className="w-full px-5 py-4 rounded-2xl border border-[#e2e8e4] focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all font-medium resize-none"
+                  className="w-full px-5 py-4 rounded-2xl border border-border focus:outline-none focus:ring-4 focus:ring-brand-600/10 focus:border-brand-600 transition-all font-medium resize-none"
                 />
               </div>
 
@@ -201,14 +201,14 @@ export default function CenterSupportPage() {
                 <button 
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-4 px-6 rounded-2xl border border-[#e2e8e4] font-bold text-[#6b7a73] hover:bg-[#f8faf9] transition-all"
+                  className="flex-1 py-4 px-6 rounded-2xl border border-border font-bold text-muted hover:bg-surface transition-all"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit"
                   disabled={submitting}
-                  className="flex-2 bg-[#157354] text-white font-bold py-4 px-8 rounded-2xl hover:bg-[#0f4a36] shadow-lg shadow-[#157354]/20 transition-all flex items-center justify-center gap-2"
+                  className="flex-2 bg-brand-600 text-white font-bold py-4 px-8 rounded-2xl hover:bg-brand-800 shadow-lg shadow-brand-600/20 transition-all flex items-center justify-center gap-2"
                 >
                   {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Submit Ticket'}
                 </button>

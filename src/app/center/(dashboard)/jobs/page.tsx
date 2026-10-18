@@ -51,37 +51,37 @@ export default function CenterJobsPage() {
     <div className="max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-extrabold text-[#0b3828] mb-1">Jobs</h1>
-          <p className="text-[#6b7a73]">Post regular full-time and part-time positions and hire from your applicants.</p>
+          <h1 className="text-3xl font-extrabold text-heading mb-1">Jobs</h1>
+          <p className="text-muted">Post regular full-time and part-time positions and hire from your applicants.</p>
         </div>
         {enabled && (
-          <Link href="/center/jobs/new" className="inline-flex items-center justify-center gap-2 font-semibold px-5 py-3 rounded-xl shadow-sm bg-[#157354] text-white hover:bg-[#0f4a36]">
+          <Link href="/center/jobs/new" className="inline-flex items-center justify-center gap-2 font-semibold px-5 py-3 rounded-xl shadow-sm bg-brand-600 text-white hover:bg-brand-800">
             <Plus className="w-5 h-5" /> New job
           </Link>
         )}
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-[#157354]" /></div>
+        <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-brand-600" /></div>
       ) : !enabled ? (
-        <div className="rounded-2xl border border-dashed border-[#a9dac9] bg-[#edf7f3] p-10 text-center">
-          <Briefcase className="mx-auto mb-3 h-10 w-10 text-[#157354]" />
-          <h2 className="mb-2 text-xl font-bold text-[#0b3828]">Hiring is coming soon</h2>
-          <p className="mx-auto max-w-md text-[#3d5a4f]">Job postings are being piloted with a few centers. Contact CareLocal support if you would like to try them.</p>
+        <div className="rounded-2xl border border-dashed border-brand-200 bg-brand-50 p-10 text-center">
+          <Briefcase className="mx-auto mb-3 h-10 w-10 text-brand-600" />
+          <h2 className="mb-2 text-xl font-bold text-heading">Hiring is coming soon</h2>
+          <p className="mx-auto max-w-md text-text-muted">Job postings are being piloted with a few centers. Contact CareLocal support if you would like to try them.</p>
         </div>
       ) : jobs.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-[#a9dac9] bg-[#edf7f3] p-10 text-center">
-          <Briefcase className="mx-auto mb-3 h-10 w-10 text-[#157354]" />
-          <h2 className="mb-2 text-xl font-bold text-[#0b3828]">No jobs yet</h2>
-          <p className="mx-auto mb-6 max-w-md text-[#3d5a4f]">Post your first regular position. Required documents come straight from your compliance checklist.</p>
-          <Link href="/center/jobs/new" className="inline-flex items-center gap-2 rounded-xl bg-[#157354] px-5 py-3 font-semibold text-white hover:bg-[#0f4a36]"><Plus className="h-5 w-5" /> New job</Link>
+        <div className="rounded-2xl border border-dashed border-brand-200 bg-brand-50 p-10 text-center">
+          <Briefcase className="mx-auto mb-3 h-10 w-10 text-brand-600" />
+          <h2 className="mb-2 text-xl font-bold text-heading">No jobs yet</h2>
+          <p className="mx-auto mb-6 max-w-md text-text-muted">Post your first regular position. Required documents come straight from your compliance checklist.</p>
+          <Link href="/center/jobs/new" className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 font-semibold text-white hover:bg-brand-800"><Plus className="h-5 w-5" /> New job</Link>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-[#e2e8e4] bg-white shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[820px] text-left">
               <thead>
-                <tr className="border-b border-[#e2e8e4] text-[15px] font-bold text-[#1a2e25]">
+                <tr className="border-b border-border text-[15px] font-bold text-text-main">
                   <th scope="col" className="px-6 py-4">Job</th>
                   <th scope="col" className="px-4 py-4">Status</th>
                   <th scope="col" className="px-4 py-4">Applicants</th>
@@ -89,21 +89,21 @@ export default function CenterJobsPage() {
                   <th scope="col" className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#e2e8e4] text-sm text-[#3d5a4f]">
+              <tbody className="divide-y divide-border text-sm text-text-muted">
                 {jobs.map(job => {
                   const c = counts[job.id] ?? {}
                   const open = BOARD_STAGES.reduce((n, s) => n + (c[s] ?? 0), 0)
                   const style = JOB_STATUS_STYLE[job.status]
                   return (
-                    <tr key={job.id} className="align-top hover:bg-[#fbfcfb]">
+                    <tr key={job.id} className="align-top hover:bg-surface">
                       <td className="px-6 py-4">
-                        <Link href={`/center/jobs/${job.id}`} className="font-semibold text-[#1a2e25] hover:text-[#157354] hover:underline">{job.title}</Link>
-                        <div className="text-xs text-[#6b7a73]">{EMPLOYMENT_TYPE_LABELS[job.employment_type]} · {formatPay(job)}</div>
+                        <Link href={`/center/jobs/${job.id}`} className="font-semibold text-text-main hover:text-brand-600 hover:underline">{job.title}</Link>
+                        <div className="text-xs text-muted">{EMPLOYMENT_TYPE_LABELS[job.employment_type]} · {formatPay(job)}</div>
                       </td>
                       <td className="px-4 py-4"><span className={`inline-flex rounded-full border px-2.5 py-1 text-xs ${style.className}`}>{style.label}</span></td>
                       <td className="px-4 py-4">
-                        <div className="flex items-center gap-1.5 font-semibold text-[#1a2e25]"><Users className="h-4 w-4 text-[#a8b5ae]" /> {open} open</div>
-                        <div className="text-xs text-[#6b7a73]">
+                        <div className="flex items-center gap-1.5 font-semibold text-text-main"><Users className="h-4 w-4 text-subtle" /> {open} open</div>
+                        <div className="text-xs text-muted">
                           {BOARD_STAGES.filter(s => c[s]).map(s => `${STAGE_LABELS[s]} ${c[s]}`).join(' · ') || 'No applicants yet'}
                           {c.hired ? ` · Hired ${c.hired}` : ''}
                         </div>
@@ -111,8 +111,8 @@ export default function CenterJobsPage() {
                       <td className="px-4 py-4">{daysOpen(job) ?? '—'}</td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-2">
-                          <Link href={`/center/jobs/${job.id}/edit`} className="rounded-lg border border-[#e2e8e4] px-3 py-1.5 text-xs font-bold text-[#157354] hover:bg-[#edf7f3]">Edit</Link>
-                          <Link href={`/center/jobs/${job.id}`} className="rounded-lg bg-[#157354] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#0f4a36]">Applicants</Link>
+                          <Link href={`/center/jobs/${job.id}/edit`} className="rounded-lg border border-border px-3 py-1.5 text-xs font-bold text-brand-600 hover:bg-brand-50">Edit</Link>
+                          <Link href={`/center/jobs/${job.id}`} className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-800">Applicants</Link>
                         </div>
                       </td>
                     </tr>

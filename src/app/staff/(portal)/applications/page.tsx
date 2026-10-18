@@ -98,17 +98,17 @@ export default function StaffApplicationsPage() {
   return (
     <div className="max-w-5xl pb-32">
       <div className="mb-10">
-        <h1 className="text-4xl font-black text-[#0b3828] mb-2 tracking-tight">Applications</h1>
-        <p className="text-[#6b7a73] text-lg font-medium">Jobs you have applied for and where each one stands.</p>
+        <h1 className="text-4xl font-black text-heading mb-2 tracking-tight">Applications</h1>
+        <p className="text-muted text-lg font-medium">Jobs you have applied for and where each one stands.</p>
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-[#157354]" /></div>
+        <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-brand-600" /></div>
       ) : rows.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-[#e2e8e4] bg-white p-10 text-center">
-          <ClipboardList className="mx-auto mb-3 h-10 w-10 text-[#a8b5ae]" />
-          <p className="mb-4 font-bold text-[#6b7a73]">You haven’t applied for any jobs yet.</p>
-          <Link href="/staff/jobs" className="inline-flex items-center gap-2 rounded-xl bg-[#157354] px-5 py-3 font-semibold text-white hover:bg-[#0f4a36]"><Briefcase className="h-5 w-5" /> Browse jobs</Link>
+        <div className="rounded-2xl border border-dashed border-border bg-white p-10 text-center">
+          <ClipboardList className="mx-auto mb-3 h-10 w-10 text-subtle" />
+          <p className="mb-4 font-bold text-muted">You haven’t applied for any jobs yet.</p>
+          <Link href="/staff/jobs" className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 font-semibold text-white hover:bg-brand-800"><Briefcase className="h-5 w-5" /> Browse jobs</Link>
         </div>
       ) : (
         <div className="space-y-4">
@@ -116,14 +116,14 @@ export default function StaffApplicationsPage() {
             const open = requests[row.center_id] ?? 0
             const canWithdraw = ['applied', 'reviewing', 'interview'].includes(row.stage)
             return (
-              <div key={row.id} className="rounded-2xl border border-[#e2e8e4] bg-white p-5 shadow-sm">
+              <div key={row.id} className="rounded-2xl border border-border bg-white p-5 shadow-sm">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                   <div className="flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Link href={`/staff/jobs/${row.job_id}`} className="text-lg font-bold text-[#0b3828] hover:text-[#157354] hover:underline">{row.job?.title ?? 'Job'}</Link>
+                      <Link href={`/staff/jobs/${row.job_id}`} className="text-lg font-bold text-heading hover:text-brand-600 hover:underline">{row.job?.title ?? 'Job'}</Link>
                       <span className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${STAGE_STYLE[row.stage]}`}>{STAGE_LABELS[row.stage]}</span>
                     </div>
-                    <div className="text-sm text-[#6b7a73]">{row.job?.center?.name} · Updated {new Date(row.updated_at).toLocaleDateString()}</div>
+                    <div className="text-sm text-muted">{row.job?.center?.name} · Updated {new Date(row.updated_at).toLocaleDateString()}</div>
                     {open > 0 && OPEN_STAGES.includes(row.stage) && (
                       <Link href="/staff/requests" className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-amber-700 hover:underline">
                         <Inbox className="h-4 w-4" /> {open} document request{open === 1 ? '' : 's'} waiting
@@ -131,7 +131,7 @@ export default function StaffApplicationsPage() {
                     )}
                   </div>
                   {canWithdraw && (
-                    <button disabled={busyId === row.id} onClick={() => withdraw(row)} className="rounded-xl border border-[#e2e8e4] px-4 py-2 text-sm font-bold text-[#6b7a73] hover:bg-[#f8faf9] disabled:opacity-50">Withdraw</button>
+                    <button disabled={busyId === row.id} onClick={() => withdraw(row)} className="rounded-xl border border-border px-4 py-2 text-sm font-bold text-muted hover:bg-surface disabled:opacity-50">Withdraw</button>
                   )}
                 </div>
 
@@ -155,7 +155,7 @@ export default function StaffApplicationsPage() {
                     </p>
                     {row.offer_note && <p className="mt-1 whitespace-pre-line text-sm text-emerald-900">{row.offer_note}</p>}
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <button disabled={busyId === row.id} onClick={() => accept(row)} className="inline-flex items-center gap-1.5 rounded-xl bg-[#157354] px-5 py-2 text-sm font-black text-white hover:bg-[#0f4a36] disabled:opacity-50">
+                      <button disabled={busyId === row.id} onClick={() => accept(row)} className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-5 py-2 text-sm font-black text-white hover:bg-brand-800 disabled:opacity-50">
                         {busyId === row.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} Accept offer
                       </button>
                       <button disabled={busyId === row.id} onClick={() => decline(row)} className="rounded-xl border border-emerald-300 bg-white px-5 py-2 text-sm font-bold text-emerald-900 hover:bg-emerald-100 disabled:opacity-50">Decline</button>

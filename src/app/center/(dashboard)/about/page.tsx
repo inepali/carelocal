@@ -78,11 +78,11 @@ export default function CenterAboutPage() {
   return (
     <div className="max-w-6xl mx-auto pb-24 px-6 md:px-10">
       <div className="mb-8">
-        <h1 className="text-3xl font-extrabold text-[#0b3828] mb-2">About</h1>
-        <p className="text-[#6b7a73]">Manage your center profile, programs, leadership team, and additional information.</p>
+        <h1 className="text-3xl font-extrabold text-heading mb-2">About</h1>
+        <p className="text-muted">Manage your center profile, programs, leadership team, and additional information.</p>
       </div>
 
-      <div role="tablist" aria-label="About sections" className="flex gap-1 border-b border-[#e2e8e4] mb-10 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div role="tablist" aria-label="About sections" className="flex gap-1 border-b border-border mb-10 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {TABS.map(tab => {
           const isActive = activeTab === tab.id
           return (
@@ -95,11 +95,11 @@ export default function CenterAboutPage() {
               onClick={() => selectTab(tab.id)}
               className={`flex items-center gap-2 px-5 py-3 -mb-px border-b-[3px] text-sm whitespace-nowrap transition-colors ${
                 isActive
-                  ? 'border-[#157354] text-[#0b3828] font-bold'
-                  : 'border-transparent text-[#6b7a73] font-medium hover:text-[#0b3828] hover:border-[#a9dac9]'
+                  ? 'border-brand-600 text-heading font-bold'
+                  : 'border-transparent text-muted font-medium hover:text-heading hover:border-brand-200'
               }`}
             >
-              <tab.icon className={`w-4 h-4 ${isActive ? 'text-[#157354]' : ''}`} />
+              <tab.icon className={`w-4 h-4 ${isActive ? 'text-brand-600' : ''}`} />
               {tab.name}
             </button>
           )
@@ -135,29 +135,29 @@ export default function CenterAboutPage() {
               renderItem={(program) => (
                 <>
                   <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <h3 className="text-lg font-black text-[#0b3828] tracking-tight">{program.name}</h3>
+                    <h3 className="text-lg font-black text-heading tracking-tight">{program.name}</h3>
                     {!program.is_active && (
                       <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md text-[10px] font-bold uppercase tracking-widest">Inactive</span>
                     )}
                   </div>
                   <div className="flex flex-wrap gap-2 mb-3">
                     {program.age_range && (
-                      <span className="inline-flex items-center px-2.5 py-1 bg-[#f0fdf4] text-[#157354] rounded-lg text-xs font-bold border border-[#bbf7d0]">{program.age_range}</span>
+                      <span className="inline-flex items-center px-2.5 py-1 bg-brand-50 text-brand-600 rounded-lg text-xs font-bold border border-[#bbf7d0]">{program.age_range}</span>
                     )}
                     {program.capacity != null && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#f8faf9] text-[#6b7a73] rounded-lg text-xs font-bold border border-[#e2e8e4]"><Users className="w-3 h-3" /> {program.capacity}</span>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-surface text-muted rounded-lg text-xs font-bold border border-border"><Users className="w-3 h-3" /> {program.capacity}</span>
                     )}
                   </div>
                   {program.schedule && (
-                    <p className="flex items-center gap-1.5 text-xs text-[#6b7a73] font-medium mb-2"><Clock className="w-3.5 h-3.5" /> {program.schedule}</p>
+                    <p className="flex items-center gap-1.5 text-xs text-muted font-medium mb-2"><Clock className="w-3.5 h-3.5" /> {program.schedule}</p>
                   )}
-                  {program.description && <p className="text-sm text-[#4a5a52] leading-relaxed whitespace-pre-line">{program.description}</p>}
+                  {program.description && <p className="text-sm text-text-muted leading-relaxed whitespace-pre-line">{program.description}</p>}
                   {normalizeWebUrl(program.more_info_url) && (
                     <a
                       href={normalizeWebUrl(program.more_info_url)!}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mt-3 inline-flex items-center gap-1.5 text-sm font-bold text-[#157354] hover:underline"
+                      className="mt-3 inline-flex items-center gap-1.5 text-sm font-bold text-brand-600 hover:underline"
                     >
                       <ExternalLink className="w-3.5 h-3.5" /> More info
                     </a>
@@ -184,17 +184,17 @@ export default function CenterAboutPage() {
               ]}
               renderItem={(member) => (
                 <>
-                  <h3 className="text-lg font-black text-[#0b3828] tracking-tight">{member.name}</h3>
+                  <h3 className="text-lg font-black text-heading tracking-tight">{member.name}</h3>
                   {/* Older entries may only have the free-text title */}
                   {(member.role || member.title) && (
-                    <p className="text-xs font-bold uppercase tracking-widest text-[#157354] mb-3">
+                    <p className="text-xs font-bold uppercase tracking-widest text-brand-600 mb-3">
                       {member.role ? lookupLabel(roleLookups, member.role) : member.title}
                     </p>
                   )}
                   {member.email && (
-                    <a href={`mailto:${member.email}`} className="inline-flex items-center gap-1.5 text-xs text-[#6b7a73] hover:text-[#157354] font-medium mb-3"><Mail className="w-3.5 h-3.5" /> {member.email}</a>
+                    <a href={`mailto:${member.email}`} className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-brand-600 font-medium mb-3"><Mail className="w-3.5 h-3.5" /> {member.email}</a>
                   )}
-                  {member.bio && <p className="text-sm text-[#4a5a52] leading-relaxed whitespace-pre-line">{member.bio}</p>}
+                  {member.bio && <p className="text-sm text-text-muted leading-relaxed whitespace-pre-line">{member.bio}</p>}
                 </>
               )}
             />
@@ -216,8 +216,8 @@ export default function CenterAboutPage() {
               ]}
               renderItem={(item) => (
                 <>
-                  <h3 className="text-lg font-black text-[#0b3828] tracking-tight mb-1">{item.title}</h3>
-                  {item.content && <p className="text-sm text-[#4a5a52] leading-relaxed whitespace-pre-line">{item.content}</p>}
+                  <h3 className="text-lg font-black text-heading tracking-tight mb-1">{item.title}</h3>
+                  {item.content && <p className="text-sm text-text-muted leading-relaxed whitespace-pre-line">{item.content}</p>}
                 </>
               )}
             />

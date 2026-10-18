@@ -59,7 +59,7 @@ export default function MobileDocumentsPage() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center min-h-[50vh]">
-        <Loader2 className="w-8 h-8 text-[#157354] animate-spin" />
+        <Loader2 className="w-8 h-8 text-brand-600 animate-spin" />
       </div>
     }>
       <DocumentsContent />
@@ -305,13 +305,13 @@ function DocumentsContent() {
     <div className="py-2">
       <div className="mb-5 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black text-[#0b3828] tracking-tight">Credentials</h1>
-          <p className="text-xs text-[#6b7a73] font-medium mt-1">Manage licenses, training, and certifications.</p>
+          <h1 className="text-2xl font-black text-heading tracking-tight">Credentials</h1>
+          <p className="text-xs text-muted font-medium mt-1">Manage licenses, training, and certifications.</p>
         </div>
         {!showUpload && activeTab === 'vault' && (
           <button
             onClick={() => setShowUpload(true)}
-            className="bg-[#157354] hover:bg-[#0f4a36] text-white font-bold p-2.5 rounded-xl shadow-sm text-xs transition-colors flex items-center gap-1 cursor-pointer"
+            className="bg-brand-600 hover:bg-brand-800 text-white font-bold p-2.5 rounded-xl shadow-sm text-xs transition-colors flex items-center gap-1 cursor-pointer"
           >
             <Upload className="w-4 h-4" /> Upload
           </button>
@@ -325,8 +325,8 @@ function DocumentsContent() {
             onClick={() => setActiveTab('onboarding')}
             className={`flex-1 text-center py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'onboarding'
-                ? 'bg-white text-[#0b3828] shadow-sm'
-                : 'text-[#6b7a73] hover:text-[#0b3828]'
+                ? 'bg-white text-heading shadow-sm'
+                : 'text-muted hover:text-heading'
             }`}
           >
             Checklist ({progressCount}/{applicableRows.length})
@@ -335,8 +335,8 @@ function DocumentsContent() {
             onClick={() => setActiveTab('vault')}
             className={`flex-1 text-center py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'vault'
-                ? 'bg-white text-[#0b3828] shadow-sm'
-                : 'text-[#6b7a73] hover:text-[#0b3828]'
+                ? 'bg-white text-heading shadow-sm'
+                : 'text-muted hover:text-heading'
             }`}
           >
             My Vault ({documents.length})
@@ -346,9 +346,9 @@ function DocumentsContent() {
 
       {/* ── SHOW UPLOAD FORM ── */}
       {showUpload && activeTab === 'vault' && (
-        <div className="bg-white border border-[#e2e8e4] rounded-2xl p-5 shadow-md mb-6 animate-in slide-in-from-top-4">
+        <div className="bg-white border border-border rounded-2xl p-5 shadow-md mb-6 animate-in slide-in-from-top-4">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-black text-[#0b3828] uppercase tracking-wider">Upload New Credential</h2>
+            <h2 className="text-sm font-black text-heading uppercase tracking-wider">Upload New Credential</h2>
             <button 
               onClick={() => setShowUpload(false)}
               className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
@@ -359,13 +359,13 @@ function DocumentsContent() {
 
           <form onSubmit={handleUploadSubmit} className="space-y-4">
             <div>
-              <label className="block text-[10px] font-black text-[#0b3828] mb-1.5 uppercase tracking-wider">
+              <label className="block text-[10px] font-black text-heading mb-1.5 uppercase tracking-wider">
                 Select File (PDF or Image)
               </label>
               <label className={`
                 relative flex flex-col items-center justify-center w-full h-28 
                 border border-dashed rounded-xl cursor-pointer transition-all
-                ${selectedFile ? 'border-[#157354] bg-[#f0fdf4]' : 'border-slate-300 hover:bg-[#f8faf9]'}
+                ${selectedFile ? 'border-brand-600 bg-brand-50' : 'border-slate-300 hover:bg-surface'}
               `}>
                 <input 
                   type="file" 
@@ -381,38 +381,38 @@ function DocumentsContent() {
                 />
                 {selectedFile ? (
                   <div className="flex flex-col items-center p-2">
-                    <CheckCircle2 className="w-6 h-6 text-[#157354] mb-1" />
-                    <span className="text-xs font-bold text-[#0b3828] max-w-[220px] truncate">{selectedFile.name}</span>
+                    <CheckCircle2 className="w-6 h-6 text-brand-600 mb-1" />
+                    <span className="text-xs font-bold text-heading max-w-[220px] truncate">{selectedFile.name}</span>
                     <span className="text-[10px] text-slate-400 mt-0.5">Click to replace file</span>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center p-2 text-center">
-                    <Upload className="w-6 h-6 text-[#a8b5ae] mb-1" />
-                    <span className="text-xs font-semibold text-[#6b7a73]">Click to choose PDF or Image</span>
+                    <Upload className="w-6 h-6 text-subtle mb-1" />
+                    <span className="text-xs font-semibold text-muted">Click to choose PDF or Image</span>
                   </div>
                 )}
               </label>
             </div>
 
             <div>
-              <label className="block text-[10px] font-black text-[#0b3828] mb-1 uppercase tracking-wider">Document Name</label>
+              <label className="block text-[10px] font-black text-heading mb-1 uppercase tracking-wider">Document Name</label>
               <input 
                 type="text" 
                 required
                 value={docName}
                 onChange={(e) => setDocName(e.target.value)}
                 placeholder="e.g. CPR & First Aid Certificate"
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-[#f8faf9] focus:outline-none focus:border-[#157354]"
+                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-surface focus:outline-none focus:border-brand-600"
               />
             </div>
 
             <div>
-              <label className="block text-[10px] font-black text-[#0b3828] mb-1 uppercase tracking-wider">Category</label>
+              <label className="block text-[10px] font-black text-heading mb-1 uppercase tracking-wider">Category</label>
               <select
                 required
                 value={docCategory}
                 onChange={(e) => setDocCategory(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-[#f8faf9] focus:outline-none focus:border-[#157354]"
+                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-surface focus:outline-none focus:border-brand-600"
               >
                 <option value="" disabled>Select Category</option>
                 {docTypes.filter(c => c.is_active).map(c => (
@@ -422,19 +422,19 @@ function DocumentsContent() {
             </div>
 
             <div>
-              <label className="block text-[10px] font-black text-[#0b3828] mb-1 uppercase tracking-wider">Expiry Date (Optional)</label>
+              <label className="block text-[10px] font-black text-heading mb-1 uppercase tracking-wider">Expiry Date (Optional)</label>
               <input 
                 type="date" 
                 value={expiryDate}
                 onChange={(e) => setExpiryDate(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-[#f8faf9] focus:outline-none focus:border-[#157354]"
+                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-surface focus:outline-none focus:border-brand-600"
               />
             </div>
 
             <button 
               type="submit"
               disabled={uploading || !selectedFile || !docCategory}
-              className="w-full bg-[#157354] text-white font-bold py-3.5 rounded-xl hover:bg-[#0f4a36] text-xs uppercase tracking-wider shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+              className="w-full bg-brand-600 text-white font-bold py-3.5 rounded-xl hover:bg-brand-800 text-xs uppercase tracking-wider shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               {uploading ? (
                 <>
@@ -451,15 +451,15 @@ function DocumentsContent() {
         <div className="space-y-3">
           <RequestInbox variant="mobile" />
           {documents.length === 0 ? (
-            <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-[#e2e8e4] px-4">
-              <FileText className="w-10 h-10 text-[#a8b5ae] mx-auto mb-3" />
-              <h3 className="text-base font-bold text-[#0b3828] mb-1">No Documents Uploaded</h3>
-              <p className="text-xs text-[#6b7a73] font-medium max-w-xs mx-auto mb-4">
+            <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-border px-4">
+              <FileText className="w-10 h-10 text-subtle mx-auto mb-3" />
+              <h3 className="text-base font-bold text-heading mb-1">No Documents Uploaded</h3>
+              <p className="text-xs text-muted font-medium max-w-xs mx-auto mb-4">
                 Upload credentials like CPR certificates, fingerprint clearances, or state teaching licenses to apply for shifts.
               </p>
               <button
                 onClick={() => setShowUpload(true)}
-                className="inline-flex items-center justify-center gap-1.5 bg-[#edf7f3] border border-[#d4ede4] text-[#157354] font-bold py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider hover:bg-[#157354] hover:text-white transition-all cursor-pointer shadow-sm"
+                className="inline-flex items-center justify-center gap-1.5 bg-brand-50 border border-brand-100 text-brand-600 font-bold py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider hover:bg-brand-600 hover:text-white transition-all cursor-pointer shadow-sm"
               >
                 <Upload className="w-3.5 h-3.5" /> Upload First File
               </button>
@@ -472,14 +472,14 @@ function DocumentsContent() {
               return (
                 <div 
                   key={doc.id}
-                  className="bg-white border border-[#e2e8e4] rounded-2xl p-4 shadow-sm hover:border-[#157354]/40 transition-colors flex items-center justify-between"
+                  className="bg-white border border-border rounded-2xl p-4 shadow-sm hover:border-brand-600/40 transition-colors flex items-center justify-between"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-[#edf7f3] flex items-center justify-center shrink-0">
-                      <FileText className="w-5 h-5 text-[#157354]" />
+                    <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center shrink-0">
+                      <FileText className="w-5 h-5 text-brand-600" />
                     </div>
                     <div className="min-w-0">
-                      <h3 className="font-bold text-[#0b3828] text-xs truncate flex items-center gap-1">
+                      <h3 className="font-bold text-heading text-xs truncate flex items-center gap-1">
                         {doc.document_name}
                         {isExpired && (
                           <span className="flex items-center gap-0.5 text-[8px] bg-rose-50 text-rose-600 border border-rose-200 px-1.5 py-0.5 rounded-full font-black uppercase">
@@ -487,7 +487,7 @@ function DocumentsContent() {
                           </span>
                         )}
                       </h3>
-                      <div className="text-[10px] text-[#6b7a73] font-medium mt-0.5 flex flex-wrap items-center gap-x-2">
+                      <div className="text-[10px] text-muted font-medium mt-0.5 flex flex-wrap items-center gap-x-2">
                         <span className="capitalize">{categoryLabel}</span>
                         {doc.expiry_date && (
                           <span>• Exp: {new Date(doc.expiry_date).toLocaleDateString()}</span>
@@ -499,7 +499,7 @@ function DocumentsContent() {
                   <div className="flex items-center gap-1 shrink-0">
                     <button
                       onClick={() => openStoredFile('vault', doc.id)}
-                      className="p-2.5 text-[#157354] hover:bg-[#edf7f3] rounded-lg transition-colors cursor-pointer"
+                      className="p-2.5 text-brand-600 hover:bg-brand-50 rounded-lg transition-colors cursor-pointer"
                       title="View Credential"
                     >
                       <Eye className="w-4 h-4" />
@@ -522,11 +522,11 @@ function DocumentsContent() {
       {/* ── ONBOARDING CHECKLIST TAB ── */}
       {activeTab === 'onboarding' && center && (
         <div className="space-y-4">
-          <div className="bg-[#edf7f3] border border-[#d4ede4] rounded-2xl p-4 shadow-sm flex items-start gap-3">
-            <ShieldCheck className="w-5 h-5 text-[#157354] shrink-0 mt-0.5" />
+          <div className="bg-brand-50 border border-brand-100 rounded-2xl p-4 shadow-sm flex items-start gap-3">
+            <ShieldCheck className="w-5 h-5 text-brand-600 shrink-0 mt-0.5" />
             <div className="text-xs">
-              <h4 className="font-bold text-[#0b3828]">{center.name}</h4>
-              <p className="text-[#3d5a4f] mt-1 leading-relaxed">
+              <h4 className="font-bold text-heading">{center.name}</h4>
+              <p className="text-text-muted mt-1 leading-relaxed">
                 Complete the center checklist to pick up open shifts. Link required credentials from your vault.
               </p>
             </div>
@@ -544,7 +544,7 @@ function DocumentsContent() {
                 <div key={req.id} className="border border-slate-200 bg-white rounded-2xl p-4 shadow-sm space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <h4 className="font-bold text-[#0b3828] text-xs leading-snug">{req.document_name}</h4>
+                      <h4 className="font-bold text-heading text-xs leading-snug">{req.document_name}</h4>
                       <p className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 ${result.state === 'overdue' ? 'text-rose-600' : 'text-slate-400'}`}>
                         {result.dueDate ? `Due ${formatDate(result.dueDate)}` : lookupLabel(docTypes, req.document_category)}
                       </p>
@@ -555,7 +555,7 @@ function DocumentsContent() {
                         <p className="mt-1 text-[10px] text-slate-500">Not applicable{record.not_applicable_reason ? `: ${record.not_applicable_reason}` : ''}</p>
                       )}
                       {req.template_file_key && (
-                        <button onClick={() => handleDownloadTemplate(req)} className="mt-1 flex items-center gap-1 text-[10px] font-bold text-[#157354] hover:underline">
+                        <button onClick={() => handleDownloadTemplate(req)} className="mt-1 flex items-center gap-1 text-[10px] font-bold text-brand-600 hover:underline">
                           <Download className="w-3 h-3" /> {isAck ? 'Read the policy' : 'Download Form Template'}
                         </button>
                       )}
@@ -567,20 +567,20 @@ function DocumentsContent() {
                     <div className="space-y-2">
                       <p className="text-[10px] text-slate-500">By signing you confirm you have received and read this{req.policy_version > 1 ? ` (version ${req.policy_version})` : ''}.</p>
                       <input value={signature} onChange={e => setSignature(e.target.value)} placeholder="Type your full name"
-                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-[#f8faf9] focus:outline-none focus:border-[#157354]" />
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-surface focus:outline-none focus:border-brand-600" />
                       <div className="flex gap-2">
                         <button onClick={() => setSigningReq(null)} className="flex-1 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 border border-slate-200 rounded-xl">Cancel</button>
-                        <button disabled={!signature.trim()} onClick={() => handleSign(req)} className="flex-1 py-2 text-[10px] font-bold uppercase tracking-wider text-white bg-[#157354] rounded-xl disabled:opacity-50">Sign</button>
+                        <button disabled={!signature.trim()} onClick={() => handleSign(req)} className="flex-1 py-2 text-[10px] font-bold uppercase tracking-wider text-white bg-brand-600 rounded-xl disabled:opacity-50">Sign</button>
                       </div>
                     </div>
                   ) : (
-                    <button onClick={() => { setSigningReq(req.id); setSignature('') }} className="w-full bg-[#157354] text-white font-bold text-[10px] uppercase tracking-wider px-3 py-2 rounded-xl">
+                    <button onClick={() => { setSigningReq(req.id); setSignature('') }} className="w-full bg-brand-600 text-white font-bold text-[10px] uppercase tracking-wider px-3 py-2 rounded-xl">
                       {record?.acknowledged_at ? 'Sign updated policy' : 'Acknowledge'}
                     </button>
                   ))}
 
                   {canLink && (
-                    <button onClick={() => setLinkingReq(req)} className="w-full bg-[#0b3828] hover:bg-black text-white font-bold text-[10px] uppercase tracking-wider px-3 py-2 rounded-xl">
+                    <button onClick={() => setLinkingReq(req)} className="w-full bg-brand-900 hover:bg-black text-white font-bold text-[10px] uppercase tracking-wider px-3 py-2 rounded-xl">
                       {record?.matched_document_id ? 'Replace Document' : req.evidence_type === 'training' ? 'Link Certificate' : 'Link Document'}
                     </button>
                   )}
@@ -594,15 +594,15 @@ function DocumentsContent() {
       {/* ── LINK VAULT DOCUMENT MODAL ── */}
       {linkingReq && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-white rounded-3xl border border-[#e6ece9] max-w-sm w-full p-5 shadow-2xl relative text-left">
+          <div className="bg-white rounded-3xl border border-border max-w-sm w-full p-5 shadow-2xl relative text-left">
             <button 
               onClick={() => setLinkingReq(null)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
-            <h3 className="text-base font-black text-[#0b3828] mb-1 pr-6">Link Vault Document</h3>
-            <p className="text-[11px] text-[#6b7a73] font-medium mb-4">
+            <h3 className="text-base font-black text-heading mb-1 pr-6">Link Vault Document</h3>
+            <p className="text-[11px] text-muted font-medium mb-4">
               Select a matching file to satisfy: <strong>{linkingReq.document_name}</strong>
             </p>
 
@@ -613,10 +613,10 @@ function DocumentsContent() {
                   <button
                     key={doc.id}
                     onClick={() => handleLinkDoc(linkingReq.id, doc.id)}
-                    className="w-full flex items-center justify-between p-3 border border-slate-100 hover:border-[#157354] rounded-xl bg-slate-50 text-left transition-colors cursor-pointer group"
+                    className="w-full flex items-center justify-between p-3 border border-slate-100 hover:border-brand-600 rounded-xl bg-slate-50 text-left transition-colors cursor-pointer group"
                   >
                     <div className="min-w-0 pr-2">
-                      <div className="text-xs font-bold text-[#0b3828] truncate">{doc.document_name}</div>
+                      <div className="text-xs font-bold text-heading truncate">{doc.document_name}</div>
                       <div className="text-[9px] text-slate-400 capitalize mt-0.5">Uploaded {new Date(doc.uploaded_at).toLocaleDateString()}</div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
@@ -624,7 +624,7 @@ function DocumentsContent() {
                 ))}
 
               {documents.filter(d => d.document_category === linkingReq.document_category || d.document_category === 'other').length === 0 && (
-                <div className="text-center py-6 text-xs text-[#6b7a73] font-medium border border-dashed border-slate-200 rounded-xl bg-slate-50">
+                <div className="text-center py-6 text-xs text-muted font-medium border border-dashed border-slate-200 rounded-xl bg-slate-50">
                   No matching files found. Upload a file of this category to your vault first.
                 </div>
               )}
@@ -637,13 +637,13 @@ function DocumentsContent() {
                   setActiveTab('vault')
                   setShowUpload(true)
                 }}
-                className="flex-1 bg-[#157354] hover:bg-[#0f4a36] text-white font-bold py-2.5 rounded-xl text-[10px] uppercase tracking-wider text-center cursor-pointer shadow-sm"
+                className="flex-1 bg-brand-600 hover:bg-brand-800 text-white font-bold py-2.5 rounded-xl text-[10px] uppercase tracking-wider text-center cursor-pointer shadow-sm"
               >
                 Upload New File
               </button>
               <button
                 onClick={() => setLinkingReq(null)}
-                className="flex-1 bg-slate-100 hover:bg-slate-200 text-[#6b7a73] font-bold py-2.5 rounded-xl text-[10px] uppercase tracking-wider text-center cursor-pointer"
+                className="flex-1 bg-slate-100 hover:bg-slate-200 text-muted font-bold py-2.5 rounded-xl text-[10px] uppercase tracking-wider text-center cursor-pointer"
               >
                 Cancel
               </button>

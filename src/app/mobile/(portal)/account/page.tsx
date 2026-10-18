@@ -267,27 +267,27 @@ export default function MobileAccountPage() {
     <div className="py-2 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-black text-[#0b3828] tracking-tight">My Account</h1>
-        <p className="text-xs text-[#6b7a73] font-medium mt-1">Manage payments, invoices, and profile configurations.</p>
+        <h1 className="text-2xl font-black text-heading tracking-tight">My Account</h1>
+        <p className="text-xs text-muted font-medium mt-1">Manage payments, invoices, and profile configurations.</p>
       </div>
 
       {/* Platform Balance Box */}
-      <div className="bg-white rounded-2xl border border-[#e6ece9] p-5 shadow-sm space-y-4">
+      <div className="bg-white rounded-2xl border border-border p-5 shadow-sm space-y-4">
         <div className="flex justify-between items-start">
           <div>
-            <h3 className="text-xs font-black text-[#0b3828] uppercase tracking-wider">Account Balance</h3>
-            <p className="text-[10px] text-[#6b7a73] font-semibold uppercase tracking-wider mt-0.5">Fees & Statements</p>
+            <h3 className="text-xs font-black text-heading uppercase tracking-wider">Account Balance</h3>
+            <p className="text-[10px] text-muted font-semibold uppercase tracking-wider mt-0.5">Fees & Statements</p>
           </div>
-          <div className="w-8 h-8 rounded-lg bg-[#edf7f3] flex items-center justify-center">
-            <CreditCard className="w-4 h-4 text-[#157354]" />
+          <div className="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center">
+            <CreditCard className="w-4 h-4 text-brand-600" />
           </div>
         </div>
 
-        <div className="py-3 border-y border-[#e6ece9]">
+        <div className="py-3 border-y border-border">
           <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Total Outstanding Due</span>
-          <div className="text-3xl font-black text-[#0b3828] mt-1 flex items-baseline gap-1">
+          <div className="text-3xl font-black text-heading mt-1 flex items-baseline gap-1">
             <span>${balance.toFixed(2)}</span>
-            <span className="text-xs text-[#6b7a73] font-bold uppercase tracking-wider">USD</span>
+            <span className="text-xs text-muted font-bold uppercase tracking-wider">USD</span>
           </div>
         </div>
 
@@ -296,23 +296,23 @@ export default function MobileAccountPage() {
             <div className="p-3.5 bg-yellow-50 border border-yellow-200 rounded-xl flex gap-2.5 text-yellow-900 text-xs leading-relaxed">
               <AlertCircle className="w-4 h-4 text-yellow-800 shrink-0 mt-0.5" />
               <div>
-                <strong className="text-[#0b3828] font-bold block mb-0.5">Shift Claiming Locked</strong>
+                <strong className="text-heading font-bold block mb-0.5">Shift Claiming Locked</strong>
                 You have outstanding maintenance fees. Clear your balance to unlock marketplace shifts.
               </div>
             </div>
             
             <button
               onClick={() => setIsPaymentModalOpen(true)}
-              className="w-full bg-[#157354] hover:bg-[#0f4a36] text-white font-bold py-3 px-4 rounded-xl shadow-sm text-xs uppercase tracking-wider transition-all cursor-pointer text-center"
+              className="w-full bg-brand-600 hover:bg-brand-800 text-white font-bold py-3 px-4 rounded-xl shadow-sm text-xs uppercase tracking-wider transition-all cursor-pointer text-center"
             >
               Pay Outstanding Balance
             </button>
           </div>
         ) : (
-          <div className="p-3.5 bg-[#edf7f3] border border-[#d4ede4] rounded-xl flex gap-2.5 text-[#157354] text-xs leading-relaxed">
-            <CheckCircle2 className="w-4 h-4 text-[#157354] shrink-0 mt-0.5" />
+          <div className="p-3.5 bg-brand-50 border border-brand-100 rounded-xl flex gap-2.5 text-brand-600 text-xs leading-relaxed">
+            <CheckCircle2 className="w-4 h-4 text-brand-600 shrink-0 mt-0.5" />
             <div>
-              <strong className="text-[#0b3828] font-bold block mb-0.5">Account Active</strong>
+              <strong className="text-heading font-bold block mb-0.5">Account Active</strong>
               No outstanding fees. You are fully authorized to claim open shifts.
             </div>
           </div>
@@ -320,27 +320,27 @@ export default function MobileAccountPage() {
       </div>
 
       {/* Push Notification Preferences Box */}
-      <div className="bg-white rounded-2xl border border-[#e6ece9] p-5 shadow-sm space-y-4">
+      <div className="bg-white rounded-2xl border border-border p-5 shadow-sm space-y-4">
         <div className="flex justify-between items-start">
           <div>
-            <h3 className="text-xs font-black text-[#0b3828] uppercase tracking-wider">Push Notifications</h3>
-            <p className="text-[10px] text-[#6b7a73] font-semibold uppercase tracking-wider mt-0.5">Status & Preferences</p>
+            <h3 className="text-xs font-black text-heading uppercase tracking-wider">Push Notifications</h3>
+            <p className="text-[10px] text-muted font-semibold uppercase tracking-wider mt-0.5">Status & Preferences</p>
           </div>
-          <div className="w-8 h-8 rounded-lg bg-[#edf7f3] flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center">
             {pushStatus === 'granted' ? (
-              <Bell className="w-4 h-4 text-[#157354]" />
+              <Bell className="w-4 h-4 text-brand-600" />
             ) : (
               <BellOff className="w-4 h-4 text-slate-400" />
             )}
           </div>
         </div>
 
-        <div className="text-xs text-[#3d5a4f] leading-relaxed">
+        <div className="text-xs text-text-muted leading-relaxed">
           {pushStatus === 'granted' ? (
-            <div className="p-3.5 bg-[#edf7f3] border border-[#d4ede4] rounded-xl flex gap-2.5 text-[#157354]">
+            <div className="p-3.5 bg-brand-50 border border-brand-100 rounded-xl flex gap-2.5 text-brand-600">
               <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
               <div>
-                <strong className="text-[#0b3828] font-bold block mb-0.5">Notifications Enabled</strong>
+                <strong className="text-heading font-bold block mb-0.5">Notifications Enabled</strong>
                 You are registered to receive real-time push alerts on this device when new shifts are posted.
               </div>
             </div>
@@ -364,7 +364,7 @@ export default function MobileAccountPage() {
               <button
                 disabled={isSubscribing}
                 onClick={handleTogglePush}
-                className="w-full bg-[#157354] hover:bg-[#0f4a36] text-white font-bold py-3 px-4 rounded-xl shadow-sm text-xs uppercase tracking-wider transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
+                className="w-full bg-brand-600 hover:bg-brand-800 text-white font-bold py-3 px-4 rounded-xl shadow-sm text-xs uppercase tracking-wider transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
               >
                 {isSubscribing ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -380,18 +380,18 @@ export default function MobileAccountPage() {
 
       {/* PWA Download & Install Box */}
       {!isStandalone && (
-        <div className="bg-white rounded-2xl border border-[#e6ece9] p-5 shadow-sm space-y-4">
+        <div className="bg-white rounded-2xl border border-border p-5 shadow-sm space-y-4">
           <div className="flex justify-between items-start">
             <div>
-              <h3 className="text-xs font-black text-[#0b3828] uppercase tracking-wider">Install App</h3>
-              <p className="text-[10px] text-[#6b7a73] font-semibold uppercase tracking-wider mt-0.5">Offline Access & Alerts</p>
+              <h3 className="text-xs font-black text-heading uppercase tracking-wider">Install App</h3>
+              <p className="text-[10px] text-muted font-semibold uppercase tracking-wider mt-0.5">Offline Access & Alerts</p>
             </div>
-            <div className="w-8 h-8 rounded-lg bg-[#edf7f3] flex items-center justify-center">
-              <Download className="w-4 h-4 text-[#157354]" />
+            <div className="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center">
+              <Download className="w-4 h-4 text-brand-600" />
             </div>
           </div>
 
-          <div className="text-xs text-[#3d5a4f] leading-relaxed">
+          <div className="text-xs text-text-muted leading-relaxed">
             {isInstallable ? (
               <p>
                 Add CareLocal to your mobile home screen to get instant notifications and access open shifts instantly.
@@ -402,7 +402,7 @@ export default function MobileAccountPage() {
                   To install CareLocal on your iPhone/iPad:
                 </p>
                 <ol className="list-decimal pl-4 space-y-1 text-slate-500">
-                  <li>Tap the <strong>Share</strong> button <Share className="w-3 h-3 inline align-middle mx-1 text-[#157354]" /> in Safari.</li>
+                  <li>Tap the <strong>Share</strong> button <Share className="w-3 h-3 inline align-middle mx-1 text-brand-600" /> in Safari.</li>
                   <li>Scroll down and select <strong>Add to Home Screen</strong>.</li>
                 </ol>
               </div>
@@ -416,7 +416,7 @@ export default function MobileAccountPage() {
           {isInstallable && (
             <button
               onClick={handleInstallApp}
-              className="w-full bg-[#157354] hover:bg-[#0f4a36] text-white font-bold py-3 px-4 rounded-xl shadow-sm text-xs uppercase tracking-wider transition-all cursor-pointer text-center"
+              className="w-full bg-brand-600 hover:bg-brand-800 text-white font-bold py-3 px-4 rounded-xl shadow-sm text-xs uppercase tracking-wider transition-all cursor-pointer text-center"
             >
               Install CareLocal App
             </button>
@@ -425,26 +425,26 @@ export default function MobileAccountPage() {
       )}
 
       {/* Account Info Details */}
-      <div className="bg-white rounded-2xl border border-[#e6ece9] p-5 shadow-sm space-y-4">
-        <h3 className="text-xs font-black text-[#0b3828] uppercase tracking-wider border-b border-[#f0f4f2] pb-2">
+      <div className="bg-white rounded-2xl border border-border p-5 shadow-sm space-y-4">
+        <h3 className="text-xs font-black text-heading uppercase tracking-wider border-b border-border pb-2">
           Profile Details
         </h3>
         
         <div className="space-y-3 text-xs">
-          <div className="flex justify-between items-center py-1 border-b border-[#f8faf9]">
+          <div className="flex justify-between items-center py-1 border-b border-surface">
             <span className="text-slate-400 font-medium flex items-center gap-1.5">
               <User className="w-3.5 h-3.5 text-slate-400" /> Name:
             </span>
-            <span className="font-bold text-[#0b3828]">
+            <span className="font-bold text-heading">
               {profile ? `${profile.first_name} ${profile.last_name}` : '—'}
             </span>
           </div>
 
-          <div className="flex justify-between items-center py-1 border-b border-[#f8faf9]">
+          <div className="flex justify-between items-center py-1 border-b border-surface">
             <span className="text-slate-400 font-medium flex items-center gap-1.5">
               <Mail className="w-3.5 h-3.5 text-slate-400" /> Email:
             </span>
-            <span className="font-bold text-[#0b3828] truncate max-w-[180px]">
+            <span className="font-bold text-heading truncate max-w-[180px]">
               {profile?.email || '—'}
             </span>
           </div>
@@ -453,7 +453,7 @@ export default function MobileAccountPage() {
             <span className="text-slate-400 font-medium flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5 text-slate-400" /> Status:
             </span>
-            <span className="inline-block bg-[#edf7f3] border border-[#d4ede4] text-[#157354] text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full">
+            <span className="inline-block bg-brand-50 border border-brand-100 text-brand-600 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full">
               Verified Educator
             </span>
           </div>
@@ -461,11 +461,11 @@ export default function MobileAccountPage() {
       </div>
 
       {/* Info maintenance fee explanation */}
-      <div className="bg-[#edf7f3] border border-[#d4ede4] rounded-2xl p-4 flex gap-3 text-xs">
-        <Info className="w-4.5 h-4.5 text-[#157354] shrink-0 mt-0.5" />
+      <div className="bg-brand-50 border border-brand-100 rounded-2xl p-4 flex gap-3 text-xs">
+        <Info className="w-4.5 h-4.5 text-brand-600 shrink-0 mt-0.5" />
         <div>
-          <h4 className="font-bold text-[#0b3828] text-xs">Staff Maintenance Fee</h4>
-          <p className="text-[#3d5a4f] text-[11px] leading-relaxed mt-1">
+          <h4 className="font-bold text-heading text-xs">Staff Maintenance Fee</h4>
+          <p className="text-text-muted text-[11px] leading-relaxed mt-1">
             CareLocal applies a standard maintenance fee per metro area when checking into shifts. Clear this fee from this tab to keep your account open.
           </p>
         </div>
@@ -484,7 +484,7 @@ export default function MobileAccountPage() {
       {/* ── Payment Sandbox Modal ── */}
       {isPaymentModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-white rounded-3xl border border-[#e6ece9] max-w-sm w-full p-5 shadow-2xl relative text-left">
+          <div className="bg-white rounded-3xl border border-border max-w-sm w-full p-5 shadow-2xl relative text-left">
             <button 
               onClick={() => setIsPaymentModalOpen(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 cursor-pointer"
@@ -493,8 +493,8 @@ export default function MobileAccountPage() {
             </button>
             
             <div className="flex items-center gap-2 mb-4">
-              <CreditCard className="w-5 h-5 text-[#157354]" />
-              <h3 className="text-base font-black text-[#0b3828]">Sandbox Payment</h3>
+              <CreditCard className="w-5 h-5 text-brand-600" />
+              <h3 className="text-base font-black text-heading">Sandbox Payment</h3>
             </div>
 
             {errorMsg && (
@@ -504,32 +504,32 @@ export default function MobileAccountPage() {
               </div>
             )}
 
-            <div className="bg-[#f8faf9] rounded-xl p-3 border border-[#e6ece9] mb-4 flex justify-between items-center text-xs">
-              <span className="text-[#3d5a4f] font-semibold">Total Amount Due</span>
-              <span className="text-lg font-black text-[#157354]">
+            <div className="bg-surface rounded-xl p-3 border border-border mb-4 flex justify-between items-center text-xs">
+              <span className="text-text-muted font-semibold">Total Amount Due</span>
+              <span className="text-lg font-black text-brand-600">
                 ${balance.toFixed(2)}
               </span>
             </div>
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="block text-[10px] font-black text-[#0b3828] mb-1 uppercase tracking-wider">Cardholder Name</label>
+                <label className="block text-[10px] font-black text-heading mb-1 uppercase tracking-wider">Cardholder Name</label>
                 <input 
                   type="text" 
                   disabled={isProcessingPayment} 
                   defaultValue={profile ? `${profile.first_name} ${profile.last_name}` : ''}
-                  className="w-full px-3 py-2 border border-[#e6ece9] rounded-xl bg-[#f8faf9] focus:outline-none focus:border-[#157354]"
+                  className="w-full px-3 py-2 border border-border rounded-xl bg-surface focus:outline-none focus:border-brand-600"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-[#0b3828] mb-1 uppercase tracking-wider">Card Number (Sandbox)</label>
+                <label className="block text-[10px] font-black text-heading mb-1 uppercase tracking-wider">Card Number (Sandbox)</label>
                 <div className="relative">
                   <input 
                     type="text" 
                     disabled={isProcessingPayment} 
                     placeholder="4242 4242 4242 4242"
-                    className="w-full pl-8 pr-3 py-2 border border-[#e6ece9] rounded-xl bg-[#f8faf9] focus:outline-none focus:border-[#157354]"
+                    className="w-full pl-8 pr-3 py-2 border border-border rounded-xl bg-surface focus:outline-none focus:border-brand-600"
                   />
                   <CreditCard className="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5" />
                 </div>
@@ -537,21 +537,21 @@ export default function MobileAccountPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-black text-[#0b3828] mb-1 uppercase tracking-wider">Expiration</label>
+                  <label className="block text-[10px] font-black text-heading mb-1 uppercase tracking-wider">Expiration</label>
                   <input 
                     type="text" 
                     disabled={isProcessingPayment} 
                     placeholder="MM/YY"
-                    className="w-full px-3 py-2 border border-[#e6ece9] rounded-xl bg-[#f8faf9] focus:outline-none focus:border-[#157354]"
+                    className="w-full px-3 py-2 border border-border rounded-xl bg-surface focus:outline-none focus:border-brand-600"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-[#0b3828] mb-1 uppercase tracking-wider">CVC</label>
+                  <label className="block text-[10px] font-black text-heading mb-1 uppercase tracking-wider">CVC</label>
                   <input 
                     type="password" 
                     disabled={isProcessingPayment} 
                     placeholder="•••"
-                    className="w-full px-3 py-2 border border-[#e6ece9] rounded-xl bg-[#f8faf9] focus:outline-none focus:border-[#157354]"
+                    className="w-full px-3 py-2 border border-border rounded-xl bg-surface focus:outline-none focus:border-brand-600"
                   />
                 </div>
               </div>
@@ -560,7 +560,7 @@ export default function MobileAccountPage() {
                 <button
                   onClick={handlePayBalance}
                   disabled={isProcessingPayment}
-                  className="w-full bg-[#157354] hover:bg-[#0f4a36] text-white font-bold py-3 rounded-xl transition-all disabled:opacity-75 flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer"
+                  className="w-full bg-brand-600 hover:bg-brand-800 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-75 flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer"
                 >
                   {isProcessingPayment ? (
                     <>

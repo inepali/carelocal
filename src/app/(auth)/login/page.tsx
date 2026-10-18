@@ -126,7 +126,7 @@ export default function LoginPage() {
           </Link>
 
           <h1 className="text-3xl font-extrabold text-brand-900 mb-2">Welcome back</h1>
-          <p className="text-[#6b7a73] mb-8">Sign in to your {config.appName} account</p>
+          <p className="text-muted mb-8">Sign in to your {config.appName} account</p>
 
           <form onSubmit={handleLogin} className="space-y-5">
             {error && (
@@ -147,7 +147,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={config.onboarding.emailPlaceholder}
-                className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-brand-900 placeholder:text-[#a8b5ae]"
+                className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-brand-900 placeholder:text-subtle"
               />
             </div>
 
@@ -169,12 +169,12 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-4 py-3 pr-12 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-brand-900"
+                  className="w-full px-4 py-3 pr-12 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-brand-900"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6b7a73] hover:text-brand-600 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-brand-600 transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -195,7 +195,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="text-center text-sm text-[#6b7a73] mt-8">
+          <p className="text-center text-sm text-muted mt-8">
             Don't have an account?{' '}
             <Link href="/register" className="text-brand-600 font-semibold hover:underline">
               Get started free

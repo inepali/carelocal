@@ -323,8 +323,8 @@ export default function MobileLayout({ children }: { children: React.ReactNode }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#f8faf9]">
-        <div className="w-8 h-8 rounded-full border-4 border-[#157354]/30 border-t-[#157354] animate-spin" />
+      <div className="flex items-center justify-center min-h-screen bg-surface">
+        <div className="w-8 h-8 rounded-full border-4 border-brand-600/30 border-t-brand-600 animate-spin" />
       </div>
     )
   }
@@ -332,14 +332,14 @@ export default function MobileLayout({ children }: { children: React.ReactNode }
   return (
     <ToastContext.Provider value={{ showToast }}>
       <div className="flex justify-center min-h-screen bg-[#f1f5f3]">
-        <div className="w-full max-w-md bg-[#f8faf9] min-h-screen flex flex-col relative shadow-2xl border-x border-slate-100 pb-safe">
+        <div className="w-full max-w-md bg-surface min-h-screen flex flex-col relative shadow-2xl border-x border-slate-100 pb-safe">
           {/* Toast Container */}
           <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4 space-y-2 pointer-events-none">
             {toasts.map((toast) => (
               <div
                 key={toast.id}
                 className={`pointer-events-auto p-4 rounded-2xl shadow-xl border flex items-start gap-3 transition-all duration-300 transform translate-y-0 scale-100 animate-in slide-in-from-top-4 duration-300 ${
-                  toast.type === 'success' ? 'bg-[#edf7f3] border-[#d4ede4] text-[#157354]' :
+                  toast.type === 'success' ? 'bg-brand-50 border-brand-100 text-brand-600' :
                   toast.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' :
                   toast.type === 'warning' ? 'bg-yellow-50 border-yellow-200 text-yellow-800' :
                   'bg-slate-900 border-slate-800 text-white'
@@ -367,20 +367,20 @@ export default function MobileLayout({ children }: { children: React.ReactNode }
           </div>
 
           {showBanner && (
-          <div className="bg-gradient-to-r from-[#0b3828] to-[#157354] text-white p-3 px-4 flex items-center justify-between shadow-md relative z-50 animate-in slide-in-from-top-4 duration-300">
+          <div className="bg-gradient-to-r from-brand-900 to-brand-600 text-white p-3 px-4 flex items-center justify-between shadow-md relative z-50 animate-in slide-in-from-top-4 duration-300">
             <div className="flex items-center gap-2 min-w-0">
               <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
                 <span className="text-white font-black text-xs">CL</span>
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-black leading-tight">CareLocal Mobile App</p>
-                <p className="text-[9px] text-[#edf7f3] font-medium truncate">Offline scheduling & push notifications</p>
+                <p className="text-[9px] text-brand-50 font-medium truncate">Offline scheduling & push notifications</p>
               </div>
             </div>
             <div className="flex items-center gap-2.5 shrink-0">
               <button 
                 onClick={handleLaunchOrInstall}
-                className="bg-white text-[#0b3828] font-bold text-[9px] uppercase tracking-wider px-3 py-1.5 rounded-lg active:scale-95 transition-all cursor-pointer"
+                className="bg-white text-heading font-bold text-[9px] uppercase tracking-wider px-3 py-1.5 rounded-lg active:scale-95 transition-all cursor-pointer"
               >
                 Open / Install
               </button>
@@ -429,7 +429,7 @@ export default function MobileLayout({ children }: { children: React.ReactNode }
         {/* PWA App info launch drawer/modal */}
         {showInfoModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-            <div className="bg-white rounded-3xl border border-[#e6ece9] max-w-sm w-full p-5 shadow-2xl relative text-left">
+            <div className="bg-white rounded-3xl border border-border max-w-sm w-full p-5 shadow-2xl relative text-left">
               <button 
                 onClick={() => setShowInfoModal(false)}
                 className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 cursor-pointer"
@@ -437,19 +437,19 @@ export default function MobileLayout({ children }: { children: React.ReactNode }
                 <X className="w-4 h-4" />
               </button>
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-[#edf7f3] flex items-center justify-center">
-                  <Smartphone className="w-4 h-4 text-[#157354]" />
+                <div className="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center">
+                  <Smartphone className="w-4 h-4 text-brand-600" />
                 </div>
-                <h3 className="text-base font-black text-[#0b3828]">Launch PWA App</h3>
+                <h3 className="text-base font-black text-heading">Launch PWA App</h3>
               </div>
               
-              <div className="text-xs text-[#3d5a4f] space-y-3 leading-relaxed mb-6">
+              <div className="text-xs text-text-muted space-y-3 leading-relaxed mb-6">
                 <p>
                   To open CareLocal in full-screen app mode, please select the option below or open it from your device home screen:
                 </p>
                 {isInstallable ? (
-                  <div className="p-3 bg-[#edf7f3] border border-[#d4ede4] rounded-xl flex gap-2">
-                    <CheckCircle className="w-4 h-4 text-[#157354] shrink-0 mt-0.5" />
+                  <div className="p-3 bg-brand-50 border border-brand-100 rounded-xl flex gap-2">
+                    <CheckCircle className="w-4 h-4 text-brand-600 shrink-0 mt-0.5" />
                     <p className="text-[11px] text-emerald-800">
                       Your browser supports direct installation. Tap <strong>Install App</strong> below to add it to your home screen now.
                     </p>
@@ -474,14 +474,14 @@ export default function MobileLayout({ children }: { children: React.ReactNode }
                 {isInstallable && (
                   <button
                     onClick={handleInstallApp}
-                    className="w-full bg-[#157354] hover:bg-[#0f4a36] text-white font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider cursor-pointer"
+                    className="w-full bg-brand-600 hover:bg-brand-800 text-white font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider cursor-pointer"
                   >
                     Install App
                   </button>
                 )}
                 <button
                   onClick={() => setShowInfoModal(false)}
-                  className="w-full bg-slate-100 hover:bg-slate-200 text-[#6b7a73] font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider cursor-pointer text-center"
+                  className="w-full bg-slate-100 hover:bg-slate-200 text-muted font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider cursor-pointer text-center"
                 >
                   Close
                 </button>

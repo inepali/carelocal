@@ -70,7 +70,7 @@ export default function SubscriptionTab() {
   if (loading) {
     return (
       <div className="py-12 flex justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#157354]" />
+        <Loader2 className="w-8 h-8 animate-spin text-brand-600" />
       </div>
     )
   }
@@ -80,26 +80,26 @@ export default function SubscriptionTab() {
   return (
     <div className="max-w-4xl">
       <div className="mb-8">
-        <h2 className="text-2xl font-black text-[#0b3828] tracking-tight mb-2">Subscription & Billing</h2>
-        <p className="text-[#6b7a73] font-medium">Manage your CareLocal plan and billing details.</p>
+        <h2 className="text-2xl font-black text-heading tracking-tight mb-2">Subscription & Billing</h2>
+        <p className="text-muted font-medium">Manage your CareLocal plan and billing details.</p>
       </div>
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden mb-8">
-        <div className="p-8 border-b border-slate-100 bg-[#f8faf9]/50 flex items-center justify-between">
+        <div className="p-8 border-b border-slate-100 bg-surface/50 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`p-3 rounded-xl ${isActive ? 'bg-[#edf7f3] text-[#157354]' : 'bg-[#fffbeb] text-[#d97706]'}`}>
+            <div className={`p-3 rounded-xl ${isActive ? 'bg-brand-50 text-brand-600' : 'bg-[#fffbeb] text-amber-600'}`}>
               <CreditCard className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-[#0b3828]">Current Plan</h2>
-              <p className="text-sm font-bold text-[#6b7a73]">
-                Status: <span className={isActive ? 'text-[#157354] uppercase tracking-wider text-[11px]' : 'text-[#d97706] uppercase tracking-wider text-[11px]'}>{subscription?.status || 'None'}</span>
+              <h2 className="text-xl font-black text-heading">Current Plan</h2>
+              <p className="text-sm font-bold text-muted">
+                Status: <span className={isActive ? 'text-brand-600 uppercase tracking-wider text-[11px]' : 'text-amber-600 uppercase tracking-wider text-[11px]'}>{subscription?.status || 'None'}</span>
               </p>
             </div>
           </div>
           
           {isActive && (
-            <div className="px-4 py-2 bg-[#f0fdf4] text-[#16a34a] rounded-lg text-sm font-bold flex items-center gap-2">
+            <div className="px-4 py-2 bg-brand-50 text-[#16a34a] rounded-lg text-sm font-bold flex items-center gap-2">
               <ShieldCheck className="w-4 h-4" /> Active Plan
             </div>
           )}
@@ -108,8 +108,8 @@ export default function SubscriptionTab() {
         <div className="p-8">
           {subscription?.tier ? (
             <div className="mb-6">
-              <div className="text-sm font-bold text-[#6b7a73] mb-1 uppercase tracking-widest">Selected Tier</div>
-              <div className="text-3xl font-black text-[#1a2e25] capitalize">{subscription.tier}</div>
+              <div className="text-sm font-bold text-muted mb-1 uppercase tracking-widest">Selected Tier</div>
+              <div className="text-3xl font-black text-text-main capitalize">{subscription.tier}</div>
             </div>
           ) : (
             <div className="mb-6 flex items-start gap-3 p-4 bg-[#fffbeb] text-[#b45309] rounded-xl">
@@ -123,7 +123,7 @@ export default function SubscriptionTab() {
               <button
                 onClick={handleManageSubscription}
                 disabled={portalLoading}
-                className="flex items-center justify-center gap-2 bg-[#157354] text-white font-black px-6 py-3.5 rounded-xl hover:bg-[#0f4a36] transition-all shadow-md disabled:opacity-70 flex-1 sm:flex-none"
+                className="flex items-center justify-center gap-2 bg-brand-600 text-white font-black px-6 py-3.5 rounded-xl hover:bg-brand-800 transition-all shadow-md disabled:opacity-70 flex-1 sm:flex-none"
               >
                 {portalLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <CreditCard className="w-5 h-5" />}
                 Manage Subscription
@@ -132,14 +132,14 @@ export default function SubscriptionTab() {
             
             <Link
               href="/center/settings/billing"
-              className="flex items-center justify-center gap-2 bg-[#f8faf9] text-[#1a2e25] border border-[#e2e8e4] font-black px-6 py-3.5 rounded-xl hover:bg-[#edf7f3] hover:border-[#157354] hover:text-[#157354] transition-all flex-1 sm:flex-none"
+              className="flex items-center justify-center gap-2 bg-surface text-text-main border border-border font-black px-6 py-3.5 rounded-xl hover:bg-brand-50 hover:border-brand-600 hover:text-brand-600 transition-all flex-1 sm:flex-none"
             >
               View Pricing Tiers
             </Link>
           </div>
           
           {subscription?.hasCustomer && (
-            <p className="text-xs font-bold text-[#a8b5ae] mt-4">
+            <p className="text-xs font-bold text-subtle mt-4">
               Clicking "Manage Subscription" will open the secure Stripe billing portal where you can update your payment method, download invoices, upgrade, downgrade, or cancel your plan.
             </p>
           )}

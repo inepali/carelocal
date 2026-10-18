@@ -151,8 +151,8 @@ export default function MobileMyShiftsPage() {
   return (
     <div className="py-2">
       <div className="mb-5">
-        <h1 className="text-2xl font-black text-[#0b3828] tracking-tight">My Shifts</h1>
-        <p className="text-xs text-[#6b7a73] font-medium mt-1">Manage your schedule and time clock.</p>
+        <h1 className="text-2xl font-black text-heading tracking-tight">My Shifts</h1>
+        <p className="text-xs text-muted font-medium mt-1">Manage your schedule and time clock.</p>
       </div>
 
       {errorMsg && (
@@ -170,8 +170,8 @@ export default function MobileMyShiftsPage() {
           onClick={() => setActiveTab('upcoming')}
           className={`flex-1 text-center py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'upcoming'
-              ? 'bg-white text-[#0b3828] shadow-sm'
-              : 'text-[#6b7a73] hover:text-[#0b3828]'
+              ? 'bg-white text-heading shadow-sm'
+              : 'text-muted hover:text-heading'
           }`}
         >
           Upcoming ({upcomingShifts.length})
@@ -180,8 +180,8 @@ export default function MobileMyShiftsPage() {
           onClick={() => setActiveTab('completed')}
           className={`flex-1 text-center py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'completed'
-              ? 'bg-white text-[#0b3828] shadow-sm'
-              : 'text-[#6b7a73] hover:text-[#0b3828]'
+              ? 'bg-white text-heading shadow-sm'
+              : 'text-muted hover:text-heading'
           }`}
         >
           Completed ({completedShifts.length})
@@ -189,10 +189,10 @@ export default function MobileMyShiftsPage() {
       </div>
 
       {displayedShifts.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-[#e2e8e4] px-4">
-          <Calendar className="w-8 h-8 text-[#a8b5ae] mx-auto mb-3" />
-          <h3 className="text-sm font-bold text-[#0b3828] mb-1">No Shifts Found</h3>
-          <p className="text-xs text-[#6b7a73] font-medium max-w-xs mx-auto">
+        <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-border px-4">
+          <Calendar className="w-8 h-8 text-subtle mx-auto mb-3" />
+          <h3 className="text-sm font-bold text-heading mb-1">No Shifts Found</h3>
+          <p className="text-xs text-muted font-medium max-w-xs mx-auto">
             {activeTab === 'upcoming'
               ? 'You have no upcoming confirmed or pending shifts. Browse available shifts to claim some!'
               : 'You have not completed any shifts yet.'}
@@ -216,13 +216,13 @@ export default function MobileMyShiftsPage() {
             return (
               <div
                 key={shift.id}
-                className="bg-white rounded-2xl border border-[#e6ece9] p-5 shadow-sm space-y-4"
+                className="bg-white rounded-2xl border border-border p-5 shadow-sm space-y-4"
               >
                 {/* Header Row: Status Tags & Rate */}
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5">
                     {isConfirmed ? (
-                      <span className="rounded-full bg-[#f0fdf4] border border-[#dcfce7] px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-[#157354]">
+                      <span className="rounded-full bg-brand-50 border border-[#dcfce7] px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-brand-600">
                         Assigned
                       </span>
                     ) : isPending ? (
@@ -234,32 +234,32 @@ export default function MobileMyShiftsPage() {
                         Interested
                       </span>
                     ) : (
-                      <span className="rounded-full bg-[#f8faf9] border border-slate-200 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-slate-500">
+                      <span className="rounded-full bg-surface border border-slate-200 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-slate-500">
                         {myClaim?.status || 'Unknown'}
                       </span>
                     )}
                   </div>
-                  <span className="text-xs font-black text-[#157354] bg-[#edf7f3] border border-[#d4ede4] px-2.5 py-1 rounded-full">
+                  <span className="text-xs font-black text-brand-600 bg-brand-50 border border-brand-100 px-2.5 py-1 rounded-full">
                     ${shift.hourly_rate ?? '20.00'}/hr
                   </span>
                 </div>
 
                 {/* Body Row: Center Info */}
                 <div className="space-y-1">
-                  <h3 className="font-black text-[#0b3828] text-base leading-snug">{shift.centers?.name}</h3>
-                  <div className="flex items-center text-[11px] text-[#6b7a73] font-medium">
+                  <h3 className="font-black text-heading text-base leading-snug">{shift.centers?.name}</h3>
+                  <div className="flex items-center text-[11px] text-muted font-medium">
                     <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400" />
                     {shift.centers?.city}, {shift.centers?.state}
                   </div>
                   {shift.work_areas && (
-                    <div className="text-[10px] text-[#3d5a4f] bg-slate-50 border border-slate-100 rounded-lg px-2 py-1 w-fit mt-1">
+                    <div className="text-[10px] text-text-muted bg-slate-50 border border-slate-100 rounded-lg px-2 py-1 w-fit mt-1">
                       <span className="font-bold text-slate-400">Area:</span> {shift.work_areas.name}
                     </div>
                   )}
                 </div>
 
                 {/* Timing info */}
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-bold text-[#6b7a73] pt-2 border-t border-[#f0f4f2]">
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-bold text-muted pt-2 border-t border-border">
                   <span className="flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5 text-slate-400" />
                     {dateLabel}
@@ -273,14 +273,14 @@ export default function MobileMyShiftsPage() {
                 {/* Time Clock (For Confirmed & Active Shifts) */}
                 {isConfirmed && (
                   <div className="mt-2 p-3 bg-slate-50 border border-slate-200/60 rounded-xl space-y-3">
-                    <div className="text-[10px] font-black uppercase tracking-wider text-[#6b7a73]">
+                    <div className="text-[10px] font-black uppercase tracking-wider text-muted">
                       Time Clock Activity
                     </div>
                     
-                    <div className="flex flex-col gap-1.5 text-xs text-[#0b3828]">
+                    <div className="flex flex-col gap-1.5 text-xs text-heading">
                       <div className="flex items-center justify-between">
                         <span className="flex items-center gap-1.5 font-medium text-slate-500">
-                          <LogIn className="w-3.5 h-3.5 text-[#157354]" /> Check-In:
+                          <LogIn className="w-3.5 h-3.5 text-brand-600" /> Check-In:
                         </span>
                         <span className="font-bold">
                           {myClaim.check_in_time 
@@ -308,7 +308,7 @@ export default function MobileMyShiftsPage() {
                           type="button"
                           onClick={() => handleCheckIn(shift.id)}
                           disabled={actionLoadingId === shift.id}
-                          className="w-full bg-[#157354] hover:bg-[#0f4a36] text-white font-bold py-2.5 rounded-lg text-xs uppercase tracking-wider shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-98"
+                          className="w-full bg-brand-600 hover:bg-brand-800 text-white font-bold py-2.5 rounded-lg text-xs uppercase tracking-wider shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-98"
                         >
                           {actionLoadingId === shift.id ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -334,7 +334,7 @@ export default function MobileMyShiftsPage() {
                           )}
                         </button>
                       ) : (
-                        <div className="text-center text-[10px] font-bold text-[#157354] bg-[#edf7f3] py-1.5 rounded-lg border border-[#d4ede4] flex items-center justify-center gap-1">
+                        <div className="text-center text-[10px] font-bold text-brand-600 bg-brand-50 py-1.5 rounded-lg border border-brand-100 flex items-center justify-center gap-1">
                           <CheckCircle2 className="w-3.5 h-3.5" /> Completed Timecard Saved
                         </div>
                       )}

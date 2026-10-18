@@ -62,10 +62,10 @@ const YEARS = Array.from({ length: 40 }, (_, i) => new Date().getFullYear() - i)
 
 // ─── Shared section layout (matches My Documents) ───────────────────────────
 
-const LBL    = 'block text-sm font-medium text-[#1a2e25] mb-1.5'
-const FLD    = 'w-full px-3.5 py-2.5 rounded-xl border border-[#e2e8e4] bg-white text-[#1a2e25] text-sm focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition'
-const TH_ROW = 'border-b border-[#e2e8e4] text-[15px] font-bold text-[#1a2e25]'
-const TBODY  = 'divide-y divide-[#e2e8e4] text-sm font-normal text-[#3d5a4f]'
+const LBL    = 'block text-sm font-medium text-text-main mb-1.5'
+const FLD    = 'w-full px-3.5 py-2.5 rounded-xl border border-border bg-white text-text-main text-sm focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition'
+const TH_ROW = 'border-b border-border text-[15px] font-bold text-text-main'
+const TBODY  = 'divide-y divide-border text-sm font-normal text-text-muted'
 
 function fmtDate(date?: string) {
   return date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
@@ -79,15 +79,15 @@ function ProfileSection({ Icon, title, subtitle, action, children }: {
   children: React.ReactNode
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-[#e2e8e4] bg-white shadow-sm">
-      <div className="flex flex-col gap-3 border-b border-[#e2e8e4] bg-[#f8faf9] px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+    <section className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+      <div className="flex flex-col gap-3 border-b border-border bg-surface px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#edf7f3] text-[#157354]">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
             <Icon className="h-5 w-5" />
           </span>
           <div>
-            <h2 className="text-lg font-bold text-[#1a2e25]">{title}</h2>
-            {subtitle && <p className="text-xs text-[#6b7a73]">{subtitle}</p>}
+            <h2 className="text-lg font-bold text-text-main">{title}</h2>
+            {subtitle && <p className="text-xs text-muted">{subtitle}</p>}
           </div>
         </div>
         {action}
@@ -102,7 +102,7 @@ function AddButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#157354] px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-[#0f4a36]"
+      className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-brand-800"
     >
       <Plus className="h-4 w-4" /> Add New
     </button>
@@ -112,10 +112,10 @@ function AddButton({ onClick }: { onClick: () => void }) {
 function RowActions({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
   return (
     <div className="flex items-center justify-end gap-1">
-      <button onClick={onEdit} className="rounded-lg p-2 text-[#157354] transition-colors hover:bg-[#edf7f3]" title="Edit">
+      <button onClick={onEdit} className="rounded-lg p-2 text-brand-600 transition-colors hover:bg-brand-50" title="Edit">
         <Pencil className="h-4 w-4" />
       </button>
-      <button onClick={onDelete} className="rounded-lg p-2 text-[#a8b5ae] transition-colors hover:bg-red-50 hover:text-red-500" title="Delete">
+      <button onClick={onDelete} className="rounded-lg p-2 text-subtle transition-colors hover:bg-red-50 hover:text-red-500" title="Delete">
         <Trash2 className="h-4 w-4" />
       </button>
     </div>
@@ -131,13 +131,13 @@ function FormButtons({ saving, disabled, label, onSave, onCancel }: {
 }) {
   return (
     <div className="flex justify-end gap-2">
-      <button onClick={onCancel} className="px-4 py-2.5 rounded-xl border border-[#e2e8e4] text-[#6b7a73] text-sm font-medium hover:bg-[#f8faf9] transition-colors">
+      <button onClick={onCancel} className="px-4 py-2.5 rounded-xl border border-border text-muted text-sm font-medium hover:bg-surface transition-colors">
         Cancel
       </button>
       <button
         onClick={onSave}
         disabled={saving || disabled}
-        className="inline-flex items-center gap-2 bg-[#157354] text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-[#0f4a36] transition-colors disabled:opacity-50"
+        className="inline-flex items-center gap-2 bg-brand-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-brand-800 transition-colors disabled:opacity-50"
       >
         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 text-white/70" />} {label}
       </button>
@@ -275,7 +275,7 @@ export default function StaffProfilePage() {
       <div className="animate-pulse space-y-6 max-w-5xl">
         <div className="h-8 w-48 bg-slate-200 rounded mb-8" />
         <div className="h-12 w-full bg-slate-100 rounded-2xl" />
-        <div className="h-72 bg-white rounded-[2.5rem] border border-[#e2e8e4]" />
+        <div className="h-72 bg-white rounded-[2.5rem] border border-border" />
       </div>
     )
   }
@@ -296,14 +296,14 @@ export default function StaffProfilePage() {
     <div className="max-w-5xl pb-32">
       {/* Header */}
       <div className="mb-10">
-        <h1 className="text-4xl font-black text-[#0b3828] mb-2 tracking-tight">My Profile</h1>
-        <p className="text-[#6b7a73] text-lg font-medium">
+        <h1 className="text-4xl font-black text-heading mb-2 tracking-tight">My Profile</h1>
+        <p className="text-muted text-lg font-medium">
           {isRegularOnly ? 'Manage your background and credentials.' : 'Manage your background, credentials and availability.'}
         </p>
       </div>
 
       {/* Avatar strip */}
-      <div className="flex items-center gap-6 mb-10 p-6 bg-white rounded-2xl border border-[#e2e8e4] shadow-sm">
+      <div className="flex items-center gap-6 mb-10 p-6 bg-white rounded-2xl border border-border shadow-sm">
         <label
           className={`relative group shrink-0 ${staffId ? 'cursor-pointer' : 'cursor-not-allowed'}`}
           title={staffId ? 'Change profile photo' : 'Save your personal info first'}
@@ -312,7 +312,7 @@ export default function StaffProfilePage() {
             avatarKey={profile.avatar_url}
             firstName={profile.first_name}
             lastName={profile.last_name}
-            className="w-20 h-20 rounded-[1.5rem] bg-[#157354] text-white text-2xl font-bold shadow-lg shadow-[#157354]/30"
+            className="w-20 h-20 rounded-[1.5rem] bg-brand-600 text-white text-2xl font-bold shadow-lg shadow-brand-600/30"
           />
           {staffId && (
             <span className={`absolute inset-0 rounded-[1.5rem] bg-black/45 text-white flex items-center justify-center transition-opacity ${uploadingAvatar ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
@@ -332,13 +332,13 @@ export default function StaffProfilePage() {
           />
         </label>
         <div>
-          <div className="text-xl font-semibold text-[#1a2e25] tracking-tight">{profile.first_name} {profile.last_name}</div>
+          <div className="text-xl font-semibold text-text-main tracking-tight">{profile.first_name} {profile.last_name}</div>
           <div className="flex items-center gap-3 mt-1">
-            <span className="text-[10px] font-medium tracking-wide text-[#a8b5ae]">Verified Member</span>
+            <span className="text-[10px] font-medium tracking-wide text-subtle">Verified Member</span>
           </div>
           {staffId && (
             <div className="flex items-center gap-3 mt-2 text-xs font-semibold">
-              <label className="text-[#157354] hover:underline cursor-pointer">
+              <label className="text-brand-600 hover:underline cursor-pointer">
                 {profile.avatar_url ? 'Change photo' : 'Upload photo'}
                 <input
                   type="file"
@@ -371,14 +371,14 @@ export default function StaffProfilePage() {
               onClick={() => setActiveTab(tab.id)}
               className={`group inline-flex items-center border-b-2 py-4 px-1 text-sm font-medium whitespace-nowrap transition-colors ${
                 activeTab === tab.id
-                  ? 'border-[#157354] text-[#157354]'
+                  ? 'border-brand-600 text-brand-600'
                   : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
               }`}
               aria-current={activeTab === tab.id ? 'page' : undefined}
             >
               <tab.Icon
                 className={`-ml-0.5 mr-2 h-5 w-5 ${
-                  activeTab === tab.id ? 'text-[#157354]' : 'text-gray-400 group-hover:text-gray-500'
+                  activeTab === tab.id ? 'text-brand-600' : 'text-gray-400 group-hover:text-gray-500'
                 }`}
                 aria-hidden="true"
               />
@@ -454,8 +454,8 @@ function PersonalInfoTab({
     setSaving(false)
   }
 
-  const F = 'w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white text-[#1a2e25] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition'
-  const L = 'block text-sm font-medium text-[#1a2e25] mb-1.5'
+  const F = 'w-full px-4 py-3 rounded-xl border border-border bg-white text-text-main focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition'
+  const L = 'block text-sm font-medium text-text-main mb-1.5'
 
   const { data: paymentLookups } = useLookups('Payment Method')
 
@@ -469,10 +469,10 @@ function PersonalInfoTab({
   }
 
   return (
-    <div className="bg-white border border-[#e2e8e4] rounded-2xl shadow-sm overflow-hidden">
+    <div className="bg-white border border-border rounded-2xl shadow-sm overflow-hidden">
       <form onSubmit={handleSave} className="p-8 md:p-10 space-y-8">
         {message && (
-          <div className={`p-4 rounded-xl text-sm font-black border-2 ${message.includes('Error') ? 'bg-red-50 text-red-700 border-red-100' : 'bg-[#f0fdf4] text-[#16a34a] border-[#bbf7d0]'}`}>
+          <div className={`p-4 rounded-xl text-sm font-black border-2 ${message.includes('Error') ? 'bg-red-50 text-red-700 border-red-100' : 'bg-brand-50 text-[#16a34a] border-[#bbf7d0]'}`}>
             {message}
           </div>
         )}
@@ -491,7 +491,7 @@ function PersonalInfoTab({
         <div className="grid sm:grid-cols-2 gap-6">
           <div>
             <label className={L}>Email</label>
-            <input type="email" disabled value={profile.email || ''} className={`${F} opacity-40 cursor-not-allowed bg-[#f8faf9]`} />
+            <input type="email" disabled value={profile.email || ''} className={`${F} opacity-40 cursor-not-allowed bg-surface`} />
           </div>
           <div>
             <label className={L}>Phone</label>
@@ -514,7 +514,7 @@ function PersonalInfoTab({
           </div>
         </div>
 
-        <div className="grid sm:grid-cols-1 gap-6 pt-4 border-t border-[#e2e8e4]">
+        <div className="grid sm:grid-cols-1 gap-6 pt-4 border-t border-border">
           <div>
             <label className={L}>Metro Area</label>
             <select value={profile.metro_area_id || ''} onChange={e => setProfile({...profile, metro_area_id: e.target.value})} className={`${F} appearance-none cursor-pointer`}>
@@ -529,9 +529,9 @@ function PersonalInfoTab({
           <textarea value={profile.bio || ''} onChange={e => setProfile({...profile, bio: e.target.value})} rows={4} placeholder="Tell centers about your background..." className={`${F} resize-none`} />
         </div>
 
-        <div className="pt-6 border-t border-[#e2e8e4]">
-          <label className="block text-[15px] font-bold text-[#1a2e25] mb-1">Preferred Payment Methods</label>
-          <p className="text-xs text-[#6b7a73] mb-3">Select all the ways you&apos;re comfortable receiving payment for shifts.</p>
+        <div className="pt-6 border-t border-border">
+          <label className="block text-[15px] font-bold text-text-main mb-1">Preferred Payment Methods</label>
+          <p className="text-xs text-muted mb-3">Select all the ways you&apos;re comfortable receiving payment for shifts.</p>
           <div className="flex flex-wrap gap-1.5">
             {paymentLookups.filter(m => m.is_active || activeMethods.includes(m.value)).map(method => {
               const active = activeMethods.includes(method.value)
@@ -543,8 +543,8 @@ function PersonalInfoTab({
                   aria-pressed={active}
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border transition-colors ${
                     active
-                      ? 'bg-[#157354] text-white border-[#157354]'
-                      : 'bg-white text-[#3d5a4f] border-[#e2e8e4] hover:border-[#157354]/40 hover:text-[#0b3828]'
+                      ? 'bg-brand-600 text-white border-brand-600'
+                      : 'bg-white text-text-muted border-border hover:border-brand-600/40 hover:text-heading'
                   }`}
                 >
                   {method.label}
@@ -553,11 +553,11 @@ function PersonalInfoTab({
             })}
           </div>
           {activeMethods.length === 0 && (
-            <p className="text-xs text-[#a8b5ae] mt-2">No preference selected — centers will see all methods as acceptable.</p>
+            <p className="text-xs text-subtle mt-2">No preference selected — centers will see all methods as acceptable.</p>
           )}
         </div>
 
-        <button type="submit" disabled={saving} className="w-full flex items-center justify-center gap-3 bg-[#157354] text-white font-semibold px-8 py-3 rounded-xl hover:bg-[#0f4a36] shadow-sm transition-colors disabled:opacity-60">
+        <button type="submit" disabled={saving} className="w-full flex items-center justify-center gap-3 bg-brand-600 text-white font-semibold px-8 py-3 rounded-xl hover:bg-brand-800 shadow-sm transition-colors disabled:opacity-60">
           {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-5 h-5 text-white/60" /> Save Profile</>}
         </button>
       </form>
@@ -629,10 +629,10 @@ function ExperienceTab({ staffId, supabase }: { staffId: string; supabase: any }
       action={!form && <AddButton onClick={() => setForm({ is_current: false })} />}
     >
       {form && (
-        <div className="p-6 space-y-4 border-b border-[#e2e8e4] bg-[#fbfcfb]">
+        <div className="p-6 space-y-4 border-b border-border bg-surface">
           <div className="flex items-center justify-between">
-            <h3 className="font-bold text-[#0b3828]">{form.id ? 'Edit' : 'New'} Experience</h3>
-            <button onClick={() => setForm(null)} className="text-[#a8b5ae] hover:text-[#0b3828] transition-colors"><X className="w-5 h-5" /></button>
+            <h3 className="font-bold text-heading">{form.id ? 'Edit' : 'New'} Experience</h3>
+            <button onClick={() => setForm(null)} className="text-subtle hover:text-heading transition-colors"><X className="w-5 h-5" /></button>
           </div>
 
           <div className="grid sm:grid-cols-3 gap-4">
@@ -687,11 +687,11 @@ function ExperienceTab({ staffId, supabase }: { staffId: string; supabase: any }
           </div>
 
           <label className="flex items-center gap-3 cursor-pointer select-none">
-            <div className={`w-10 h-6 rounded-full transition-colors ${form.is_current ? 'bg-[#157354]' : 'bg-[#e2e8e4]'} relative`}
+            <div className={`w-10 h-6 rounded-full transition-colors ${form.is_current ? 'bg-brand-600' : 'bg-border'} relative`}
               onClick={() => setForm({...form, is_current: !form.is_current})}>
               <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.is_current ? 'translate-x-5' : 'translate-x-1'}`} />
             </div>
-            <span className="text-sm font-medium text-[#1a2e25]">I currently work here</span>
+            <span className="text-sm font-medium text-text-main">I currently work here</span>
           </label>
 
           <div>
@@ -705,11 +705,11 @@ function ExperienceTab({ staffId, supabase }: { staffId: string; supabase: any }
 
       {loading ? (
         <div className="p-6 animate-pulse space-y-3">
-          <div className="h-8 bg-[#f0f4f2] rounded-lg" />
-          <div className="h-8 bg-[#f0f4f2] rounded-lg" />
+          <div className="h-8 bg-surface-2 rounded-lg" />
+          <div className="h-8 bg-surface-2 rounded-lg" />
         </div>
       ) : items.length === 0 ? (
-        !form && <div className="px-6 py-6 text-sm text-[#6b7a73]">No work experience added yet. Add your background to help centers match you.</div>
+        !form && <div className="px-6 py-6 text-sm text-muted">No work experience added yet. Add your background to help centers match you.</div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-left">
@@ -724,10 +724,10 @@ function ExperienceTab({ staffId, supabase }: { staffId: string; supabase: any }
             </thead>
             <tbody className={TBODY}>
               {items.map(item => (
-                <tr key={item.id} className="hover:bg-[#fbfcfb] transition-colors align-top">
+                <tr key={item.id} className="hover:bg-surface transition-colors align-top">
                   <td className="px-6 py-4">
-                    <div className="text-[#1a2e25]">{item.employer}</div>
-                    {item.description && <div className="mt-0.5 max-w-xs text-xs text-[#6b7a73] line-clamp-2">{item.description}</div>}
+                    <div className="text-text-main">{item.employer}</div>
+                    {item.description && <div className="mt-0.5 max-w-xs text-xs text-muted line-clamp-2">{item.description}</div>}
                   </td>
                   <td className="px-6 py-4">{item.role}</td>
                   <td className="px-6 py-4">{item.age_group ? AGE_GROUP_LABELS[item.age_group] : '—'}</td>
@@ -816,10 +816,10 @@ function ReferencesTab({ staffId, supabase }: { staffId: string; supabase: any }
       )}
 
       {form && (
-        <div className="p-6 space-y-4 border-b border-[#e2e8e4] bg-[#fbfcfb]">
+        <div className="p-6 space-y-4 border-b border-border bg-surface">
           <div className="flex items-center justify-between">
-            <h3 className="font-bold text-[#0b3828]">{form.id ? 'Edit' : 'New'} Reference</h3>
-            <button onClick={() => setForm(null)} className="text-[#a8b5ae] hover:text-[#0b3828] transition-colors"><X className="w-5 h-5" /></button>
+            <h3 className="font-bold text-heading">{form.id ? 'Edit' : 'New'} Reference</h3>
+            <button onClick={() => setForm(null)} className="text-subtle hover:text-heading transition-colors"><X className="w-5 h-5" /></button>
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
@@ -849,11 +849,11 @@ function ReferencesTab({ staffId, supabase }: { staffId: string; supabase: any }
 
       {loading ? (
         <div className="p-6 animate-pulse space-y-3">
-          <div className="h-8 bg-[#f0f4f2] rounded-lg" />
-          <div className="h-8 bg-[#f0f4f2] rounded-lg" />
+          <div className="h-8 bg-surface-2 rounded-lg" />
+          <div className="h-8 bg-surface-2 rounded-lg" />
         </div>
       ) : items.length === 0 ? (
-        !form && <div className="px-6 py-6 text-sm text-[#6b7a73]">No references added yet.</div>
+        !form && <div className="px-6 py-6 text-sm text-muted">No references added yet.</div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-left">
@@ -868,13 +868,13 @@ function ReferencesTab({ staffId, supabase }: { staffId: string; supabase: any }
             </thead>
             <tbody className={TBODY}>
               {items.map(item => (
-                <tr key={item.id} className="hover:bg-[#fbfcfb] transition-colors align-top">
-                  <td className="px-6 py-4 text-[#1a2e25]">{item.full_name}</td>
+                <tr key={item.id} className="hover:bg-surface transition-colors align-top">
+                  <td className="px-6 py-4 text-text-main">{item.full_name}</td>
                   <td className="px-6 py-4">{item.business}</td>
                   <td className="px-6 py-4">{item.title}</td>
                   <td className="px-6 py-4 text-xs">
                     <div>{item.email}</div>
-                    <div className="text-[#6b7a73]">{item.phone}</div>
+                    <div className="text-muted">{item.phone}</div>
                   </td>
                   <td className="px-6 py-4">
                     <RowActions onEdit={() => setForm(item)} onDelete={() => handleDelete(item.id)} />
@@ -948,10 +948,10 @@ function CredentialsTab({ staffId, supabase, vaultDocs }: { staffId: string; sup
       action={!form && <AddButton onClick={() => setForm({})} />}
     >
       {form && (
-        <div className="p-6 space-y-4 border-b border-[#e2e8e4] bg-[#fbfcfb]">
+        <div className="p-6 space-y-4 border-b border-border bg-surface">
           <div className="flex items-center justify-between">
-            <h3 className="font-bold text-[#0b3828]">{form.id ? 'Edit' : 'New'} Credential</h3>
-            <button onClick={() => setForm(null)} className="text-[#a8b5ae] hover:text-[#0b3828]"><X className="w-5 h-5" /></button>
+            <h3 className="font-bold text-heading">{form.id ? 'Edit' : 'New'} Credential</h3>
+            <button onClick={() => setForm(null)} className="text-subtle hover:text-heading"><X className="w-5 h-5" /></button>
           </div>
 
           <div className="grid sm:grid-cols-3 gap-4">
@@ -995,11 +995,11 @@ function CredentialsTab({ staffId, supabase, vaultDocs }: { staffId: string; sup
 
       {loading ? (
         <div className="p-6 animate-pulse space-y-3">
-          <div className="h-8 bg-[#f0f4f2] rounded-lg" />
-          <div className="h-8 bg-[#f0f4f2] rounded-lg" />
+          <div className="h-8 bg-surface-2 rounded-lg" />
+          <div className="h-8 bg-surface-2 rounded-lg" />
         </div>
       ) : items.length === 0 ? (
-        !form && <div className="px-6 py-6 text-sm text-[#6b7a73]">No credentials added yet. Add CPR, CDA, background checks, and more.</div>
+        !form && <div className="px-6 py-6 text-sm text-muted">No credentials added yet. Add CPR, CDA, background checks, and more.</div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-left">
@@ -1018,12 +1018,12 @@ function CredentialsTab({ staffId, supabase, vaultDocs }: { staffId: string; sup
                 const status = getExpiryStatus(item.expiry_date)
                 const badge  = status ? EXPIRY_BADGE[status] : null
                 return (
-                  <tr key={item.id} className="hover:bg-[#fbfcfb] transition-colors align-top">
+                  <tr key={item.id} className="hover:bg-surface transition-colors align-top">
                     <td className="px-6 py-4">
-                      <div className="text-[#1a2e25]">{item.credential_name}</div>
-                      {item.issuing_body && <div className="text-xs text-[#6b7a73]">{item.issuing_body}</div>}
+                      <div className="text-text-main">{item.credential_name}</div>
+                      {item.issuing_body && <div className="text-xs text-muted">{item.issuing_body}</div>}
                       {item.linked_document && (
-                        <div className="mt-1 inline-flex items-center gap-1 text-xs text-[#157354]">
+                        <div className="mt-1 inline-flex items-center gap-1 text-xs text-brand-600">
                           <FileText className="w-3 h-3" /> {(item.linked_document as any).document_name}
                         </div>
                       )}
@@ -1091,7 +1091,7 @@ function AvailabilityTab({
     <ProfileSection Icon={CalendarDays} title="Availability" subtitle="When you are open to picking up shifts">
       <div className="p-6 space-y-6">
         {message && (
-          <div className={`p-3 rounded-xl text-sm font-medium border ${message.includes('Error') ? 'bg-red-50 text-red-700 border-red-100' : 'bg-[#f0fdf4] text-[#16a34a] border-[#bbf7d0]'}`}>
+          <div className={`p-3 rounded-xl text-sm font-medium border ${message.includes('Error') ? 'bg-red-50 text-red-700 border-red-100' : 'bg-brand-50 text-[#16a34a] border-[#bbf7d0]'}`}>
             {message}
           </div>
         )}
@@ -1111,8 +1111,8 @@ function AvailabilityTab({
                     aria-pressed={active}
                     className={`w-11 h-9 rounded-lg text-sm transition-colors border ${
                       active
-                        ? 'bg-[#157354] text-white border-[#157354]'
-                        : 'bg-white text-[#6b7a73] border-[#e2e8e4] hover:border-[#157354]/40 hover:text-[#0b3828]'
+                        ? 'bg-brand-600 text-white border-brand-600'
+                        : 'bg-white text-muted border-border hover:border-brand-600/40 hover:text-heading'
                     }`}
                   >
                     {day.label}
@@ -1127,7 +1127,7 @@ function AvailabilityTab({
             <div className={LBL}>Preferred Shift Hours</div>
             <div className="flex items-center gap-2">
               <input type="time" aria-label="Earliest start time" className={FLD} value={profile.available_from || ''} onChange={e => setProfile({...profile, available_from: e.target.value})} />
-              <span className="text-sm text-[#6b7a73]">to</span>
+              <span className="text-sm text-muted">to</span>
               <input type="time" aria-label="Latest end time" className={FLD} value={profile.available_to || ''} onChange={e => setProfile({...profile, available_to: e.target.value})} />
             </div>
           </div>
@@ -1148,7 +1148,7 @@ function AvailabilityTab({
           <button
             onClick={handleSave}
             disabled={saving}
-            className="inline-flex items-center gap-2 bg-[#157354] text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-[#0f4a36] transition-colors disabled:opacity-60"
+            className="inline-flex items-center gap-2 bg-brand-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-brand-800 transition-colors disabled:opacity-60"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 text-white/70" />} Save Availability
           </button>
@@ -1164,34 +1164,34 @@ function ReviewsTab({ reviews }: { reviews: any[] }) {
   return (
     <div className="space-y-4">
       {reviews.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-[2rem] border-2 border-dashed border-[#e2e8e4]">
-          <Star className="w-10 h-10 text-[#a8b5ae] mx-auto mb-3" />
-          <p className="text-[#6b7a73] font-bold text-sm">No Care Score ratings yet.</p>
-          <p className="text-[#a8b5ae] text-xs mt-1">Complete shifts to build your reputation!</p>
+        <div className="text-center py-16 bg-white rounded-[2rem] border-2 border-dashed border-border">
+          <Star className="w-10 h-10 text-subtle mx-auto mb-3" />
+          <p className="text-muted font-bold text-sm">No Care Score ratings yet.</p>
+          <p className="text-subtle text-xs mt-1">Complete shifts to build your reputation!</p>
         </div>
       ) : (
         <div className="grid gap-4">
           {reviews.map(review => (
-            <div key={review.id} className="p-6 rounded-[1.5rem] bg-white border border-[#e2e8e4] hover:shadow-md transition-shadow">
+            <div key={review.id} className="p-6 rounded-[1.5rem] bg-white border border-border hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between mb-3">
-                <div className="font-bold text-[#1a2e25] text-lg">{review.reviewer_name}</div>
+                <div className="font-bold text-text-main text-lg">{review.reviewer_name}</div>
                 <div className="flex gap-1">
                   {[...Array(5)].map((_, i) => (
-                    <Star key={i} className={`w-5 h-5 ${i < review.rating ? 'text-[#fbbf24] fill-[#fbbf24]' : 'text-[#e2e8e4] fill-transparent'}`} />
+                    <Star key={i} className={`w-5 h-5 ${i < review.rating ? 'text-amber-400 fill-amber-400' : 'text-border fill-transparent'}`} />
                   ))}
                 </div>
               </div>
               {review.tags && review.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-3">
                   {review.tags.map((tag: string) => (
-                    <span key={tag} className="text-[10px] font-black uppercase tracking-widest bg-[#edf7f3] text-[#157354] px-2.5 py-1 rounded-lg border border-[#d4ede4]">
+                    <span key={tag} className="text-[10px] font-black uppercase tracking-widest bg-brand-50 text-brand-600 px-2.5 py-1 rounded-lg border border-brand-100">
                       {tag}
                     </span>
                   ))}
                 </div>
               )}
               {review.public_comment && (
-                <p className="text-sm text-[#3d5a4f] mt-3 italic p-4 bg-[#f8faf9] rounded-xl border border-[#e2e8e4]">"{review.public_comment}"</p>
+                <p className="text-sm text-text-muted mt-3 italic p-4 bg-surface rounded-xl border border-border">"{review.public_comment}"</p>
               )}
             </div>
           ))}

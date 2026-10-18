@@ -102,23 +102,23 @@ export function RequestInbox({ variant = 'page', onCountChange }: { variant?: 'p
   const today = new Date().toISOString().slice(0, 10)
 
   if (loading) {
-    return mobile ? null : <div className="flex justify-center py-16"><Loader2 className="h-7 w-7 animate-spin text-[#157354]" /></div>
+    return mobile ? null : <div className="flex justify-center py-16"><Loader2 className="h-7 w-7 animate-spin text-brand-600" /></div>
   }
   if (mobile && active.length === 0) return null
 
   return (
     <div className={mobile ? 'space-y-3' : 'space-y-6'}>
       {mobile && (
-        <h3 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-[#0b3828]">
-          <Inbox className="h-4 w-4 text-[#157354]" /> Requests from your center
+        <h3 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-heading">
+          <Inbox className="h-4 w-4 text-brand-600" /> Requests from your center
         </h3>
       )}
 
       {active.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-[#a9dac9] bg-[#edf7f3] p-10 text-center">
-          <CheckCircle2 className="mx-auto mb-3 h-10 w-10 text-[#157354]" />
-          <p className="font-bold text-[#0b3828]">You&apos;re all caught up</p>
-          <p className="text-sm text-[#3d5a4f]">When a center asks you for a document, it will appear here.</p>
+        <div className="rounded-2xl border border-dashed border-brand-200 bg-brand-50 p-10 text-center">
+          <CheckCircle2 className="mx-auto mb-3 h-10 w-10 text-brand-600" />
+          <p className="font-bold text-heading">You&apos;re all caught up</p>
+          <p className="text-sm text-text-muted">When a center asks you for a document, it will appear here.</p>
         </div>
       ) : (
         <div className={mobile ? 'space-y-3' : 'grid gap-4'}>
@@ -126,17 +126,17 @@ export function RequestInbox({ variant = 'page', onCountChange }: { variant?: 'p
             const isAck = row.requirement?.evidence_type === 'acknowledgement'
             const overdue = row.status === 'open' && row.due_date && row.due_date < today
             return (
-              <div key={row.id} className={`rounded-2xl border bg-white shadow-sm ${mobile ? 'p-4' : 'p-5'} ${overdue ? 'border-red-200' : 'border-[#e2e8e4]'}`}>
+              <div key={row.id} className={`rounded-2xl border bg-white shadow-sm ${mobile ? 'p-4' : 'p-5'} ${overdue ? 'border-red-200' : 'border-border'}`}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className={`flex items-center gap-1.5 font-bold text-[#1a2e25] ${mobile ? 'text-xs' : ''}`}>
+                    <div className={`flex items-center gap-1.5 font-bold text-text-main ${mobile ? 'text-xs' : ''}`}>
                       {row.title} {row.is_confidential && <Lock className="h-3.5 w-3.5 text-amber-600" />}
                     </div>
-                    <div className={`text-[#6b7a73] ${mobile ? 'text-[10px]' : 'text-sm'}`}>
+                    <div className={`text-muted ${mobile ? 'text-[10px]' : 'text-sm'}`}>
                       {row.center?.name} · requested {formatDate(row.created_at)}
                       {row.due_date && <span className={overdue ? 'text-red-600 font-semibold' : ''}> · due {formatDate(row.due_date)}</span>}
                     </div>
-                    {row.message && <p className={`mt-1.5 text-[#3d5a4f] ${mobile ? 'text-[11px]' : 'text-sm'}`}>{row.message}</p>}
+                    {row.message && <p className={`mt-1.5 text-text-muted ${mobile ? 'text-[11px]' : 'text-sm'}`}>{row.message}</p>}
                     {row.center_note && row.status === 'open' && (
                       <p className={`mt-1.5 text-red-600 ${mobile ? 'text-[11px]' : 'text-sm'}`}>Center note: {row.center_note}</p>
                     )}
@@ -145,11 +145,11 @@ export function RequestInbox({ variant = 'page', onCountChange }: { variant?: 'p
                     <span className="rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs text-sky-700">Sent · awaiting review</span>
                   ) : isAck ? (
                     <Link href={mobile ? `/mobile/documents?center=${row.center?.slug ?? ''}` : '/staff/centers'}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-[#157354] px-4 py-2 text-xs font-bold text-white hover:bg-[#0f4a36]">
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-xs font-bold text-white hover:bg-brand-800">
                       <PenLine className="h-3.5 w-3.5" /> Sign in checklist
                     </Link>
                   ) : (
-                    <button onClick={() => startAnswer(row)} className="inline-flex items-center gap-1.5 rounded-xl bg-[#157354] px-4 py-2 text-xs font-bold text-white hover:bg-[#0f4a36]">
+                    <button onClick={() => startAnswer(row)} className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-xs font-bold text-white hover:bg-brand-800">
                       <Send className="h-3.5 w-3.5" /> Send document
                     </button>
                   )}
@@ -162,24 +162,24 @@ export function RequestInbox({ variant = 'page', onCountChange }: { variant?: 'p
 
       {!mobile && history.length > 0 && (
         <div>
-          <button onClick={() => setShowHistory(v => !v)} className="text-sm font-semibold text-[#157354] hover:underline">
+          <button onClick={() => setShowHistory(v => !v)} className="text-sm font-semibold text-brand-600 hover:underline">
             {showHistory ? 'Hide' : 'Show'} past requests ({history.length})
           </button>
           {showHistory && (
-            <div className="mt-3 overflow-hidden rounded-2xl border border-[#e2e8e4] bg-white">
+            <div className="mt-3 overflow-hidden rounded-2xl border border-border bg-white">
               <table className="w-full text-left">
                 <thead>
-                  <tr className="border-b border-[#e2e8e4] text-[15px] font-bold text-[#1a2e25]">
+                  <tr className="border-b border-border text-[15px] font-bold text-text-main">
                     <th className="px-5 py-3">Document</th>
                     <th className="px-4 py-3">Center</th>
                     <th className="px-4 py-3">Requested</th>
                     <th className="px-5 py-3">Outcome</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#e2e8e4] text-sm text-[#3d5a4f]">
+                <tbody className="divide-y divide-border text-sm text-text-muted">
                   {history.map(r => (
                     <tr key={r.id}>
-                      <td className="px-5 py-3 text-[#1a2e25]">{r.title}</td>
+                      <td className="px-5 py-3 text-text-main">{r.title}</td>
                       <td className="px-4 py-3">{r.center?.name}</td>
                       <td className="px-4 py-3">{formatDate(r.created_at)}</td>
                       <td className="px-5 py-3">{r.status === 'completed' ? `Accepted ${formatDate(r.resolved_at)}` : 'Cancelled'}</td>
@@ -194,57 +194,57 @@ export function RequestInbox({ variant = 'page', onCountChange }: { variant?: 'p
 
       {/* Answer dialog */}
       {answering && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0b3828]/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-900/50 backdrop-blur-sm">
           <div className="w-full max-w-lg max-h-[90vh] overflow-hidden rounded-2xl bg-white shadow-2xl flex flex-col">
-            <div className="flex items-start justify-between gap-3 border-b border-[#e2e8e4] bg-[#f8faf9] px-6 py-4">
+            <div className="flex items-start justify-between gap-3 border-b border-border bg-surface px-6 py-4">
               <div>
-                <h3 className="text-lg font-bold text-[#1a2e25]">Send: {answering.title}</h3>
-                <p className="text-xs text-[#6b7a73]">Only the document you choose is shared with {answering.center?.name ?? 'the center'}.</p>
+                <h3 className="text-lg font-bold text-text-main">Send: {answering.title}</h3>
+                <p className="text-xs text-muted">Only the document you choose is shared with {answering.center?.name ?? 'the center'}.</p>
               </div>
-              <button onClick={() => setAnswering(null)} className="rounded-lg p-1.5 text-[#6b7a73] hover:bg-[#e2e8e4]"><X className="h-5 w-5" /></button>
+              <button onClick={() => setAnswering(null)} className="rounded-lg p-1.5 text-muted hover:bg-border"><X className="h-5 w-5" /></button>
             </div>
             <div className="overflow-y-auto p-6 space-y-4">
               <div>
-                <p className="mb-2 text-sm font-medium text-[#1a2e25]">From your library</p>
+                <p className="mb-2 text-sm font-medium text-text-main">From your library</p>
                 <div className="max-h-56 overflow-y-auto space-y-2">
-                  {docs.length === 0 && <p className="text-sm text-[#6b7a73]">Your library is empty — upload the file below.</p>}
+                  {docs.length === 0 && <p className="text-sm text-muted">Your library is empty — upload the file below.</p>}
                   {[...docs]
                     .sort((a, b) => Number(b.document_category === answering.requirement?.document_category) - Number(a.document_category === answering.requirement?.document_category))
                     .map(doc => (
                       <button key={doc.id} disabled={busy} onClick={() => send(doc.id)}
-                        className="flex w-full items-center justify-between rounded-xl border-2 border-[#f0f4f2] p-3 text-left hover:border-[#157354] disabled:opacity-50">
+                        className="flex w-full items-center justify-between rounded-xl border-2 border-border p-3 text-left hover:border-brand-600 disabled:opacity-50">
                         <span>
-                          <span className="block text-sm font-bold text-[#0b3828]">{doc.document_name}</span>
-                          <span className="block text-xs text-[#6b7a73]">Uploaded {formatDate(doc.uploaded_at)}{doc.expiry_date ? ` · expires ${formatDate(doc.expiry_date)}` : ''}</span>
+                          <span className="block text-sm font-bold text-heading">{doc.document_name}</span>
+                          <span className="block text-xs text-muted">Uploaded {formatDate(doc.uploaded_at)}{doc.expiry_date ? ` · expires ${formatDate(doc.expiry_date)}` : ''}</span>
                         </span>
-                        <ChevronRight className="h-4 w-4 text-[#a8b5ae]" />
+                        <ChevronRight className="h-4 w-4 text-subtle" />
                       </button>
                     ))}
                 </div>
               </div>
 
-              <div className="border-t border-[#e2e8e4] pt-4">
-                <p className="mb-2 text-sm font-medium text-[#1a2e25]">Or upload a new file</p>
+              <div className="border-t border-border pt-4">
+                <p className="mb-2 text-sm font-medium text-text-main">Or upload a new file</p>
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <input type="file" accept={DOCUMENT_ACCEPT} onChange={e => setFile(e.target.files?.[0] ?? null)}
-                    className="flex-1 text-sm text-[#6b7a73] file:mr-3 file:rounded-lg file:border-0 file:bg-[#edf7f3] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-[#157354]" />
+                    className="flex-1 text-sm text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-brand-600" />
                   <button disabled={busy || !file} onClick={uploadAndSend}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#157354] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0f4a36] disabled:opacity-50">
+                    className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-50">
                     {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Upload & send
                   </button>
                 </div>
                 {!mobile && (
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <PhoneUploadButton kind="vault" label={answering.title} onReceived={upload => { setFile(upload) }} />
-                    {file && !(file instanceof File) && <span className="text-xs font-semibold text-[#157354]">Photo received: {file.name}</span>}
+                    {file && !(file instanceof File) && <span className="text-xs font-semibold text-brand-600">Photo received: {file.name}</span>}
                   </div>
                 )}
-                <p className="mt-1 text-[11px] text-[#a8b5ae]">It is also saved to your document library.</p>
+                <p className="mt-1 text-[11px] text-subtle">It is also saved to your document library.</p>
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-[#1a2e25]">Note to the center (optional)</label>
-                <input value={note} onChange={e => setNote(e.target.value)} className="w-full rounded-xl border border-[#e2e8e4] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#157354]/30" />
+                <label className="mb-1 block text-sm font-medium text-text-main">Note to the center (optional)</label>
+                <input value={note} onChange={e => setNote(e.target.value)} className="w-full rounded-xl border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600/30" />
               </div>
             </div>
           </div>

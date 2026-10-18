@@ -75,39 +75,39 @@ export default function DocumentRequestsPage() {
     <div className="max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-extrabold text-[#0b3828] mb-1">Document Requests</h1>
-          <p className="text-[#6b7a73]">Ask staff for documents and review what they send. Staff answer from their own document library.</p>
+          <h1 className="text-3xl font-extrabold text-heading mb-1">Document Requests</h1>
+          <p className="text-muted">Ask staff for documents and review what they send. Staff answer from their own document library.</p>
         </div>
         <button onClick={() => setShowDialog(true)} disabled={!centerId}
-          className="inline-flex items-center gap-2 rounded-xl bg-[#157354] px-5 py-3 font-semibold text-white hover:bg-[#0f4a36] disabled:opacity-50">
+          className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 font-semibold text-white hover:bg-brand-800 disabled:opacity-50">
           <Plus className="h-5 w-5" /> New request
         </button>
       </div>
 
-      {notice && <div className="mb-6 rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] px-4 py-3 text-sm text-[#16a34a]">{notice}</div>}
+      {notice && <div className="mb-6 rounded-xl border border-[#bbf7d0] bg-brand-50 px-4 py-3 text-sm text-[#16a34a]">{notice}</div>}
 
       <div className="mb-6 flex flex-wrap gap-2">
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            className={`rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${tab === t.id ? 'bg-[#157354] text-white' : 'bg-white text-[#6b7a73] border border-[#e2e8e4] hover:bg-[#edf7f3]'}`}>
+            className={`rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${tab === t.id ? 'bg-brand-600 text-white' : 'bg-white text-muted border border-border hover:bg-brand-50'}`}>
             {t.label}{counts[t.id] > 0 && <span className="ml-1.5 opacity-80">({counts[t.id]})</span>}
           </button>
         ))}
       </div>
 
-      <section className="overflow-hidden rounded-2xl border border-[#e2e8e4] bg-white shadow-sm">
+      <section className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
         {loading ? (
-          <div className="flex justify-center py-16"><Loader2 className="h-7 w-7 animate-spin text-[#157354]" /></div>
+          <div className="flex justify-center py-16"><Loader2 className="h-7 w-7 animate-spin text-brand-600" /></div>
         ) : visible.length === 0 ? (
-          <div className="py-16 text-center text-[#6b7a73]">
-            <Inbox className="mx-auto mb-3 h-10 w-10 text-[#d4ede4]" />
+          <div className="py-16 text-center text-muted">
+            <Inbox className="mx-auto mb-3 h-10 w-10 text-brand-100" />
             Nothing here.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[820px] text-left">
               <thead>
-                <tr className="border-b border-[#e2e8e4] text-[15px] font-bold text-[#1a2e25]">
+                <tr className="border-b border-border text-[15px] font-bold text-text-main">
                   <th scope="col" className="px-6 py-4">Employee</th>
                   <th scope="col" className="px-4 py-4">Document</th>
                   <th scope="col" className="px-4 py-4">Requested</th>
@@ -116,24 +116,24 @@ export default function DocumentRequestsPage() {
                   <th scope="col" className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#e2e8e4] text-sm font-normal text-[#3d5a4f]">
+              <tbody className="divide-y divide-border text-sm font-normal text-text-muted">
                 {visible.map(row => {
                   const overdue = row.status === 'open' && row.due_date && row.due_date < today
                   return (
-                    <tr key={row.id} className="align-top hover:bg-[#fbfcfb]">
+                    <tr key={row.id} className="align-top hover:bg-surface">
                       <td className="px-6 py-4">
                         {row.staff ? (
-                          <Link href={`/center/team_member/${row.staff.id}`} className="text-[#1a2e25] hover:text-[#157354] hover:underline">
+                          <Link href={`/center/team_member/${row.staff.id}`} className="text-text-main hover:text-brand-600 hover:underline">
                             {row.staff.first_name} {row.staff.last_name}
                           </Link>
                         ) : '—'}
                       </td>
                       <td className="px-4 py-4">
-                        <div className="flex items-center gap-1.5 text-[#1a2e25]">
+                        <div className="flex items-center gap-1.5 text-text-main">
                           {row.title} {row.is_confidential && <Lock className="h-3.5 w-3.5 text-amber-600" />}
                         </div>
-                        <div className="text-xs text-[#a8b5ae]">{row.requirement_id ? 'Checklist item' : 'Other document'}</div>
-                        {row.message && <div className="mt-0.5 max-w-xs text-xs text-[#6b7a73] line-clamp-2">{row.message}</div>}
+                        <div className="text-xs text-subtle">{row.requirement_id ? 'Checklist item' : 'Other document'}</div>
+                        {row.message && <div className="mt-0.5 max-w-xs text-xs text-muted line-clamp-2">{row.message}</div>}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">{formatDate(row.created_at)}</td>
                       <td className={`px-4 py-4 whitespace-nowrap ${overdue ? 'text-red-600' : ''}`}>{formatDate(row.due_date)}</td>
@@ -141,29 +141,29 @@ export default function DocumentRequestsPage() {
                         {tab === 'submitted' ? (
                           <>
                             <div>{formatDate(row.submitted_at)}</div>
-                            {row.staff_note && <div className="text-[#6b7a73]">“{row.staff_note}”</div>}
+                            {row.staff_note && <div className="text-muted">“{row.staff_note}”</div>}
                           </>
                         ) : (row.center_note || row.staff_note || '—')}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-wrap items-center justify-end gap-1.5">
                           {row.submitted_document_id && (
-                            <button onClick={() => openStoredFile('vault', row.submitted_document_id!)} className="inline-flex items-center gap-1 rounded-lg border border-[#e2e8e4] px-2.5 py-1.5 text-xs font-semibold text-[#157354] hover:bg-[#edf7f3]">
+                            <button onClick={() => openStoredFile('vault', row.submitted_document_id!)} className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-brand-600 hover:bg-brand-50">
                               <ExternalLink className="h-3.5 w-3.5" /> View
                             </button>
                           )}
                           {row.status === 'submitted' && (row.requirement_id ? (
-                            <Link href={`/center/team_member/${row.staff_id}`} className="rounded-lg bg-[#157354] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#0f4a36]">
+                            <Link href={`/center/team_member/${row.staff_id}`} className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-800">
                               Review in record
                             </Link>
                           ) : (
                             <>
                               <button disabled={busyId === row.id} onClick={() => act(row, 'reject')} className="rounded-lg border border-red-100 px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50">Reject</button>
-                              <button disabled={busyId === row.id} onClick={() => act(row, 'accept')} className="rounded-lg bg-[#157354] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#0f4a36]">Accept</button>
+                              <button disabled={busyId === row.id} onClick={() => act(row, 'accept')} className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-800">Accept</button>
                             </>
                           ))}
                           {(row.status === 'open' || row.status === 'submitted') && (
-                            <button disabled={busyId === row.id} onClick={() => act(row, 'cancel')} className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#6b7a73] hover:bg-[#f8faf9]">Cancel</button>
+                            <button disabled={busyId === row.id} onClick={() => act(row, 'cancel')} className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-muted hover:bg-surface">Cancel</button>
                           )}
                         </div>
                       </td>

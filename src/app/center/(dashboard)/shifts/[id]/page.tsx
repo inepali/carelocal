@@ -217,8 +217,8 @@ export default function ShiftDetailPage() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-32 animate-pulse">
-        <Loader2 className="w-12 h-12 text-[#157354] animate-spin mb-4" />
-        <p className="text-[#6b7a73] font-black uppercase tracking-widest text-xs">Retrieving shift details...</p>
+        <Loader2 className="w-12 h-12 text-brand-600 animate-spin mb-4" />
+        <p className="text-muted font-black uppercase tracking-widest text-xs">Retrieving shift details...</p>
       </div>
     )
   }
@@ -227,9 +227,9 @@ export default function ShiftDetailPage() {
     return (
       <div className="max-w-xl mx-auto py-20 text-center">
         <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-        <h2 className="text-2xl font-black text-[#0b3828] mb-2">Shift not found</h2>
-        <p className="text-[#6b7a73] mb-8">{error || "The shift you're looking for doesn't exist or has been removed."}</p>
-        <Link href="/center/shifts" className="bg-[#157354] text-white px-8 py-3 rounded-2xl font-bold transition-all hover:scale-105 inline-block">
+        <h2 className="text-2xl font-black text-heading mb-2">Shift not found</h2>
+        <p className="text-muted mb-8">{error || "The shift you're looking for doesn't exist or has been removed."}</p>
+        <Link href="/center/shifts" className="bg-brand-600 text-white px-8 py-3 rounded-2xl font-bold transition-all hover:scale-105 inline-block">
           Return to Shifts
         </Link>
       </div>
@@ -245,7 +245,7 @@ export default function ShiftDetailPage() {
       <div className="mb-8">
         <Link 
           href="/center/shifts" 
-          className="inline-flex items-center gap-2 text-[#6b7a73] hover:text-[#157354] font-bold text-sm mb-6 transition-all group"
+          className="inline-flex items-center gap-2 text-muted hover:text-brand-600 font-bold text-sm mb-6 transition-all group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Back to Dashboard
         </Link>
@@ -253,8 +253,8 @@ export default function ShiftDetailPage() {
           <div>
             <div className="flex items-center gap-3 mb-2">
               <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-2 ${
-                shift.status === 'open' ? 'bg-[#d4ede4] text-[#0f4a36] border-[#157354]/10' :
-                shift.status === 'filled' ? 'bg-[#f0fdf4] text-[#16a34a] border-emerald-100' :
+                shift.status === 'open' ? 'bg-brand-100 text-brand-800 border-brand-600/10' :
+                shift.status === 'filled' ? 'bg-brand-50 text-[#16a34a] border-emerald-100' :
                 'bg-slate-100 text-slate-500 border-slate-200'
               }`}>
                 {shift.status}
@@ -264,9 +264,9 @@ export default function ShiftDetailPage() {
                   Archived
                 </span>
               )}
-              <span className="text-[#a8b5ae] font-bold text-xs">ID: {shift.id.substring(0,8)}</span>
+              <span className="text-subtle font-bold text-xs">ID: {shift.id.substring(0,8)}</span>
             </div>
-            <h1 className="text-3xl font-extrabold text-[#0b3828]">
+            <h1 className="text-3xl font-extrabold text-heading">
                {isEditing ? "Editing Shift" : `${shift.work_areas?.name || 'Any Room'} Shift`}
             </h1>
           </div>
@@ -275,14 +275,14 @@ export default function ShiftDetailPage() {
               <>
                 <button 
                   onClick={() => setIsEditing(false)}
-                  className="px-6 py-3 rounded-xl border border-[#e2e8e4] text-[#6b7a73] font-semibold hover:bg-slate-50 transition-colors"
+                  className="px-6 py-3 rounded-xl border border-border text-muted font-semibold hover:bg-slate-50 transition-colors"
                 >
                   Cancel
                 </button>
                 <button 
                   onClick={handleUpdate}
                   disabled={saving}
-                  className="flex items-center gap-2 bg-[#157354] text-white px-8 py-3 rounded-xl font-semibold shadow-sm hover:bg-[#0f4a36] transition-colors disabled:opacity-60"
+                  className="flex items-center gap-2 bg-brand-600 text-white px-8 py-3 rounded-xl font-semibold shadow-sm hover:bg-brand-800 transition-colors disabled:opacity-60"
                 >
                   {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />} Save Changes
                 </button>
@@ -290,7 +290,7 @@ export default function ShiftDetailPage() {
             ) : (
               <button 
                 onClick={() => setIsEditing(true)}
-                className="flex items-center gap-2 bg-white text-[#157354] border border-[#157354]/20 px-8 py-3 rounded-xl font-semibold shadow-sm hover:border-[#157354] transition-colors"
+                className="flex items-center gap-2 bg-white text-brand-600 border border-brand-600/20 px-8 py-3 rounded-xl font-semibold shadow-sm hover:border-brand-600 transition-colors"
               >
                 <Edit3 className="w-5 h-5" /> Edit Shift
               </button>
@@ -302,28 +302,28 @@ export default function ShiftDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Col: Details */}
         <div className="lg:col-span-2 space-y-8">
-          <div className="bg-white border border-[#e2e8e4] rounded-2xl p-8 shadow-sm relative overflow-hidden">
+          <div className="bg-white border border-border rounded-2xl p-8 shadow-sm relative overflow-hidden">
             {/* Background design */}
-            <div className="absolute top-0 right-0 w-48 h-48 bg-[#edf7f3] rounded-full -mr-24 -mt-24 opacity-60"></div>
+            <div className="absolute top-0 right-0 w-48 h-48 bg-brand-50 rounded-full -mr-24 -mt-24 opacity-60"></div>
             
             {isEditing ? (
               <div className="space-y-8 relative z-10">
                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Shift Date</label>
+                      <label className="block text-sm font-medium text-text-main mb-1.5">Shift Date</label>
                        <input 
                          type="date"
                          value={editDate}
                          onChange={(e) => setEditDate(e.target.value)}
-                         className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
+                         className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main"
                        />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">{staffTerm} Role</label>
+                      <label className="block text-sm font-medium text-text-main mb-1.5">{staffTerm} Role</label>
                        <select 
                          value={editRole}
                          onChange={(e) => setEditRole(e.target.value)}
-                         className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
+                         className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main"
                        >
                          <option value="any">Any Role</option>
                          {staffRoles.filter(r => r.is_active !== false).map(role => (
@@ -332,11 +332,11 @@ export default function ShiftDetailPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">{workAreaTerm}</label>
+                      <label className="block text-sm font-medium text-text-main mb-1.5">{workAreaTerm}</label>
                        <select 
                          value={editWorkArea}
                          onChange={(e) => setEditWorkArea(e.target.value)}
-                         className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]"
+                         className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main"
                        >
                          <option value="any">Float / No specific area</option>
                          {workAreas.filter(c => c.is_active || c.id === editWorkArea).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -346,20 +346,20 @@ export default function ShiftDetailPage() {
 
                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Start</label>
-                       <input type="time" value={editStart} onChange={(e) => setEditStart(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]" />
+                      <label className="block text-sm font-medium text-text-main mb-1.5">Start</label>
+                       <input type="time" value={editStart} onChange={(e) => setEditStart(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">End</label>
-                       <input type="time" value={editEnd} onChange={(e) => setEditEnd(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]" />
+                      <label className="block text-sm font-medium text-text-main mb-1.5">End</label>
+                       <input type="time" value={editEnd} onChange={(e) => setEditEnd(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Rate ($/hr)</label>
-                       <input type="number" step="0.5" value={editRate} onChange={(e) => setEditRate(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#157354] font-semibold" />
+                      <label className="block text-sm font-medium text-text-main mb-1.5">Rate ($/hr)</label>
+                       <input type="number" step="0.5" value={editRate} onChange={(e) => setEditRate(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-brand-600 font-semibold" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Mode</label>
-                       <select value={editMode} onChange={(e) => setEditMode(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25]">
+                      <label className="block text-sm font-medium text-text-main mb-1.5">Mode</label>
+                       <select value={editMode} onChange={(e) => setEditMode(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main">
                           {paymentMethods.map(p => (
                             <option key={p.value} value={p.value}>{p.label}</option>
                           ))}
@@ -368,12 +368,12 @@ export default function ShiftDetailPage() {
                  </div>
 
                  <div>
-                     <label className="block text-sm font-medium text-[#1a2e25] mb-1.5">Notes for {staffTerm}</label>
+                     <label className="block text-sm font-medium text-text-main mb-1.5">Notes for {staffTerm}</label>
                      <textarea 
                        value={editNotes} 
                        onChange={(e) => setEditNotes(e.target.value)} 
                        rows={4}
-                       className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25] resize-none"
+                       className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main resize-none"
                      />
                  </div>
               </div>
@@ -381,34 +381,34 @@ export default function ShiftDetailPage() {
               <div className="relative z-10">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
                    <div className="space-y-2">
-                      <div className="text-[10px] font-black uppercase tracking-widest text-[#a8b5ae]">Date</div>
-                      <div className="text-xl font-black text-[#1a2e25]">{new Date(shift.shift_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+                      <div className="text-[10px] font-black uppercase tracking-widest text-subtle">Date</div>
+                      <div className="text-xl font-black text-text-main">{new Date(shift.shift_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
                    </div>
                    <div className="space-y-2">
-                      <div className="text-[10px] font-black uppercase tracking-widest text-[#a8b5ae]">Hours</div>
-                      <div className="text-xl font-black text-[#1a2e25]">{shift.start_time.substring(0,5)} - {shift.end_time.substring(0,5)}</div>
+                      <div className="text-[10px] font-black uppercase tracking-widest text-subtle">Hours</div>
+                      <div className="text-xl font-black text-text-main">{shift.start_time.substring(0,5)} - {shift.end_time.substring(0,5)}</div>
                    </div>
                    <div className="space-y-2">
-                      <div className="text-[10px] font-black uppercase tracking-widest text-[#a8b5ae]">Role Needed</div>
-                      <div className="text-xl font-black text-[#1a2e25] capitalize">
+                      <div className="text-[10px] font-black uppercase tracking-widest text-subtle">Role Needed</div>
+                      <div className="text-xl font-black text-text-main capitalize">
                         {staffRoles.find(r => r.value === shift.staff_type_needed)?.label || shift.staff_type_needed || 'Any Role'}
                       </div>
                    </div>
                    <div className="space-y-2">
-                      <div className="text-[10px] font-black uppercase tracking-widest text-[#a8b5ae]">Pay Rate</div>
-                      <div className="text-xl font-black text-[#157354]">${shift.hourly_rate || '0.00'} / hr</div>
+                      <div className="text-[10px] font-black uppercase tracking-widest text-subtle">Pay Rate</div>
+                      <div className="text-xl font-black text-brand-600">${shift.hourly_rate || '0.00'} / hr</div>
                    </div>
                    <div className="space-y-2">
-                      <div className="text-[10px] font-black uppercase tracking-widest text-[#a8b5ae]">Method</div>
-                      <div className="text-xl font-black text-[#1a2e25] capitalize">
+                      <div className="text-[10px] font-black uppercase tracking-widest text-subtle">Method</div>
+                      <div className="text-xl font-black text-text-main capitalize">
                         {paymentMethodsRaw.find(p => p.value === shift.payment_mode)?.label || shift.payment_mode || 'Payroll'}
                       </div>
                    </div>
                 </div>
 
-                <div className="bg-[#f8faf9] rounded-3xl p-8 border-2 border-[#f0f4f2]">
-                   <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#a8b5ae] mb-4">Internal Notes</div>
-                   <p className="text-[#3d5a4f] leading-relaxed font-medium">
+                <div className="bg-surface rounded-3xl p-8 border-2 border-border">
+                   <div className="text-[10px] font-black uppercase tracking-[0.2em] text-subtle mb-4">Internal Notes</div>
+                   <p className="text-text-muted leading-relaxed font-medium">
                       {shift.notes || "No additional notes provided for this shift."}
                    </p>
                 </div>
@@ -417,40 +417,40 @@ export default function ShiftDetailPage() {
           </div>
 
           {/* Claims section */}
-          <div className="bg-white border border-[#e2e8e4] rounded-2xl p-8 shadow-sm">
+          <div className="bg-white border border-border rounded-2xl p-8 shadow-sm">
              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-xl font-bold text-[#0b3828] tracking-tight">{staffTerm} Claims</h2>
-                <div className="px-4 py-1.5 bg-[#edf7f3] text-[#157354] rounded-xl text-[10px] font-black uppercase tracking-widest">
+                <h2 className="text-xl font-bold text-heading tracking-tight">{staffTerm} Claims</h2>
+                <div className="px-4 py-1.5 bg-brand-50 text-brand-600 rounded-xl text-[10px] font-black uppercase tracking-widest">
                    {claims.length} Interested
                 </div>
              </div>
 
              {claims.length === 0 ? (
                <div className="py-12 text-center">
-                  <User className="w-12 h-12 text-[#e2e8e4] mx-auto mb-3" />
-                  <p className="text-[#6b7a73] font-bold">No claims yet. This shift is still exploring the marketplace.</p>
+                  <User className="w-12 h-12 text-border mx-auto mb-3" />
+                  <p className="text-muted font-bold">No claims yet. This shift is still exploring the marketplace.</p>
                </div>
              ) : (
                <div className="space-y-4">
                   {claims.map((claim) => (
-                    <div key={claim.id} className="flex flex-col md:flex-row md:items-center justify-between p-6 rounded-[1.75rem] border-2 border-[#f8faf9] hover:border-[#157354]/10 transition-all bg-[#fcfdfd]">
+                    <div key={claim.id} className="flex flex-col md:flex-row md:items-center justify-between p-6 rounded-[1.75rem] border-2 border-surface hover:border-brand-600/10 transition-all bg-[#fcfdfd]">
                        <div className="flex items-center gap-4 mb-4 md:mb-0">
-                          <div className="w-14 h-14 rounded-2xl bg-[#157354] text-white flex items-center justify-center font-black text-xl shadow-lg ring-4 ring-[#edf7f3]">
+                          <div className="w-14 h-14 rounded-2xl bg-brand-600 text-white flex items-center justify-center font-black text-xl shadow-lg ring-4 ring-brand-50">
                              {claim.staff_profiles?.first_name?.[0] || "?"}
                           </div>
                           <div>
-                             <div className="font-black text-[#1a2e25] text-lg leading-tight">
+                             <div className="font-black text-text-main text-lg leading-tight">
                                 {claim.staff_profiles?.first_name} {claim.staff_profiles?.last_name}
                              </div>
                              <div className="flex items-center gap-3 mt-1">
                                 <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${
-                                   claim.status === 'confirmed' ? 'bg-[#f0fdf4] text-[#16a34a]' :
-                                   claim.status === 'pending' ? 'bg-[#fffbeb] text-[#d97706]' :
+                                   claim.status === 'confirmed' ? 'bg-brand-50 text-[#16a34a]' :
+                                   claim.status === 'pending' ? 'bg-[#fffbeb] text-amber-600' :
                                    'bg-slate-100 text-slate-500'
                                 }`}>
                                    {claim.status}
                                 </span>
-                                <span className="text-[10px] text-[#a8b5ae] font-medium">Claimed {new Date(claim.claimed_at).toLocaleDateString()}</span>
+                                <span className="text-[10px] text-subtle font-medium">Claimed {new Date(claim.claimed_at).toLocaleDateString()}</span>
                              </div>
                           </div>
                        </div>
@@ -466,7 +466,7 @@ export default function ShiftDetailPage() {
                                </button>
                                <button 
                                  onClick={() => handleClaimAction(claim.id, 'confirmed')}
-                                 className="px-6 py-2.5 bg-[#157354] text-white rounded-xl font-bold shadow-md hover:scale-105 transition-all active:scale-95 text-xs flex items-center gap-2"
+                                 className="px-6 py-2.5 bg-brand-600 text-white rounded-xl font-bold shadow-md hover:scale-105 transition-all active:scale-95 text-xs flex items-center gap-2"
                                >
                                   <ShieldCheck className="w-4 h-4" /> Confirm {staffTerm}
                                </button>
@@ -488,8 +488,8 @@ export default function ShiftDetailPage() {
         {/* Right Col: Staff Sidebar */}
         <div className="space-y-8">
            {isFilled && confirmedClaim ? (
-             <div className="bg-[#157354] rounded-2xl p-8 text-white shadow-lg shadow-[#157354]/20">
-                <div className="flex items-center gap-2 text-[#a9dac9] font-black uppercase tracking-[0.25em] text-[10px] mb-6">
+             <div className="bg-brand-600 rounded-2xl p-8 text-white shadow-lg shadow-brand-600/20">
+                <div className="flex items-center gap-2 text-brand-200 font-black uppercase tracking-[0.25em] text-[10px] mb-6">
                    <User className="w-3.5 h-3.5" /> Assigned Professional
                 </div>
                 <div className="flex items-center gap-5 mb-8">
@@ -501,49 +501,49 @@ export default function ShiftDetailPage() {
                          {confirmedClaim.staff_profiles?.first_name}<br/>
                          {confirmedClaim.staff_profiles?.last_name}
                       </div>
-                      <div className="text-[#a9dac9] text-sm font-medium mt-1 uppercase tracking-widest text-[10px]">VERIFIED {staffTerm.toUpperCase()}</div>
+                      <div className="text-brand-200 text-sm font-medium mt-1 uppercase tracking-widest text-[10px]">VERIFIED {staffTerm.toUpperCase()}</div>
                    </div>
                 </div>
                 <div className="space-y-4 pt-6 border-t border-white/10">
                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-[#a9dac9]">
+                      <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-brand-200">
                          <Mail className="w-5 h-5" />
                       </div>
                       <div className="text-sm font-medium truncate">{confirmedClaim.staff_profiles?.email}</div>
                    </div>
                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-[#a9dac9]">
+                      <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-brand-200">
                          <Phone className="w-5 h-5" />
                       </div>
                       <div className="text-sm font-medium">{confirmedClaim.staff_profiles?.phone || "No phone provided"}</div>
                    </div>
                 </div>
-                <button className="w-full mt-10 bg-white text-[#157354] py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-[#f8faf9] transition-all active:scale-95">
+                <button className="w-full mt-10 bg-white text-brand-600 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-surface transition-all active:scale-95">
                    Message {staffTerm}
                 </button>
              </div>
            ) : (
-             <div className="bg-[#edf7f3] border border-[#157354]/10 rounded-2xl p-10 text-center">
+             <div className="bg-brand-50 border border-brand-600/10 rounded-2xl p-10 text-center">
                 <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm">
-                   <ShieldCheck className="w-8 h-8 text-[#157354] transition-all" />
+                   <ShieldCheck className="w-8 h-8 text-brand-600 transition-all" />
                 </div>
-                <h3 className="text-xl font-black text-[#0b3828] mb-2 tracking-tight leading-none">Awaiting Claims</h3>
-                <p className="text-[#6b7a73] font-medium text-sm leading-relaxed px-2">
+                <h3 className="text-xl font-black text-heading mb-2 tracking-tight leading-none">Awaiting Claims</h3>
+                <p className="text-muted font-medium text-sm leading-relaxed px-2">
                    This shift is currently live in the expansion marketplace. You'll be notified as soon as a professional {staffTerm.toLowerCase()} claims it.
                 </p>
-                <div className="mt-8 pt-6 border-t border-[#157354]/5">
-                   <div className="font-black text-[#157354] text-[10px] uppercase tracking-widest mb-4">Discovery Status</div>
+                <div className="mt-8 pt-6 border-t border-brand-600/5">
+                   <div className="font-black text-brand-600 text-[10px] uppercase tracking-widest mb-4">Discovery Status</div>
                    <div className="flex items-center justify-center gap-1.5">
                       {[1,2,3,4,5].map(i => (
-                        <div key={i} className={`h-1 rounded-full flex-1 ${i <= 3 ? 'bg-[#157354]' : 'bg-[#157354]/10'}`}></div>
+                        <div key={i} className={`h-1 rounded-full flex-1 ${i <= 3 ? 'bg-brand-600' : 'bg-brand-600/10'}`}></div>
                       ))}
                    </div>
                 </div>
              </div>
            )}
            
-           <div className="bg-[#f8faf9] border border-[#e2e8e4] rounded-2xl p-8 space-y-4">
-              <h4 className="font-black text-[#1a2e25] mb-2 uppercase tracking-widest text-xs">Danger Zone</h4>
+           <div className="bg-surface border border-border rounded-2xl p-8 space-y-4">
+              <h4 className="font-black text-text-main mb-2 uppercase tracking-widest text-xs">Danger Zone</h4>
               
               {shift.is_archived ? (
                 <div
@@ -598,7 +598,7 @@ export default function ShiftDetailPage() {
 
       {cancelModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0b3828]/50 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-900/50 backdrop-blur-sm animate-in fade-in duration-200"
           role="dialog"
           aria-modal="true"
           aria-labelledby="cancel-shift-title"
@@ -614,7 +614,7 @@ export default function ShiftDetailPage() {
                 type="button"
                 onClick={closeCancelShiftModal}
                 disabled={cancelSubmitting}
-                className="absolute right-5 top-5 p-2 rounded-full text-[#6b7a73] hover:bg-white/80 hover:text-[#0b3828] transition-colors disabled:opacity-40"
+                className="absolute right-5 top-5 p-2 rounded-full text-muted hover:bg-white/80 hover:text-heading transition-colors disabled:opacity-40"
                 aria-label="Close"
               >
                 <X className="w-5 h-5" />
@@ -625,17 +625,17 @@ export default function ShiftDetailPage() {
                 </div>
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-700/80 mb-1">Irreversible action</p>
-                  <h2 id="cancel-shift-title" className="text-2xl font-black text-[#0b3828] tracking-tight leading-tight">
+                  <h2 id="cancel-shift-title" className="text-2xl font-black text-heading tracking-tight leading-tight">
                     Cancel this shift?
                   </h2>
                 </div>
               </div>
             </div>
             <div className="px-8 py-6 space-y-4">
-              <p id="cancel-shift-desc" className="text-[#3d5a4f] font-medium leading-relaxed text-sm">
+              <p id="cancel-shift-desc" className="text-text-muted font-medium leading-relaxed text-sm">
                 The shift will be marked <span className="font-black text-red-700">cancelled</span> and removed from the marketplace.
                 {claims.length > 0 && (
-                  <span className="block mt-3 pt-3 border-t border-[#f0f4f2] text-amber-900">
+                  <span className="block mt-3 pt-3 border-t border-border text-amber-900">
                     <span className="font-black text-xs uppercase tracking-widest text-amber-800">Heads up:</span>{' '}
                     {claims.length} {staffTerm.toLowerCase()}{claims.length === 1 ? ' has' : 's have'} already submitted interest or claims — consider messaging them from your roster if needed.
                   </span>
@@ -659,7 +659,7 @@ export default function ShiftDetailPage() {
                 type="button"
                 onClick={closeCancelShiftModal}
                 disabled={cancelSubmitting}
-                className="flex-1 py-4 px-6 rounded-2xl border-2 border-[#e2e8e4] font-black text-xs text-[#3d5a4f] hover:bg-[#f8faf9] transition-all disabled:opacity-50 uppercase tracking-widest"
+                className="flex-1 py-4 px-6 rounded-2xl border-2 border-border font-black text-xs text-text-muted hover:bg-surface transition-all disabled:opacity-50 uppercase tracking-widest"
               >
                 Keep shift
               </button>
@@ -686,7 +686,7 @@ export default function ShiftDetailPage() {
 
       {archiveModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0b3828]/50 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-900/50 backdrop-blur-sm animate-in fade-in duration-200"
           role="dialog"
           aria-modal="true"
           aria-labelledby="archive-shift-title"
@@ -702,7 +702,7 @@ export default function ShiftDetailPage() {
                 type="button"
                 onClick={closeArchiveShiftModal}
                 disabled={archiveSubmitting}
-                className="absolute right-5 top-5 p-2 rounded-full text-[#6b7a73] hover:bg-white/80 hover:text-[#0b3828] transition-colors disabled:opacity-40"
+                className="absolute right-5 top-5 p-2 rounded-full text-muted hover:bg-white/80 hover:text-heading transition-colors disabled:opacity-40"
                 aria-label="Close"
               >
                 <X className="w-5 h-5" />
@@ -713,14 +713,14 @@ export default function ShiftDetailPage() {
                 </div>
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">Clean up grid</p>
-                  <h2 id="archive-shift-title" className="text-2xl font-black text-[#0b3828] tracking-tight leading-tight">
+                  <h2 id="archive-shift-title" className="text-2xl font-black text-heading tracking-tight leading-tight">
                     Archive this shift?
                   </h2>
                 </div>
               </div>
             </div>
             <div className="px-8 py-6 space-y-4">
-              <p id="archive-shift-desc" className="text-[#3d5a4f] font-medium leading-relaxed text-sm">
+              <p id="archive-shift-desc" className="text-text-muted font-medium leading-relaxed text-sm">
                 This shift will be hidden from the shifts grid at <span className="font-bold">/center/shifts</span>. 
                 You can still access it directly via its URL if needed.
               </p>
@@ -742,7 +742,7 @@ export default function ShiftDetailPage() {
                 type="button"
                 onClick={closeArchiveShiftModal}
                 disabled={archiveSubmitting}
-                className="flex-1 py-4 px-6 rounded-2xl border-2 border-[#e2e8e4] font-black text-xs text-[#3d5a4f] hover:bg-[#f8faf9] transition-all disabled:opacity-50 uppercase tracking-widest"
+                className="flex-1 py-4 px-6 rounded-2xl border-2 border-border font-black text-xs text-text-muted hover:bg-surface transition-all disabled:opacity-50 uppercase tracking-widest"
               >
                 Cancel
               </button>

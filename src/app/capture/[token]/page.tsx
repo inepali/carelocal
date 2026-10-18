@@ -108,38 +108,38 @@ export default function CapturePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8faf9] px-4 py-8">
+    <div className="min-h-screen bg-surface px-4 py-8">
       <div className="mx-auto w-full max-w-md">
         <div className="mb-8 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#157354]"><span className="text-sm font-bold text-white">CL</span></div>
-          <span className="text-lg font-bold text-[#0b3828]">CareLocal</span>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600"><span className="text-sm font-bold text-white">CL</span></div>
+          <span className="text-lg font-bold text-heading">CareLocal</span>
         </div>
 
         {!details && !error && (
-          <div className="flex flex-col items-center py-20 text-[#6b7a73]"><Loader2 className="mb-3 h-8 w-8 animate-spin text-[#157354]" /> Loading…</div>
+          <div className="flex flex-col items-center py-20 text-muted"><Loader2 className="mb-3 h-8 w-8 animate-spin text-brand-600" /> Loading…</div>
         )}
 
         {!details && error && (
-          <div className="rounded-2xl border border-[#e2e8e4] bg-white p-6 text-center shadow-sm">
+          <div className="rounded-2xl border border-border bg-white p-6 text-center shadow-sm">
             <AlertCircle className="mx-auto mb-3 h-10 w-10 text-amber-500" />
-            <p className="font-medium text-[#1a2e25]">{error}</p>
+            <p className="font-medium text-text-main">{error}</p>
           </div>
         )}
 
         {details && sent && (
-          <div className="rounded-2xl border border-[#e2e8e4] bg-white p-8 text-center shadow-sm">
-            <CheckCircle2 className="mx-auto mb-4 h-14 w-14 text-[#157354]" />
-            <h1 className="mb-2 text-2xl font-extrabold text-[#0b3828]">Sent</h1>
-            <p className="text-[#6b7a73]">The document is on the computer now. You can close this page.</p>
+          <div className="rounded-2xl border border-border bg-white p-8 text-center shadow-sm">
+            <CheckCircle2 className="mx-auto mb-4 h-14 w-14 text-brand-600" />
+            <h1 className="mb-2 text-2xl font-extrabold text-heading">Sent</h1>
+            <p className="text-muted">The document is on the computer now. You can close this page.</p>
           </div>
         )}
 
         {details && !sent && (
           <div className="space-y-5">
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-[#157354]">{details.heading}</p>
-              <h1 className="mt-1 text-2xl font-extrabold text-[#0b3828]">{details.documentName}</h1>
-              {details.forName && <p className="text-[#6b7a73]">for {details.forName}</p>}
+              <p className="text-xs font-bold uppercase tracking-widest text-brand-600">{details.heading}</p>
+              <h1 className="mt-1 text-2xl font-extrabold text-heading">{details.documentName}</h1>
+              {details.forName && <p className="text-muted">for {details.forName}</p>}
             </div>
 
             <input ref={cameraInput} type="file" accept="image/*" capture="environment" className="hidden"
@@ -149,11 +149,11 @@ export default function CapturePage() {
 
             <div className="grid grid-cols-2 gap-3">
               <button type="button" onClick={() => cameraInput.current?.click()} disabled={sending}
-                className="flex flex-col items-center gap-2 rounded-2xl bg-[#157354] px-4 py-5 font-bold text-white shadow-sm active:bg-[#0f4a36] disabled:opacity-50">
+                className="flex flex-col items-center gap-2 rounded-2xl bg-brand-600 px-4 py-5 font-bold text-white shadow-sm active:bg-brand-800 disabled:opacity-50">
                 <Camera className="h-7 w-7" /> {pages.length ? 'Add page' : 'Take photo'}
               </button>
               <button type="button" onClick={() => libraryInput.current?.click()} disabled={sending}
-                className="flex flex-col items-center gap-2 rounded-2xl border-2 border-[#e2e8e4] bg-white px-4 py-5 font-bold text-[#157354] disabled:opacity-50">
+                className="flex flex-col items-center gap-2 rounded-2xl border-2 border-border bg-white px-4 py-5 font-bold text-brand-600 disabled:opacity-50">
                 <ImagePlus className="h-7 w-7" /> Choose file
               </button>
             </div>
@@ -161,11 +161,11 @@ export default function CapturePage() {
             {pages.length > 0 && (
               <div className="grid grid-cols-3 gap-2">
                 {pages.map((p, i) => (
-                  <div key={p.id} className="relative aspect-[3/4] overflow-hidden rounded-xl border border-[#e2e8e4] bg-white">
+                  <div key={p.id} className="relative aspect-[3/4] overflow-hidden rounded-xl border border-border bg-white">
                     {p.preview
                       // eslint-disable-next-line @next/next/no-img-element
                       ? <img src={p.preview} alt={`Page ${i + 1}`} className="h-full w-full object-cover" />
-                      : <div className="flex h-full flex-col items-center justify-center p-2 text-center text-xs text-[#6b7a73]"><FileText className="mb-1 h-6 w-6 text-[#157354]" />{p.file.name}</div>}
+                      : <div className="flex h-full flex-col items-center justify-center p-2 text-center text-xs text-muted"><FileText className="mb-1 h-6 w-6 text-brand-600" />{p.file.name}</div>}
                     <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 text-[10px] font-bold text-white">{i + 1}</span>
                     <button type="button" aria-label={`Remove page ${i + 1}`} disabled={sending}
                       onClick={() => setPages(prev => prev.filter(x => x.id !== p.id))}
@@ -178,10 +178,10 @@ export default function CapturePage() {
             {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
             <button type="button" onClick={send} disabled={sending || pages.length === 0}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0b3828] py-4 text-lg font-bold text-white disabled:opacity-40">
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-900 py-4 text-lg font-bold text-white disabled:opacity-40">
               {sending ? <><Loader2 className="h-5 w-5 animate-spin" /> Sending…</> : `Send${pages.length > 1 ? ` ${pages.length} pages` : ''}`}
             </button>
-            <p className="text-center text-xs text-[#a8b5ae]">This link works once and expires in a few minutes.</p>
+            <p className="text-center text-xs text-subtle">This link works once and expires in a few minutes.</p>
           </div>
         )}
       </div>
