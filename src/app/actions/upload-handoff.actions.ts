@@ -37,6 +37,19 @@ const ALLOWED_TYPES: Record<string, string> = {
 }
 
 const fail = (error: string) => ({ success: false as const, error })
+
+/**
+ * Runs a handoff step so an unexpected exception never reaches the browser (production React only
+ * shows it as "Minified React error #441"). The real reason is logged on the server.
+ */
+async function guarded<T>(step: string, run: () => Promise<T>): Promise<T | { success: false; error: string }> {
+  try {
+    return await run()
+  } catch (error) {
+    console.error('[upload-handoff] ' + step + ' failed:', error)
+    return fail('Something went wrong on our side. Please try again in a moment.')
+  }
+}
 const hashToken = (token: string) => createHash('sha256').update(token).digest('hex')
 
 function bucket() {
@@ -87,157 +100,171 @@ async function loadForAdmin(handoffId: string) {
 // ─── Desktop ─────────────────────────────────────────────────────────────────
 
 export async function createUploadHandoff(centerId: string, staffId: string, requirementId: string | null) {
-  const userId = await getSignedInUserId()
-  if (!userId) return fail('Please sign in again.')
-  if (!(await isCenterAdminOf(userId, centerId))) return fail('Not allowed')
+  return guarded('createUploadHandoff', async () => {
+    const userId = await getSignedInUserId()
+    if (!userId) return fail('Please sign in again.')
+    if (!(await isCenterAdminOf(userId, centerId))) return fail('Not allowed')
 
-  const db = admin()
-  const { data: membership } = await db.from('center_staff').select('staff_id').eq('center_id', centerId).eq('staff_id', staffId).maybeSingle()
-  if (!membership) return fail('This employee is not part of your center.')
-  if (requirementId) {
-    const { data: req } = await db.from('center_document_requirements').select('id').eq('id', requirementId).eq('center_id', centerId).maybeSingle()
-    if (!req) return fail('Checklist item not found.')
-  }
+    const db = admin()
+    const { data: membership } = await db.from('center_staff').select('staff_id').eq('center_id', centerId).eq('staff_id', staffId).maybeSingle()
+    if (!membership) return fail('This employee is not part of your center.')
+    if (requirementId) {
+      const { data: req } = await db.from('center_document_requirements').select('id').eq('id', requirementId).eq('center_id', centerId).maybeSingle()
+      if (!req) return fail('Checklist item not found.')
+    }
 
-  const token = randomBytes(32).toString('base64url')
-  const expiresAt = new Date(Date.now() + HANDOFF_MINUTES * 60 * 1000).toISOString()
-  const { data, error } = await db.from('upload_handoffs').insert({
-    token_hash: hashToken(token),
-    center_id: centerId,
-    staff_id: staffId,
-    requirement_id: requirementId,
-    created_by: userId,
-    expires_at: expiresAt,
-  }).select('id').single()
-  if (error || !data) return fail(error?.message ?? 'Could not start the phone upload.')
+    const token = randomBytes(32).toString('base64url')
+    const expiresAt = new Date(Date.now() + HANDOFF_MINUTES * 60 * 1000).toISOString()
+    const { data, error } = await db.from('upload_handoffs').insert({
+      token_hash: hashToken(token),
+      center_id: centerId,
+      staff_id: staffId,
+      requirement_id: requirementId,
+      created_by: userId,
+      expires_at: expiresAt,
+    }).select('id').single()
+    if (error || !data) return fail(error?.message ?? 'Could not start the phone upload.')
 
-  return { success: true as const, handoffId: data.id as string, url: `${await siteOrigin()}/capture/${token}`, expiresAt }
+    return { success: true as const, handoffId: data.id as string, url: `${await siteOrigin()}/capture/${token}`, expiresAt }
+  })
 }
 
 export async function getHandoffStatus(handoffId: string) {
-  const { row, error } = await loadForAdmin(handoffId)
-  if (!row) return fail(error!)
+  return guarded('getHandoffStatus', async () => {
+    const { row, error } = await loadForAdmin(handoffId)
+    if (!row) return fail(error!)
 
-  let previewUrl: string | null = null
-  if (row.status === 'uploaded' && row.file_key) {
-    previewUrl = await getSignedUrl(r2, new GetObjectCommand({ Bucket: bucket(), Key: row.file_key }), { expiresIn: PREVIEW_URL_TTL_SECONDS })
-  }
-  return {
-    success: true as const,
-    status: (row.status === 'pending' && isExpired(row) ? 'expired' : row.status) as 'pending' | 'uploaded' | 'attached' | 'discarded' | 'expired',
-    fileName: row.file_name,
-    contentType: row.content_type,
-    sizeBytes: row.size_bytes,
-    previewUrl,
-  }
+    let previewUrl: string | null = null
+    if (row.status === 'uploaded' && row.file_key) {
+      previewUrl = await getSignedUrl(r2, new GetObjectCommand({ Bucket: bucket(), Key: row.file_key }), { expiresIn: PREVIEW_URL_TTL_SECONDS })
+    }
+    return {
+      success: true as const,
+      status: (row.status === 'pending' && isExpired(row) ? 'expired' : row.status) as 'pending' | 'uploaded' | 'attached' | 'discarded' | 'expired',
+      fileName: row.file_name,
+      contentType: row.content_type,
+      sizeBytes: row.size_bytes,
+      previewUrl,
+    }
+  })
 }
 
 /** Adds the uploaded file to the employee's checklist item as a center-held document. */
 export async function attachHandoff(handoffId: string, documentName: string) {
-  const { row, error } = await loadForAdmin(handoffId)
-  if (!row) return fail(error!)
-  if (row.status !== 'uploaded' || !row.file_key) return fail('Nothing has been uploaded yet.')
+  return guarded('attachHandoff', async () => {
+    const { row, error } = await loadForAdmin(handoffId)
+    if (!row) return fail(error!)
+    if (row.status !== 'uploaded' || !row.file_key) return fail('Nothing has been uploaded yet.')
 
-  const db = admin()
-  const { error: insertError } = await db.from('center_internal_documents').insert({
-    center_id: row.center_id,
-    staff_id: row.staff_id,
-    requirement_id: row.requirement_id,
-    document_name: documentName.trim() || row.file_name || 'Scanned document',
-    file_url: 'r2_private_access',
-    file_key: row.file_key,
-    bucket_name: bucket(),
+    const db = admin()
+    const { error: insertError } = await db.from('center_internal_documents').insert({
+      center_id: row.center_id,
+      staff_id: row.staff_id,
+      requirement_id: row.requirement_id,
+      document_name: documentName.trim() || row.file_name || 'Scanned document',
+      file_url: 'r2_private_access',
+      file_key: row.file_key,
+      bucket_name: bucket(),
+    })
+    if (insertError) return fail(insertError.message)
+
+    await db.from('upload_handoffs').update({ status: 'attached' }).eq('id', row.id)
+    return { success: true as const }
   })
-  if (insertError) return fail(insertError.message)
-
-  await db.from('upload_handoffs').update({ status: 'attached' }).eq('id', row.id)
-  return { success: true as const }
 }
 
 /** Throws away an unattached upload (or cancels a handoff nobody used). */
 export async function discardHandoff(handoffId: string) {
-  const { row, error } = await loadForAdmin(handoffId)
-  if (!row) return fail(error!)
-  if (row.status === 'attached') return { success: true as const }
+  return guarded('discardHandoff', async () => {
+    const { row, error } = await loadForAdmin(handoffId)
+    if (!row) return fail(error!)
+    if (row.status === 'attached') return { success: true as const }
 
-  if (row.file_key) {
-    await r2.send(new DeleteObjectCommand({ Bucket: bucket(), Key: row.file_key })).catch(() => {})
-  }
-  await admin().from('upload_handoffs').update({ status: 'discarded', file_key: null }).eq('id', row.id)
-  return { success: true as const }
+    if (row.file_key) {
+      await r2.send(new DeleteObjectCommand({ Bucket: bucket(), Key: row.file_key })).catch(() => {})
+    }
+    await admin().from('upload_handoffs').update({ status: 'discarded', file_key: null }).eq('id', row.id)
+    return { success: true as const }
+  })
 }
 
 // ─── Phone (token, no sign-in) ───────────────────────────────────────────────
 
 /** What the phone page shows. Deliberately minimal: center, the employee's first name, the item. */
 export async function getCaptureDetails(token: string) {
-  const row = await loadByToken(token)
-  if (!row) return fail('This link is not valid. Scan the QR code again from the computer.')
-  if (row.status === 'uploaded' || row.status === 'attached') return fail('This document was already sent. You can close this page.')
-  if (row.status !== 'pending') return fail('This upload was cancelled. Scan a new QR code from the computer.')
-  if (isExpired(row)) return fail('This link has expired. Scan a new QR code from the computer.')
+  return guarded('getCaptureDetails', async () => {
+    const row = await loadByToken(token)
+    if (!row) return fail('This link is not valid. Scan the QR code again from the computer.')
+    if (row.status === 'uploaded' || row.status === 'attached') return fail('This document was already sent. You can close this page.')
+    if (row.status !== 'pending') return fail('This upload was cancelled. Scan a new QR code from the computer.')
+    if (isExpired(row)) return fail('This link has expired. Scan a new QR code from the computer.')
 
-  const db = admin()
-  const [{ data: center }, { data: staff }, { data: req }] = await Promise.all([
-    db.from('centers').select('name').eq('id', row.center_id).maybeSingle(),
-    db.from('staff_profiles').select('first_name, last_name').eq('id', row.staff_id).maybeSingle(),
-    row.requirement_id
-      ? db.from('center_document_requirements').select('document_name').eq('id', row.requirement_id).maybeSingle()
-      : Promise.resolve({ data: null }),
-  ])
-  return {
-    success: true as const,
-    centerName: center?.name ?? 'Your center',
-    employeeName: staff ? `${staff.first_name} ${String(staff.last_name ?? '').charAt(0)}.` : 'Employee',
-    documentName: (req as { document_name?: string } | null)?.document_name ?? 'Document',
-    expiresAt: row.expires_at,
-  }
+    const db = admin()
+    const [{ data: center }, { data: staff }, { data: req }] = await Promise.all([
+      db.from('centers').select('name').eq('id', row.center_id).maybeSingle(),
+      db.from('staff_profiles').select('first_name, last_name').eq('id', row.staff_id).maybeSingle(),
+      row.requirement_id
+        ? db.from('center_document_requirements').select('document_name').eq('id', row.requirement_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ])
+    return {
+      success: true as const,
+      centerName: center?.name ?? 'Your center',
+      employeeName: staff ? `${staff.first_name} ${String(staff.last_name ?? '').charAt(0)}.` : 'Employee',
+      documentName: (req as { document_name?: string } | null)?.document_name ?? 'Document',
+      expiresAt: row.expires_at,
+    }
+  })
 }
 
 export async function getCaptureUploadUrl(token: string, contentType: string, sizeBytes: number) {
-  const row = await loadByToken(token)
-  if (!row || row.status !== 'pending' || isExpired(row)) return fail('This link is no longer valid. Scan a new QR code from the computer.')
-  if (row.upload_attempts >= MAX_UPLOAD_ATTEMPTS) return fail('Too many attempts. Scan a new QR code from the computer.')
+  return guarded('getCaptureUploadUrl', async () => {
+    const row = await loadByToken(token)
+    if (!row || row.status !== 'pending' || isExpired(row)) return fail('This link is no longer valid. Scan a new QR code from the computer.')
+    if (row.upload_attempts >= MAX_UPLOAD_ATTEMPTS) return fail('Too many attempts. Scan a new QR code from the computer.')
 
-  const ext = ALLOWED_TYPES[contentType]
-  if (!ext) return fail('Please send a photo or a PDF.')
-  if (!sizeBytes || sizeBytes > MAX_BYTES) return fail('The file must be smaller than 15 MB.')
+    const ext = ALLOWED_TYPES[contentType]
+    if (!ext) return fail('Please send a photo or a PDF.')
+    if (!sizeBytes || sizeBytes > MAX_BYTES) return fail('The file must be smaller than 15 MB.')
 
-  const fileKey = `employee_files/${row.center_id}/${row.staff_id}/${randomUUID()}.${ext}`
-  await admin().from('upload_handoffs')
-    .update({ file_key: fileKey, upload_attempts: row.upload_attempts + 1 })
-    .eq('id', row.id).eq('status', 'pending')
+    const fileKey = `employee_files/${row.center_id}/${row.staff_id}/${randomUUID()}.${ext}`
+    await admin().from('upload_handoffs')
+      .update({ file_key: fileKey, upload_attempts: row.upload_attempts + 1 })
+      .eq('id', row.id).eq('status', 'pending')
 
-  const uploadUrl = await getSignedUrl(r2, new PutObjectCommand({
-    Bucket: bucket(), Key: fileKey, ContentType: contentType, ContentLength: sizeBytes,
-  }), { expiresIn: UPLOAD_URL_TTL_SECONDS })
-  return { success: true as const, uploadUrl, fileKey }
+    const uploadUrl = await getSignedUrl(r2, new PutObjectCommand({
+      Bucket: bucket(), Key: fileKey, ContentType: contentType, ContentLength: sizeBytes,
+    }), { expiresIn: UPLOAD_URL_TTL_SECONDS })
+    return { success: true as const, uploadUrl, fileKey }
+  })
 }
 
 export async function completeCapture(token: string, fileKey: string, fileName: string) {
-  const row = await loadByToken(token)
-  if (!row || row.status !== 'pending' || isExpired(row)) return fail('This link is no longer valid. Scan a new QR code from the computer.')
-  // Only the key this handoff issued, and only once the object really exists
-  if (!row.file_key || row.file_key !== fileKey) return fail('Upload not recognised. Please try again.')
+  return guarded('completeCapture', async () => {
+    const row = await loadByToken(token)
+    if (!row || row.status !== 'pending' || isExpired(row)) return fail('This link is no longer valid. Scan a new QR code from the computer.')
+    // Only the key this handoff issued, and only once the object really exists
+    if (!row.file_key || row.file_key !== fileKey) return fail('Upload not recognised. Please try again.')
 
-  let head
-  try {
-    head = await r2.send(new HeadObjectCommand({ Bucket: bucket(), Key: fileKey }))
-  } catch {
-    return fail('The upload did not finish. Please try again.')
-  }
-  if ((head.ContentLength ?? 0) > MAX_BYTES) {
-    await r2.send(new DeleteObjectCommand({ Bucket: bucket(), Key: fileKey })).catch(() => {})
-    return fail('The file must be smaller than 15 MB.')
-  }
+    let head
+    try {
+      head = await r2.send(new HeadObjectCommand({ Bucket: bucket(), Key: fileKey }))
+    } catch {
+      return fail('The upload did not finish. Please try again.')
+    }
+    if ((head.ContentLength ?? 0) > MAX_BYTES) {
+      await r2.send(new DeleteObjectCommand({ Bucket: bucket(), Key: fileKey })).catch(() => {})
+      return fail('The file must be smaller than 15 MB.')
+    }
 
-  const { error } = await admin().from('upload_handoffs').update({
-    status: 'uploaded',
-    file_name: fileName.slice(0, 120) || 'Scanned document',
-    content_type: head.ContentType ?? null,
-    size_bytes: head.ContentLength ?? null,
-    uploaded_at: new Date().toISOString(),
-  }).eq('id', row.id).eq('status', 'pending')
-  if (error) return fail('Could not finish the upload. Please try again.')
-  return { success: true as const }
+    const { error } = await admin().from('upload_handoffs').update({
+      status: 'uploaded',
+      file_name: fileName.slice(0, 120) || 'Scanned document',
+      content_type: head.ContentType ?? null,
+      size_bytes: head.ContentLength ?? null,
+      uploaded_at: new Date().toISOString(),
+    }).eq('id', row.id).eq('status', 'pending')
+    if (error) return fail('Could not finish the upload. Please try again.')
+    return { success: true as const }
+  })
 }
