@@ -43,13 +43,30 @@ const fail = (error: string) => ({ success: false as const, error })
  * shows it as "Minified React error #441"). The real reason is logged on the server.
  */
 async function guarded<T>(step: string, run: () => Promise<T>): Promise<T | { success: false; error: string }> {
+  // Server settings this feature needs. Only the NAMES are reported, never values.
+  const missing = REQUIRED_ENV.filter(name => !process.env[name])
+  if (missing.length) {
+    console.error('[upload-handoff] missing server settings:', missing.join(', '))
+    return fail(`Phone upload is not set up on the server yet (missing ${missing.join(', ')}). Please tell your administrator.`)
+  }
   try {
     return await run()
   } catch (error) {
     console.error('[upload-handoff] ' + step + ' failed:', error)
-    return fail('Something went wrong on our side. Please try again in a moment.')
+    // A short, non-sensitive reason helps whoever reads the screenshot
+    const reason = error instanceof Error ? (error.name && error.name !== 'Error' ? error.name : error.message).slice(0, 80) : 'unknown'
+    return fail(`Something went wrong on our side (${step}: ${reason}). Please try again in a moment.`)
   }
 }
+
+const REQUIRED_ENV = [
+  'NEXT_PUBLIC_SUPABASE_URL',
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'R2_ACCOUNT_ID',
+  'R2_ACCESS_KEY_ID',
+  'R2_SECRET_ACCESS_KEY',
+  'R2_CENTER_BUCKET_INTERNAL',
+]
 const hashToken = (token: string) => createHash('sha256').update(token).digest('hex')
 
 function bucket() {
