@@ -6,7 +6,8 @@ import { StaffDocument, DocumentCategory, Center, CenterDocumentRequirement, Sta
 import { FileText, Plus, Trash2, ArrowRight, Upload, Info, CheckCircle2, Loader2, AlertCircle, ShieldCheck, ChevronRight, X, Calendar, ExternalLink, Globe, Sparkles, Download, Eye } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { deleteVaultDocument } from '@/app/actions/storage.actions'
-import { openStoredFile, uploadStoredFile, DOCUMENT_ACCEPT } from '@/lib/files'
+import { openStoredFile, storeUpload, DOCUMENT_ACCEPT, type UploadSource } from '@/lib/files'
+import { PhoneUploadButton } from '@/components/center/PhoneUploadDialog'
 import { useLookups } from '@/hooks/use-lookups'
 import { ACADEMIC_CATEGORY } from '@/components/staff/AcademicQualificationsTab'
 import { showAlert, showConfirm } from '@/lib/dialog'
@@ -25,7 +26,7 @@ function DocumentsContent() {
   const [documents, setDocuments] = useState<StaffDocument[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [selectedFile, setSelectedFile] = useState<UploadSource | null>(null)
   const [myStaffType, setMyStaffType] = useState<StaffType | null>(null)
   const [centerDocStatuses, setCenterDocStatuses] = useState<CenterStaffDocumentStatus[]>([])
   
@@ -90,19 +91,19 @@ function DocumentsContent() {
         .single()
       if (!profile) return
 
-      const { fileKey, bucketName } = await uploadStoredFile('vault', selectedFile)
+      const { fileKey, bucketName, name: storedName } = await storeUpload('vault', selectedFile)
 
       const { error } = await supabase
         .from('staff_documents')
         .insert({
           staff_id: profile.id,
-          document_name: docName || selectedFile.name,
+          document_name: docName || storedName,
           document_category: docCategory,
           expiry_date: expiryDate || null,
           file_url: 'r2_private_access', // files are only reachable through signed links
           file_key: fileKey,
           bucket_name: bucketName,
-          file_name: selectedFile.name
+          file_name: storedName
         })
 
       if (!error) {
@@ -217,6 +218,11 @@ function DocumentsContent() {
                   </div>
                 )}
               </label>
+              {!selectedFile && (
+                <div className="mt-2">
+                  <PhoneUploadButton kind="vault" label={docName.trim() || 'Document'} onReceived={upload => { setSelectedFile(upload) }} />
+                </div>
+              )}
             </div>
 
             <div>

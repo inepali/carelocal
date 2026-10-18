@@ -5,7 +5,8 @@ import { createClient } from '@/lib/supabase/client'
 import type { StaffDocument } from '@/lib/types'
 import { GraduationCap, Plus, Trash2, Eye, Upload, CheckCircle2, Loader2, AlertCircle, X } from 'lucide-react'
 import { deleteVaultDocument } from '@/app/actions/storage.actions'
-import { openStoredFile, uploadStoredFile, DOCUMENT_ACCEPT } from '@/lib/files'
+import { openStoredFile, storeUpload, DOCUMENT_ACCEPT, type UploadSource } from '@/lib/files'
+import { PhoneUploadButton } from '@/components/center/PhoneUploadDialog'
 import { showAlert, showConfirm } from '@/lib/dialog'
 
 export const ACADEMIC_CATEGORY = 'academic_qualification'
@@ -18,7 +19,7 @@ export function AcademicQualificationsTab({ staffId }: { staffId: string }) {
   const [docs, setDocs] = useState<StaffDocument[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [file, setFile] = useState<File | null>(null)
+  const [file, setFile] = useState<UploadSource | null>(null)
   const [name, setName] = useState('')
   const [expiry, setExpiry] = useState('')
   const [saving, setSaving] = useState(false)
@@ -44,16 +45,16 @@ export function AcademicQualificationsTab({ staffId }: { staffId: string }) {
     if (!file) { showAlert('Please select a file first'); return }
     setSaving(true)
     try {
-      const { fileKey, bucketName } = await uploadStoredFile('vault', file)
+      const { fileKey, bucketName, name: storedName } = await storeUpload('vault', file)
       const { error } = await supabase.from('staff_documents').insert({
         staff_id: staffId,
-        document_name: name.trim() || file.name,
+        document_name: name.trim() || storedName,
         document_category: ACADEMIC_CATEGORY,
         expiry_date: expiry || null,
         file_url: 'r2_private_access', // files are only reachable through signed links
         file_key: fileKey,
         bucket_name: bucketName,
-        file_name: file.name,
+        file_name: storedName,
       })
       if (error) { showAlert('Failed to save document info'); return }
       closeForm()
@@ -102,6 +103,9 @@ export function AcademicQualificationsTab({ staffId }: { staffId: string }) {
                   <><Upload className="mb-1 h-7 w-7 text-[#a8b5ae]" /><span className="text-xs text-[#6b7a73]">Click to choose a PDF or image</span></>
                 )}
               </label>
+              {!file && (
+                <PhoneUploadButton kind="vault" label={name.trim() || 'Education document'} onReceived={upload => { setFile(upload) }} />
+              )}
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-[#1a2e25]">Label</label>
                 <input required value={name} onChange={e => setName(e.target.value)} placeholder="e.g. B.A. Early Childhood Education" className={FIELD} />

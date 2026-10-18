@@ -12,7 +12,8 @@ import {
   Lock, ChevronUp, ChevronDown, LayoutTemplate, ShieldCheck, GraduationCap, ClipboardList, UserSquare2, HeartPulse,
 } from 'lucide-react'
 import { removeRequirementTemplate } from '@/app/actions/storage.actions'
-import { openStoredFile, uploadStoredFile, DOCUMENT_ACCEPT } from '@/lib/files'
+import { openStoredFile, storeUpload, DOCUMENT_ACCEPT, type UploadSource } from '@/lib/files'
+import { PhoneUploadButton } from '@/components/center/PhoneUploadDialog'
 import { useLookups } from '@/hooks/use-lookups'
 import { lookupLabel } from '@/lib/lookups'
 import {
@@ -83,7 +84,7 @@ export default function CenterDocumentsConfigPage() {
   const [applyingTemplate, setApplyingTemplate] = useState<string | null>(null)
 
   // Blank form / template file
-  const [templateFile, setTemplateFile] = useState<File | null>(null)
+  const [templateFile, setTemplateFile] = useState<UploadSource | null>(null)
   const [existingTemplate, setExistingTemplate] = useState<{ key: string, bucket: string, name: string } | null>(null)
   const [deletingTemplate, setDeletingTemplate] = useState(false)
 
@@ -206,13 +207,13 @@ export default function CenterDocumentsConfigPage() {
 
     if (templateFile) {
       try {
-        const uploaded = await uploadStoredFile('template', templateFile)
+        const uploaded = await storeUpload('template', templateFile)
         // Replacing an existing template: remove the old file (clears the row's template columns first)
         if (editingId && existingTemplate?.key) await removeRequirementTemplate(editingId)
         templateData = {
           template_file_key: uploaded.fileKey,
           template_bucket_name: uploaded.bucketName,
-          template_file_name: templateFile.name,
+          template_file_name: uploaded.name,
         }
       } catch (err) {
         showAlert(err instanceof Error ? err.message : 'Failed to upload template file')
@@ -616,6 +617,9 @@ export default function CenterDocumentsConfigPage() {
                       </>
                     )}
                   </label>
+                  {!templateFile && (
+                    <PhoneUploadButton kind="template" label={form.name.trim() || 'Blank form'} onReceived={upload => { setTemplateFile(upload) }} />
+                  )}
                   {existingTemplate && templateFile && (
                     <p className="text-[11px] text-amber-600 font-bold flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" /> This will replace the current file when you save.

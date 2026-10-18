@@ -13,7 +13,7 @@ import { deleteInternalDocument } from '@/app/actions/storage.actions'
 import { snapshotAcceptedDocuments } from '@/app/actions/document-snapshots.actions'
 import { requestAllDocuments } from '@/app/actions/document-requests.actions'
 import { PhoneUploadDialog } from '@/components/center/PhoneUploadDialog'
-import { openStoredFile, uploadStoredFile, DOCUMENT_ACCEPT } from '@/lib/files'
+import { openStoredFile, storeUpload, DOCUMENT_ACCEPT, type UploadSource } from '@/lib/files'
 import {
   CheckCircle2, ExternalLink, Eye, FileText, Smartphone, Loader2, Lock, PenLine, Plus, Send, ShieldAlert, Trash2, Upload, X, XCircle,
   UserSquare2, HeartPulse, GraduationCap, ClipboardList,
@@ -205,15 +205,16 @@ export function ComplianceRecord({
     input.click()
   }
 
-  async function uploadCenterFile(req: CenterDocumentRequirement, file: File) {
+  /** Saves a document the center adds for this employee: a picked file or one sent from a phone. */
+  async function uploadCenterFile(req: CenterDocumentRequirement, source: UploadSource): Promise<string | void> {
     setUploading(true)
     try {
-      const { fileKey, bucketName } = await uploadStoredFile('internal', file, { staffId })
+      const { fileKey, bucketName, name } = await storeUpload('internal', source, { staffId })
       const { error } = await supabase.from('center_internal_documents').insert({
         center_id: centerId,
         staff_id: staffId,
         requirement_id: req.id,
-        document_name: file.name,
+        document_name: name,
         file_url: 'r2_private_access',
         file_key: fileKey,
         bucket_name: bucketName,
@@ -221,7 +222,9 @@ export function ComplianceRecord({
       if (error) throw error
       onChanged()
     } catch (err) {
-      showAlert(err instanceof Error ? err.message : 'Upload failed')
+      const message = err instanceof Error ? err.message : 'Upload failed'
+      if (!(source instanceof File)) return message // shown in the phone dialog
+      showAlert(message)
     } finally {
       setUploading(false)
     }
@@ -539,12 +542,13 @@ export function ComplianceRecord({
       })}
       {phoneFor && (
         <PhoneUploadDialog
-          centerId={centerId}
+          kind="internal"
           staffId={staffId}
-          requirementId={phoneFor.id}
-          documentName={phoneFor.document_name}
+          label={phoneFor.document_name}
+          askName
+          confirmLabel="Attach"
           onClose={() => setPhoneFor(null)}
-          onAttached={onChanged}
+          onReceived={upload => uploadCenterFile(phoneFor, upload)}
         />
       )}
     </div>

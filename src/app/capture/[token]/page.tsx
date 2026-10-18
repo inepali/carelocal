@@ -11,7 +11,7 @@ import { completeCapture, getCaptureDetails, getCaptureUploadUrl } from '@/app/a
  * Photos are shrunk on the phone; several photos become one PDF.
  */
 
-type Details = { centerName: string; employeeName: string; documentName: string; expiresAt: string }
+type Details = { heading: string; documentName: string; forName: string | null; expiresAt: string }
 type Page = { id: string; file: File; preview: string | null }
 
 const MAX_EDGE = 2000
@@ -137,9 +137,9 @@ export default function CapturePage() {
         {details && !sent && (
           <div className="space-y-5">
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-[#157354]">{details.centerName}</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-[#157354]">{details.heading}</p>
               <h1 className="mt-1 text-2xl font-extrabold text-[#0b3828]">{details.documentName}</h1>
-              <p className="text-[#6b7a73]">for {details.employeeName}</p>
+              {details.forName && <p className="text-[#6b7a73]">for {details.forName}</p>}
             </div>
 
             <input ref={cameraInput} type="file" accept="image/*" capture="environment" className="hidden"

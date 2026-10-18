@@ -4,22 +4,30 @@ import { useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
 import { CheckCircle2, Clock, FileText, Loader2, RefreshCw, Smartphone, X } from 'lucide-react'
 import {
-  attachHandoff, createUploadHandoff, discardHandoff, getHandoffStatus,
+  claimHandoff, createUploadHandoff, discardHandoff, getHandoffStatus, type HandoffKind,
 } from '@/app/actions/upload-handoff.actions'
+import type { PhoneUpload } from '@/lib/files'
 
 /**
- * "Upload from phone": shows a QR code for one employee + checklist item, waits for the phone to
- * send the photo(s), then lets the admin attach or discard it. Nothing is attached without Attach.
+ * "Upload from phone": shows a QR code, waits for the phone to send photo(s) or a PDF, then hands the
+ * file to the screen (onReceived) to save exactly like a normal upload. Nothing is saved until the
+ * admin/staff member confirms; closing the dialog deletes an unused upload.
+ *
+ * onReceived may return an error message; the upload is then rolled back (deleted).
  */
 export function PhoneUploadDialog({
-  centerId, staffId, requirementId, documentName, onClose, onAttached,
+  kind, label, staffId, askName = false, confirmLabel = 'Use this file', onClose, onReceived,
 }: {
-  centerId: string
-  staffId: string
-  requirementId: string | null
-  documentName: string
+  kind: HandoffKind
+  /** What the phone shows ("Inspection report", "CPR Certification", …) */
+  label: string
+  /** The employee, for center files about an employee (kind 'internal') */
+  staffId?: string
+  /** Show an editable document name before confirming */
+  askName?: boolean
+  confirmLabel?: string
   onClose: () => void
-  onAttached: () => void
+  onReceived: (upload: PhoneUpload) => Promise<string | void> | string | void
 }) {
   const [handoffId, setHandoffId] = useState<string | null>(null)
   const [qr, setQr] = useState<string | null>(null)
@@ -27,14 +35,14 @@ export function PhoneUploadDialog({
   const [now, setNow] = useState(0)
   const [status, setStatus] = useState<'starting' | 'pending' | 'uploaded' | 'expired' | 'error'>('starting')
   const [preview, setPreview] = useState<{ url: string | null; type: string | null; name: string | null }>({ url: null, type: null, name: null })
-  const [name, setName] = useState(documentName)
+  const [name, setName] = useState(label)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const attached = useRef(false)
+  const used = useRef(false)
 
   // Creates a handoff and draws its QR code (state is only set after the first await)
   async function start() {
-    const res = await createUploadHandoff(centerId, staffId, requirementId)
+    const res = await createUploadHandoff({ kind, label, staffId })
     if (!res.success) { setStatus('error'); setError(res.error); return }
     setHandoffId(res.handoffId)
     setExpiresAt(new Date(res.expiresAt).getTime())
@@ -64,20 +72,38 @@ export function PhoneUploadDialog({
     return () => clearInterval(timer)
   }, [status, handoffId])
 
-  // Closing without attaching cleans up the handoff (and any file the phone sent)
+  // Closing without using the upload cleans up the handoff (and any file the phone sent)
   async function close() {
-    if (handoffId && !attached.current) await discardHandoff(handoffId)
+    if (handoffId && !used.current) await discardHandoff(handoffId)
     onClose()
   }
 
-  async function attach() {
+  async function confirm() {
     if (!handoffId) return
     setBusy(true)
-    const res = await attachHandoff(handoffId, name)
+    setError('')
+    const claimed = await claimHandoff(handoffId)
+    if (!claimed.success) { setBusy(false); setError(claimed.error); return }
+
+    const upload: PhoneUpload = {
+      source: 'phone',
+      fileKey: claimed.fileKey,
+      bucketName: claimed.bucketName,
+      name: askName ? (name.trim() || claimed.fileName) : claimed.fileName,
+      type: claimed.contentType,
+      size: claimed.sizeBytes,
+    }
+    const problem = await onReceived(upload)
+    if (problem) {
+      // The screen could not save it: delete the file so nothing is left behind
+      await discardHandoff(handoffId, { rollback: true })
+      setBusy(false)
+      setError(problem)
+      setStatus('expired')
+      return
+    }
+    used.current = true
     setBusy(false)
-    if (!res.success) { setError(res.error); return }
-    attached.current = true
-    onAttached()
     onClose()
   }
 
@@ -97,7 +123,7 @@ export function PhoneUploadDialog({
         <div className="mb-5 flex items-start justify-between gap-3">
           <div>
             <h2 id="phone-upload-title" className="flex items-center gap-2 text-xl font-black text-[#0b3828]"><Smartphone className="h-5 w-5 text-[#157354]" /> Upload from phone</h2>
-            <p className="mt-1 text-sm text-[#6b7a73]">{documentName}</p>
+            <p className="mt-1 text-sm text-[#6b7a73]">{label}</p>
           </div>
           <button onClick={close} className="rounded-lg p-1.5 text-[#6b7a73] hover:bg-[#f8faf9]" aria-label="Close"><X className="h-5 w-5" /></button>
         </div>
@@ -128,7 +154,9 @@ export function PhoneUploadDialog({
 
         {status === 'expired' && (
           <div className="py-8 text-center">
-            <p className="mb-4 text-[#6b7a73]">This code has expired.</p>
+            {error
+              ? <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-left text-sm text-red-700">{error}</div>
+              : <p className="mb-4 text-[#6b7a73]">This code has expired.</p>}
             <button onClick={retake} className="inline-flex items-center gap-2 rounded-xl bg-[#157354] px-5 py-3 font-bold text-white hover:bg-[#0f4a36]"><RefreshCw className="h-4 w-4" /> New code</button>
           </div>
         )}
@@ -144,20 +172,50 @@ export function PhoneUploadDialog({
                 <FileText className="h-5 w-5" /> Open {preview.name ?? 'document'} to check it
               </a>
             ) : null}
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-[#1a2e25]">Document name</label>
-              <input value={name} onChange={e => setName(e.target.value)} className="w-full rounded-xl border border-[#e2e8e4] px-4 py-3 text-sm focus:border-[#157354] focus:outline-none focus:ring-2 focus:ring-[#157354]/30" />
-            </div>
+            {askName && (
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-[#1a2e25]">Document name</label>
+                <input value={name} onChange={e => setName(e.target.value)} className="w-full rounded-xl border border-[#e2e8e4] px-4 py-3 text-sm focus:border-[#157354] focus:outline-none focus:ring-2 focus:ring-[#157354]/30" />
+              </div>
+            )}
             {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
             <div className="flex gap-3">
               <button onClick={retake} disabled={busy} className="flex-1 rounded-xl border-2 border-[#f0f4f2] bg-[#f8faf9] px-4 py-3 font-bold text-[#6b7a73] hover:bg-[#f0f4f2]">Discard & retake</button>
-              <button onClick={attach} disabled={busy} className="flex flex-[2] items-center justify-center gap-2 rounded-xl bg-[#157354] px-4 py-3 font-black text-white hover:bg-[#0f4a36] disabled:opacity-60">
-                {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <><CheckCircle2 className="h-5 w-5" /> Attach</>}
+              <button onClick={confirm} disabled={busy} className="flex flex-[2] items-center justify-center gap-2 rounded-xl bg-[#157354] px-4 py-3 font-black text-white hover:bg-[#0f4a36] disabled:opacity-60">
+                {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <><CheckCircle2 className="h-5 w-5" /> {confirmLabel}</>}
               </button>
             </div>
           </div>
         )}
       </div>
     </div>
+  )
+}
+
+/** A small "Use phone" button that opens the dialog; drop it next to any file picker. */
+export function PhoneUploadButton({
+  kind, label, staffId, onReceived, className, text = 'Use phone', disabled,
+}: {
+  kind: HandoffKind
+  label: string
+  staffId?: string
+  onReceived: (upload: PhoneUpload) => Promise<string | void> | string | void
+  className?: string
+  text?: string
+  disabled?: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen(true)}
+        className={className ?? 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#e2e8e4] bg-white px-3 py-2 text-xs font-bold text-[#157354] transition-colors hover:bg-[#edf7f3] disabled:opacity-50'}
+      >
+        <Smartphone className="h-3.5 w-3.5" /> {text}
+      </button>
+      {open && <PhoneUploadDialog kind={kind} label={label} staffId={staffId} onClose={() => setOpen(false)} onReceived={onReceived} />}
+    </>
   )
 }

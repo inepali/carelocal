@@ -9,7 +9,8 @@ import {
   INSPECTION_RESULT_LABELS, Vendor,
 } from '@/lib/types'
 import { deleteInspectionFile } from '@/app/actions/storage.actions'
-import { openStoredFile, uploadStoredFile, DOCUMENT_ACCEPT } from '@/lib/files'
+import { openStoredFile, storeUpload, DOCUMENT_ACCEPT, type UploadSource } from '@/lib/files'
+import { PhoneUploadButton } from '@/components/center/PhoneUploadDialog'
 import {
   addInterval, daysUntil, formatDate, formatInterval, inspectionStatus,
   InspectionStatus, todayDateOnly, DUE_SOON_DAYS,
@@ -108,9 +109,9 @@ export default function InspectionsPage() {
   const [uploadingFor, setUploadingFor] = useState<string | null>(null) // log id, or 'other'
 
   // Reports attached while recording, and report counts per inspection for the list
-  const [recordFiles, setRecordFiles] = useState<File[]>([])
+  const [recordFiles, setRecordFiles] = useState<UploadSource[]>([])
   // New / edit inspection: files to attach on save, and reports already attached (edit)
-  const [editFiles, setEditFiles] = useState<File[]>([])
+  const [editFiles, setEditFiles] = useState<UploadSource[]>([])
   const [editExisting, setEditExisting] = useState<InspectionFile[]>([])
   const [fileCounts, setFileCounts] = useState<Record<string, number>>({})
   const [historyLoading, setHistoryLoading] = useState(false)
@@ -331,32 +332,33 @@ export default function InspectionsPage() {
   // ── Reports (paper records) ──────────────────
 
   /** Uploads files to secure storage and attaches them to an inspection (and history entry) */
-  async function attachReports(inspectionId: string, logId: string | null, files: File[]) {
+  async function attachReports(inspectionId: string, logId: string | null, files: UploadSource[]) {
     if (!centerId) return []
     const failures: string[] = []
     for (const file of files) {
       try {
-        const { fileKey, bucketName } = await uploadStoredFile('inspection', file)
+        const stored = await storeUpload('inspection', file)
         const { error: insErr } = await supabase.from('center_inspection_files').insert({
           center_id: centerId,
           inspection_id: inspectionId,
           log_id: logId,
-          file_name: file.name,
-          file_key: fileKey,
-          bucket_name: bucketName,
-          content_type: file.type || null,
-          size_bytes: file.size,
+          file_name: stored.name,
+          file_key: stored.fileKey,
+          bucket_name: stored.bucketName,
+          content_type: stored.type || null,
+          size_bytes: stored.size,
           uploaded_by: userId,
         })
         if (insErr) throw insErr
       } catch (err) {
-        failures.push(`${file.name}: ${err instanceof Error ? err.message : 'upload failed'}`)
+        const reason = err instanceof Error ? err.message : (err as { message?: string })?.message ?? 'upload failed'
+        failures.push(`${file.name}: ${reason}`)
       }
     }
     return failures
   }
 
-  async function uploadToHistory(logId: string | null, files: FileList | null) {
+  async function uploadToHistory(logId: string | null, files: FileList | UploadSource[] | null) {
     if (!historyFor || !files || files.length === 0) return
     setUploadingFor(logId ?? 'other')
     const failures = await attachReports(historyFor.id, logId, Array.from(files))
@@ -485,7 +487,7 @@ export default function InspectionsPage() {
   }
 
   /** Drop zone + list of files waiting to be attached when the form is saved */
-  function renderPicker(files: File[], setFiles: React.Dispatch<React.SetStateAction<File[]>>) {
+  function renderPicker(files: UploadSource[], setFiles: React.Dispatch<React.SetStateAction<UploadSource[]>>, phoneLabel = 'Inspection report') {
     return (
       <>
         <label className="flex items-center gap-3 w-full p-4 border-2 border-dashed border-[#e2e8e4] rounded-xl cursor-pointer hover:border-[#157354] hover:bg-[#f8faf9] transition-all">
@@ -503,6 +505,10 @@ export default function InspectionsPage() {
             }}
           />
         </label>
+        <div className="mt-2 flex items-center gap-2 text-xs text-[#6b7a73]">
+          <span>Paper copy in hand?</span>
+          <PhoneUploadButton kind="inspection" label={phoneLabel} text="Take a photo with your phone" onReceived={upload => { setFiles(prev => [...prev, upload]) }} />
+        </div>
         {files.length > 0 && (
           <ul className="mt-2 space-y-1.5">
             {files.map((f, i) => (
@@ -542,6 +548,14 @@ export default function InspectionsPage() {
             onChange={e => { const picked = e.target.files; uploadToHistory(logId, picked); e.target.value = '' }}
           />
         </label>
+        <PhoneUploadButton
+          kind="inspection"
+          label="Inspection report"
+          disabled={uploadingFor !== null}
+          text="From phone"
+          className="ml-4 inline-flex items-center gap-1.5 text-xs font-bold text-[#157354] hover:underline disabled:opacity-50"
+          onReceived={upload => uploadToHistory(logId, [upload])}
+        />
       </div>
     )
   }
@@ -862,7 +876,7 @@ export default function InspectionsPage() {
 
               <div>
                 <label className={labelClass}>Inspection Report &amp; Paperwork</label>
-                {renderPicker(recordFiles, setRecordFiles)}
+                {renderPicker(recordFiles, setRecordFiles, `${recording.inspection_type} report`)}
               </div>
 
               {error && <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{error}</div>}

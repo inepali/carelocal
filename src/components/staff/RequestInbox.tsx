@@ -6,7 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 import { CheckCircle2, ChevronRight, Inbox, Loader2, Lock, PenLine, Send, Upload, X } from 'lucide-react'
 import type { DocumentRequest, StaffDocument } from '@/lib/types'
 import { submitDocumentRequest } from '@/app/actions/document-requests.actions'
-import { uploadStoredFile, DOCUMENT_ACCEPT } from '@/lib/files'
+import { storeUpload, DOCUMENT_ACCEPT, type UploadSource } from '@/lib/files'
+import { PhoneUploadButton } from '@/components/center/PhoneUploadDialog'
 import { formatDate } from '@/lib/compliance'
 import { showAlert } from '@/lib/dialog'
 
@@ -29,7 +30,7 @@ export function RequestInbox({ variant = 'page', onCountChange }: { variant?: 'p
   const [loading, setLoading] = useState(true)
   const [answering, setAnswering] = useState<Row | null>(null)
   const [note, setNote] = useState('')
-  const [file, setFile] = useState<File | null>(null)
+  const [file, setFile] = useState<UploadSource | null>(null)
   const [busy, setBusy] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
 
@@ -77,7 +78,7 @@ export function RequestInbox({ variant = 'page', onCountChange }: { variant?: 'p
     if (!answering || !file || !staffId) return
     setBusy(true)
     try {
-      const { fileKey, bucketName } = await uploadStoredFile('vault', file)
+      const { fileKey, bucketName, name: storedName } = await storeUpload('vault', file)
       const { data: doc, error } = await createClient().from('staff_documents').insert({
         staff_id: staffId,
         document_name: answering.title,
@@ -85,7 +86,7 @@ export function RequestInbox({ variant = 'page', onCountChange }: { variant?: 'p
         file_url: 'r2_private_access',
         file_key: fileKey,
         bucket_name: bucketName,
-        file_name: file.name,
+        file_name: storedName,
       }).select('id').single()
       if (error || !doc) throw error ?? new Error('Failed to save the document')
       setBusy(false)
@@ -232,6 +233,12 @@ export function RequestInbox({ variant = 'page', onCountChange }: { variant?: 'p
                     {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Upload & send
                   </button>
                 </div>
+                {!mobile && (
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <PhoneUploadButton kind="vault" label={answering.title} onReceived={upload => { setFile(upload) }} />
+                    {file && !(file instanceof File) && <span className="text-xs font-semibold text-[#157354]">Photo received: {file.name}</span>}
+                  </div>
+                )}
                 <p className="mt-1 text-[11px] text-[#a8b5ae]">It is also saved to your document library.</p>
               </div>
 
