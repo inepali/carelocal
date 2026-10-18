@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   StaffProfile, CenterDocumentRequirement, StaffDocument,
@@ -23,6 +23,7 @@ import { ComplianceRecord } from './_components/ComplianceRecord'
 import { RequestDocumentsDialog } from '@/components/center/RequestDocumentsDialog'
 import { computeCompliance } from '@/lib/compliance'
 import { openStoredFile } from '@/lib/files'
+import { snapshotAcceptedDocuments } from '@/app/actions/document-snapshots.actions'
 import { useLookups } from '@/hooks/use-lookups'
 import { lookupLabel } from '@/lib/lookups'
 import { showAlert, showConfirm } from '@/lib/dialog'
@@ -84,6 +85,7 @@ export default function StaffReviewPage() {
   const [activating, setActivating]   = useState(false)
   const [reviews, setReviews]         = useState<any[]>([])
   const [internalDocs, setInternalDocs] = useState<any[]>([])
+  const catchUpDone = useRef(false)
   const [employmentClass, setEmploymentClass] = useState<EmploymentClass>('substitute')
   const [startDate, setStartDate] = useState('')
   const [viewerRole, setViewerRole] = useState<string | null>(null)
@@ -220,6 +222,19 @@ export default function StaffReviewPage() {
         .order('uploaded_at', { ascending: false })
       if (!intDocsErr) {
         setInternalDocs(intDocs || [])
+      }
+
+      // Make sure everything this center accepted has its own copy (also covers older accepts)
+      if (!catchUpDone.current) {
+        catchUpDone.current = true
+        snapshotAcceptedDocuments(admin.center_id, staffId as string).then(async res => {
+          if (!res.success || res.copied === 0) return
+          const { data: refreshed } = await supabase
+            .from('center_internal_documents').select('*')
+            .eq('staff_id', staffId).eq('center_id', admin.center_id)
+            .order('uploaded_at', { ascending: false })
+          setInternalDocs(refreshed || [])
+        })
       }
     }
     setLoading(false)

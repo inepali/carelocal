@@ -3,7 +3,7 @@ import { Inter, JetBrains_Mono } from 'next/font/google'
 import { headers } from 'next/headers'
 import { getDomainKey, getDomainConfig, type DomainKey } from '@/lib/domain-config'
 import { siteUrl, SEO_KEYWORDS } from '@/lib/site'
-import { Analytics } from '@vercel/analytics/next'
+import { AppAnalytics } from '@/components/AppAnalytics'
 import { DialogHost } from '@/components/ui/DialogHost'
 import { RecoveryRedirect } from '@/components/auth/RecoveryRedirect'
 import './globals.css'
@@ -83,7 +83,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {children}
         <DialogHost />
         <RecoveryRedirect />
-        <Analytics />
+        <AppAnalytics />
       </body>
     </html>
   )

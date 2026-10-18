@@ -200,7 +200,7 @@ export default function MobileShiftsPage() {
       </div>
 
       {/* Warning banner for outstanding balance */}
-      {myProfile?.balance_due && parseFloat(myProfile.balance_due.toString()) > 0 && (
+      {!!myProfile?.balance_due && parseFloat(myProfile.balance_due.toString()) > 0 && (
         <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-2xl flex items-start gap-3 shadow-sm">
           <AlertCircle className="w-5 h-5 text-yellow-800 shrink-0 mt-0.5" />
           <div className="text-xs">

@@ -71,6 +71,68 @@ export async function createDocumentRequests(input: {
   return { success: true, count: requestIds.length }
 }
 
+/**
+ * Request several checklist documents from one employee at once ("request everything that is
+ * outstanding"). Items that already have an open request are skipped by the database. The employee
+ * gets a single notification for the batch instead of one per document.
+ */
+export async function requestAllDocuments(input: {
+  staffId: string
+  requirementIds: string[]
+  message?: string
+  dueDate?: string | null
+}): Promise<Result> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Please sign in again.' }
+  if (input.requirementIds.length === 0) return { success: false, error: 'Nothing to request.' }
+
+  const { data: adminRow } = await supabase.from('center_admins').select('center_id').eq('user_id', user.id).limit(1).maybeSingle()
+  if (!adminRow) return { success: false, error: 'Only center admins can request documents.' }
+
+  const created: string[] = []
+  for (const requirementId of input.requirementIds) {
+    const { data: ids, error } = await supabase.rpc('create_document_requests', {
+      p_center_id: adminRow.center_id,
+      p_staff_ids: [input.staffId],
+      p_requirement_id: requirementId,
+      p_title: null,
+      p_message: input.message || null,
+      p_due_date: input.dueDate || null,
+    })
+    if (error) return { success: false, error: created.length ? `Requested ${created.length}, then failed: ${error.message}` : error.message }
+    created.push(...(((ids as unknown as string[] | null) ?? [])))
+  }
+  if (created.length === 0) return { success: true, count: 0 }
+
+  try {
+    const admin = service()
+    const { data: requests } = await admin
+      .from('document_requests')
+      .select('id, title, staff:staff_profiles(user_id), center:centers(name, domain_key)')
+      .in('id', created)
+    const first = requests?.[0]
+    const staff = first && ((Array.isArray(first.staff) ? first.staff[0] : first.staff) as { user_id?: string } | null)
+    const center = first && ((Array.isArray(first.center) ? first.center[0] : first.center) as { name?: string; domain_key?: string } | null)
+    if (first && staff?.user_id) {
+      const titles = (requests ?? []).map(r => r.title)
+      const shown = titles.slice(0, 3).join(', ')
+      await notifyUsers([staff.user_id], {
+        title: `${center?.name || 'Your center'} requested ${titles.length} document${titles.length === 1 ? '' : 's'}`,
+        message: `Please send: ${shown}${titles.length > 3 ? ` and ${titles.length - 3} more` : ''}${formatDue(input.dueDate)}.`,
+        type: 'document_request',
+        referenceId: first.id,
+        url: '/staff/requests',
+        emailCta: 'Send documents',
+      }, center?.domain_key)
+    }
+  } catch (err) {
+    console.error('Failed to send document request notifications:', err)
+  }
+
+  return { success: true, count: created.length }
+}
+
 export async function submitDocumentRequest(requestId: string, documentId: string, note?: string): Promise<Result> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

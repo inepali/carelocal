@@ -10,6 +10,7 @@ import { RequestDocumentsDialog } from '@/components/center/RequestDocumentsDial
 import { openStoredFile } from '@/lib/files'
 import { formatDate } from '@/lib/compliance'
 import { showAlert, showConfirm, showPrompt } from '@/lib/dialog'
+import { snapshotAcceptedDocuments } from '@/app/actions/document-snapshots.actions'
 
 type Row = DocumentRequest & { staff: { id: string; first_name: string; last_name: string } | null }
 
@@ -58,8 +59,12 @@ export default function DocumentRequestsPage() {
     setBusyId(row.id)
     const res = await resolveDocumentRequest(row.id, action, note)
     setBusyId(null)
-    if (!res.success) showAlert(res.error)
-    else load()
+    if (!res.success) { showAlert(res.error); return }
+    if (action === 'accept') {
+      const copy = await snapshotAcceptedDocuments(row.center_id, row.staff_id)
+      if (!copy.success || copy.failed > 0) showAlert('The document was accepted, but the center copy could not be saved. It will be retried the next time you open the employee record.')
+    }
+    load()
   }
 
   const counts = Object.fromEntries(TABS.map(t => [t.id, rows.filter(r => r.status === t.id).length])) as Record<DocumentRequestStatus, number>

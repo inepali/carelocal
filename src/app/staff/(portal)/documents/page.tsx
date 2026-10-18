@@ -33,6 +33,7 @@ function DocumentsContent() {
   const [showUpload, setShowUpload] = useState(false)
   const [docName, setDocName] = useState('')
   const [docCategory, setDocCategory] = useState<DocumentCategory | ''>('')
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [expiryDate, setExpiryDate] = useState('')
 
   const { data: lookupDocTypes } = useLookups('Document Type')
@@ -148,19 +149,30 @@ function DocumentsContent() {
       .map(value => ({ value, label: value })),
   ]
   // Academic qualifications are managed on My Profile
-  const documentGroups = documentTypes.filter(t => t.value !== ACADEMIC_CATEGORY).map((documentType) => ({
-    value: documentType.value,
-    label: documentType.label,
-    documents: documents.filter((document) => document.document_category === documentType.value),
-  }))
+  const categoryTypes = documentTypes.filter(t => t.value !== ACADEMIC_CATEGORY)
+  const visibleDocuments = documents.filter(d => d.document_category !== ACADEMIC_CATEGORY)
+  const categoryLabel = (value: string) => categoryTypes.find(t => t.value === value)?.label ?? value
+  const filteredDocuments = categoryFilter === 'all'
+    ? visibleDocuments
+    : visibleDocuments.filter(d => d.document_category === categoryFilter)
 
   return (
     <div className="max-w-5xl pb-32">
-      <div className="mb-10">
+      <div className="mb-10 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <h1 className="text-4xl font-black text-[#0b3828] mb-2 tracking-tight">My Documents</h1>
           <p className="text-[#6b7a73] text-lg font-medium">Upload and manage your credentials. These will be visible to centers you work with.</p>
         </div>
+        <button
+          type="button"
+          onClick={() => {
+            setDocCategory(categoryFilter !== 'all' ? categoryFilter : '')
+            setShowUpload(true)
+          }}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#157354] px-5 py-3 font-semibold text-white shadow-sm transition-colors hover:bg-[#0f4a36] shrink-0"
+        >
+          <Plus className="h-5 w-5" /> Add Document
+        </button>
       </div>
 
       {showUpload && (
@@ -222,13 +234,13 @@ function DocumentsContent() {
               <label className="block text-sm font-bold text-[#0b3828] mb-2 uppercase tracking-widest text-[10px]">Category</label>
                     <select
                       required
-                      disabled
                       value={docCategory}
-                      aria-label="Selected document type"
-                      className="w-full px-4 py-3 rounded-xl border border-[#c9d9d1] bg-[#f8faf9] text-[#1a2e25] focus:outline-none disabled:cursor-not-allowed disabled:opacity-100"
+                      onChange={(e) => setDocCategory(e.target.value as DocumentCategory)}
+                      aria-label="Document type"
+                      className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white text-[#1a2e25] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354]"
                     >
                       <option value="" disabled>Select Type</option>
-                      {documentTypes.map(c => (
+                      {categoryTypes.map(c => (
                         <option key={c.value} value={c.value}>{c.label}</option>
                       ))}
                     </select>
@@ -257,105 +269,118 @@ function DocumentsContent() {
       )}
 
 
-      <div className="space-y-8">
-        {documents.length === 0 && (
-          <div className="bg-[#edf7f3] border border-dashed border-[#a9dac9] rounded-2xl p-8 text-center">
-            <FileText className="w-10 h-10 text-[#157354] mx-auto mb-3" />
-            <h2 className="text-xl font-bold text-[#0b3828] mb-2">No documents yet</h2>
-            <p className="text-[#3d5a4f] max-w-sm mx-auto">
-              Choose a document type below to upload your first credential.
-            </p>
-          </div>
-        )}
-        {documentGroups.map((group) => (
-          <section key={group.value} className="overflow-hidden rounded-2xl border border-[#e2e8e4] bg-white shadow-sm">
-            <div className="flex flex-col gap-3 border-b border-[#e2e8e4] bg-[#f8faf9] px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#edf7f3] text-[#157354]">
-                  <FileText className="h-5 w-5" />
-                </span>
-                <div>
-                  <h2 className="text-lg font-bold text-[#1a2e25]">{group.label}</h2>
-                  <p className="text-xs text-[#6b7a73]">{group.documents.length} document{group.documents.length === 1 ? '' : 's'}</p>
-                </div>
+      {visibleDocuments.length === 0 ? (
+        <div className="bg-[#edf7f3] border border-dashed border-[#a9dac9] rounded-2xl p-8 text-center">
+          <FileText className="w-10 h-10 text-[#157354] mx-auto mb-3" />
+          <h2 className="text-xl font-bold text-[#0b3828] mb-2">No documents yet</h2>
+          <p className="text-[#3d5a4f] max-w-sm mx-auto">
+            Use Add Document to upload your first credential.
+          </p>
+        </div>
+      ) : (
+        <section className="overflow-hidden rounded-2xl border border-[#e2e8e4] bg-white shadow-sm">
+          <div className="flex flex-col gap-3 border-b border-[#e2e8e4] bg-[#f8faf9] px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#edf7f3] text-[#157354]">
+                <FileText className="h-5 w-5" />
+              </span>
+              <div>
+                <h2 className="text-lg font-bold text-[#1a2e25]">All Documents</h2>
+                <p className="text-xs text-[#6b7a73]">
+                  {filteredDocuments.length} document{filteredDocuments.length === 1 ? '' : 's'}
+                  {categoryFilter !== 'all' && ` in ${categoryLabel(categoryFilter)}`}
+                </p>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setDocCategory(group.value)
-                  setShowUpload(true)
-                }}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#157354] px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-[#0f4a36]"
-              >
-                <Plus className="h-4 w-4" /> Add New
-              </button>
             </div>
-            {group.documents.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[560px] text-left">
-                  <thead>
-                    <tr className="border-b border-[#e2e8e4] text-[15px] font-bold text-[#1a2e25]">
-                      <th scope="col" className="px-6 py-4">Document</th>
-                      <th scope="col" className="px-6 py-4">Uploaded</th>
-                      <th scope="col" className="px-6 py-4">Expires</th>
-                      <th scope="col" className="px-6 py-4">Status</th>
-                      <th scope="col" className="px-6 py-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#e2e8e4] text-sm font-normal text-[#3d5a4f]">
-                    {group.documents.map((doc: StaffDocument) => {
-                      const isExpired = !!doc.expiry_date && new Date(doc.expiry_date) < new Date()
-                      return (
-                        <tr key={doc.id} className="transition-colors hover:bg-[#fbfcfb]">
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <FileText className="h-4 w-4 shrink-0 text-[#157354]" />
-                              <span className="text-[#1a2e25]">{doc.document_name}</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">{new Date(doc.uploaded_at).toLocaleDateString()}</td>
-                          <td className={`px-6 py-4 whitespace-nowrap ${isExpired ? 'text-red-600' : ''}`}>
-                            {doc.expiry_date ? new Date(doc.expiry_date).toLocaleDateString() : '—'}
-                          </td>
-                          <td className="px-6 py-4">
-                            {isExpired ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs text-red-600">
-                                <AlertCircle className="h-3 w-3" /> Expired
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center rounded-full bg-[#edf7f3] px-2.5 py-1 text-xs text-[#157354]">Valid</span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center justify-end gap-1">
-                              <button
-                                onClick={() => openStoredFile('vault', doc.id)}
-                                className="rounded-lg p-2 text-[#157354] transition-colors hover:bg-[#edf7f3]"
-                                title="View Document"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => deleteDoc(doc.id)}
-                                className="rounded-lg p-2 text-[#a8b5ae] transition-colors hover:bg-red-50 hover:text-red-500"
-                                title="Delete"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="px-6 py-6 text-sm text-[#6b7a73]">No documents added in this category yet.</div>
-            )}
-          </section>
-        ))}
-      </div>
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              aria-label="Filter by category"
+              className="rounded-xl border border-[#e2e8e4] bg-white px-4 py-2.5 text-sm font-medium text-[#1a2e25] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354]"
+            >
+              <option value="all">All categories</option>
+              {categoryTypes.map(t => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {filteredDocuments.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px] text-left">
+                <thead>
+                  <tr className="border-b border-[#e2e8e4] text-[15px] font-bold text-[#1a2e25]">
+                    <th scope="col" className="px-6 py-4">Document</th>
+                    <th scope="col" className="px-6 py-4">Category</th>
+                    <th scope="col" className="px-6 py-4">Uploaded</th>
+                    <th scope="col" className="px-6 py-4">Expires</th>
+                    <th scope="col" className="px-6 py-4">Status</th>
+                    <th scope="col" className="px-6 py-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#e2e8e4] text-sm font-normal text-[#3d5a4f]">
+                  {filteredDocuments.map((doc: StaffDocument) => {
+                    const isExpired = !!doc.expiry_date && new Date(doc.expiry_date) < new Date()
+                    return (
+                      <tr key={doc.id} className="transition-colors hover:bg-[#fbfcfb]">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <FileText className="h-4 w-4 shrink-0 text-[#157354]" />
+                            <span className="text-[#1a2e25]">{doc.document_name}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => setCategoryFilter(doc.document_category)}
+                            className="inline-flex items-center rounded-full border border-[#e2e8e4] bg-[#f8faf9] px-2.5 py-1 text-xs font-medium text-[#3d5a4f] hover:border-[#157354]/40 hover:text-[#157354]"
+                            title="Show only this category"
+                          >
+                            {categoryLabel(doc.document_category)}
+                          </button>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">{new Date(doc.uploaded_at).toLocaleDateString()}</td>
+                        <td className={`px-6 py-4 whitespace-nowrap ${isExpired ? 'text-red-600' : ''}`}>
+                          {doc.expiry_date ? new Date(doc.expiry_date).toLocaleDateString() : '—'}
+                        </td>
+                        <td className="px-6 py-4">
+                          {isExpired ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs text-red-600">
+                              <AlertCircle className="h-3 w-3" /> Expired
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-full bg-[#edf7f3] px-2.5 py-1 text-xs text-[#157354]">Valid</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => openStoredFile('vault', doc.id)}
+                              className="rounded-lg p-2 text-[#157354] transition-colors hover:bg-[#edf7f3]"
+                              title="View Document"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => deleteDoc(doc.id)}
+                              className="rounded-lg p-2 text-[#a8b5ae] transition-colors hover:bg-red-50 hover:text-red-500"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="px-6 py-6 text-sm text-[#6b7a73]">No documents in this category yet.</div>
+          )}
+        </section>
+      )}
     </div>
   )
 }

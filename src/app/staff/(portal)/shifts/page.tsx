@@ -259,7 +259,7 @@ export default function StaffShiftsPage() {
       )}
 
       {/* Warning banner for outstanding balance */}
-      {myProfile?.balance_due && parseFloat(myProfile.balance_due.toString()) > 0 && (
+      {!!myProfile?.balance_due && parseFloat(myProfile.balance_due.toString()) > 0 && (
         <div className="mb-8 p-6 bg-yellow-50 border-2 border-yellow-200 rounded-[1.5rem] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
           <div className="flex items-center gap-4 text-center sm:text-left">
             <div className="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center shrink-0">

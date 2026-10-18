@@ -20,8 +20,8 @@ export async function openStoredFile(kind: FileKind, id: string) {
 }
 
 /** Uploads a file to secure storage and returns the key/bucket to save on the owning row. */
-export async function uploadStoredFile(kind: FileKind, file: File) {
-  const presigned = await getUploadUrl(kind, file.type, file.size)
+export async function uploadStoredFile(kind: FileKind, file: File, options?: { staffId?: string }) {
+  const presigned = await getUploadUrl(kind, file.type, file.size, options?.staffId)
   if (!presigned.success) throw new Error(presigned.error)
 
   const res = await fetch(presigned.uploadUrl, {

@@ -10,9 +10,12 @@ import {
   type ComplianceState,
 } from '@/lib/compliance'
 import { deleteInternalDocument } from '@/app/actions/storage.actions'
+import { snapshotAcceptedDocuments } from '@/app/actions/document-snapshots.actions'
+import { requestAllDocuments } from '@/app/actions/document-requests.actions'
+import { PhoneUploadDialog } from '@/components/center/PhoneUploadDialog'
 import { openStoredFile, uploadStoredFile, DOCUMENT_ACCEPT } from '@/lib/files'
 import {
-  CheckCircle2, ExternalLink, FileText, Loader2, Lock, PenLine, Send, ShieldAlert, Trash2, Upload, X, XCircle,
+  CheckCircle2, ExternalLink, Eye, FileText, Smartphone, Loader2, Lock, PenLine, Plus, Send, ShieldAlert, Trash2, Upload, X, XCircle,
   UserSquare2, HeartPulse, GraduationCap, ClipboardList,
 } from 'lucide-react'
 import { showAlert, showConfirm } from '@/lib/dialog'
@@ -23,6 +26,7 @@ export interface CenterFile {
   document_name: string
   uploaded_at: string
   future_review_date?: string | null
+  source_document_id?: string | null   // set on copies of accepted staff documents
 }
 
 const SECTION_ICONS: Record<RequirementSection, React.ElementType> = {
@@ -121,6 +125,13 @@ export function ComplianceRecord({
       showAlert('Failed to save: ' + error.message)
       return
     }
+    // Keep the center's own copy of what it just accepted
+    if (changes.status === 'accepted') {
+      const copy = await snapshotAcceptedDocuments(centerId, staffId)
+      if (!copy.success || copy.failed > 0) {
+        showAlert('The document was accepted, but the center copy could not be saved. It will be retried the next time you open this record.')
+      }
+    }
     setOpenId(null)
     onChanged()
   }
@@ -147,10 +158,57 @@ export function ComplianceRecord({
     save(req, record, { not_applicable: value, not_applicable_reason: value ? draft.naReason.trim() : null })
   }
 
+  // Whether this row can be requested from the employee: nothing attached, or what is attached was
+  // rejected or has expired. Items with an open request, and center-kept records, are never requested.
+  function canRequestRow(row: typeof rows[number]) {
+    const { req, record, doc, files, result } = row
+    if (req.evidence_type === 'center_record') return false
+    if (openRequests.some(r => r.requirement_id === req.id)) return false
+    if (result.state === 'not_applicable') return false
+    const attached = !!record?.matched_document_id || files.length > 0 || !!record?.acknowledged_at
+    const expired = result.state === 'overdue' || (!!doc?.expiry_date && new Date(doc.expiry_date) < new Date())
+    return attached
+      ? result.state === 'rejected' || expired
+      : ['missing', 'overdue', 'due_soon', 'rejected'].includes(result.state)
+  }
+
+  const requestable = rows.filter(canRequestRow)
+  const [requestingAll, setRequestingAll] = useState(false)
+  const [phoneFor, setPhoneFor] = useState<CenterDocumentRequirement | null>(null)
+
+  async function requestEverything() {
+    if (requestable.length === 0) return
+    const names = requestable.map(r => r.req.document_name)
+    const preview = names.slice(0, 6).join('\n• ')
+    const ok = await showConfirm(
+      `Request ${names.length} document${names.length === 1 ? '' : 's'} from this employee?\n\n• ${preview}${names.length > 6 ? `\n• and ${names.length - 6} more` : ''}`,
+      { title: 'Request all documents', confirmLabel: 'Send request', tone: 'default' },
+    )
+    if (!ok) return
+    setRequestingAll(true)
+    const res = await requestAllDocuments({ staffId, requirementIds: requestable.map(r => r.req.id) })
+    setRequestingAll(false)
+    if (!res.success) { showAlert(res.error); return }
+    showAlert(`Requested ${res.count ?? 0} document${res.count === 1 ? '' : 's'}. The employee has been notified.`, { title: 'Requests sent', tone: 'default' })
+    onChanged()
+  }
+
+  // Opens the file picker for an Add button, then uploads the chosen file for this employee
+  function pickFile(req: CenterDocumentRequirement) {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = DOCUMENT_ACCEPT
+    input.onchange = () => {
+      const file = input.files?.[0]
+      if (file) uploadCenterFile(req, file)
+    }
+    input.click()
+  }
+
   async function uploadCenterFile(req: CenterDocumentRequirement, file: File) {
     setUploading(true)
     try {
-      const { fileKey, bucketName } = await uploadStoredFile('internal', file)
+      const { fileKey, bucketName } = await uploadStoredFile('internal', file, { staffId })
       const { error } = await supabase.from('center_internal_documents').insert({
         center_id: centerId,
         staff_id: staffId,
@@ -196,9 +254,22 @@ export function ComplianceRecord({
         ))}
         {!startDate && <span className="text-xs text-amber-700">Set the employment start date to calculate due dates.</span>}
         {onRequest && !isSelf && (
-          <button onClick={() => onRequest()} className="ml-auto inline-flex items-center gap-1.5 rounded-xl bg-[#157354] px-4 py-2 text-xs font-bold text-white hover:bg-[#0f4a36]">
+          <div className="ml-auto flex flex-wrap gap-2">
+        {requestable.length > 0 && (
+          <button
+            onClick={requestEverything}
+            disabled={requestingAll}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[#157354] px-4 py-2 text-xs font-bold text-[#157354] hover:bg-[#edf7f3] disabled:opacity-50"
+          >
+            {requestingAll ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />} Request all ({requestable.length})
+          </button>
+        )}
+        {(
+          <button onClick={() => onRequest()} className="inline-flex items-center gap-1.5 rounded-xl bg-[#157354] px-4 py-2 text-xs font-bold text-white hover:bg-[#0f4a36]">
             <Send className="h-3.5 w-3.5" /> Request document
           </button>
+        )}
+          </div>
         )}
       </div>
 
@@ -299,7 +370,7 @@ export function ComplianceRecord({
                             </td>
                             <td className="px-4 py-4 text-xs">
                               <div className="space-y-1">
-                                {doc && (
+                                {doc && !files.some(f => f.source_document_id === doc.id) && (
                                   <button onClick={() => openStoredFile('vault', doc.id)} className="flex items-center gap-1 text-[#157354] hover:underline">
                                     <ExternalLink className="h-3 w-3" /> {doc.document_name}
                                   </button>
@@ -307,6 +378,7 @@ export function ComplianceRecord({
                                 {files.map(f => (
                                   <button key={f.id} onClick={() => openStoredFile('internal', f.id)} className="flex items-center gap-1 text-[#157354] hover:underline">
                                     <FileText className="h-3 w-3" /> {f.document_name}
+                                    {f.source_document_id && <span className="text-[10px] font-semibold uppercase tracking-wide text-[#a8b5ae]" title="Kept in your center's records when you accepted it">center copy</span>}
                                   </button>
                                 ))}
                                 {record?.acknowledged_at && (
@@ -318,37 +390,53 @@ export function ComplianceRecord({
                               </div>
                             </td>
                             <td className="px-6 py-4 text-right">
-                              {!isSelf && (
-                                <div className="flex flex-col items-end gap-1.5">
-                                  <button
-                                    onClick={() => open(row)}
-                                    className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
-                                      result.state === 'pending_review'
-                                        ? 'bg-[#157354] text-white hover:bg-[#0f4a36]'
-                                        : 'border border-[#e2e8e4] text-[#157354] hover:bg-[#edf7f3]'
-                                    }`}
-                                  >
-                                    {isOpen ? 'Close' : result.state === 'pending_review' ? 'Review' : 'Record'}
-                                  </button>
-                                  {(() => {
-                                    const request = openRequests.find(r => r.requirement_id === req.id)
-                                    if (request) {
-                                      return (
+                              {!isSelf && (() => {
+                                  // A document is attached: one the employee linked or sent to a request, or a file the center uploaded
+                                  const linked = !!record?.matched_document_id || files.length > 0 || !!record?.acknowledged_at
+                                  const request = openRequests.find(r => r.requirement_id === req.id)
+                                  return (
+                                    <div className="flex flex-col items-end gap-1.5">
+                                      {(
+                                        // Add uploads a document for this employee, on every row
+                                        <button
+                                          type="button"
+                                          disabled={uploading}
+                                          onClick={() => pickFile(req)}
+                                          className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#e2e8e4] px-3 py-1.5 text-xs font-bold text-[#157354] transition-colors hover:bg-[#edf7f3] disabled:opacity-50"
+                                        >
+                                          {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                                          Add
+                                        </button>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() => setPhoneFor(req)}
+                                        title="Take a photo with your phone"
+                                        className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#e2e8e4] px-3 py-1.5 text-xs font-bold text-[#157354] transition-colors hover:bg-[#edf7f3]"
+                                      >
+                                        <Smartphone className="h-3.5 w-3.5" /> Phone
+                                      </button>
+                                      {linked && (
+                                        <button
+                                          onClick={() => open(row)}
+                                          className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
+                                            result.state === 'pending_review'
+                                              ? 'bg-[#157354] text-white hover:bg-[#0f4a36]'
+                                              : 'border border-[#e2e8e4] text-[#157354] hover:bg-[#edf7f3]'
+                                          }`}
+                                        >
+                                          {isOpen ? <X className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                                          {isOpen ? 'Close' : 'Review'}
+                                        </button>
+                                      )}
+                                      {request && (
                                         <span className="text-[11px] text-[#6b7a73]">
                                           {request.status === 'submitted' ? 'Sent by employee' : `Requested${request.due_date ? ` · due ${formatDate(request.due_date)}` : ''}`}
                                         </span>
-                                      )
-                                    }
-                                    const canRequest = onRequest && req.evidence_type !== 'center_record'
-                                      && ['missing', 'overdue', 'due_soon', 'rejected'].includes(result.state)
-                                    return canRequest ? (
-                                      <button onClick={() => onRequest(req.id)} className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#157354] hover:underline">
-                                        <Send className="h-3 w-3" /> Request
-                                      </button>
-                                    ) : null
-                                  })()}
-                                </div>
-                              )}
+                                      )}
+                                    </div>
+                                  )
+                                })()}
                             </td>
                           </tr>
 
@@ -432,7 +520,7 @@ export function ComplianceRecord({
                                       </button>
                                     )}
                                     <button disabled={saving} onClick={() => markComplete(req, record)} className="inline-flex items-center gap-1.5 rounded-lg bg-[#157354] px-4 py-2 text-xs font-bold text-white hover:bg-[#0f4a36] disabled:opacity-50">
-                                      {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />} Mark complete
+                                      {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />} Accept
                                     </button>
                                   </div>
                                 </div>
@@ -449,6 +537,16 @@ export function ComplianceRecord({
           </section>
         )
       })}
+      {phoneFor && (
+        <PhoneUploadDialog
+          centerId={centerId}
+          staffId={staffId}
+          requirementId={phoneFor.id}
+          documentName={phoneFor.document_name}
+          onClose={() => setPhoneFor(null)}
+          onAttached={onChanged}
+        />
+      )}
     </div>
   )
 }
