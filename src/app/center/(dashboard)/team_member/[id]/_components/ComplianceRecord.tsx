@@ -240,7 +240,7 @@ export function ComplianceRecord({
   if (requirements.length === 0) {
     return (
       <div className="bg-white border border-[#e2e8e4] rounded-2xl p-12 text-center text-[#6b7a73]">
-        No document requirements apply to this employee yet. Add them in Documents.
+        No document requirements apply to this employee yet. Add them in About → Documents.
       </div>
     )
   }

@@ -20,7 +20,7 @@ import {
   sectionsFor, customSectionId, EVIDENCE_TYPES, RENEWAL_TYPES, DUE_PRESETS, describeDue, describeRenewal, evidenceLabel,
 } from '@/lib/compliance'
 import { templateItemKey, type RequirementTemplate } from '@/lib/requirement-templates'
-import { useCenterContext } from '../context'
+import { useCenterContext } from '../../context'
 import { showAlert, showConfirm } from '@/lib/dialog'
 
 const NEW_SECTION = '__new__'
@@ -64,7 +64,7 @@ const EMPTY_FORM: FormState = {
   renewalMonths: '12', groupLabel: '', roles: [], classes: [],
 }
 
-export default function CenterDocumentsConfigPage() {
+export default function DocumentsTab() {
   const supabase = createClient()
   const { domainKey } = useCenterContext()
   const [loading, setLoading] = useState(true)
@@ -387,10 +387,10 @@ export default function CenterDocumentsConfigPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div>
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-extrabold text-[#0b3828] mb-1">Document Requirements</h1>
+          <h2 className="text-2xl font-extrabold text-[#0b3828] mb-1">Document Requirements</h2>
           <p className="text-[#6b7a73]">The personnel file checklist for your staff — what is needed, when it is due and when it renews.</p>
         </div>
         <div className="flex gap-2">

@@ -106,7 +106,7 @@ export default function CompliancePage() {
         ) : !data || columns.length === 0 ? (
           <div className="py-16 text-center text-[#6b7a73]">
             <ShieldCheck className="mx-auto mb-3 h-10 w-10 text-[#d4ede4]" />
-            No requirements yet. Add them in <Link href="/center/documents" className="text-[#157354] hover:underline">Documents</Link>.
+            No requirements yet. Add them in <Link href="/center/about#documents" className="text-[#157354] hover:underline">Documents</Link>.
           </div>
         ) : rows.length === 0 ? (
           <div className="py-16 text-center text-[#6b7a73]">No employees match these filters.</div>

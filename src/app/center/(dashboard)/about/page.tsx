@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { CenterProgram, CenterTeamMember, CenterAboutItem } from '@/lib/types'
-import { Building2, BookOpen, Users, ListPlus, Clock, Mail, CreditCard, Database, ExternalLink } from 'lucide-react'
+import { Building2, BookOpen, Users, ListPlus, Clock, Mail, CreditCard, Database, ExternalLink, FileText } from 'lucide-react'
 import CenterProfileTab from './_components/CenterProfileTab'
 import AboutListEditor from './_components/AboutListEditor'
 import SubscriptionTab from './_components/SubscriptionTab'
 import ManageDataTab from './_components/ManageDataTab'
+import DocumentsTab from './_components/DocumentsTab'
 import { useLookups } from '@/hooks/use-lookups'
 import { lookupLabel } from '@/lib/lookups'
 import { normalizeWebUrl } from '@/lib/utils'
@@ -17,6 +18,7 @@ const TABS = [
   { id: 'programs', name: 'Programs', icon: BookOpen },
   { id: 'team', name: 'Team', icon: Users },
   { id: 'data', name: 'Manage Data', icon: Database },
+  { id: 'documents', name: 'Documents', icon: FileText },
   { id: 'subscription', name: 'Subscription', icon: CreditCard },
   { id: 'others', name: 'Others', icon: ListPlus },
 ] as const
@@ -80,7 +82,7 @@ export default function CenterAboutPage() {
         <p className="text-[#6b7a73]">Manage your center profile, programs, leadership team, and additional information.</p>
       </div>
 
-      <div role="tablist" aria-label="About sections" className="flex gap-1 border-b border-[#e2e8e4] mb-10 overflow-x-auto">
+      <div role="tablist" aria-label="About sections" className="flex gap-1 border-b border-[#e2e8e4] mb-10 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {TABS.map(tab => {
           const isActive = activeTab === tab.id
           return (
@@ -91,7 +93,7 @@ export default function CenterAboutPage() {
               aria-selected={isActive}
               aria-controls={`about-panel-${tab.id}`}
               onClick={() => selectTab(tab.id)}
-              className={`flex items-center gap-2 px-5 py-3 -mb-px border-b-2 text-sm whitespace-nowrap transition-colors ${
+              className={`flex items-center gap-2 px-5 py-3 -mb-px border-b-[3px] text-sm whitespace-nowrap transition-colors ${
                 isActive
                   ? 'border-[#157354] text-[#0b3828] font-bold'
                   : 'border-transparent text-[#6b7a73] font-medium hover:text-[#0b3828] hover:border-[#a9dac9]'
@@ -223,6 +225,10 @@ export default function CenterAboutPage() {
 
           <div role="tabpanel" id="about-panel-data" aria-labelledby="about-tab-data" hidden={activeTab !== 'data'}>
             {activeTab === 'data' && <ManageDataTab />}
+          </div>
+
+          <div role="tabpanel" id="about-panel-documents" aria-labelledby="about-tab-documents" hidden={activeTab !== 'documents'}>
+            {activeTab === 'documents' && <DocumentsTab />}
           </div>
 
           <div role="tabpanel" id="about-panel-subscription" aria-labelledby="about-tab-subscription" hidden={activeTab !== 'subscription'}>
