@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { ArrowLeft, Briefcase, CalendarClock, CheckCircle2, ExternalLink, FileText, Loader2, Mail, MapPin, Phone, Send, ShieldCheck, X } from 'lucide-react'
+import { ArrowLeft, Briefcase, CalendarClock, CheckCircle2, ExternalLink, FileText, Loader2, Mail, MapPin, Phone, Send, ShieldCheck, Upload, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { openStoredFile } from '@/lib/files'
+import { DOCUMENT_ACCEPT, openStoredFile, uploadStoredFile } from '@/lib/files'
 import { showAlert, showConfirm, showPrompt } from '@/lib/dialog'
 import { StaffAvatar } from '@/components/StaffAvatar'
 import type { CenterDocumentRequirement, CenterStaffDocumentStatus, StaffDocument, StaffReference } from '@/lib/types'
@@ -42,6 +42,7 @@ export default function ApplicationDetailPage() {
   const [busy, setBusy] = useState(false)
   const [offerOpen, setOfferOpen] = useState(false)
   const [offer, setOffer] = useState({ startDate: '', pay: '', note: '' })
+  const [offerLetter, setOfferLetter] = useState<File | null>(null)
   const [interviewOpen, setInterviewOpen] = useState(false)
   const [interview, setInterview] = useState({ date: '', time: '', location: '', note: '' })
 
@@ -139,12 +140,28 @@ export default function ApplicationDetailPage() {
 
   async function submitOffer() {
     if (!offer.startDate) { showAlert('Choose a start date for the offer.'); return }
-    if (!await showConfirm(`Send the offer to ${profile?.first_name ?? 'this applicant'}? They will be hired when they accept it.`, { title: 'Send offer', confirmLabel: 'Send offer' })) return
+    const name = profile?.first_name ?? 'this applicant'
+    const confirmText = offerLetter
+      ? `Send the offer and ${offerLetter.name} to ${name}? They must open the letter before they can accept, and they will be hired when they do.`
+      : `Send the offer to ${name}? They will be hired when they accept it.`
+    if (!await showConfirm(confirmText, { title: 'Send offer', confirmLabel: 'Send offer' })) return
     setBusy(true)
-    const res = await sendOffer(appId, { startDate: offer.startDate, pay: offer.pay ? Number(offer.pay) : null, note: offer.note })
+    let letter: { fileKey: string; bucketName: string; name: string } | null = null
+    if (offerLetter) {
+      try {
+        const uploaded = await uploadStoredFile('offer_letter', offerLetter)
+        letter = { ...uploaded, name: offerLetter.name }
+      } catch (err) {
+        setBusy(false)
+        showAlert(err instanceof Error ? err.message : 'Could not upload the offer letter.')
+        return
+      }
+    }
+    const res = await sendOffer(appId, { startDate: offer.startDate, pay: offer.pay ? Number(offer.pay) : null, note: offer.note, letter })
     setBusy(false)
     if (!res.success) { showAlert(res.error); return }
     setOfferOpen(false)
+    setOfferLetter(null)
     if (res.requests > 0) showAlert(`Offer sent. ${res.requests} document request${res.requests === 1 ? ' was' : 's were'} raised for the items needed at the offer stage.`, { title: 'Offer sent' })
     load()
   }
@@ -273,6 +290,7 @@ export default function ApplicationDetailPage() {
               <div className="space-y-1 text-sm text-text-muted">
                 <p className="font-semibold text-text-main">Offer sent — waiting for the applicant</p>
                 <p>Start {app.offer_start_date ? new Date(`${app.offer_start_date}T00:00:00`).toLocaleDateString() : '—'}{app.offer_pay != null ? ` · ${formatPay({ pay_min: app.offer_pay, pay_max: app.offer_pay, pay_unit: job.pay_unit })}` : ''}</p>
+                {app.offer_letter_file_key && <OfferLetterLink app={app} />}
               </div>
             ) : canMove ? (
               <div className="flex flex-col gap-2">
@@ -289,7 +307,10 @@ export default function ApplicationDetailPage() {
                 <button disabled={busy} onClick={reject} className="rounded-xl border border-red-100 px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 disabled:opacity-50">Not selected</button>
               </div>
             ) : (
-              <p className="text-sm text-muted">{STAGE_LABELS[app.stage]}{app.decided_at ? ` on ${new Date(app.decided_at).toLocaleDateString()}` : ''}.</p>
+              <div className="space-y-1 text-sm">
+                <p className="text-muted">{STAGE_LABELS[app.stage]}{app.decided_at ? ` on ${new Date(app.decided_at).toLocaleDateString()}` : ''}.</p>
+                {app.stage === 'hired' && app.offer_letter_file_key && <OfferLetterLink app={app} />}
+              </div>
             )}
           </section>
 
@@ -351,7 +372,7 @@ export default function ApplicationDetailPage() {
           <div className="w-full max-w-md rounded-3xl border border-border bg-white p-7 shadow-2xl">
             <div className="mb-5 flex items-center justify-between">
               <h2 id="offer-title" className="text-xl font-black text-heading">Send offer</h2>
-              <button onClick={() => setOfferOpen(false)} className="rounded-lg p-1.5 text-muted hover:bg-surface" aria-label="Close"><X className="h-5 w-5" /></button>
+              <button onClick={() => { setOfferOpen(false); setOfferLetter(null) }} className="rounded-lg p-1.5 text-muted hover:bg-surface" aria-label="Close"><X className="h-5 w-5" /></button>
             </div>
             <div className="space-y-4">
               <div>
@@ -366,9 +387,29 @@ export default function ApplicationDetailPage() {
                 <label className={LBL}>Note to the applicant</label>
                 <textarea rows={3} value={offer.note} onChange={e => setOffer({ ...offer, note: e.target.value })} className={`${FLD} resize-none`} placeholder="Schedule details, who to report to on day one…" />
               </div>
+              <div>
+                <label className={LBL}>Offer letter</label>
+                <input type="file" id="offer_letter_upload" className="hidden" accept={DOCUMENT_ACCEPT}
+                  onChange={e => { setOfferLetter(e.target.files?.[0] || null); e.target.value = '' }} />
+                <label htmlFor="offer_letter_upload" className="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-border p-3 transition-all hover:border-brand-600 hover:bg-surface">
+                  {offerLetter ? (
+                    <>
+                      <CheckCircle2 className="h-5 w-5 shrink-0 text-brand-600" />
+                      <span className="min-w-0 flex-1 truncate text-sm font-bold text-text-main">{offerLetter.name}</span>
+                      <button type="button" onClick={e => { e.preventDefault(); setOfferLetter(null) }} className="text-xs font-bold text-red-500 hover:underline">Remove</button>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-5 w-5 shrink-0 text-subtle" />
+                      <span className="text-sm text-muted">Attach the letter <span className="text-subtle">(PDF recommended, up to 15 MB)</span></span>
+                    </>
+                  )}
+                </label>
+                <p className="mt-1 text-[11px] text-subtle">Optional. The applicant must open it before they can accept.</p>
+              </div>
               <p className="text-xs text-muted">Every “To apply” item must be accepted or in review. Items needed at the offer become document requests.</p>
               <div className="flex gap-3">
-                <button onClick={() => setOfferOpen(false)} className="flex-1 rounded-xl border-2 border-border bg-surface px-4 py-3 font-bold text-muted">Cancel</button>
+                <button onClick={() => { setOfferOpen(false); setOfferLetter(null) }} className="flex-1 rounded-xl border-2 border-border bg-surface px-4 py-3 font-bold text-muted">Cancel</button>
                 <button disabled={busy} onClick={submitOffer} className="flex flex-[2] items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 font-black text-white hover:bg-brand-800 disabled:opacity-60">
                   {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Send offer'}
                 </button>
@@ -377,6 +418,20 @@ export default function ApplicationDetailPage() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+/** The offer letter sent with the offer, and whether the applicant has opened it. */
+function OfferLetterLink({ app }: { app: JobApplication }) {
+  return (
+    <div className="pt-1">
+      <button onClick={() => openStoredFile('offer_letter', app.id)} className="inline-flex max-w-full items-center gap-1 text-xs font-semibold text-brand-600 hover:underline">
+        <FileText className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">{app.offer_letter_file_name || 'Offer letter'}</span>
+      </button>
+      <p className="text-[11px] text-subtle">
+        {app.offer_letter_viewed_at ? `Opened by the applicant ${new Date(app.offer_letter_viewed_at).toLocaleString()}` : 'Not opened by the applicant yet'}
+      </p>
     </div>
   )
 }

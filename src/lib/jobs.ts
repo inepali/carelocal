@@ -61,6 +61,9 @@ export interface JobApplication {
   offer_pay: number | null
   offer_note: string | null
   offer_sent_at: string | null
+  offer_letter_file_key: string | null
+  offer_letter_file_name: string | null
+  offer_letter_viewed_at: string | null
   decided_at: string | null
   applied_at: string
   updated_at: string

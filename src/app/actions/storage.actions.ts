@@ -16,7 +16,7 @@ import { createClient } from '@/lib/supabase/server'
  * - New keys are namespaced per owner (enforced again by a DB trigger).
  * - View links expire after 5 minutes and every view is written to document_access_log.
  */
-export type FileKind = 'vault' | 'internal' | 'template' | 'inspection'
+export type FileKind = 'vault' | 'internal' | 'template' | 'inspection' | 'offer_letter'
 
 const VIEW_URL_TTL_SECONDS = 300
 const UPLOAD_URL_TTL_SECONDS = 600
@@ -35,7 +35,7 @@ const ALLOWED_TYPES: Record<string, string> = {
 function bucketFor(kind: FileKind) {
   const bucket = kind === 'vault'
     ? process.env.R2_EMPLOYEE_BUCKET
-    : kind === 'internal' || kind === 'inspection'
+    : kind === 'internal' || kind === 'inspection' || kind === 'offer_letter'
       ? process.env.R2_CENTER_BUCKET_INTERNAL
       : process.env.R2_CENTER_BUCKET
   if (!bucket) throw new Error(`Storage bucket for ${kind} files is not configured`)
@@ -65,7 +65,7 @@ async function getAdminCenterId(supabase: Awaited<ReturnType<typeof createClient
 
 /**
  * Presigned PUT for a new file. `vault` = the signed-in staff member's library;
- * `internal` / `template` = the signed-in admin's center. An `internal` upload for a specific employee
+ * `internal` / `template` / `offer_letter` = the signed-in admin's center. An `internal` upload for a specific employee
  * (pass `staffId`) lands in employee_files/<center>/<employee>/ of the center bucket.
  */
 export async function getUploadUrl(kind: FileKind, contentType: string, sizeBytes: number, staffId?: string) {
@@ -156,6 +156,18 @@ export async function getFileViewUrl(kind: FileKind, id: string) {
       centerId = data?.center_id ?? null
       const req = data?.requirement as { is_confidential?: boolean } | { is_confidential?: boolean }[] | null | undefined
       isConfidential = !!data?.is_confidential || !!(Array.isArray(req) ? req[0]?.is_confidential : req?.is_confidential)
+    } else if (kind === 'offer_letter') {
+      // Applicant or the center's admins (RLS on job_applications)
+      const { data } = await supabase
+        .from('job_applications').select('offer_letter_file_key, center_id, staff_id').eq('id', id).maybeSingle()
+      fileKey = data?.offer_letter_file_key ?? null
+      centerId = data?.center_id ?? null
+      staffId = data?.staff_id ?? null
+      if (fileKey) {
+        // The applicant opening it counts as reviewing it (accepting needs this)
+        const { error: viewedError } = await supabase.rpc('mark_offer_letter_viewed', { p_app_id: id })
+        if (viewedError) console.error('Failed to record offer letter view:', viewedError)
+      }
     } else if (kind === 'inspection') {
       const { data } = await supabase.from('center_inspection_files').select('file_key, center_id').eq('id', id).maybeSingle()
       fileKey = data?.file_key ?? null

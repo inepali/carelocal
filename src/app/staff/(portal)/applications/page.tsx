@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Briefcase, CalendarClock, CheckCircle2, ClipboardList, Inbox, Loader2, MapPin } from 'lucide-react'
+import { Briefcase, CalendarClock, CheckCircle2, ClipboardList, FileText, Inbox, Loader2, MapPin } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { showAlert, showConfirm, showPrompt } from '@/lib/dialog'
+import { openStoredFile } from '@/lib/files'
 import { acceptOffer, declineOffer, withdrawApplication } from '@/app/actions/jobs.actions'
 import { OPEN_STAGES, STAGE_LABELS, formatInterviewTime, formatPay, isLink, type JobApplication, type JobPosting } from '@/lib/jobs'
 
@@ -65,22 +66,31 @@ export default function StaffApplicationsPage() {
     load()
   }
 
+  /** Opens the offer letter; the first open is recorded, which unlocks Accept. */
+  async function openLetter(row: Row) {
+    await openStoredFile('offer_letter', row.id)
+    if (!row.offer_letter_viewed_at) load()
+  }
+
   async function accept(row: Row) {
-    const others = rows.filter(r => r.id !== row.id && OPEN_STAGES.includes(r.stage))
-    const blockers = otherCenters.filter(c => c.center_id !== row.center_id)
-    if (blockers.length > 0) {
-      showAlert(`Before accepting, leave your other center${blockers.length === 1 ? '' : 's'} from My Centers: ${blockers.map(b => b.name).join(', ')}. A regular employee works at one center.`, { title: 'One more step' })
+    if (row.offer_letter_file_key && !row.offer_letter_viewed_at) {
+      showAlert('Open and review the offer letter before accepting.', { title: 'One more step' })
       return
     }
+    const others = rows.filter(r => r.id !== row.id && OPEN_STAGES.includes(r.stage))
+    // A regular works at one center: the other centers are left as part of accepting
+    const leaving = otherCenters.filter(c => c.center_id !== row.center_id)
+    const leavingNames = leaving.map(b => b.name).join(', ')
     const impact = [
       `You will become a regular employee at ${row.job?.center?.name ?? 'this center'}.`,
+      leaving.length ? `You will leave ${leavingNames} first, since a regular employee works at one center. You will no longer see or claim shifts there, and pending shift requests there are withdrawn.` : null,
       others.length ? `Your ${others.length} other open application${others.length === 1 ? ' will be' : 's will be'} withdrawn.` : null,
-    ].filter(Boolean).join('\n')
-    if (!await showConfirm(impact, { title: 'Accept this offer?', confirmLabel: 'Accept offer', tone: 'default' })) return
+    ].filter(Boolean).join('\n\n')
+    if (!await showConfirm(impact, { title: 'Accept this offer?', confirmLabel: leaving.length ? 'Leave and accept' : 'Accept offer', tone: 'default' })) return
     setBusyId(row.id)
-    const res = await acceptOffer(row.id)
+    const res = await acceptOffer(row.id, leaving.map(c => c.center_id))
     setBusyId(null)
-    if (!res.success) { showAlert(res.error); return }
+    if (!res.success) { showAlert(res.error); load(); return }   // some centers may already have been left
     showAlert(`Welcome aboard! You are now part of ${row.job?.center?.name ?? 'the center'}. Check My Center for anything still needed before you start.`, { title: 'You’re hired', tone: 'default' })
     router.push('/staff/center')
   }
@@ -154,13 +164,31 @@ export default function StaffApplicationsPage() {
                       {row.offer_pay != null && row.job ? ` · ${formatPay({ pay_min: row.offer_pay, pay_max: row.offer_pay, pay_unit: row.job.pay_unit })}` : ''}
                     </p>
                     {row.offer_note && <p className="mt-1 whitespace-pre-line text-sm text-emerald-900">{row.offer_note}</p>}
+                    {row.offer_letter_file_key && (
+                      <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 bg-white px-3 py-2">
+                        <FileText className="h-5 w-5 shrink-0 text-emerald-700" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-bold text-emerald-900">{row.offer_letter_file_name || 'Offer letter'}</p>
+                          <p className="text-xs text-emerald-800">{row.offer_letter_viewed_at ? 'Opened. You can accept or decline below.' : 'Open and review your offer letter before accepting.'}</p>
+                        </div>
+                        <button onClick={() => openLetter(row)} className="rounded-lg border border-emerald-300 px-3 py-1.5 text-xs font-bold text-emerald-900 hover:bg-emerald-50">
+                          {row.offer_letter_viewed_at ? 'Open again' : 'Open offer letter'}
+                        </button>
+                      </div>
+                    )}
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <button disabled={busyId === row.id} onClick={() => accept(row)} className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-5 py-2 text-sm font-black text-white hover:bg-brand-800 disabled:opacity-50">
+                      <button disabled={busyId === row.id || (!!row.offer_letter_file_key && !row.offer_letter_viewed_at)} onClick={() => accept(row)} className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-5 py-2 text-sm font-black text-white hover:bg-brand-800 disabled:opacity-50">
                         {busyId === row.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} Accept offer
                       </button>
                       <button disabled={busyId === row.id} onClick={() => decline(row)} className="rounded-xl border border-emerald-300 bg-white px-5 py-2 text-sm font-bold text-emerald-900 hover:bg-emerald-100 disabled:opacity-50">Decline</button>
                     </div>
                   </div>
+                )}
+
+                {row.stage === 'hired' && row.offer_letter_file_key && (
+                  <button onClick={() => openLetter(row)} className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-600 hover:underline">
+                    <FileText className="h-4 w-4" /> {row.offer_letter_file_name || 'Offer letter'}
+                  </button>
                 )}
               </div>
             )

@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { DeleteObjectCommand } from '@aws-sdk/client-s3'
+import { r2 } from '@/lib/r2'
 import { createClient } from '@/lib/supabase/server'
 import { notifyUsers } from '@/lib/server/notify'
 import { copyAcceptedDocuments } from '@/lib/server/document-snapshots'
@@ -284,9 +286,40 @@ export async function declineOffer(appId: string, note: string): Promise<Result>
   return { success: true }
 }
 
-export async function acceptOffer(appId: string): Promise<Result<{ centerId: string }>> {
+/**
+ * Staff: leave a center they belong to (leave_center ends the link and withdraws pending shift
+ * requests; it refuses while they have booked shifts, an open application or an admin role there).
+ */
+export async function leaveCenter(centerId: string): Promise<Result<{ centerName: string }>> {
   const { supabase, user } = await session()
   if (!user) return fail('Please sign in again.')
+  const { data, error } = await supabase.rpc('leave_center', { p_center_id: centerId })
+  if (error || !data) return fail(dbError(error, 'Could not leave the center.'))
+  const result = data as { center_name: string; domain_key: string | null }
+
+  try {
+    const { data: me } = await service().from('staff_profiles').select('id, first_name, last_name').eq('user_id', user.id).maybeSingle()
+    await notifyUsers(await centerAdminUserIds(centerId), {
+      title: `${me ? `${me.first_name} ${me.last_name}` : 'A team member'} left your center`,
+      message: `${me ? me.first_name : 'They'} ended their link with ${result.center_name} and will no longer see or claim your shifts.`,
+      type: 'staff_left_center', referenceId: me?.id,
+      url: '/center/team_member', emailCta: 'View team',
+    }, result.domain_key)
+  } catch (err) {
+    console.error('Failed to send leave notification:', err)
+  }
+  revalidatePath('/staff/centers')
+  return { success: true, centerName: result.center_name }
+}
+
+/** Staff: accept an offer. `leaveCenterIds`: other centers to leave first (a regular works at one center). */
+export async function acceptOffer(appId: string, leaveCenterIds: string[] = []): Promise<Result<{ centerId: string }>> {
+  const { supabase, user } = await session()
+  if (!user) return fail('Please sign in again.')
+  for (const centerId of leaveCenterIds) {
+    const left = await leaveCenter(centerId)
+    if (!left.success) return fail(left.error)
+  }
   const { data, error } = await supabase.rpc('accept_job_offer', { p_app_id: appId })
   if (error || !data) return fail(dbError(error, 'Could not accept the offer.'))
   const result = data as { center_id: string; staff_id: string; job_id: string; filled: boolean }
@@ -376,13 +409,33 @@ export async function scheduleInterview(appId: string, input: { at: string; loca
   return { success: true }
 }
 
-export async function sendOffer(appId: string, input: { startDate: string; pay: number | null; note: string }): Promise<Result<{ requests: number }>> {
+/** A letter uploaded for an offer that was not sent: remove it (only from the admin's own center folder). */
+async function discardOfferLetter(supabase: Awaited<ReturnType<typeof createClient>>, userId: string, fileKey: string) {
+  const center = await adminCenter(supabase, userId)
+  const bucket = process.env.R2_CENTER_BUCKET_INTERNAL
+  if (!center || !bucket || !fileKey.startsWith(`offer_letter/${center.id}/`)) return
+  try {
+    await r2.send(new DeleteObjectCommand({ Bucket: bucket, Key: fileKey }))
+  } catch (err) {
+    console.error('Failed to remove unsent offer letter:', err)
+  }
+}
+
+export async function sendOffer(appId: string, input: {
+  startDate: string; pay: number | null; note: string
+  /** Offer letter already uploaded with uploadStoredFile('offer_letter', …) */
+  letter?: { fileKey: string; bucketName: string; name: string } | null
+}): Promise<Result<{ requests: number }>> {
   const { supabase, user } = await session()
   if (!user) return fail('Please sign in again.')
   const { data, error } = await supabase.rpc('send_job_offer', {
     p_app_id: appId, p_start_date: input.startDate, p_pay: input.pay, p_note: input.note || null,
+    p_letter_key: input.letter?.fileKey ?? null, p_letter_bucket: input.letter?.bucketName ?? null, p_letter_name: input.letter?.name ?? null,
   })
-  if (error) return fail(dbError(error, 'Could not send the offer.'))
+  if (error) {
+    if (input.letter) await discardOfferLetter(supabase, user.id, input.letter.fileKey)
+    return fail(dbError(error, 'Could not send the offer.'))
+  }
   await refreshReadiness(appId)
 
   try {
@@ -394,7 +447,7 @@ export async function sendOffer(appId: string, input: { startDate: string; pay: 
     if (staff) {
       await notifyUsers([staff.user_id], {
         title: `Job offer: ${job?.title ?? 'a position'}`,
-        message: `${center?.name ?? 'A center'} sent you an offer starting ${new Date(`${input.startDate}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}. Review and accept it in CareLocal.`,
+        message: `${center?.name ?? 'A center'} sent you an offer starting ${new Date(`${input.startDate}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}.${input.letter ? ' Your offer letter is attached; open and review it,' : ' Review it'} and accept it in CareLocal.`,
         type: 'job_offer', referenceId: appId, url: '/staff/applications', emailCta: 'View offer',
       }, center?.domain_key)
     }

@@ -22,7 +22,8 @@ import {
    EMPLOYMENT_CLASS_LABELS
 } from '@/lib/types'
 import { CenterChecklist } from '@/components/staff/CenterChecklist'
-import { showAlert } from '@/lib/dialog'
+import { showAlert, showConfirm } from '@/lib/dialog'
+import { leaveCenter } from '@/app/actions/jobs.actions'
 
 export default function MyCentersPage() {
    return (
@@ -46,6 +47,7 @@ function CentersContent() {
 
    // Checklist State
    const [activeCenterId, setActiveCenterId] = useState<string | null>(null)
+   const [leavingId, setLeavingId] = useState<string | null>(null)
 
    // Center Details Modal State
    const [viewingCenter, setViewingCenter] = useState<any>(null)
@@ -154,14 +156,19 @@ function CentersContent() {
    async function handleApply(centerId: string) {
       if (!staffProfile) return
 
-      const { error } = await supabase
-         .from('center_staff')
-         .insert({
-            center_id: centerId,
-            staff_id: staffProfile.id,
-            status: 'applying',
-            requested_employment_class: applyClass[centerId] ?? staffProfile.requested_employment_class ?? 'substitute'
-         })
+      const requestedClass = applyClass[centerId] ?? staffProfile.requested_employment_class ?? 'substitute'
+      // Left earlier (or was declined): the old link is reopened rather than inserted again
+      const previous = myCenters.some(mc => mc.center_id === centerId && mc.status === 'removed')
+      const { error } = previous
+         ? await supabase.rpc('reapply_to_center', { p_center_id: centerId, p_class: requestedClass })
+         : await supabase
+            .from('center_staff')
+            .insert({
+               center_id: centerId,
+               staff_id: staffProfile.id,
+               status: 'applying',
+               requested_employment_class: requestedClass
+            })
 
       if (error) {
          showAlert(error.message)
@@ -170,6 +177,19 @@ function CentersContent() {
          setSearchResults([])
          loadInitialData()
       }
+   }
+
+   async function handleLeave(assoc: any) {
+      const ok = await showConfirm(
+         `Leave ${assoc.center.name}? You will no longer see or claim their shifts, and any pending shift requests there are withdrawn. To work there again you would apply to join.`,
+         { title: 'Leave center', confirmLabel: 'Leave center' }
+      )
+      if (!ok) return
+      setLeavingId(assoc.center_id)
+      const res = await leaveCenter(assoc.center_id)
+      setLeavingId(null)
+      if (!res.success) { showAlert(res.error); return }
+      loadInitialData()
    }
 
    if (loading) return (
@@ -217,7 +237,7 @@ function CentersContent() {
                {searchResults.length > 0 && (
                   <div className="mt-8 grid gap-4 animate-in fade-in slide-in-from-top-4">
                      {searchResults.map(center => {
-                        const isAlreadyMember = myCenters.some(mc => mc.center_id === center.id)
+                        const isAlreadyMember = myCenters.some(mc => mc.center_id === center.id && mc.status !== 'removed')
                         return (
                            <div key={center.id} className="flex items-center justify-between p-5 rounded-2xl border-2 border-border hover:border-brand-600/30 transition-all bg-white group">
                               <div className="flex items-center gap-4">
@@ -272,14 +292,14 @@ function CentersContent() {
          {/* My Centers List */}
          <div className="space-y-6">
             <h2 className="text-2xl font-black text-heading mb-6 px-2">Affiliated Centers</h2>
-            {myCenters.length === 0 ? (
+            {myCenters.filter(mc => mc.status !== 'removed').length === 0 ? (
                <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-border">
                   <Globe className="w-12 h-12 text-subtle mx-auto mb-4" />
                   <p className="text-muted font-bold">You aren't associated with any centers yet.</p>
                   <p className="text-sm text-subtle mt-1">Search above to find a facility to join.</p>
                </div>
             ) : (
-               myCenters.map(assoc => (
+               myCenters.filter(mc => mc.status !== 'removed').map(assoc => (
                   <div key={assoc.id} className="bg-white rounded-[2rem] border-2 border-border overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                      <div className="p-8 flex flex-col md:flex-row items-center gap-6">
                         <div className="w-16 h-16 rounded-2xl bg-brand-600 flex items-center justify-center shadow-lg shadow-brand-600/20 shrink-0">
@@ -327,6 +347,15 @@ function CentersContent() {
                                  className="px-6 py-3 border-2 border-brand-600 text-brand-600 font-black text-xs uppercase tracking-widest rounded-xl hover:bg-brand-50 transition-all"
                               >
                                  View Details
+                              </button>
+                           )}
+                           {(assoc.status === 'active' || assoc.status === 'inactive') && (
+                              <button
+                                 onClick={() => handleLeave(assoc)}
+                                 disabled={leavingId === assoc.center_id}
+                                 className="px-6 py-3 border-2 border-red-100 text-red-600 font-black text-xs uppercase tracking-widest rounded-xl hover:bg-red-50 transition-all disabled:opacity-50"
+                              >
+                                 {leavingId === assoc.center_id ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Leave'}
                               </button>
                            )}
                         </div>
