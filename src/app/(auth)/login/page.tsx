@@ -41,6 +41,11 @@ const LOGIN_CONTENT = {
   }
 }
 
+/** A same-site path from ?redirect=, or null (never an absolute URL or a protocol-relative "//host") */
+function safeRedirect(value: string | null) {
+  return value && value.startsWith('/') && !value.startsWith('//') && !value.startsWith('/\\') ? value : null
+}
+
 export default function LoginPage() {
   const router = useRouter()
   const supabase = createClient()
@@ -106,10 +111,11 @@ export default function LoginPage() {
       .eq('user_id', data.user.id)
       .single()
 
+    const redirect = safeRedirect(new URLSearchParams(window.location.search).get('redirect'))
     if (centerAdmin) {
-      router.push('/center/dashboard')
+      router.push(redirect?.startsWith('/center') ? redirect : '/center/dashboard')
     } else {
-      router.push('/staff/shifts')
+      router.push(redirect && !redirect.startsWith('/center') && !redirect.startsWith('/admin') ? redirect : '/staff/shifts')
     }
   }
 

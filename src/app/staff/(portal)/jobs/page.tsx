@@ -6,6 +6,7 @@ import { Briefcase, ChevronRight, Loader2, MapPin } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useLookups } from '@/hooks/use-lookups'
 import { lookupLabel } from '@/lib/lookups'
+import { JobAlerts } from '@/components/staff/JobAlerts'
 import {
   EMPLOYMENT_TYPE_LABELS, STAGE_LABELS, formatPay,
   type ApplicationStage, type EmploymentType, type JobPosting,
@@ -62,6 +63,8 @@ export default function StaffJobsPage() {
         <h1 className="text-4xl font-black text-heading mb-2 tracking-tight">Jobs</h1>
         <p className="text-muted text-lg font-medium">Regular full-time and part-time positions at centers{metro.name ? ` in the ${metro.name} area` : ' in your metro area'}.</p>
       </div>
+
+      {metro.set && <JobAlerts />}
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <select value={type} onChange={e => setType(e.target.value as 'all' | EmploymentType)} className="rounded-xl border border-border bg-white px-3 py-2 text-sm">

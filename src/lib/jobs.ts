@@ -127,14 +127,6 @@ export function slugify(title: string) {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'job'
 }
 
-/** Checklist items a job asks for by default: the ones that apply to regular employees */
-export function defaultJobItems(requirements: CenterDocumentRequirement[]): { requirement_id: string; needed_at: NeededAt }[] {
-  return requirements
-    .filter(r => !r.is_internal && r.evidence_type !== 'center_record')
-    .filter(r => !r.applies_to_class?.length || r.applies_to_class.includes('regular'))
-    .map(r => ({ requirement_id: r.id, needed_at: r.due_within_days === 0 ? 'apply' : 'start' }))
-}
-
 // ─── Readiness ───────────────────────────────────────────────────────────────
 
 export type ItemState = 'ready' | 'in_review' | 'expiring' | 'missing' | 'later'

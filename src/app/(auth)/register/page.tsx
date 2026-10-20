@@ -8,6 +8,11 @@ import { Eye, EyeOff, ArrowRight, Loader2, Building2, User } from 'lucide-react'
 import { getDomainConfig, getDomainKey, type DomainKey } from '@/lib/domain-config'
 import { EMPLOYMENT_CLASS_LABELS, type EmploymentClass } from '@/lib/types'
 
+/** A same-site path from ?redirect=, or null (never an absolute URL or a protocol-relative "//host") */
+function safeRedirect(value: string | null) {
+  return value && value.startsWith('/') && !value.startsWith('//') && !value.startsWith('/\\') ? value : null
+}
+
 function RegisterForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -128,7 +133,8 @@ function RegisterForm() {
         }
       }
 
-      router.push('/staff/shifts')
+      const redirect = safeRedirect(searchParams.get('redirect'))
+      router.push(redirect && redirect.startsWith('/staff') ? redirect : '/staff/shifts')
 
     } else {
       // ── CENTER REGISTRATION ──

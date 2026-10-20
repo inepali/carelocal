@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
-import { CheckCircle2, Clock, FileText, Loader2, RefreshCw, Smartphone, X } from 'lucide-react'
+import { CheckCircle2, Clock, FileText, Loader2, QrCode, RefreshCw, Smartphone, X } from 'lucide-react'
 import {
   claimHandoff, createUploadHandoff, discardHandoff, getHandoffStatus, type HandoffKind,
 } from '@/app/actions/upload-handoff.actions'
@@ -194,7 +194,7 @@ export function PhoneUploadDialog({
 
 /** A small "Use phone" button that opens the dialog; drop it next to any file picker. */
 export function PhoneUploadButton({
-  kind, label, staffId, onReceived, className, text = 'Use phone', disabled,
+  kind, label, staffId, onReceived, className, text = 'Use phone', disabled, variant = 'text',
 }: {
   kind: HandoffKind
   label: string
@@ -203,18 +203,33 @@ export function PhoneUploadButton({
   className?: string
   text?: string
   disabled?: boolean
+  /** 'qr': a square QR-code icon button (no text) to sit beside an upload field */
+  variant?: 'text' | 'qr'
 }) {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => setOpen(true)}
-        className={className ?? 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-white px-3 py-2 text-xs font-bold text-brand-600 transition-colors hover:bg-brand-50 disabled:opacity-50'}
-      >
-        <Smartphone className="h-3.5 w-3.5" /> {text}
-      </button>
+      {variant === 'qr' ? (
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => setOpen(true)}
+          title="Upload from your phone"
+          aria-label="Upload from your phone"
+          className={className ?? 'inline-flex shrink-0 items-center justify-center rounded-xl border-2 border-dashed border-border bg-white px-4 text-brand-600 transition-all hover:border-brand-600 hover:bg-brand-50 disabled:opacity-50'}
+        >
+          <QrCode className="h-6 w-6" />
+        </button>
+      ) : (
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => setOpen(true)}
+          className={className ?? 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-white px-3 py-2 text-xs font-bold text-brand-600 transition-colors hover:bg-brand-50 disabled:opacity-50'}
+        >
+          <Smartphone className="h-3.5 w-3.5" /> {text}
+        </button>
+      )}
       {open && <PhoneUploadDialog kind={kind} label={label} staffId={staffId} onClose={() => setOpen(false)} onReceived={onReceived} />}
     </>
   )

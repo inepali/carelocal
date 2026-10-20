@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notifyUsers } from '@/lib/server/notify'
 import { copyAcceptedDocuments } from '@/lib/server/document-snapshots'
 import { refreshReadinessCache } from '@/lib/server/job-readiness'
+import { sendJobAlerts } from '@/lib/server/job-alerts'
 import { createDocumentRequests } from '@/app/actions/document-requests.actions'
 import { formatInterviewTime, slugify, type EmploymentType, type JobStatus, type NeededAt } from '@/lib/jobs'
 
@@ -167,9 +168,12 @@ export async function setJobStatus(jobId: string, status: Exclude<JobStatus, 'fi
   if (!job) return fail('Job not found.')
 
   if (status === 'closed') await notifyOpenApplicants(job.id, job.title, 'closed')
+  // First publish: tell staff whose job alerts match (sent once per posting)
+  if (status === 'published') await sendJobAlerts(job.id).catch(err => console.error('[jobs] job alerts failed', err))
   revalidatePath('/center/jobs')
   revalidatePath(`/center/jobs/${jobId}`)
   revalidatePath('/staff/jobs')
+  revalidatePath('/jobs')
   return { success: true }
 }
 
