@@ -152,6 +152,7 @@ export default function ChildcareHomePage() {
             <Link href="#features" className="hover:text-brand-600 transition-colors">Features</Link>
             <Link href="#compliance" className="hover:text-brand-600 transition-colors">Compliance</Link>
             <Link href="#pricing" className="hover:text-brand-600 transition-colors">Pricing</Link>
+            <Link href="/jobs" className="hover:text-brand-600 transition-colors">Jobs</Link>
             <Link href="/contact" className="hover:text-brand-600 transition-colors">Contact</Link>
           </div>
           <div className="flex items-center gap-3">
@@ -439,6 +440,7 @@ export default function ChildcareHomePage() {
           <div className="flex gap-6">
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
             <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
+            <Link href="/jobs" className="hover:text-white transition-colors">Jobs</Link>
             <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
           </div>
           <span>© {new Date().getFullYear()} CareLocal. All rights reserved.</span>

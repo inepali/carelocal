@@ -603,23 +603,25 @@ export default function DocumentsTab() {
               ) : (
                 <div className="space-y-2">
                   <input type="file" id="template_upload" className="hidden" accept={DOCUMENT_ACCEPT} onChange={e => setTemplateFile(e.target.files?.[0] || null)} />
-                  <label htmlFor="template_upload" className="flex items-center gap-3 w-full p-4 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-brand-600 hover:bg-surface transition-all">
-                    {templateFile ? (
-                      <>
-                        <CheckCircle2 className="w-5 h-5 text-brand-600" />
-                        <span className="text-sm font-bold text-text-main flex-1">{templateFile.name}</span>
-                        <button type="button" onClick={e => { e.preventDefault(); setTemplateFile(null) }} className="text-xs text-red-500 font-bold hover:underline">Remove</button>
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="w-5 h-5 text-subtle" />
-                        <span className="text-sm text-muted">Upload a blank form staff can download (PDF, Word or image, up to 15 MB)</span>
-                      </>
+                  <div className="flex max-w-xl items-stretch gap-2">
+                    <label htmlFor="template_upload" className="flex min-w-0 flex-1 items-center gap-3 p-3 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-brand-600 hover:bg-surface transition-all">
+                      {templateFile ? (
+                        <>
+                          <CheckCircle2 className="w-5 h-5 shrink-0 text-brand-600" />
+                          <span className="min-w-0 flex-1 truncate text-sm font-bold text-text-main">{templateFile.name}</span>
+                          <button type="button" onClick={e => { e.preventDefault(); setTemplateFile(null) }} className="text-xs text-red-500 font-bold hover:underline">Remove</button>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-5 h-5 shrink-0 text-subtle" />
+                          <span className="text-sm text-muted">Upload a blank form <span className="text-subtle">(PDF, Word or image, up to 15 MB)</span></span>
+                        </>
+                      )}
+                    </label>
+                    {!templateFile && (
+                      <PhoneUploadButton kind="template" variant="qr" label={form.name.trim() || 'Blank form'} onReceived={upload => { setTemplateFile(upload) }} />
                     )}
-                  </label>
-                  {!templateFile && (
-                    <PhoneUploadButton kind="template" label={form.name.trim() || 'Blank form'} onReceived={upload => { setTemplateFile(upload) }} />
-                  )}
+                  </div>
                   {existingTemplate && templateFile && (
                     <p className="text-[11px] text-amber-600 font-bold flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" /> This will replace the current file when you save.

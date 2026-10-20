@@ -11,7 +11,7 @@ import { sectionsFor } from '@/lib/compliance'
 import { showAlert } from '@/lib/dialog'
 import { createJob, updateJob, type JobInput } from '@/app/actions/jobs.actions'
 import {
-  BENEFITS, EMPLOYMENT_TYPE_LABELS, NEEDED_AT_LABELS, benefitLabel, defaultJobItems, formatPay,
+  BENEFITS, EMPLOYMENT_TYPE_LABELS, NEEDED_AT_LABELS, benefitLabel, formatPay,
   type EmploymentType, type JobPosting, type NeededAt,
 } from '@/lib/jobs'
 
@@ -78,7 +78,12 @@ export function JobForm({ job, jobItems }: { job?: JobPosting; jobItems?: { requ
         .order('sort_order', { ascending: true }).order('created_at', { ascending: true })
       const reqs = ((data ?? []) as CenterDocumentRequirement[]).filter(r => !r.is_internal && r.evidence_type !== 'center_record')
       setRequirements(reqs)
-      const initial = jobItems ?? (job ? [] : defaultJobItems(reqs))
+      // New jobs start with the mandatory checklist items ticked (those that apply to regular
+      // employees); the admin adds any other document this job needs
+      const initial = jobItems ?? (job ? [] : reqs
+        .filter(r => r.is_required && !r.is_conditional)
+        .filter(r => !r.applies_to_class?.length || r.applies_to_class.includes('regular'))
+        .map(r => ({ requirement_id: r.id, needed_at: (r.due_within_days === 0 ? 'apply' : 'start') as NeededAt })))
       setItems(Object.fromEntries(initial.map(i => [i.requirement_id, i.needed_at])))
       setLoading(false)
     })()
@@ -239,7 +244,7 @@ export function JobForm({ job, jobItems }: { job?: JobPosting; jobItems?: { requ
         <section className="rounded-2xl border border-border bg-white p-6 shadow-sm">
           <h2 className="text-lg font-bold text-text-main">Required documents</h2>
           <p className="mb-4 text-sm text-muted">
-            Picked from your compliance checklist. “To apply” items must be ready before someone can apply ({applyCount} selected); the others are collected after the offer or before the start date. Every application also includes a resume.
+            Every application includes a resume. Your mandatory checklist items are ticked; tick any other documents this job needs. “To apply” items must be ready before someone can apply ({applyCount} selected); the others are collected after the offer or before the start date.
           </p>
           {loading ? (
             <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-brand-600" /></div>

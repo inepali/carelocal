@@ -61,6 +61,13 @@ export default function StaffJobDetailPage() {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load() }, [load])
 
+  // Arriving from a public job page (?apply=1): open the apply sheet once the job has loaded
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    const autoApply = new URLSearchParams(window.location.search).get('apply') === '1'
+    if (autoApply && !loading && job && job.status === 'published' && (!stage || stage === 'withdrawn')) setApplying(true)
+  }, [loading, job, stage])
+
   const preview = useMemo(() => computeReadiness({ items, records, vaultDocs: docs, startDate: job?.start_date }), [items, records, docs, job])
   const missing = preview.filter(r => r.neededAt === 'apply' && r.state === 'missing').length + (findResume(docs) ? 0 : 1)
 
