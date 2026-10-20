@@ -26,7 +26,7 @@ import { showAlert } from '@/lib/dialog'
 
 export default function MyCentersPage() {
    return (
-      <Suspense fallback={<div className="p-10 text-[#6b7a73] font-medium">Loading centers...</div>}>
+      <Suspense fallback={<div className="p-10 text-muted font-medium">Loading centers...</div>}>
          <CentersContent />
       </Suspense>
    )
@@ -174,23 +174,23 @@ function CentersContent() {
 
    if (loading) return (
       <div className="max-w-5xl animate-pulse">
-         <div className="h-40 bg-white rounded-3xl border border-[#e2e8e4] mb-8"></div>
-         <div className="h-64 bg-white rounded-3xl border border-[#e2e8e4]"></div>
+         <div className="h-40 bg-white rounded-3xl border border-border mb-8"></div>
+         <div className="h-64 bg-white rounded-3xl border border-border"></div>
       </div>
    )
 
    return (
       <div className="max-w-5xl">
          <div className="mb-10">
-            <h1 className="text-4xl font-black text-[#0b3828] mb-2 tracking-tight">My Centers</h1>
-            <p className="text-[#6b7a73] text-lg font-medium">Manage your facility applications and credentials.</p>
+            <h1 className="text-4xl font-black text-heading mb-2 tracking-tight">My Centers</h1>
+            <p className="text-muted text-lg font-medium">Manage your facility applications and credentials.</p>
          </div>
 
          {/* Center Discovery */}
          <div className="mb-12">
-            <div className="bg-white border-2 border-[#157354]/10 rounded-[2rem] p-8 shadow-xl shadow-[#157354]/5">
-               <h2 className="text-xl font-black text-[#0b3828] mb-6 flex items-center gap-3">
-                  <Search className="w-6 h-6 text-[#157354]" />
+            <div className="bg-white border-2 border-brand-600/10 rounded-[2rem] p-8 shadow-xl shadow-brand-600/5">
+               <h2 className="text-xl font-black text-heading mb-6 flex items-center gap-3">
+                  <Search className="w-6 h-6 text-brand-600" />
                   Find a New Center
                </h2>
                <div className="flex flex-col sm:flex-row gap-4">
@@ -201,14 +201,14 @@ function CentersContent() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                        className="w-full pl-12 pr-6 py-4 rounded-2xl border-2 border-[#f0f4f2] bg-[#f8faf9] focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all font-medium text-[#0b3828]"
+                        className="w-full pl-12 pr-6 py-4 rounded-2xl border-2 border-border bg-surface focus:outline-none focus:ring-4 focus:ring-brand-600/10 focus:border-brand-600 transition-all font-medium text-heading"
                      />
-                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#a8b5ae]" />
+                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-subtle" />
                   </div>
                   <button
                      onClick={handleSearch}
                      disabled={searching || !searchQuery}
-                     className="bg-[#157354] text-white font-black px-8 py-4 rounded-xl hover:bg-[#0f4a36] shadow-lg shadow-[#157354]/20 transition-all disabled:opacity-50"
+                     className="bg-brand-600 text-white font-black px-8 py-4 rounded-xl hover:bg-brand-800 shadow-lg shadow-brand-600/20 transition-all disabled:opacity-50"
                   >
                      {searching ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Search'}
                   </button>
@@ -219,35 +219,35 @@ function CentersContent() {
                      {searchResults.map(center => {
                         const isAlreadyMember = myCenters.some(mc => mc.center_id === center.id)
                         return (
-                           <div key={center.id} className="flex items-center justify-between p-5 rounded-2xl border-2 border-[#f0f4f2] hover:border-[#157354]/30 transition-all bg-white group">
+                           <div key={center.id} className="flex items-center justify-between p-5 rounded-2xl border-2 border-border hover:border-brand-600/30 transition-all bg-white group">
                               <div className="flex items-center gap-4">
-                                 <div className="w-12 h-12 rounded-xl bg-[#edf7f3] flex items-center justify-center shrink-0">
-                                    <Building className="w-6 h-6 text-[#157354]" />
+                                 <div className="w-12 h-12 rounded-xl bg-brand-50 flex items-center justify-center shrink-0">
+                                    <Building className="w-6 h-6 text-brand-600" />
                                  </div>
                                  <div>
                                     <div className="flex flex-wrap items-center gap-2 mb-1">
-                                       <div className="font-black text-[#0b3828] tracking-tight text-lg">{center.name}</div>
+                                       <div className="font-black text-heading tracking-tight text-lg">{center.name}</div>
                                        {centerRatings[center.id] && (
-                                          <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-[#d97706] bg-[#fffbeb] px-2 py-0.5 rounded-md border border-[#fef3c7]">
+                                          <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-amber-600 bg-[#fffbeb] px-2 py-0.5 rounded-md border border-[#fef3c7]">
                                              <Star className="w-3 h-3 fill-current" />
                                              {centerRatings[center.id].avg.toFixed(1)} ({centerRatings[center.id].count})
                                           </span>
                                        )}
                                     </div>
-                                    <div className="text-xs text-[#6b7a73] font-bold uppercase tracking-widest flex items-center gap-2 mt-0.5">
+                                    <div className="text-xs text-muted font-bold uppercase tracking-widest flex items-center gap-2 mt-0.5">
                                        <MapPin className="w-3 h-3" /> {center.city}, {center.state}
                                     </div>
                                  </div>
                               </div>
                               {isAlreadyMember ? (
-                                 <span className="text-[10px] font-black uppercase tracking-widest text-[#a8b5ae] px-4 py-2 bg-[#f8faf9] rounded-lg">Already Member</span>
+                                 <span className="text-[10px] font-black uppercase tracking-widest text-subtle px-4 py-2 bg-surface rounded-lg">Already Member</span>
                               ) : (
                                  <div className="flex items-center gap-3">
                                  <select
                                     value={applyClass[center.id] ?? staffProfile?.requested_employment_class ?? 'substitute'}
                                     onChange={(e) => setApplyClass(prev => ({ ...prev, [center.id]: e.target.value as EmploymentClass }))}
                                     aria-label="Job classification"
-                                    className="px-3 py-3 rounded-xl border-2 border-[#f0f4f2] bg-white text-xs font-black uppercase tracking-widest text-[#157354] focus:outline-none focus:border-[#157354]"
+                                    className="px-3 py-3 rounded-xl border-2 border-border bg-white text-xs font-black uppercase tracking-widest text-brand-600 focus:outline-none focus:border-brand-600"
                                  >
                                     {(Object.entries(EMPLOYMENT_CLASS_LABELS) as [EmploymentClass, string][]).map(([value, label]) => (
                                        <option key={value} value={value}>{label}</option>
@@ -255,7 +255,7 @@ function CentersContent() {
                                  </select>
                                  <button
                                     onClick={() => handleApply(center.id)}
-                                    className="flex items-center gap-2 bg-[#edf7f3] text-[#157354] font-black text-xs uppercase tracking-widest px-5 py-3 rounded-xl hover:bg-[#157354] hover:text-white transition-all shadow-sm"
+                                    className="flex items-center gap-2 bg-brand-50 text-brand-600 font-black text-xs uppercase tracking-widest px-5 py-3 rounded-xl hover:bg-brand-600 hover:text-white transition-all shadow-sm"
                                  >
                                     <Plus className="w-4 h-4" /> Apply to Join
                                  </button>
@@ -271,52 +271,52 @@ function CentersContent() {
 
          {/* My Centers List */}
          <div className="space-y-6">
-            <h2 className="text-2xl font-black text-[#0b3828] mb-6 px-2">Affiliated Centers</h2>
+            <h2 className="text-2xl font-black text-heading mb-6 px-2">Affiliated Centers</h2>
             {myCenters.length === 0 ? (
-               <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-[#e2e8e4]">
-                  <Globe className="w-12 h-12 text-[#a8b5ae] mx-auto mb-4" />
-                  <p className="text-[#6b7a73] font-bold">You aren't associated with any centers yet.</p>
-                  <p className="text-sm text-[#a8b5ae] mt-1">Search above to find a facility to join.</p>
+               <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-border">
+                  <Globe className="w-12 h-12 text-subtle mx-auto mb-4" />
+                  <p className="text-muted font-bold">You aren't associated with any centers yet.</p>
+                  <p className="text-sm text-subtle mt-1">Search above to find a facility to join.</p>
                </div>
             ) : (
                myCenters.map(assoc => (
-                  <div key={assoc.id} className="bg-white rounded-[2rem] border-2 border-[#f0f4f2] overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                  <div key={assoc.id} className="bg-white rounded-[2rem] border-2 border-border overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                      <div className="p-8 flex flex-col md:flex-row items-center gap-6">
-                        <div className="w-16 h-16 rounded-2xl bg-[#157354] flex items-center justify-center shadow-lg shadow-[#157354]/20 shrink-0">
+                        <div className="w-16 h-16 rounded-2xl bg-brand-600 flex items-center justify-center shadow-lg shadow-brand-600/20 shrink-0">
                            <Building className="w-8 h-8 text-white" />
                         </div>
                         <div className="flex-1 text-center md:text-left">
                            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-1">
-                              <h3 className="text-2xl font-black text-[#0b3828] leading-tight">{assoc.center.name}</h3>
-                              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.1em] border-2 ${assoc.status === 'active' ? 'bg-[#f0fdf4] text-[#157354] border-[#dcfce7]' :
+                              <h3 className="text-2xl font-black text-heading leading-tight">{assoc.center.name}</h3>
+                              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.1em] border-2 ${assoc.status === 'active' ? 'bg-brand-50 text-brand-600 border-[#dcfce7]' :
                                     assoc.status === 'applying' ? 'bg-[#fefce8] text-yellow-700 border-yellow-200' :
-                                       'bg-[#f8faf9] text-[#6b7a73] border-[#e2e8e4]'
+                                       'bg-surface text-muted border-border'
                                  }`}>
                                  {assoc.status}
                               </span>
                               {(assoc.status === 'active' ? assoc.employment_class : (assoc.requested_employment_class ?? assoc.employment_class)) && (
-                                 <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.1em] border-2 bg-[#edf7f3] text-[#157354] border-[#d4ede4]">
+                                 <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.1em] border-2 bg-brand-50 text-brand-600 border-brand-100">
                                     {EMPLOYMENT_CLASS_LABELS[(assoc.status === 'active' ? assoc.employment_class : (assoc.requested_employment_class ?? assoc.employment_class)) as EmploymentClass]}
                                     {assoc.status !== 'active' && ' (requested)'}
                                  </span>
                               )}
                               {centerRatings[assoc.center.id] && (
-                                 <span className="flex items-center gap-1.5 text-[#d97706] font-black uppercase tracking-[0.1em] text-[10px] bg-[#fffbeb] px-3 py-1 rounded-full border-2 border-[#fef3c7]">
+                                 <span className="flex items-center gap-1.5 text-amber-600 font-black uppercase tracking-[0.1em] text-[10px] bg-[#fffbeb] px-3 py-1 rounded-full border-2 border-[#fef3c7]">
                                     <Star className="w-3.5 h-3.5 fill-current" />
                                     {centerRatings[assoc.center.id].avg.toFixed(1)} ({centerRatings[assoc.center.id].count})
                                  </span>
                               )}
                            </div>
-                           <div className="text-[#6b7a73] font-medium flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm mt-2">
-                              <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-[#a8b5ae]" /> {assoc.center.city}, {assoc.center.state}</span>
-                              <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-[#a8b5ae]" /> Joined {new Date(assoc.added_at).toLocaleDateString()}</span>
+                           <div className="text-muted font-medium flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm mt-2">
+                              <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-subtle" /> {assoc.center.city}, {assoc.center.state}</span>
+                              <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-subtle" /> Joined {new Date(assoc.added_at).toLocaleDateString()}</span>
                            </div>
                         </div>
                         <div className="flex items-center gap-3">
                            {assoc.status !== 'active' && (
                               <button
                                  onClick={() => activeCenterId === assoc.center_id ? setActiveCenterId(null) : setActiveCenterId(assoc.center_id)}
-                                 className="px-6 py-3 bg-[#157354] text-white font-black text-xs uppercase tracking-widest rounded-xl hover:bg-[#0f4a36] shadow-lg shadow-[#157354]/20 transition-all"
+                                 className="px-6 py-3 bg-brand-600 text-white font-black text-xs uppercase tracking-widest rounded-xl hover:bg-brand-800 shadow-lg shadow-brand-600/20 transition-all"
                               >
                                  {activeCenterId === assoc.center_id ? 'Hide Checklist' : 'Complete Onboarding'}
                               </button>
@@ -324,7 +324,7 @@ function CentersContent() {
                            {assoc.status === 'active' && (
                               <button
                                  onClick={() => setViewingCenter(assoc.center)}
-                                 className="px-6 py-3 border-2 border-[#157354] text-[#157354] font-black text-xs uppercase tracking-widest rounded-xl hover:bg-[#edf7f3] transition-all"
+                                 className="px-6 py-3 border-2 border-brand-600 text-brand-600 font-black text-xs uppercase tracking-widest rounded-xl hover:bg-brand-50 transition-all"
                               >
                                  View Details
                               </button>
@@ -334,7 +334,7 @@ function CentersContent() {
 
                      {/* Onboarding Checklist for this center */}
                      {activeCenterId === assoc.center_id && (
-                        <div className="p-8 bg-[#f8faf9] border-t-2 border-[#f0f4f2] animate-in slide-in-from-top-4 duration-500">
+                        <div className="p-8 bg-surface border-t-2 border-border animate-in slide-in-from-top-4 duration-500">
                            <CenterChecklist centerId={assoc.center_id} staffId={staffProfile.id} employmentClass={(assoc.status === 'active' ? assoc.employment_class : (assoc.requested_employment_class ?? assoc.employment_class))} />
                         </div>
                      )}
@@ -345,21 +345,21 @@ function CentersContent() {
 
          {/* Center Details Modal */}
          {viewingCenter && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0b3828]/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-900/60 backdrop-blur-sm animate-in fade-in duration-200">
                <div className="bg-white rounded-[2rem] w-full max-w-lg overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95 duration-200">
-                  <div className="flex items-center justify-between p-6 bg-[#f8faf9] border-b border-[#f0f4f2]">
+                  <div className="flex items-center justify-between p-6 bg-surface border-b border-border">
                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-[#157354] flex items-center justify-center shadow-md shadow-[#157354]/20 shrink-0">
+                        <div className="w-12 h-12 rounded-xl bg-brand-600 flex items-center justify-center shadow-md shadow-brand-600/20 shrink-0">
                            <Building className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                           <h3 className="text-xl font-black text-[#0b3828] leading-none mb-1">{viewingCenter.name}</h3>
-                           <span className="text-[10px] font-black uppercase tracking-widest text-[#157354] bg-[#dcfce7] px-2 py-0.5 rounded-md">Approved Staff</span>
+                           <h3 className="text-xl font-black text-heading leading-none mb-1">{viewingCenter.name}</h3>
+                           <span className="text-[10px] font-black uppercase tracking-widest text-brand-600 bg-[#dcfce7] px-2 py-0.5 rounded-md">Approved Staff</span>
                         </div>
                      </div>
                      <button
                         onClick={() => setViewingCenter(null)}
-                        className="p-2 text-[#a8b5ae] hover:text-[#0b3828] hover:bg-[#edf7f3] rounded-full transition-colors"
+                        className="p-2 text-subtle hover:text-heading hover:bg-brand-50 rounded-full transition-colors"
                      >
                         <X className="w-5 h-5" />
                      </button>
@@ -368,20 +368,20 @@ function CentersContent() {
                   <div className="p-8 space-y-6">
                      {/* Contact Person */}
                      <div>
-                        <div className="flex items-center gap-2 mb-2 text-[#6b7a73]">
-                           <User className="w-4 h-4 text-[#a8b5ae]" />
+                        <div className="flex items-center gap-2 mb-2 text-muted">
+                           <User className="w-4 h-4 text-subtle" />
                            <span className="text-xs font-black uppercase tracking-widest">Director / Contact</span>
                         </div>
-                        <p className="text-[#0b3828] font-bold text-lg">{viewingCenter.director_name || 'Not provided'}</p>
+                        <p className="text-heading font-bold text-lg">{viewingCenter.director_name || 'Not provided'}</p>
                      </div>
 
                      {/* Address */}
                      <div>
-                        <div className="flex items-center gap-2 mb-2 text-[#6b7a73]">
-                           <MapPin className="w-4 h-4 text-[#a8b5ae]" />
+                        <div className="flex items-center gap-2 mb-2 text-muted">
+                           <MapPin className="w-4 h-4 text-subtle" />
                            <span className="text-xs font-black uppercase tracking-widest">Address</span>
                         </div>
-                        <p className="text-[#0b3828] font-bold text-lg leading-tight">
+                        <p className="text-heading font-bold text-lg leading-tight">
                            {viewingCenter.address && <span className="block">{viewingCenter.address}</span>}
                            {viewingCenter.city}, {viewingCenter.state} {viewingCenter.zip}
                         </p>
@@ -389,57 +389,57 @@ function CentersContent() {
 
                      {/* Phone */}
                      <div>
-                        <div className="flex items-center gap-2 mb-2 text-[#6b7a73]">
-                           <Phone className="w-4 h-4 text-[#a8b5ae]" />
+                        <div className="flex items-center gap-2 mb-2 text-muted">
+                           <Phone className="w-4 h-4 text-subtle" />
                            <span className="text-xs font-black uppercase tracking-widest">Phone</span>
                         </div>
-                        <p className="text-[#0b3828] font-bold text-lg">
+                        <p className="text-heading font-bold text-lg">
                            {viewingCenter.phone ? (
-                              <a href={`tel:${viewingCenter.phone}`} className="hover:text-[#157354] hover:underline transition-colors">{viewingCenter.phone}</a>
+                              <a href={`tel:${viewingCenter.phone}`} className="hover:text-brand-600 hover:underline transition-colors">{viewingCenter.phone}</a>
                            ) : 'Not provided'}
                         </p>
                      </div>
 
                      {/* Email */}
                      <div>
-                        <div className="flex items-center gap-2 mb-2 text-[#6b7a73]">
-                           <Mail className="w-4 h-4 text-[#a8b5ae]" />
+                        <div className="flex items-center gap-2 mb-2 text-muted">
+                           <Mail className="w-4 h-4 text-subtle" />
                            <span className="text-xs font-black uppercase tracking-widest">Email</span>
                         </div>
-                        <p className="text-[#0b3828] font-bold text-lg break-all">
+                        <p className="text-heading font-bold text-lg break-all">
                            {viewingCenter.email ? (
-                              <a href={`mailto:${viewingCenter.email}`} className="hover:text-[#157354] hover:underline transition-colors">{viewingCenter.email}</a>
+                              <a href={`mailto:${viewingCenter.email}`} className="hover:text-brand-600 hover:underline transition-colors">{viewingCenter.email}</a>
                            ) : 'Not provided'}
                         </p>
                      </div>
                      {/* Reviews Section */}
                      {(centerReviews[viewingCenter.id] || []).length > 0 && (
-                        <div className="pt-6 border-t-2 border-[#f0f4f2]">
-                           <h4 className="text-lg font-black text-[#0b3828] mb-4 flex items-center gap-2">
-                              <Star className="w-5 h-5 text-[#fbbf24] fill-[#fbbf24]" /> Staff Reviews
+                        <div className="pt-6 border-t-2 border-border">
+                           <h4 className="text-lg font-black text-heading mb-4 flex items-center gap-2">
+                              <Star className="w-5 h-5 text-amber-400 fill-amber-400" /> Staff Reviews
                            </h4>
                            <div className="grid gap-3">
                               {(centerReviews[viewingCenter.id] || []).map((review: any) => (
-                                 <div key={review.id} className="p-4 rounded-2xl bg-[#f8faf9] border border-[#e2e8e4]">
+                                 <div key={review.id} className="p-4 rounded-2xl bg-surface border border-border">
                                     <div className="flex items-center justify-between mb-2">
-                                       <div className="font-bold text-[#1a2e25] text-sm">{review.reviewer_name}</div>
+                                       <div className="font-bold text-text-main text-sm">{review.reviewer_name}</div>
                                        <div className="flex gap-1">
                                           {[...Array(5)].map((_, i) => (
-                                             <Star key={i} className={`w-3.5 h-3.5 ${i < review.rating ? 'text-[#fbbf24] fill-[#fbbf24]' : 'text-[#e2e8e4] fill-transparent'}`} />
+                                             <Star key={i} className={`w-3.5 h-3.5 ${i < review.rating ? 'text-amber-400 fill-amber-400' : 'text-border fill-transparent'}`} />
                                           ))}
                                        </div>
                                     </div>
                                     {review.tags && review.tags.length > 0 && (
                                        <div className="flex flex-wrap gap-1.5 mb-2">
                                           {review.tags.map((tag: string) => (
-                                             <span key={tag} className="text-[9px] font-black uppercase tracking-widest bg-[#edf7f3] text-[#157354] px-2 py-1 rounded-md border border-[#d4ede4]">
+                                             <span key={tag} className="text-[9px] font-black uppercase tracking-widest bg-brand-50 text-brand-600 px-2 py-1 rounded-md border border-brand-100">
                                                 {tag}
                                              </span>
                                           ))}
                                        </div>
                                     )}
                                     {review.public_comment && (
-                                       <p className="text-xs text-[#3d5a4f] italic mt-2 bg-white p-3 rounded-xl border border-[#e2e8e4]">"{review.public_comment}"</p>
+                                       <p className="text-xs text-text-muted italic mt-2 bg-white p-3 rounded-xl border border-border">"{review.public_comment}"</p>
                                     )}
                                  </div>
                               ))}
@@ -448,10 +448,10 @@ function CentersContent() {
                      )}
                   </div>
 
-                  <div className="p-6 bg-[#f8faf9] border-t border-[#f0f4f2]">
+                  <div className="p-6 bg-surface border-t border-border">
                      <button
                         onClick={() => setViewingCenter(null)}
-                        className="w-full py-4 text-center bg-[#157354] text-white font-black text-xs uppercase tracking-widest rounded-xl hover:bg-[#0f4a36] shadow-lg shadow-[#157354]/20 transition-all"
+                        className="w-full py-4 text-center bg-brand-600 text-white font-black text-xs uppercase tracking-widest rounded-xl hover:bg-brand-800 shadow-lg shadow-brand-600/20 transition-all"
                      >
                         Close Details
                      </button>

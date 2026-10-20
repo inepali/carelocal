@@ -13,17 +13,23 @@ import {
   CreditCard,
   MapPin,
   Calendar,
-  FileDown
+  FileDown,
+  Trash2
 } from 'lucide-react'
 import Link from 'next/link'
 import { exportCenterRequirementsAsTemplate } from '@/app/actions/requirement-templates.actions'
-import { showAlert, showPrompt } from '@/lib/dialog'
+import { setCenterEnabled } from '@/app/actions/account-status.actions'
+import { setCenterJobsEnabled } from '@/app/actions/jobs.actions'
+import { purgeCenter } from '@/app/actions/data-cleanup.actions'
+import { PurgeDialog } from '@/components/admin/PurgeDialog'
+import { showAlert, showConfirm, showPrompt } from '@/lib/dialog'
 
 export default function AdminCentersPage() {
   const supabase = createClient()
   const [centers, setCenters] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [purging, setPurging] = useState<{ id: string; name: string } | null>(null)
 
   useEffect(() => {
     async function loadCenters() {
@@ -74,6 +80,28 @@ export default function AdminCentersPage() {
     } else {
       showAlert('Failed to update trial months')
     }
+  }
+
+  const toggleEnabled = async (center: { id: string; name: string; is_active?: boolean }) => {
+    const enabling = center.is_active === false
+    const ok = await showConfirm(
+      enabling
+        ? `Enable ${center.name}? Its admins will be able to use the center portal again.`
+        : `Disable ${center.name}? Its admins will be signed out and cannot use the center portal until you enable it again.`,
+      { title: enabling ? 'Enable center' : 'Disable center', tone: enabling ? 'default' : 'danger', confirmLabel: enabling ? 'Enable' : 'Disable' },
+    )
+    if (!ok) return
+    const res = await setCenterEnabled(center.id, enabling)
+    if (!res.success) { showAlert(res.error); return }
+    setCenters(prev => prev.map(c => c.id === center.id ? { ...c, is_active: enabling } : c))
+  }
+
+  const toggleJobs = async (center: { id: string; name: string; jobs_enabled?: boolean }) => {
+    const enabling = !center.jobs_enabled
+    if (!await showConfirm(enabling ? `Turn on job postings for ${center.name}?` : `Turn off job postings for ${center.name}? Existing postings stay as they are.`, { title: 'Hiring pilot', confirmLabel: enabling ? 'Turn on' : 'Turn off', tone: 'default' })) return
+    const res = await setCenterJobsEnabled(center.id, enabling)
+    if (!res.success) { showAlert(res.error); return }
+    setCenters(prev => prev.map(c => c.id === center.id ? { ...c, jobs_enabled: enabling } : c))
   }
 
   const exportChecklist = async (center: { id: string; name: string }) => {
@@ -187,7 +215,7 @@ export default function AdminCentersPage() {
                      </td>
                      <td className="px-8 py-6">
                        <select 
-                         value={center.trial_months || 6} 
+                         value={center.trial_months || 3} 
                          onChange={(e) => updateTrialMonths(center.id, parseInt(e.target.value))}
                          className="bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 px-2 py-1 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                        >
@@ -201,11 +229,32 @@ export default function AdminCentersPage() {
                        <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${getStatusColor(sub?.status || 'inactive')}`}>
                          {sub?.status || 'No Sub'}
                        </span>
+                       {center.is_active === false && (
+                         <span className="ml-2 inline-flex items-center px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-rose-50 text-rose-600 border border-rose-100">Disabled</span>
+                       )}
                      </td>
                      <td className="px-8 py-6 text-right">
-                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                       <div className="flex items-center justify-end gap-2">
+                         <button
+                           onClick={() => toggleJobs(center)}
+                           title="Job postings (hiring pilot)"
+                           className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${center.jobs_enabled ? 'text-violet-700 border-violet-200 bg-violet-50 hover:bg-violet-100' : 'text-slate-500 border-slate-200 hover:text-violet-700 hover:border-violet-200'}`}
+                         >
+                           {center.jobs_enabled ? 'Jobs on' : 'Jobs off'}
+                         </button>
+                         <button
+                           onClick={() => toggleEnabled(center)}
+                           className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${center.is_active === false ? 'text-emerald-600 border-emerald-200 hover:bg-emerald-50' : 'text-slate-500 border-slate-200 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50'}`}
+                         >
+                           {center.is_active === false ? 'Enable' : 'Disable'}
+                         </button>
+                       </div>
+                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity mt-1">
                          <button onClick={() => exportChecklist(center)} className="p-2 text-slate-400 hover:text-violet-600 hover:bg-violet-50 rounded-xl transition-all" title="Export document requirements as a template">
                            <FileDown className="w-5 h-5" />
+                         </button>
+                         <button onClick={() => setPurging({ id: center.id, name: center.name })} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all" title="Delete center and all its data">
+                           <Trash2 className="w-5 h-5" />
                          </button>
                          <button className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all" title="View Records">
                            <ExternalLink className="w-5 h-5" />
@@ -238,6 +287,27 @@ export default function AdminCentersPage() {
            </div>
          )}
       </div>
+
+      {purging && (
+        <PurgeDialog
+          title="Delete center and all data"
+          targetLabel={purging.name}
+          confirmHint="Type the center name to confirm"
+          consequences={[
+            'The center, its profile, programs, team and subscription record',
+            'All shifts, claims, time records, requests and support tickets',
+            'Document requirements, compliance records, inspections, vendors and their uploaded files',
+            "Staff links to this center (the staff members' own accounts and documents stay)",
+          ]}
+          option={{ label: "Also delete the center admins' sign-in accounts (skips anyone who is also staff or runs another center)", defaultChecked: false }}
+          onClose={() => setPurging(null)}
+          onConfirm={async ({ confirmName, password, option }) => {
+            const res = await purgeCenter(purging.id, { confirmName, password, deleteAdminAccounts: option })
+            if (res.success) setCenters(prev => prev.filter(c => c.id !== purging.id))
+            return res
+          }}
+        />
+      )}
     </div>
   )
 }

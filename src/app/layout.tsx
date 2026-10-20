@@ -3,8 +3,9 @@ import { Inter, JetBrains_Mono } from 'next/font/google'
 import { headers } from 'next/headers'
 import { getDomainKey, getDomainConfig, type DomainKey } from '@/lib/domain-config'
 import { siteUrl, SEO_KEYWORDS } from '@/lib/site'
-import { Analytics } from '@vercel/analytics/next'
+import { AppAnalytics } from '@/components/AppAnalytics'
 import { DialogHost } from '@/components/ui/DialogHost'
+import { RecoveryRedirect } from '@/components/auth/RecoveryRedirect'
 import './globals.css'
 
 const inter = Inter({
@@ -21,9 +22,9 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 const THEME_COLOR: Record<DomainKey, string> = {
-  childcare: '#157354',
+  childcare: '#0f766e',
   healthcare: '#4f46e5',
-  senior: '#157354',
+  senior: '#0f766e',
 }
 
 async function currentDomain() {
@@ -81,7 +82,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="antialiased">
         {children}
         <DialogHost />
-        <Analytics />
+        <RecoveryRedirect />
+        <AppAnalytics />
       </body>
     </html>
   )

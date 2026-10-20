@@ -13,6 +13,8 @@ function RegisterForm() {
   const searchParams = useSearchParams()
   const inviteSlug = searchParams.get('invite')
   const isStaffInvite = !!inviteSlug
+  // /register?type=staff opens straight on the staff sign-up (no invite needed; they apply to centers afterwards)
+  const startsAsStaff = isStaffInvite || searchParams.get('type') === 'staff'
 
   const supabase = createClient()
   
@@ -28,8 +30,8 @@ function RegisterForm() {
   const config = getDomainConfig(domainKey)
 
   // New State
-  const [accountType, setAccountType] = useState<'center' | 'staff' | null>(isStaffInvite ? 'staff' : null)
-  const [step, setStep] = useState(isStaffInvite ? 2 : 0) // Step 0 is selection
+  const [accountType, setAccountType] = useState<'center' | 'staff' | null>(startsAsStaff ? 'staff' : null)
+  const [step, setStep] = useState(startsAsStaff ? 2 : 0) // Step 0 is selection
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -173,7 +175,8 @@ function RegisterForm() {
         tier: 'starter',
         status: 'trialing',
         current_period_start: new Date().toISOString(),
-        current_period_end: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+        // 3-month free trial
+        current_period_end: new Date(new Date().setMonth(new Date().getMonth() + 3)).toISOString(),
       })
 
       router.push('/center/dashboard')
@@ -182,7 +185,7 @@ function RegisterForm() {
 
   return (
     <>
-    <div className="min-h-screen bg-[#f8faf9] flex flex-col md:flex-row">
+    <div className="min-h-screen bg-surface flex flex-col md:flex-row">
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
         <div className="w-full max-w-md">
            <Link href="/" className="flex items-center gap-2 mb-10">
@@ -195,7 +198,7 @@ function RegisterForm() {
           <h1 className="text-3xl font-extrabold text-brand-900 mb-2">
             {isStaffInvite ? 'Join your center pool' : config.onboarding.roleHeading}
           </h1>
-          <p className="text-[#6b7a73] mb-8">
+          <p className="text-muted mb-8">
             {isStaffInvite 
               ? 'Complete your profile to start claiming shifts. Staff accounts are always free.' 
               : config.onboarding.roleSubtitle}
@@ -221,16 +224,16 @@ function RegisterForm() {
                   className={`w-full p-6 rounded-2xl border-2 text-left transition-all ${
                     accountType === 'center' 
                       ? 'border-brand-600 bg-brand-50' 
-                      : 'border-[#e2e8e4] bg-white hover:border-brand-600/50'
+                      : 'border-border bg-white hover:border-brand-600/50'
                   }`}
                 >
                   <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${accountType === 'center' ? 'bg-brand-600 text-white' : 'bg-[#f8faf9] text-[#6b7a73]'}`}>
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${accountType === 'center' ? 'bg-brand-600 text-white' : 'bg-surface text-muted'}`}>
                       <Building2 className="w-6 h-6" />
                     </div>
                     <div>
-                      <div className="font-bold text-[#1a2e25]">{config.onboarding.centerSelectorLabel}</div>
-                      <div className="text-sm text-[#6b7a73]">{config.onboarding.centerSelectorDesc}</div>
+                      <div className="font-bold text-text-main">{config.onboarding.centerSelectorLabel}</div>
+                      <div className="text-sm text-muted">{config.onboarding.centerSelectorDesc}</div>
                     </div>
                   </div>
                 </button>
@@ -241,16 +244,16 @@ function RegisterForm() {
                   className={`w-full p-6 rounded-2xl border-2 text-left transition-all ${
                     accountType === 'staff' 
                       ? 'border-brand-600 bg-brand-50' 
-                      : 'border-[#e2e8e4] bg-white hover:border-brand-600/50'
+                      : 'border-border bg-white hover:border-brand-600/50'
                   }`}
                 >
                   <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${accountType === 'staff' ? 'bg-brand-600 text-white' : 'bg-[#f8faf9] text-[#6b7a73]'}`}>
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${accountType === 'staff' ? 'bg-brand-600 text-white' : 'bg-surface text-muted'}`}>
                       <User className="w-6 h-6" />
                     </div>
                     <div>
-                      <div className="font-bold text-[#1a2e25]">{config.onboarding.staffSelectorLabel}</div>
-                      <div className="text-sm text-[#6b7a73]">{config.onboarding.staffSelectorDesc}</div>
+                      <div className="font-bold text-text-main">{config.onboarding.staffSelectorLabel}</div>
+                      <div className="text-sm text-muted">{config.onboarding.staffSelectorDesc}</div>
                     </div>
                   </div>
                 </button>
@@ -268,12 +271,12 @@ function RegisterForm() {
             {step === 1 && (
               <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div>
-                  <label htmlFor="centerName" className="block text-sm font-medium text-[#1a2e25] mb-1.5">
+                  <label htmlFor="centerName" className="block text-sm font-medium text-text-main mb-1.5">
                     {config.onboarding.centerNameLabel}
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Building2 className="h-5 w-5 text-[#a8b5ae]" />
+                      <Building2 className="h-5 w-5 text-subtle" />
                     </div>
                     <input
                       id="centerName"
@@ -282,18 +285,18 @@ function RegisterForm() {
                       value={centerName}
                       onChange={(e) => setCenterName(e.target.value)}
                       placeholder={config.onboarding.centerNamePlaceholder}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-[#1a2e25]"
+                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label htmlFor="directorName" className="block text-sm font-medium text-[#1a2e25] mb-1.5">
+                  <label htmlFor="directorName" className="block text-sm font-medium text-text-main mb-1.5">
                     {config.onboarding.directorNameLabel}
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <User className="h-5 w-5 text-[#a8b5ae]" />
+                      <User className="h-5 w-5 text-subtle" />
                     </div>
                     <input
                       id="directorName"
@@ -302,14 +305,14 @@ function RegisterForm() {
                       value={directorName}
                       onChange={(e) => setDirectorName(e.target.value)}
                       placeholder={config.onboarding.directorNamePlaceholder}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-[#1a2e25]"
+                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label htmlFor="metro" className="block text-sm font-medium text-[#1a2e25] mb-1.5">Metro Area</label>
-                  <select id="metro" required value={metroId} onChange={(e) => setMetroId(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-[#1a2e25]">
+                  <label htmlFor="metro" className="block text-sm font-medium text-text-main mb-1.5">Metro Area</label>
+                  <select id="metro" required value={metroId} onChange={(e) => setMetroId(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main">
                     <option value="" disabled>Select your metro area…</option>
                     {metros.map(m => <option key={m.id} value={m.id}>{m.name}, {m.state_code}</option>)}
                   </select>
@@ -330,67 +333,67 @@ function RegisterForm() {
                   <>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label htmlFor="firstName" className="block text-sm font-medium text-[#1a2e25] mb-1.5">First Name</label>
+                        <label htmlFor="firstName" className="block text-sm font-medium text-text-main mb-1.5">First Name</label>
                         <input 
                           id="firstName" type="text" required value={firstName}
                           onChange={(e) => setFirstName(e.target.value)}
                           placeholder="Jane"
-                          className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-[#1a2e25]"
+                          className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main"
                         />
                       </div>
                       <div>
-                        <label htmlFor="lastName" className="block text-sm font-medium text-[#1a2e25] mb-1.5">Last Name</label>
+                        <label htmlFor="lastName" className="block text-sm font-medium text-text-main mb-1.5">Last Name</label>
                         <input 
                           id="lastName" type="text" required value={lastName}
                           onChange={(e) => setLastName(e.target.value)}
                           placeholder="Doe"
-                          className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-[#1a2e25]"
+                          className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main"
                         />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label htmlFor="city" className="block text-sm font-medium text-[#1a2e25] mb-1.5">City</label>
+                        <label htmlFor="city" className="block text-sm font-medium text-text-main mb-1.5">City</label>
                         <input 
                           id="city" type="text" required value={city}
                           onChange={(e) => setCity(e.target.value)}
                           placeholder="Charlotte"
-                          className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-[#1a2e25]"
+                          className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main"
                         />
                       </div>
                       <div>
-                        <label htmlFor="zip" className="block text-sm font-medium text-[#1a2e25] mb-1.5">Zip Code</label>
+                        <label htmlFor="zip" className="block text-sm font-medium text-text-main mb-1.5">Zip Code</label>
                         <input 
                           id="zip" type="text" required value={zip}
                           onChange={(e) => setZip(e.target.value)}
                           placeholder="28202"
-                          className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-[#1a2e25]"
+                          className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main"
                         />
                       </div>
                     </div>
                     <div>
-                      <label htmlFor="metro" className="block text-sm font-medium text-[#1a2e25] mb-1.5">Metro Area</label>
-                      <select id="metro" required value={metroId} onChange={(e) => setMetroId(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-[#1a2e25]">
+                      <label htmlFor="metro" className="block text-sm font-medium text-text-main mb-1.5">Metro Area</label>
+                      <select id="metro" required value={metroId} onChange={(e) => setMetroId(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main">
                         <option value="" disabled>Select your metro area…</option>
                         {metros.map(m => <option key={m.id} value={m.id}>{m.name}, {m.state_code}</option>)}
                       </select>
                     </div>
                     <div>
-                      <span className="block text-sm font-medium text-[#1a2e25] mb-1.5">Job Classification</span>
+                      <span className="block text-sm font-medium text-text-main mb-1.5">Job Classification</span>
                       <div className="grid grid-cols-2 gap-3">
                         {(Object.entries(EMPLOYMENT_CLASS_LABELS) as [EmploymentClass, string][]).map(([value, label]) => (
-                          <label key={value} className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 cursor-pointer transition-all text-sm font-medium ${employmentClass === value ? 'border-brand-600 bg-brand-50 text-brand-900' : 'border-[#e2e8e4] bg-white text-[#6b7a73] hover:border-brand-600/50'}`}>
+                          <label key={value} className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 cursor-pointer transition-all text-sm font-medium ${employmentClass === value ? 'border-brand-600 bg-brand-50 text-brand-900' : 'border-border bg-white text-muted hover:border-brand-600/50'}`}>
                             <input type="radio" name="employmentClass" required value={value} checked={employmentClass === value} onChange={() => setEmploymentClass(value)} className="accent-brand-600" />
                             {label}
                           </label>
                         ))}
                       </div>
-                      <p className="text-xs text-[#6b7a73] mt-2">Your center confirms your classification when it adds you to its team.</p>
+                      <p className="text-xs text-muted mt-2">Your center confirms your classification when it adds you to its team.</p>
                     </div>
                   </>
                 )}
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-[#1a2e25] mb-1.5">
+                  <label htmlFor="email" className="block text-sm font-medium text-text-main mb-1.5">
                     Email address
                   </label>
                   <input
@@ -400,12 +403,12 @@ function RegisterForm() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={config.onboarding.emailPlaceholder}
-                    className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-[#1a2e25]"
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-[#1a2e25] mb-1.5">
+                  <label htmlFor="phone" className="block text-sm font-medium text-text-main mb-1.5">
                     Phone Number
                   </label>
                   <input
@@ -415,12 +418,12 @@ function RegisterForm() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="(704) 555-0123"
-                    className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-[#1a2e25]"
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-[#1a2e25] mb-1.5">
+                  <label htmlFor="password" className="block text-sm font-medium text-text-main mb-1.5">
                     Create Password
                   </label>
                   <div className="relative">
@@ -432,17 +435,17 @@ function RegisterForm() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full px-4 py-3 pr-12 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-[#1a2e25]"
+                      className="w-full px-4 py-3 pr-12 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6b7a73] hover:text-brand-600 transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-brand-600 transition-colors"
                     >
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
                   </div>
-                  <p className="text-xs text-[#6b7a73] mt-2">Must be at least 8 characters.</p>
+                  <p className="text-xs text-muted mt-2">Must be at least 8 characters.</p>
                 </div>
 
                 <div className="flex items-start gap-3 mt-4">
@@ -453,10 +456,10 @@ function RegisterForm() {
                       required
                       checked={termsAccepted}
                       onChange={(e) => setTermsAccepted(e.target.checked)}
-                      className="w-4 h-4 border border-[#e2e8e4] rounded bg-white focus:ring-3 focus:ring-brand-600/30 accent-brand-600"
+                      className="w-4 h-4 border border-border rounded bg-white focus:ring-3 focus:ring-brand-600/30 accent-brand-600"
                     />
                   </div>
-                  <label htmlFor="terms" className="text-sm font-medium text-[#6b7a73]">
+                  <label htmlFor="terms" className="text-sm font-medium text-muted">
                     I agree to the{' '}
                     <button
                       type="button"
@@ -475,7 +478,7 @@ function RegisterForm() {
                       if (step === 2 && accountType === 'center') setStep(1)
                       else setStep(0)
                     }}
-                    className="px-4 py-3 rounded-xl border border-[#e2e8e4] text-[#6b7a73] font-medium hover:bg-white transition-colors"
+                    className="px-4 py-3 rounded-xl border border-border text-muted font-medium hover:bg-white transition-colors"
                   >
                     Back
                   </button>
@@ -491,7 +494,7 @@ function RegisterForm() {
             )}
           </form>
 
-          <p className="text-center text-sm text-[#6b7a73] mt-8">
+          <p className="text-center text-sm text-muted mt-8">
             Already have an account?{' '}
             <Link href="/login" className="text-brand-600 font-semibold hover:underline">
               Log in
@@ -519,11 +522,11 @@ function RegisterForm() {
     {showTermsModal && (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
         <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
-          <div className="p-4 border-b border-[#e6ece9] flex justify-between items-center bg-[#f8faf9]">
+          <div className="p-4 border-b border-border flex justify-between items-center bg-surface">
             <h2 className="text-xl font-bold text-brand-900">Terms & Conditions</h2>
             <button 
               onClick={() => setShowTermsModal(false)}
-              className="text-[#6b7a73] hover:text-[#1a2e25] w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#e6ece9] transition-colors"
+              className="text-muted hover:text-text-main w-8 h-8 flex items-center justify-center rounded-full hover:bg-border transition-colors"
             >
               ✕
             </button>
@@ -531,10 +534,10 @@ function RegisterForm() {
           <div className="flex-1 overflow-auto bg-white p-0">
             <iframe src="/terms" className="w-full h-full min-h-[60vh] border-0" />
           </div>
-          <div className="p-4 border-t border-[#e6ece9] bg-[#f8faf9] flex justify-end gap-3">
+          <div className="p-4 border-t border-border bg-surface flex justify-end gap-3">
             <button
               onClick={() => setShowTermsModal(false)}
-              className="px-6 py-2.5 border border-[#e2e8e4] text-[#6b7a73] font-bold rounded-xl hover:bg-white transition-colors"
+              className="px-6 py-2.5 border border-border text-muted font-bold rounded-xl hover:bg-white transition-colors"
             >
               Close
             </button>
@@ -558,7 +561,7 @@ function RegisterForm() {
 export default function RegisterPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#f8faf9] flex items-center justify-center">
+      <div className="min-h-screen bg-surface flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-brand-600" />
       </div>
     }>

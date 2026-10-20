@@ -195,16 +195,16 @@ export default function MobileShiftsPage() {
   return (
     <div className="py-2">
       <div className="mb-6">
-        <h1 className="text-2xl font-black text-[#0b3828] tracking-tight">Available Shifts</h1>
-        <p className="text-xs text-[#6b7a73] font-medium mt-1">Claim open shifts from connected centers.</p>
+        <h1 className="text-2xl font-black text-heading tracking-tight">Available Shifts</h1>
+        <p className="text-xs text-muted font-medium mt-1">Claim open shifts from connected centers.</p>
       </div>
 
       {/* Warning banner for outstanding balance */}
-      {myProfile?.balance_due && parseFloat(myProfile.balance_due.toString()) > 0 && (
+      {!!myProfile?.balance_due && parseFloat(myProfile.balance_due.toString()) > 0 && (
         <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-2xl flex items-start gap-3 shadow-sm">
           <AlertCircle className="w-5 h-5 text-yellow-800 shrink-0 mt-0.5" />
           <div className="text-xs">
-            <h4 className="font-bold text-[#0b3828]">Outstanding Balance Due</h4>
+            <h4 className="font-bold text-heading">Outstanding Balance Due</h4>
             <p className="text-yellow-900 mt-1">
               Clear your fee balance of <strong>${parseFloat(myProfile.balance_due.toString()).toFixed(2)}</strong> on the Account tab before claiming shifts.
             </p>
@@ -213,10 +213,10 @@ export default function MobileShiftsPage() {
       )}
 
       {filteredShifts.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-[#e2e8e4] px-4">
-          <Globe className="w-10 h-10 text-[#a8b5ae] mx-auto mb-3" />
-          <h3 className="text-base font-bold text-[#0b3828] mb-1">No Open Shifts</h3>
-          <p className="text-xs text-[#6b7a73] font-medium max-w-xs mx-auto">
+        <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-border px-4">
+          <Globe className="w-10 h-10 text-subtle mx-auto mb-3" />
+          <h3 className="text-base font-bold text-heading mb-1">No Open Shifts</h3>
+          <p className="text-xs text-muted font-medium max-w-xs mx-auto">
             Check back later for new opportunities across our network!
           </p>
         </div>
@@ -237,7 +237,7 @@ export default function MobileShiftsPage() {
             return (
               <div
                 key={shift.id}
-                className="bg-white rounded-2xl border border-[#e6ece9] p-5 shadow-sm space-y-4"
+                className="bg-white rounded-2xl border border-border p-5 shadow-sm space-y-4"
               >
                 {/* Header Row: Status Tags & Rate */}
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -252,32 +252,32 @@ export default function MobileShiftsPage() {
                       </span>
                     )}
                     {isActive && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-[#f0fdf4] border border-[#dcfce7] px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-[#157354]">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 border border-[#dcfce7] px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-brand-600">
                         <CheckCircle2 className="w-3 h-3" /> Connected
                       </span>
                     )}
                   </div>
-                  <span className="text-xs font-black text-[#157354] bg-[#edf7f3] border border-[#d4ede4] px-2.5 py-1 rounded-full">
+                  <span className="text-xs font-black text-brand-600 bg-brand-50 border border-brand-100 px-2.5 py-1 rounded-full">
                     ${shift.hourly_rate ?? '20.00'}/hr
                   </span>
                 </div>
 
                 {/* Body Row: Center Info */}
                 <div className="space-y-1.5">
-                  <h3 className="font-black text-[#0b3828] text-base leading-snug">{shift.centers?.name}</h3>
-                  <div className="flex items-center text-[11px] text-[#6b7a73] font-medium">
+                  <h3 className="font-black text-heading text-base leading-snug">{shift.centers?.name}</h3>
+                  <div className="flex items-center text-[11px] text-muted font-medium">
                     <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400" />
                     {shift.centers?.city}, {shift.centers?.state}
                   </div>
                   {shift.work_areas && (
-                    <div className="text-[10px] text-[#3d5a4f] bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5 w-fit">
+                    <div className="text-[10px] text-text-muted bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5 w-fit">
                       <span className="font-bold text-slate-400">Area:</span> {shift.work_areas.name} ({shift.work_areas.age_group})
                     </div>
                   )}
                 </div>
 
                 {/* Timing info */}
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-bold text-[#6b7a73] pt-1.5 border-t border-[#f0f4f2]">
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-bold text-muted pt-1.5 border-t border-border">
                   <span className="flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5 text-slate-400" />
                     {dateLabel}
@@ -299,7 +299,7 @@ export default function MobileShiftsPage() {
                       type="button"
                       onClick={() => handleClaim(shift.id)}
                       disabled={claimingShiftId === shift.id}
-                      className="w-full bg-[#157354] hover:bg-[#0f4a36] text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer"
+                      className="w-full bg-brand-600 hover:bg-brand-800 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer"
                     >
                       {claimingShiftId === shift.id ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -316,7 +316,7 @@ export default function MobileShiftsPage() {
                       type="button"
                       disabled={joiningCenterId === shift.centers?.id}
                       onClick={() => handleStartOnboarding(shift.center_id, shift.centers?.slug || '')}
-                      className="w-full bg-[#157354]/10 hover:bg-[#157354]/20 text-[#157354] border border-[#157354]/20 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer"
+                      className="w-full bg-brand-600/10 hover:bg-brand-600/20 text-brand-600 border border-brand-600/20 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer"
                     >
                       {joiningCenterId === shift.centers?.id ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -337,7 +337,7 @@ export default function MobileShiftsPage() {
       {/* ── Balance Modal ── */}
       {showBalanceModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-3xl border border-[#e6ece9] max-w-sm w-full p-6 shadow-2xl relative text-left">
+          <div className="bg-white rounded-3xl border border-border max-w-sm w-full p-6 shadow-2xl relative text-left">
             <button 
               onClick={() => setShowBalanceModal(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 cursor-pointer"
@@ -347,8 +347,8 @@ export default function MobileShiftsPage() {
             <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center mb-4">
               <AlertCircle className="w-5 h-5 text-red-600" />
             </div>
-            <h3 className="text-lg font-black text-[#0b3828] mb-2">Fee Balance Due</h3>
-            <p className="text-xs text-[#3d5a4f] leading-relaxed mb-6">
+            <h3 className="text-lg font-black text-heading mb-2">Fee Balance Due</h3>
+            <p className="text-xs text-text-muted leading-relaxed mb-6">
               You must pay your outstanding Staff Maintenance Fee balance of <strong>${parseFloat(myProfile?.balance_due?.toString() || '0').toFixed(2)}</strong> on the Account tab before claiming new shifts.
             </p>
             <button
@@ -356,7 +356,7 @@ export default function MobileShiftsPage() {
                 setShowBalanceModal(false)
                 router.push('/mobile/account')
               }}
-              className="w-full bg-[#157354] text-white font-bold py-3 rounded-xl hover:bg-[#0f4a36] text-xs cursor-pointer text-center"
+              className="w-full bg-brand-600 text-white font-bold py-3 rounded-xl hover:bg-brand-800 text-xs cursor-pointer text-center"
             >
               Go to Account tab
             </button>

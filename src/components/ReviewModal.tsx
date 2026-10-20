@@ -66,11 +66,11 @@ export function ReviewModal({ isOpen, onClose, onSubmit, reviewerType, title }: 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
-        <div className="p-5 border-b border-[#e6ece9] flex justify-between items-center bg-[#f8faf9]">
-          <h2 className="text-xl font-bold text-[#0b3828]">{title}</h2>
+        <div className="p-5 border-b border-border flex justify-between items-center bg-surface">
+          <h2 className="text-xl font-bold text-heading">{title}</h2>
           <button 
             onClick={onClose}
-            className="text-[#6b7a73] hover:text-[#1a2e25] w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#e6ece9] transition-colors"
+            className="text-muted hover:text-text-main w-8 h-8 flex items-center justify-center rounded-full hover:bg-border transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -81,7 +81,7 @@ export function ReviewModal({ isOpen, onClose, onSubmit, reviewerType, title }: 
             
             {/* Star Rating */}
             <div className="flex flex-col items-center">
-              <label className="block text-sm font-bold text-[#1a2e25] mb-2">Overall Rating</label>
+              <label className="block text-sm font-bold text-text-main mb-2">Overall Rating</label>
               <div className="flex gap-2">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
@@ -95,8 +95,8 @@ export function ReviewModal({ isOpen, onClose, onSubmit, reviewerType, title }: 
                     <Star 
                       className={`w-10 h-10 ${
                         (hoveredRating || rating) >= star 
-                          ? 'fill-[#fbbf24] text-[#fbbf24]' 
-                          : 'fill-transparent text-[#e2e8e4]'
+                          ? 'fill-amber-400 text-amber-400' 
+                          : 'fill-transparent text-border'
                       }`} 
                     />
                   </button>
@@ -106,7 +106,7 @@ export function ReviewModal({ isOpen, onClose, onSubmit, reviewerType, title }: 
 
             {/* Tags */}
             <div>
-              <label className="block text-sm font-bold text-[#1a2e25] mb-2">Select all that apply</label>
+              <label className="block text-sm font-bold text-text-main mb-2">Select all that apply</label>
               <div className="flex flex-wrap gap-2">
                 {availableTags.map(tag => (
                   <button
@@ -115,8 +115,8 @@ export function ReviewModal({ isOpen, onClose, onSubmit, reviewerType, title }: 
                     onClick={() => toggleTag(tag)}
                     className={`px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border transition-colors ${
                       tags.includes(tag)
-                        ? 'bg-[#157354] text-white border-[#157354]'
-                        : 'bg-[#f8faf9] text-[#6b7a73] border-[#e2e8e4] hover:border-[#157354]/30'
+                        ? 'bg-brand-600 text-white border-brand-600'
+                        : 'bg-surface text-muted border-border hover:border-brand-600/30'
                     }`}
                   >
                     {tag}
@@ -127,16 +127,16 @@ export function ReviewModal({ isOpen, onClose, onSubmit, reviewerType, title }: 
 
             {/* Center-specific questions */}
             {reviewerType === 'center' && (
-              <div className="space-y-4 pt-4 border-t border-[#e2e8e4]">
+              <div className="space-y-4 pt-4 border-t border-border">
                 <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
                     id="punctual"
                     checked={punctual}
                     onChange={(e) => setPunctual(e.target.checked)}
-                    className="w-5 h-5 border border-[#e2e8e4] rounded bg-white focus:ring-3 focus:ring-[#157354]/30 accent-[#157354]"
+                    className="w-5 h-5 border border-border rounded bg-white focus:ring-3 focus:ring-brand-600/30 accent-brand-600"
                   />
-                  <label htmlFor="punctual" className="text-sm font-bold text-[#1a2e25]">
+                  <label htmlFor="punctual" className="text-sm font-bold text-text-main">
                     Staff member arrived on time
                   </label>
                 </div>
@@ -165,33 +165,33 @@ export function ReviewModal({ isOpen, onClose, onSubmit, reviewerType, title }: 
 
             {/* Comments */}
             <div>
-              <label className="block text-sm font-bold text-[#1a2e25] mb-2">Public Comment (Optional)</label>
+              <label className="block text-sm font-bold text-text-main mb-2">Public Comment (Optional)</label>
               <textarea
                 value={publicComment}
                 onChange={(e) => setPublicComment(e.target.value)}
                 placeholder="Share your experience (visible to others)..."
-                className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25] min-h-[80px]"
+                className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main min-h-[80px]"
               />
             </div>
             
             <div>
-              <label className="block text-sm font-bold text-[#1a2e25] mb-2">Private Feedback (Optional)</label>
+              <label className="block text-sm font-bold text-text-main mb-2">Private Feedback (Optional)</label>
               <textarea
                 value={privateFeedback}
                 onChange={(e) => setPrivateFeedback(e.target.value)}
                 placeholder="Only visible to Carelocal admins..."
-                className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-[#f8faf9] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354] transition text-[#1a2e25] min-h-[80px]"
+                className="w-full px-4 py-3 rounded-xl border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main min-h-[80px]"
               />
             </div>
 
           </form>
         </div>
 
-        <div className="p-4 border-t border-[#e6ece9] bg-[#f8faf9] flex justify-end gap-3">
+        <div className="p-4 border-t border-border bg-surface flex justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="px-6 py-2.5 border border-[#e2e8e4] text-[#6b7a73] font-bold rounded-xl hover:bg-white transition-colors"
+            className="px-6 py-2.5 border border-border text-muted font-bold rounded-xl hover:bg-white transition-colors"
           >
             Cancel
           </button>
@@ -199,7 +199,7 @@ export function ReviewModal({ isOpen, onClose, onSubmit, reviewerType, title }: 
             type="submit"
             form="review-form"
             disabled={submitting || rating === 0}
-            className="px-6 py-2.5 bg-[#157354] text-white font-bold rounded-xl hover:bg-[#0f4a36] transition-colors disabled:opacity-50 flex items-center gap-2"
+            className="px-6 py-2.5 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-800 transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Submit Review'}
           </button>

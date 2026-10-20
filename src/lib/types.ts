@@ -241,6 +241,7 @@ export interface CenterProgram {
   schedule?: string | null
   capacity?: number | null
   description?: string | null
+  more_info_url?: string | null   // the center's own web page for this program
   is_active: boolean
   sort_order: number
   created_at: string

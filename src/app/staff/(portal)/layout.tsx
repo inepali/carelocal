@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, Calendar, FileText, UserCircle, Globe, Search, CreditCard, Building, LayoutDashboard, Inbox } from 'lucide-react'
+import { LogOut, Calendar, FileText, UserCircle, Globe, Search, CreditCard, Building, LayoutDashboard, Inbox, Briefcase, ClipboardList } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { useIsRegularOnly, isSubstituteOnlyRoute, isRegularOnlyRoute } from '@/lib/hooks/useIsRegularOnly'
+import { getDomainKey } from '@/lib/domain-config'
 
 export default function StaffPortalLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -15,6 +16,7 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
   const [isCenterAdmin, setIsCenterAdmin] = useState(false)
   const [openRequestCount, setOpenRequestCount] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [isChildcare, setIsChildcare] = useState(true)
   const { isRegularOnly, loading: classLoading } = useIsRegularOnly()
 
   // Regular employees get a single-center portal without the shift marketplace;
@@ -51,6 +53,7 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
     }
 
     loadUser()
+    setIsChildcare(getDomainKey(window.location.host) === 'childcare')
   }, [])
 
   async function handleSignOut() {
@@ -63,6 +66,8 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
     { name: 'My Centers', href: '/staff/centers', icon: Globe },
     { name: 'Available Shifts', href: '/staff/shifts', icon: Search },
     { name: 'My Shifts', href: '/staff/my-shifts', icon: Calendar },
+    { name: 'Jobs', href: '/staff/jobs', icon: Briefcase },
+    { name: 'Applications', href: '/staff/applications', icon: ClipboardList },
     { name: 'My Documents', href: '/staff/documents', icon: FileText },
     { name: 'Requests', href: '/staff/requests', icon: Inbox },
     { name: 'My Profile', href: '/staff/profile', icon: UserCircle },
@@ -70,17 +75,22 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
   ].filter(item => isRegularOnly ? !isSubstituteOnlyRoute(item.href) : !isRegularOnlyRoute(item.href))
 
   if (loading || classLoading || blockedRoute) {
-     return <div className="min-h-screen bg-[#f8faf9] flex items-center justify-center">Loading...</div>
+     return <div className="min-h-screen bg-surface flex items-center justify-center">Loading...</div>
   }
 
   return (
-    <div className="staff-shell min-h-screen bg-[#f8faf9] flex flex-col font-sans">
+    <div className="staff-shell min-h-screen bg-surface flex flex-col font-sans">
       {/* ── Top Navigation (Mobile friendly for staff) ── */}
-      <header className="h-16 bg-[#0b3828] text-white flex items-center justify-between px-6 sticky top-0 z-20">
+      <header className="h-20 bg-brand-900 text-white flex items-center justify-between px-6 sticky top-0 z-20">
         <Link href={homeHref} className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md bg-[#157354] flex items-center justify-center">
-              <span className="text-white font-bold text-xs">CL</span>
-            </div>
+            {isChildcare ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src="/logo.jpg" alt="CareLocal" width={64} height={64} className="h-16 w-16 rounded-xl object-contain bg-white" />
+            ) : (
+              <div className="w-7 h-7 rounded-md bg-brand-600 flex items-center justify-center">
+                <span className="text-white font-bold text-xs">CL</span>
+              </div>
+            )}
             <span className="font-semibold text-lg tracking-tight truncate hidden sm:block">CareLocal</span>
         </Link>
         <div className="flex items-center gap-4">
@@ -89,10 +99,10 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
                     <LayoutDashboard className="w-4 h-4" /> Center dashboard
                 </Link>
             )}
-            <span className="text-[#a9dac9] text-sm font-medium">{userName}</span>
+            <span className="text-brand-200 text-sm font-medium">{userName}</span>
             <button
                 onClick={handleSignOut}
-                className="text-[#d4ede4] hover:text-white transition-colors"
+                className="text-brand-100 hover:text-white transition-colors"
                 title="Sign out"
             >
                 <LogOut className="w-5 h-5" />
@@ -113,11 +123,11 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
                         href={item.href}
                         className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-colors ${
                         isActive 
-                            ? 'bg-[#157354] text-white font-medium shadow-sm' 
-                            : 'text-[#6b7a73] hover:bg-white hover:text-[#0b3828]'
+                            ? 'bg-brand-600 text-white font-medium shadow-sm' 
+                            : 'text-muted hover:bg-white hover:text-heading'
                         }`}
                     >
-                        <item.icon className={`w-5 h-5 ${isActive ? 'text-[#a9dac9]' : 'text-[#6b7a73]'}`} />
+                        <item.icon className={`w-5 h-5 ${isActive ? 'text-brand-200' : 'text-muted'}`} />
                         <span className="flex-1">{item.name}</span>
                         {item.href === '/staff/requests' && openRequestCount > 0 && (
                           <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">{openRequestCount}</span>
@@ -135,7 +145,7 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
       </div>
 
        {/* Mobile bottom nav */}
-       <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-[#e2e8e4] flex justify-around p-2 z-20 pb-safe">
+       <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-border flex justify-around p-2 z-20 pb-safe">
             {NAVIGATION.map((item) => {
                 const isActive = pathname === item.href
                 return (
@@ -144,8 +154,8 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
                     href={item.href}
                     className={`flex flex-col items-center gap-1 p-2 rounded-lg text-xs transition-colors ${
                     isActive 
-                        ? 'text-[#157354] font-medium' 
-                        : 'text-[#6b7a73]'
+                        ? 'text-brand-600 font-medium' 
+                        : 'text-muted'
                     }`}
                 >
                     <item.icon className="w-6 h-6" />

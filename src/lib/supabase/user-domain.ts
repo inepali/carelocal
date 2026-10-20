@@ -2,6 +2,13 @@ import type { SupabaseClient, User } from '@supabase/supabase-js'
 import type { DomainKey } from '@/lib/domain-config'
 
 export const WRONG_DOMAIN_ERROR = 'wrong_domain'
+export const ACCOUNT_DISABLED_ERROR = 'account_disabled'
+export const CENTER_DISABLED_ERROR = 'center_disabled'
+
+export const DISABLED_MESSAGES: Record<string, string> = {
+  [ACCOUNT_DISABLED_ERROR]: 'This account has been disabled. Please contact support if you think this is a mistake.',
+  [CENTER_DISABLED_ERROR]: "This center's account has been disabled. Please contact support if you think this is a mistake.",
+}
 
 const SITES: Record<DomainKey, { name: string; host: string }> = {
   childcare:  { name: 'CareLocal (childcare)', host: 'carelocal.co' },

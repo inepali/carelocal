@@ -4,8 +4,8 @@
   "description": "Mobile PWA Staff Portal for Daycare Substitutes and Teachers",
   "start_url": "/mobile/shifts",
   "display": "standalone",
-  "background_color": "#0b3828",
-  "theme_color": "#157354",
+  "background_color": "#0a3d3a",
+  "theme_color": "#0f766e",
   "orientation": "portrait-primary",
   "icons": [
     {

@@ -125,8 +125,8 @@ const FAQS = [
     a: "Yes! Nurse, CNA, and caregiver accounts are 100% free. Health staff can create profiles, upload certifications, and claim shifts from any mobile browser without paying any fees or subscriptions. While account usage has no limits, a small platform maintenance fee is applied to the staff member's balance for each assigned shift."
   },
   {
-    q: "How does the 6-month free trial work?",
-    a: "We want healthcare administrators to experience the benefits risk-free. You get full access to CareLocal Health's staff scheduling features, SMS blasting, and compliance management for 6 months. No credit card is required to sign up, and you can cancel anytime."
+    q: "How does the 3-month free trial work?",
+    a: "We want healthcare administrators to experience the benefits risk-free. You get full access to CareLocal Health's staff scheduling features, SMS blasting, and compliance management for 3 months. No credit card is required to sign up, and you can cancel anytime."
   }
 ]
 
@@ -208,7 +208,7 @@ export default function HealthcareHomePage() {
           </div>
 
           <p className="mt-5 text-sm text-brand-500">
-            6-month free trial · No setup fees · Nursing accounts always 100% free
+            3-month free trial · No setup fees · Nursing accounts always 100% free
           </p>
         </div>
 
@@ -355,7 +355,7 @@ export default function HealthcareHomePage() {
             ))}
           </div>
           <p className="text-center text-sm text-brand-500 mt-8">
-            All plans include a 6-month free trial and the full credentialing toolkit — checklists, policy sign-off, document requests, inspections and vendors. Annual billing saves 2 months.
+            All plans include a 3-month free trial and the full credentialing toolkit — checklists, policy sign-off, document requests, inspections and vendors. Annual billing saves 2 months.
             <Link href="/contact" className="text-brand-600 font-medium ml-1 hover:underline">
               Need Enterprise? Contact us →
             </Link>
@@ -364,7 +364,7 @@ export default function HealthcareHomePage() {
       </section>
 
       {/* ── Trust / disclaimer ── */}
-      <section className="py-16 px-6 bg-[#f8faf9] border-t border-brand-100">
+      <section className="py-16 px-6 bg-surface border-t border-brand-100">
         <div className="max-w-3xl mx-auto text-center">
           <div className="flex justify-center mb-4">
             <Star className="w-5 h-5 text-amber-500 fill-amber-500" />

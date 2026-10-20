@@ -23,8 +23,8 @@ const EMPTY_FORM: VendorForm = {
   website: '', address: '', notes: '', is_active: true,
 }
 
-const inputClass = 'w-full px-4 py-3 rounded-xl border border-[#e2e8e4] focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all font-medium'
-const labelClass = 'block font-bold text-[#1a2e25] mb-2 uppercase tracking-widest text-[10px]'
+const inputClass = 'w-full px-4 py-3 rounded-xl border border-border focus:outline-none focus:ring-4 focus:ring-brand-600/10 focus:border-brand-600 transition-all font-medium'
+const labelClass = 'block font-bold text-text-main mb-2 uppercase tracking-widest text-[10px]'
 
 export default function VendorsPage() {
   const supabase = createClient()
@@ -157,12 +157,12 @@ export default function VendorsPage() {
     <div className="max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-extrabold text-[#0b3828] mb-1">Vendors</h1>
-          <p className="text-[#6b7a73]">Service providers you work with for inspections, maintenance, and repairs.</p>
+          <h1 className="text-3xl font-extrabold text-heading mb-1">Vendors</h1>
+          <p className="text-muted">Service providers you work with for inspections, maintenance, and repairs.</p>
         </div>
         <button
           onClick={() => openModal()}
-          className="inline-flex items-center justify-center gap-2 bg-[#fbbf24] text-[#0b3828] font-bold px-6 py-3 rounded-xl hover:bg-[#f59e0b] shadow-sm transition-all active:scale-95"
+          className="inline-flex items-center justify-center gap-2 bg-amber-400 text-heading font-bold px-6 py-3 rounded-xl hover:bg-amber-500 shadow-sm transition-all active:scale-95"
         >
           <Plus className="w-5 h-5" /> Add Vendor
         </button>
@@ -171,7 +171,7 @@ export default function VendorsPage() {
       {vendors.length > 0 && (
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center mb-6">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 text-[#a8b5ae] absolute left-4 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-subtle absolute left-4 top-1/2 -translate-y-1/2" />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -179,44 +179,44 @@ export default function VendorsPage() {
               className={`${inputClass} pl-10 bg-white`}
             />
           </div>
-          <label className="inline-flex items-center gap-2 text-sm text-[#6b7a73] font-medium">
-            <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} className="accent-[#157354]" />
+          <label className="inline-flex items-center gap-2 text-sm text-muted font-medium">
+            <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} className="accent-brand-600" />
             Show inactive
           </label>
         </div>
       )}
 
       {vendors.length === 0 ? (
-        <div className="py-20 bg-white border border-dashed border-[#a9dac9] rounded-[2.5rem] text-center">
-          <Truck className="w-16 h-16 text-[#e2e8e4] mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-[#0b3828] mb-2">No vendors yet</h3>
-          <p className="text-[#6b7a73] max-w-sm mx-auto mb-6">Add the companies that service your center so you can assign them to inspections.</p>
-          <button onClick={() => openModal()} className="text-[#157354] font-bold hover:underline">Add your first vendor →</button>
+        <div className="py-20 bg-white border border-dashed border-brand-200 rounded-[2.5rem] text-center">
+          <Truck className="w-16 h-16 text-border mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-heading mb-2">No vendors yet</h3>
+          <p className="text-muted max-w-sm mx-auto mb-6">Add the companies that service your center so you can assign them to inspections.</p>
+          <button onClick={() => openModal()} className="text-brand-600 font-bold hover:underline">Add your first vendor →</button>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="py-12 text-center text-[#6b7a73]">No vendors match your search.</div>
+        <div className="py-12 text-center text-muted">No vendors match your search.</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filtered.map(vendor => (
-            <div key={vendor.id} className={`bg-white border border-[#e2e8e4] rounded-[2rem] p-6 shadow-sm hover:shadow-xl transition-all duration-300 group ${vendor.is_active ? '' : 'opacity-60'}`}>
+            <div key={vendor.id} className={`bg-white border border-border rounded-[2rem] p-6 shadow-sm hover:shadow-xl transition-all duration-300 group ${vendor.is_active ? '' : 'opacity-60'}`}>
               <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-[#edf7f3] text-[#157354] flex items-center justify-center shadow-sm">
+                <div className="w-12 h-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center shadow-sm">
                   <Truck className="w-6 h-6" />
                 </div>
                 <div className="flex items-center gap-1 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => openModal(vendor)} aria-label="Edit vendor" className="p-2 text-[#6b7a73] hover:text-[#157354] hover:bg-[#edf7f3] rounded-lg transition-colors">
+                  <button onClick={() => openModal(vendor)} aria-label="Edit vendor" className="p-2 text-muted hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors">
                     <Edit2 className="w-4 h-4" />
                   </button>
-                  <button onClick={() => handleDelete(vendor)} aria-label="Delete vendor" className="p-2 text-[#6b7a73] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                  <button onClick={() => handleDelete(vendor)} aria-label="Delete vendor" className="p-2 text-muted hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
 
-              <h3 className="text-xl font-black text-[#0b3828] mb-1 tracking-tight">{vendor.name}</h3>
+              <h3 className="text-xl font-black text-heading mb-1 tracking-tight">{vendor.name}</h3>
               <div className="flex flex-wrap gap-2 mb-4">
                 {vendor.service_type && (
-                  <span className="inline-flex items-center px-2.5 py-1 bg-[#f0fdf4] text-[#157354] rounded-lg text-xs font-bold uppercase tracking-widest border border-[#bbf7d0]">
+                  <span className="inline-flex items-center px-2.5 py-1 bg-brand-50 text-brand-600 rounded-lg text-xs font-bold uppercase tracking-widest border border-[#bbf7d0]">
                     {vendor.service_type}
                   </span>
                 )}
@@ -225,18 +225,18 @@ export default function VendorsPage() {
                 )}
               </div>
 
-              <div className="space-y-2 text-sm text-[#4a5a52]">
-                {vendor.contact_name && <div className="flex items-center gap-2"><User className="w-4 h-4 text-[#a8b5ae]" />{vendor.contact_name}</div>}
-                {vendor.phone && <a href={`tel:${vendor.phone}`} className="flex items-center gap-2 hover:text-[#157354]"><Phone className="w-4 h-4 text-[#a8b5ae]" />{vendor.phone}</a>}
-                {vendor.email && <a href={`mailto:${vendor.email}`} className="flex items-center gap-2 hover:text-[#157354] truncate"><Mail className="w-4 h-4 text-[#a8b5ae] shrink-0" />{vendor.email}</a>}
+              <div className="space-y-2 text-sm text-text-muted">
+                {vendor.contact_name && <div className="flex items-center gap-2"><User className="w-4 h-4 text-subtle" />{vendor.contact_name}</div>}
+                {vendor.phone && <a href={`tel:${vendor.phone}`} className="flex items-center gap-2 hover:text-brand-600"><Phone className="w-4 h-4 text-subtle" />{vendor.phone}</a>}
+                {vendor.email && <a href={`mailto:${vendor.email}`} className="flex items-center gap-2 hover:text-brand-600 truncate"><Mail className="w-4 h-4 text-subtle shrink-0" />{vendor.email}</a>}
                 {vendor.website && (
-                  <a href={/^https?:\/\//.test(vendor.website) ? vendor.website : `https://${vendor.website}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-[#157354] truncate">
-                    <Globe className="w-4 h-4 text-[#a8b5ae] shrink-0" />{vendor.website}
+                  <a href={/^https?:\/\//.test(vendor.website) ? vendor.website : `https://${vendor.website}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-brand-600 truncate">
+                    <Globe className="w-4 h-4 text-subtle shrink-0" />{vendor.website}
                   </a>
                 )}
               </div>
 
-              <div className="pt-4 mt-4 border-t border-[#f0f4f2] text-xs font-bold text-[#6b7a73]">
+              <div className="pt-4 mt-4 border-t border-border text-xs font-bold text-muted">
                 {inspectionCounts[vendor.id] || 0} inspection{(inspectionCounts[vendor.id] || 0) === 1 ? '' : 's'} assigned
               </div>
             </div>
@@ -245,11 +245,11 @@ export default function VendorsPage() {
       )}
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0b3828]/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-900/40 backdrop-blur-sm">
           <div className="bg-white w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b border-[#e2e8e4] flex items-center justify-between bg-[#f8faf9]">
-              <h2 className="text-2xl font-black text-[#0b3828] tracking-tight">{editing ? 'Edit Vendor' : 'New Vendor'}</h2>
-              <button onClick={() => setIsModalOpen(false)} aria-label="Close" className="p-2 hover:bg-[#e2e8e4] rounded-full transition-colors"><X className="w-5 h-5 text-[#6b7a73]" /></button>
+            <div className="p-6 border-b border-border flex items-center justify-between bg-surface">
+              <h2 className="text-2xl font-black text-heading tracking-tight">{editing ? 'Edit Vendor' : 'New Vendor'}</h2>
+              <button onClick={() => setIsModalOpen(false)} aria-label="Close" className="p-2 hover:bg-border rounded-full transition-colors"><X className="w-5 h-5 text-muted" /></button>
             </div>
 
             <form onSubmit={handleSave} className="p-6 space-y-4 overflow-y-auto">
@@ -288,18 +288,18 @@ export default function VendorsPage() {
                 </div>
               </div>
 
-              <label className="inline-flex items-center gap-2 text-sm font-medium text-[#1a2e25]">
-                <input type="checkbox" checked={form.is_active} onChange={e => set('is_active', e.target.checked)} className="accent-[#157354]" />
+              <label className="inline-flex items-center gap-2 text-sm font-medium text-text-main">
+                <input type="checkbox" checked={form.is_active} onChange={e => set('is_active', e.target.checked)} className="accent-brand-600" />
                 Active vendor
               </label>
 
               {error && <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{error}</div>}
 
               <div className="pt-2 flex gap-3">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-3 px-6 rounded-xl border border-[#e2e8e4] font-bold text-[#6b7a73] hover:bg-[#f8faf9] transition-all">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-3 px-6 rounded-xl border border-border font-bold text-muted hover:bg-surface transition-all">
                   Cancel
                 </button>
-                <button type="submit" disabled={saving} className="flex-1 bg-[#157354] text-white font-bold py-3 px-6 rounded-xl hover:bg-[#0f4a36] shadow-lg shadow-[#157354]/20 transition-all flex items-center justify-center gap-2 disabled:opacity-60">
+                <button type="submit" disabled={saving} className="flex-1 bg-brand-600 text-white font-bold py-3 px-6 rounded-xl hover:bg-brand-800 shadow-lg shadow-brand-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-60">
                   {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Save Vendor'}
                 </button>
               </div>

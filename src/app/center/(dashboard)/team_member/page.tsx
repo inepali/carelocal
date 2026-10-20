@@ -145,7 +145,7 @@ export default function StaffPoolPage() {
      return (
        <div className="animate-pulse space-y-6 max-w-6xl mx-auto py-10">
          <div className="h-12 w-64 bg-slate-200 rounded mb-8"></div>
-         <div className="h-64 bg-white rounded-3xl border border-[#e2e8e4]"></div>
+         <div className="h-64 bg-white rounded-3xl border border-border"></div>
        </div>
      )
   }
@@ -176,20 +176,20 @@ export default function StaffPoolPage() {
     <div className="max-w-6xl mx-auto pb-20">
       <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6 mb-10">
         <div>
-          <h1 className="text-4xl font-black text-[#0b3828] mb-2 tracking-tight">{staffTerm} Dashboard</h1>
-          <p className="text-[#6b7a73] font-medium text-lg">Manage your {staffTerm.toLowerCase()} and review incoming onboarding requests.</p>
+          <h1 className="text-4xl font-black text-heading mb-2 tracking-tight">{staffTerm} Dashboard</h1>
+          <p className="text-muted font-medium text-lg">Manage your {staffTerm.toLowerCase()} and review incoming onboarding requests.</p>
         </div>
         <div className="flex flex-wrap gap-4">
-          <div className="bg-[#edf7f3] p-1.5 rounded-2xl border border-[#a9dac9] flex shadow-sm">
+          <div className="bg-brand-50 p-1.5 rounded-2xl border border-brand-200 flex shadow-sm">
             <button 
               onClick={() => setActiveTab('pool')}
-              className={`px-6 py-2.5 rounded-xl font-black text-sm transition-all flex items-center gap-2 ${activeTab === 'pool' ? 'bg-[#157354] text-white shadow-md' : 'text-[#3d5a4f] hover:bg-[#d4ede4]'}`}
+              className={`px-6 py-2.5 rounded-xl font-black text-sm transition-all flex items-center gap-2 ${activeTab === 'pool' ? 'bg-brand-600 text-white shadow-md' : 'text-text-muted hover:bg-brand-100'}`}
             >
               <Users className="w-4 h-4" /> My Pool ({myPool.length})
             </button>
             <button 
               onClick={() => setActiveTab('onboarding')}
-              className={`px-6 py-2.5 rounded-xl font-black text-sm transition-all flex items-center gap-2 relative ${activeTab === 'onboarding' ? 'bg-[#157354] text-white shadow-md' : 'text-[#3d5a4f] hover:bg-[#d4ede4]'}`}
+              className={`px-6 py-2.5 rounded-xl font-black text-sm transition-all flex items-center gap-2 relative ${activeTab === 'onboarding' ? 'bg-brand-600 text-white shadow-md' : 'text-text-muted hover:bg-brand-100'}`}
             >
               <Sparkles className="w-4 h-4" /> Onboarding 
               {onboardingRequests.length > 0 && (
@@ -200,30 +200,30 @@ export default function StaffPoolPage() {
             </button>
             <button 
               onClick={() => setActiveTab('discover')}
-              className={`px-6 py-2.5 rounded-xl font-black text-sm transition-all flex items-center gap-2 ${activeTab === 'discover' ? 'bg-[#157354] text-white shadow-md' : 'text-[#3d5a4f] hover:bg-[#d4ede4]'}`}
+              className={`px-6 py-2.5 rounded-xl font-black text-sm transition-all flex items-center gap-2 ${activeTab === 'discover' ? 'bg-brand-600 text-white shadow-md' : 'text-text-muted hover:bg-brand-100'}`}
             >
               <UserPlus className="w-4 h-4" /> Discover ({nearbyStaff.length})
             </button>
           </div>
           <button 
              onClick={() => setShowInviteModal(true)}
-             className="inline-flex items-center justify-center bg-white border-2 border-[#157354]/10 text-[#157354] font-black px-8 py-3 rounded-2xl hover:bg-[#f8faf9] hover:border-[#157354] shadow-sm transition-all active:scale-95"
+             className="inline-flex items-center justify-center bg-white border-2 border-brand-600/10 text-brand-600 font-black px-8 py-3 rounded-2xl hover:bg-surface hover:border-brand-600 shadow-sm transition-all active:scale-95"
           >
              Invite {staffTerm}
           </button>
         </div>
       </div>
 
-      <div className="bg-white border-2 border-[#f0f4f2] rounded-[2.5rem] shadow-xl overflow-hidden">
-         <div className="p-6 border-b border-[#f0f4f2] flex flex-col md:flex-row gap-4 bg-[#f8faf9]/50">
+      <div className="bg-white border-2 border-border rounded-[2.5rem] shadow-xl overflow-hidden">
+         <div className="p-6 border-b border-border flex flex-col md:flex-row gap-4 bg-surface/50">
             <div className="relative flex-1">
-               <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-[#a8b5ae]" />
+               <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-subtle" />
                <input 
                   type="text" 
                   placeholder={`Search ${activeTab === 'discover' ? `local ${staffTerm.toLowerCase()}` : `your ${staffTerm.toLowerCase()}`}...`}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-12 pr-6 py-4 rounded-[1.25rem] border-2 border-[#f0f4f2] bg-white text-[#1a2e25] font-medium focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all"
+                  className="w-full pl-12 pr-6 py-4 rounded-[1.25rem] border-2 border-border bg-white text-text-main font-medium focus:outline-none focus:ring-4 focus:ring-brand-600/10 focus:border-brand-600 transition-all"
                />
             </div>
             {activeTab !== 'discover' && (
@@ -231,7 +231,7 @@ export default function StaffPoolPage() {
                  value={classFilter}
                  onChange={(e) => setClassFilter(e.target.value as 'all' | EmploymentClass)}
                  title="Filter by employee class"
-                 className="px-5 py-4 rounded-[1.25rem] border-2 border-[#f0f4f2] bg-white text-[#1a2e25] font-bold text-sm focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all"
+                 className="px-5 py-4 rounded-[1.25rem] border-2 border-border bg-white text-text-main font-bold text-sm focus:outline-none focus:ring-4 focus:ring-brand-600/10 focus:border-brand-600 transition-all"
               >
                  <option value="all">All Classes</option>
                  {(Object.entries(EMPLOYMENT_CLASS_LABELS) as [EmploymentClass, string][]).map(([value, label]) => (
@@ -244,25 +244,25 @@ export default function StaffPoolPage() {
          <div className="overflow-x-auto">
              <table className="w-full text-left border-collapse">
                <thead>
-                 <tr className="border-b border-[#f0f4f2] text-[#6b7a73] font-black uppercase tracking-widest text-[10px]">
+                 <tr className="border-b border-border text-muted font-black uppercase tracking-widest text-[10px]">
                    <th className="px-8 py-5">{staffTerm} Member</th>
                    <th className="px-8 py-5">Specialization</th>
                    <th className="px-8 py-5">Onboarding Status</th>
                    <th className="px-8 py-5">Action</th>
                  </tr>
                </thead>
-                <tbody className="divide-y divide-[#f0f4f2]">
+                <tbody className="divide-y divide-border">
                   {displayedList.length === 0 ? (
                     <tr>
                       <td colSpan={4} className="px-8 py-24 text-center">
-                        <div className="w-20 h-20 bg-[#edf7f3] rounded-[2rem] flex items-center justify-center mx-auto mb-6">
-                           {activeTab === 'onboarding' ? <Sparkles className="w-10 h-10 text-[#a9dac9]" /> : <Users className="w-10 h-10 text-[#a9dac9]" />}
+                        <div className="w-20 h-20 bg-brand-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6">
+                           {activeTab === 'onboarding' ? <Sparkles className="w-10 h-10 text-brand-200" /> : <Users className="w-10 h-10 text-brand-200" />}
                         </div>
-                        <h3 className="text-2xl font-black text-[#0b3828] mb-2 tracking-tight">No results found</h3>
-                        <p className="text-[#6b7a73] max-w-xs mx-auto text-lg mb-8">
+                        <h3 className="text-2xl font-black text-heading mb-2 tracking-tight">No results found</h3>
+                        <p className="text-muted max-w-xs mx-auto text-lg mb-8">
                           {activeTab === 'onboarding' ? "You don't have any pending onboarding requests at the moment." : `Spread the word to get more ${staffTerm.toLowerCase()} into your pool!`}
                         </p>
-                        <button onClick={copyInviteLink} disabled={copied} className="flex items-center justify-center gap-2 mx-auto bg-[#fbbf24] text-[#0b3828] font-black px-10 py-4 rounded-2xl hover:bg-[#f59e0b] shadow-lg shadow-[#fbbf24]/20 transition-all disabled:opacity-80">
+                        <button onClick={copyInviteLink} disabled={copied} className="flex items-center justify-center gap-2 mx-auto bg-amber-400 text-heading font-black px-10 py-4 rounded-2xl hover:bg-amber-500 shadow-lg shadow-amber-400/20 transition-all disabled:opacity-80">
                            {copied ? <><CheckCircle2 className="w-5 h-5" /> Copied!</> : 'Copy Invite Link'}
                         </button>
                       </td>
@@ -273,30 +273,30 @@ export default function StaffPoolPage() {
                         const status = item.status || 'available'
                         
                         return (
-                        <tr key={idx} className="hover:bg-[#f8faf9] transition-all group">
+                        <tr key={idx} className="hover:bg-surface transition-all group">
                             <td className="px-8 py-6">
                                 <div className="flex items-center gap-4">
                                     <StaffAvatar
                                         avatarKey={profile.avatar_url}
                                         firstName={profile.first_name}
                                         lastName={profile.last_name}
-                                        className="w-14 h-14 rounded-2xl bg-[#edf7f3] text-[#157354] font-black text-xl shadow-sm group-hover:scale-110 transition-transform"
+                                        className="w-14 h-14 rounded-2xl bg-brand-50 text-brand-600 font-black text-xl shadow-sm group-hover:scale-110 transition-transform"
                                     />
                                     <div>
-                                        <div className="font-extrabold text-[#1a2e25] text-lg leading-tight">
+                                        <div className="font-extrabold text-text-main text-lg leading-tight">
                                            {profile.first_name} {profile.last_name}
                                         </div>
-                                        <div className="text-sm text-[#6b7a73] font-medium">{profile.email}</div>
+                                        <div className="text-sm text-muted font-medium">{profile.email}</div>
                                     </div>
                                 </div>
                             </td>
                             <td className="px-8 py-6">
-                                <div className="inline-flex items-center px-3 py-1 bg-[#f8faf9] text-[#3d5a4f] rounded-lg text-xs font-black uppercase tracking-widest border border-[#e2e8e4]">
+                                <div className="inline-flex items-center px-3 py-1 bg-surface text-text-muted rounded-lg text-xs font-black uppercase tracking-widest border border-border">
                                    {lookupLabel(roleLookups, profile.staff_type)}
                                 </div>
                                 {(item.status === 'active' ? item.employment_class : (item.requested_employment_class ?? item.employment_class)) && (
                                   <div className={`inline-flex items-center ml-2 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border ${
-                                    (item.status === 'active' ? item.employment_class : (item.requested_employment_class ?? item.employment_class)) === 'regular' ? 'bg-[#edf7f3] text-[#157354] border-[#d4ede4]' : 'bg-white text-[#6b7a73] border-[#e2e8e4]'
+                                    (item.status === 'active' ? item.employment_class : (item.requested_employment_class ?? item.employment_class)) === 'regular' ? 'bg-brand-50 text-brand-600 border-brand-100' : 'bg-white text-muted border-border'
                                   }`}>
                                      {EMPLOYMENT_CLASS_LABELS[(item.status === 'active' ? item.employment_class : (item.requested_employment_class ?? item.employment_class)) as EmploymentClass]}{item.status !== 'active' && ' (requested)'}
                                   </div>
@@ -312,7 +312,7 @@ export default function StaffPoolPage() {
                                      <CheckCircle2 className="w-4 h-4" /> Ready to Work
                                   </div>
                                 ) : (
-                                  <div className="text-[#a8b5ae] font-black text-xs uppercase tracking-widest leading-none">
+                                  <div className="text-subtle font-black text-xs uppercase tracking-widest leading-none">
                                      Nearby
                                   </div>
                                 )}
@@ -322,14 +322,14 @@ export default function StaffPoolPage() {
                                  <button 
                                    onClick={() => handleInvite(profile.id)}
                                    disabled={inviting === profile.id}
-                                   className="bg-[#157354] text-white font-black px-6 py-3 rounded-xl hover:bg-[#0f4a36] shadow-md shadow-[#157354]/10 transition-all active:scale-95 disabled:opacity-50"
+                                   className="bg-brand-600 text-white font-black px-6 py-3 rounded-xl hover:bg-brand-800 shadow-md shadow-brand-600/10 transition-all active:scale-95 disabled:opacity-50"
                                  >
                                     {inviting === profile.id ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Invite to Pool'}
                                  </button>
                                ) : (
                                  <Link 
                                    href={`/center/team_member/${profile.id}`}
-                                   className="inline-flex items-center gap-2 text-[#157354] font-black hover:text-[#0b3828] text-sm group/link"
+                                   className="inline-flex items-center gap-2 text-brand-600 font-black hover:text-heading text-sm group/link"
                                  >
                                     View Profile <ArrowRight className="w-4 h-4 group-hover/link:translate-x-1 transition-transform" />
                                  </Link>
@@ -346,20 +346,20 @@ export default function StaffPoolPage() {
 
       {/* Invite Modal */}
       {showInviteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0b3828]/40 backdrop-blur-sm animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-900/40 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-8">
-              <div className="w-16 h-16 bg-[#edf7f3] text-[#157354] rounded-2xl flex items-center justify-center mb-6 shadow-inner">
+              <div className="w-16 h-16 bg-brand-50 text-brand-600 rounded-2xl flex items-center justify-center mb-6 shadow-inner">
                 <Mail className="w-8 h-8" />
               </div>
-              <h2 className="text-2xl font-black text-[#0b3828] mb-2 tracking-tight">Invite {staffTerm}</h2>
-              <p className="text-[#6b7a73] font-medium mb-8 leading-relaxed">
+              <h2 className="text-2xl font-black text-heading mb-2 tracking-tight">Invite {staffTerm}</h2>
+              <p className="text-muted font-medium mb-8 leading-relaxed">
                 Send an email invitation directly to a {staffTerm.toLowerCase()} member so they can join your pool.
               </p>
               
               <form onSubmit={handleSendEmailInvite}>
                 <div className="mb-6">
-                  <label className="block text-xs font-black text-[#0b3828] uppercase tracking-widest mb-2">
+                  <label className="block text-xs font-black text-heading uppercase tracking-widest mb-2">
                     Email Address
                   </label>
                   <input 
@@ -368,7 +368,7 @@ export default function StaffPoolPage() {
                     value={inviteEmail}
                     onChange={(e) => setInviteEmail(e.target.value)}
                     placeholder="educator@example.com"
-                    className="w-full px-5 py-4 rounded-xl border-2 border-[#f0f4f2] focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all font-medium text-[#1a2e25]"
+                    className="w-full px-5 py-4 rounded-xl border-2 border-border focus:outline-none focus:ring-4 focus:ring-brand-600/10 focus:border-brand-600 transition-all font-medium text-text-main"
                   />
                 </div>
                 
@@ -376,30 +376,30 @@ export default function StaffPoolPage() {
                   <button 
                     type="button"
                     onClick={() => setShowInviteModal(false)}
-                    className="flex-1 px-5 py-4 rounded-xl font-black text-xs uppercase tracking-widest text-[#6b7a73] bg-[#f8faf9] border border-[#e2e8e4] hover:bg-[#f0f4f2] transition-colors"
+                    className="flex-1 px-5 py-4 rounded-xl font-black text-xs uppercase tracking-widest text-muted bg-surface border border-border hover:bg-surface-2 transition-colors"
                   >
                     Cancel
                   </button>
                   <button 
                     type="submit"
                     disabled={!inviteEmail}
-                    className="flex-1 px-5 py-4 rounded-xl font-black text-xs uppercase tracking-widest text-white bg-[#157354] hover:bg-[#0f4a36] shadow-lg shadow-[#157354]/20 transition-all disabled:opacity-50"
+                    className="flex-1 px-5 py-4 rounded-xl font-black text-xs uppercase tracking-widest text-white bg-brand-600 hover:bg-brand-800 shadow-lg shadow-brand-600/20 transition-all disabled:opacity-50"
                   >
                     Open Email
                   </button>
                 </div>
               </form>
 
-              <div className="mt-8 pt-6 border-t border-[#f0f4f2] text-center">
-                <p className="text-xs font-bold text-[#6b7a73] uppercase tracking-wider mb-3">Or share the link directly</p>
+              <div className="mt-8 pt-6 border-t border-border text-center">
+                <p className="text-xs font-bold text-muted uppercase tracking-wider mb-3">Or share the link directly</p>
                 <button 
                   type="button"
                   onClick={copyInviteLink}
                   disabled={copied}
                   className={`w-full px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest border transition-colors flex items-center justify-center gap-2 ${
                     copied 
-                      ? 'bg-[#f0fdf4] text-[#157354] border-[#dcfce7]' 
-                      : 'text-[#157354] border-[#157354]/20 bg-white hover:bg-[#edf7f3]'
+                      ? 'bg-brand-50 text-brand-600 border-[#dcfce7]' 
+                      : 'text-brand-600 border-brand-600/20 bg-white hover:bg-brand-50'
                   }`}
                 >
                   {copied ? (

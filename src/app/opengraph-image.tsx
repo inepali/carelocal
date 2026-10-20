@@ -9,7 +9,7 @@ export const contentType = 'image/png'
 
 const CARD: Record<DomainKey, { bg: string; accent: string; headline: string; points: string[] }> = {
   childcare: {
-    bg: '#0b3828', accent: '#74c3a8',
+    bg: '#0a3d3a', accent: '#f4b860',
     headline: 'The all-in-one platform for childcare staffing and compliance',
     points: ['Fill shifts by text', 'Staff files & training', 'Inspections & vendors'],
   },
@@ -19,7 +19,7 @@ const CARD: Record<DomainKey, { bg: string; accent: string; headline: string; po
     points: ['Fill shifts by text', 'Credentials & competencies', 'Inspections & vendors'],
   },
   senior: {
-    bg: '#0b3828', accent: '#74c3a8',
+    bg: '#0a3d3a', accent: '#f4b860',
     headline: 'Caregiver staffing and compliance in one platform',
     points: ['Cover call-outs fast', 'Caregiver files & training', 'Inspections & vendors'],
   },

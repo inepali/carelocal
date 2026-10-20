@@ -65,9 +65,10 @@ async function getAdminCenterId(supabase: Awaited<ReturnType<typeof createClient
 
 /**
  * Presigned PUT for a new file. `vault` = the signed-in staff member's library;
- * `internal` / `template` = the signed-in admin's center.
+ * `internal` / `template` = the signed-in admin's center. An `internal` upload for a specific employee
+ * (pass `staffId`) lands in employee_files/<center>/<employee>/ of the center bucket.
  */
-export async function getUploadUrl(kind: FileKind, contentType: string, sizeBytes: number) {
+export async function getUploadUrl(kind: FileKind, contentType: string, sizeBytes: number, staffId?: string) {
   try {
     const { supabase, user } = await getSessionContext()
     if (!user) return fail('Please sign in again.')
@@ -77,16 +78,26 @@ export async function getUploadUrl(kind: FileKind, contentType: string, sizeByte
     if (!sizeBytes || sizeBytes > MAX_UPLOAD_BYTES) return fail('Files must be smaller than 15 MB.')
 
     let owner: string
+    let folder: string = kind
     if (kind === 'vault') {
       owner = user.id
     } else {
       const centerId = await getAdminCenterId(supabase, user.id)
       if (!centerId) return fail('Only center admins can upload center files.')
       owner = centerId
+
+      if (kind === 'internal' && staffId) {
+        // Only for someone who belongs to this center
+        const { data: membership } = await supabase
+          .from('center_staff').select('staff_id').eq('center_id', centerId).eq('staff_id', staffId).maybeSingle()
+        if (!membership) return fail('This employee is not part of your center.')
+        folder = 'employee_files'
+        owner = `${centerId}/${staffId}`
+      }
     }
 
     const bucketName = bucketFor(kind)
-    const fileKey = `${kind}/${owner}/${randomUUID()}.${ext}`
+    const fileKey = `${folder}/${owner}/${randomUUID()}.${ext}`
     const command = new PutObjectCommand({
       Bucket: bucketName,
       Key: fileKey,
@@ -137,14 +148,14 @@ export async function getFileViewUrl(kind: FileKind, id: string) {
     } else if (kind === 'internal') {
       const { data } = await supabase
         .from('center_internal_documents')
-        .select('file_key, staff_id, center_id, requirement:center_document_requirements(is_confidential)')
+        .select('file_key, staff_id, center_id, is_confidential, requirement:center_document_requirements(is_confidential)')
         .eq('id', id)
         .maybeSingle()
       fileKey = data?.file_key ?? null
       staffId = data?.staff_id ?? null
       centerId = data?.center_id ?? null
       const req = data?.requirement as { is_confidential?: boolean } | { is_confidential?: boolean }[] | null | undefined
-      isConfidential = !!(Array.isArray(req) ? req[0]?.is_confidential : req?.is_confidential)
+      isConfidential = !!data?.is_confidential || !!(Array.isArray(req) ? req[0]?.is_confidential : req?.is_confidential)
     } else if (kind === 'inspection') {
       const { data } = await supabase.from('center_inspection_files').select('file_key, center_id').eq('id', id).maybeSingle()
       fileKey = data?.file_key ?? null

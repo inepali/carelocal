@@ -24,15 +24,14 @@ export default function ForgotPasswordPage() {
 
   const config = getDomainConfig(domainKey)
   const isHealthcare = domainKey === 'healthcare'
-  const resetHost = domainKey === 'healthcare' ? 'http://localhost:3001' : domainKey === 'senior' ? 'http://localhost:3002' : 'http://localhost:3000'
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    const redirectTo =
-      `${process.env.NEXT_PUBLIC_APP_URL || resetHost}/reset-password`
+    // Always come back to the site the request was made on (each vertical has its own domain)
+    const redirectTo = `${window.location.origin}/reset-password`
 
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo,

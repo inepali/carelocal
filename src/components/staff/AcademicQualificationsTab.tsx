@@ -5,12 +5,13 @@ import { createClient } from '@/lib/supabase/client'
 import type { StaffDocument } from '@/lib/types'
 import { GraduationCap, Plus, Trash2, Eye, Upload, CheckCircle2, Loader2, AlertCircle, X } from 'lucide-react'
 import { deleteVaultDocument } from '@/app/actions/storage.actions'
-import { openStoredFile, uploadStoredFile, DOCUMENT_ACCEPT } from '@/lib/files'
+import { openStoredFile, storeUpload, DOCUMENT_ACCEPT, type UploadSource } from '@/lib/files'
+import { PhoneUploadButton } from '@/components/center/PhoneUploadDialog'
 import { showAlert, showConfirm } from '@/lib/dialog'
 
 export const ACADEMIC_CATEGORY = 'academic_qualification'
 
-const FIELD = 'w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white text-sm text-[#1a2e25] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354]'
+const FIELD = 'w-full px-4 py-3 rounded-xl border border-border bg-white text-sm text-text-main focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600'
 
 /** Degrees, diplomas and transcripts: the staff member's "Academic Qualification" vault documents. */
 export function AcademicQualificationsTab({ staffId }: { staffId: string }) {
@@ -18,7 +19,7 @@ export function AcademicQualificationsTab({ staffId }: { staffId: string }) {
   const [docs, setDocs] = useState<StaffDocument[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [file, setFile] = useState<File | null>(null)
+  const [file, setFile] = useState<UploadSource | null>(null)
   const [name, setName] = useState('')
   const [expiry, setExpiry] = useState('')
   const [saving, setSaving] = useState(false)
@@ -44,16 +45,16 @@ export function AcademicQualificationsTab({ staffId }: { staffId: string }) {
     if (!file) { showAlert('Please select a file first'); return }
     setSaving(true)
     try {
-      const { fileKey, bucketName } = await uploadStoredFile('vault', file)
+      const { fileKey, bucketName, name: storedName } = await storeUpload('vault', file)
       const { error } = await supabase.from('staff_documents').insert({
         staff_id: staffId,
-        document_name: name.trim() || file.name,
+        document_name: name.trim() || storedName,
         document_category: ACADEMIC_CATEGORY,
         expiry_date: expiry || null,
         file_url: 'r2_private_access', // files are only reachable through signed links
         file_key: fileKey,
         bucket_name: bucketName,
-        file_name: file.name,
+        file_name: storedName,
       })
       if (error) { showAlert('Failed to save document info'); return }
       closeForm()
@@ -72,45 +73,48 @@ export function AcademicQualificationsTab({ staffId }: { staffId: string }) {
     else showAlert(res.error)
   }
 
-  if (loading) return <div className="h-40 animate-pulse rounded-2xl border border-[#e2e8e4] bg-white" />
+  if (loading) return <div className="h-40 animate-pulse rounded-2xl border border-border bg-white" />
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="flex items-center gap-2 text-lg font-bold text-[#1a2e25]"><GraduationCap className="h-5 w-5 text-[#157354]" /> Education</h2>
-          <p className="text-xs text-[#6b7a73]">Degrees, diplomas and transcripts. Visible to centers you work with.</p>
+          <h2 className="flex items-center gap-2 text-lg font-bold text-text-main"><GraduationCap className="h-5 w-5 text-brand-600" /> Education</h2>
+          <p className="text-xs text-muted">Degrees, diplomas and transcripts. Visible to centers you work with.</p>
         </div>
-        <button type="button" onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 rounded-xl bg-[#157354] px-4 py-2 text-xs font-bold text-white hover:bg-[#0f4a36]">
+        <button type="button" onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-xs font-bold text-white hover:bg-brand-800">
           <Plus className="h-4 w-4" /> Add New
         </button>
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0b3828]/40 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="academic-title">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[#e2e8e4] bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-900/40 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="academic-title">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-white p-6 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
-              <h3 id="academic-title" className="text-lg font-bold text-[#1a2e25]">Add Education</h3>
-              <button type="button" onClick={closeForm} className="rounded-lg p-1.5 text-[#6b7a73] hover:bg-[#f8faf9]" aria-label="Close"><X className="h-4 w-4" /></button>
+              <h3 id="academic-title" className="text-lg font-bold text-text-main">Add Education</h3>
+              <button type="button" onClick={closeForm} className="rounded-lg p-1.5 text-muted hover:bg-surface" aria-label="Close"><X className="h-4 w-4" /></button>
             </div>
             <form onSubmit={handleSave} className="space-y-4">
-              <label className={`flex h-28 w-full cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed transition-all ${file ? 'border-[#157354] bg-[#f0fdf4]' : 'border-[#e2e8e4] hover:bg-[#f8faf9]'}`}>
+              <label className={`flex h-28 w-full cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed transition-all ${file ? 'border-brand-600 bg-brand-50' : 'border-border hover:bg-surface'}`}>
                 <input type="file" className="hidden" accept={DOCUMENT_ACCEPT} onChange={e => setFile(e.target.files?.[0] || null)} />
                 {file ? (
-                  <><CheckCircle2 className="mb-1 h-7 w-7 text-[#157354]" /><span className="max-w-[240px] truncate text-xs font-bold text-[#0b3828]">{file.name}</span></>
+                  <><CheckCircle2 className="mb-1 h-7 w-7 text-brand-600" /><span className="max-w-[240px] truncate text-xs font-bold text-heading">{file.name}</span></>
                 ) : (
-                  <><Upload className="mb-1 h-7 w-7 text-[#a8b5ae]" /><span className="text-xs text-[#6b7a73]">Click to choose a PDF or image</span></>
+                  <><Upload className="mb-1 h-7 w-7 text-subtle" /><span className="text-xs text-muted">Click to choose a PDF or image</span></>
                 )}
               </label>
+              {!file && (
+                <PhoneUploadButton kind="vault" label={name.trim() || 'Education document'} onReceived={upload => { setFile(upload) }} />
+              )}
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-[#1a2e25]">Label</label>
+                <label className="mb-1.5 block text-sm font-medium text-text-main">Label</label>
                 <input required value={name} onChange={e => setName(e.target.value)} placeholder="e.g. B.A. Early Childhood Education" className={FIELD} />
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-[#1a2e25]">Expiry Date (Optional)</label>
+                <label className="mb-1.5 block text-sm font-medium text-text-main">Expiry Date (Optional)</label>
                 <input type="date" value={expiry} onChange={e => setExpiry(e.target.value)} className={FIELD} />
               </div>
-              <button type="submit" disabled={saving || !file || !name.trim()} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#157354] py-3 font-semibold text-white hover:bg-[#0f4a36] disabled:opacity-50">
+              <button type="submit" disabled={saving || !file || !name.trim()} className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 font-semibold text-white hover:bg-brand-800 disabled:opacity-50">
                 {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Save Document'}
               </button>
             </form>
@@ -118,26 +122,26 @@ export function AcademicQualificationsTab({ staffId }: { staffId: string }) {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-2xl border border-[#e2e8e4] bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
         {docs.length === 0 ? (
-          <div className="px-6 py-8 text-center text-sm text-[#6b7a73]">No academic qualifications added yet.</div>
+          <div className="px-6 py-8 text-center text-sm text-muted">No academic qualifications added yet.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[520px] text-left">
               <thead>
-                <tr className="border-b border-[#e2e8e4] text-[15px] font-bold text-[#1a2e25]">
+                <tr className="border-b border-border text-[15px] font-bold text-text-main">
                   <th scope="col" className="px-6 py-4">Document</th>
                   <th scope="col" className="px-6 py-4">Uploaded</th>
                   <th scope="col" className="px-6 py-4">Expires</th>
                   <th scope="col" className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#e2e8e4] text-sm text-[#3d5a4f]">
+              <tbody className="divide-y divide-border text-sm text-text-muted">
                 {docs.map(doc => {
                   const expired = !!doc.expiry_date && new Date(doc.expiry_date) < new Date()
                   return (
-                    <tr key={doc.id} className="hover:bg-[#fbfcfb]">
-                      <td className="px-6 py-4 text-[#1a2e25]">{doc.document_name}</td>
+                    <tr key={doc.id} className="hover:bg-surface">
+                      <td className="px-6 py-4 text-text-main">{doc.document_name}</td>
                       <td className="whitespace-nowrap px-6 py-4">{new Date(doc.uploaded_at).toLocaleDateString()}</td>
                       <td className={`whitespace-nowrap px-6 py-4 ${expired ? 'text-red-600' : ''}`}>
                         {doc.expiry_date ? new Date(doc.expiry_date).toLocaleDateString() : '—'}
@@ -145,8 +149,8 @@ export function AcademicQualificationsTab({ staffId }: { staffId: string }) {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-end gap-1">
-                          <button onClick={() => openStoredFile('vault', doc.id)} className="rounded-lg p-2 text-[#157354] hover:bg-[#edf7f3]" title="View Document"><Eye className="h-4 w-4" /></button>
-                          <button onClick={() => handleDelete(doc.id)} className="rounded-lg p-2 text-[#a8b5ae] hover:bg-red-50 hover:text-red-500" title="Delete"><Trash2 className="h-4 w-4" /></button>
+                          <button onClick={() => openStoredFile('vault', doc.id)} className="rounded-lg p-2 text-brand-600 hover:bg-brand-50" title="View Document"><Eye className="h-4 w-4" /></button>
+                          <button onClick={() => handleDelete(doc.id)} className="rounded-lg p-2 text-subtle hover:bg-red-50 hover:text-red-500" title="Delete"><Trash2 className="h-4 w-4" /></button>
                         </div>
                       </td>
                     </tr>

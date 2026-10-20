@@ -10,9 +10,12 @@ import {
   type ComplianceState,
 } from '@/lib/compliance'
 import { deleteInternalDocument } from '@/app/actions/storage.actions'
-import { openStoredFile, uploadStoredFile, DOCUMENT_ACCEPT } from '@/lib/files'
+import { snapshotAcceptedDocuments } from '@/app/actions/document-snapshots.actions'
+import { requestAllDocuments } from '@/app/actions/document-requests.actions'
+import { PhoneUploadDialog } from '@/components/center/PhoneUploadDialog'
+import { openStoredFile, storeUpload, DOCUMENT_ACCEPT, type UploadSource } from '@/lib/files'
 import {
-  CheckCircle2, ExternalLink, FileText, Loader2, Lock, PenLine, Send, ShieldAlert, Trash2, Upload, X, XCircle,
+  CheckCircle2, ExternalLink, Eye, FileText, Smartphone, Loader2, Lock, PenLine, Plus, Send, ShieldAlert, Trash2, Upload, X, XCircle,
   UserSquare2, HeartPulse, GraduationCap, ClipboardList,
 } from 'lucide-react'
 import { showAlert, showConfirm } from '@/lib/dialog'
@@ -23,6 +26,7 @@ export interface CenterFile {
   document_name: string
   uploaded_at: string
   future_review_date?: string | null
+  source_document_id?: string | null   // set on copies of accepted staff documents
 }
 
 const SECTION_ICONS: Record<RequirementSection, React.ElementType> = {
@@ -31,8 +35,8 @@ const SECTION_ICONS: Record<RequirementSection, React.ElementType> = {
 
 const STATE_ORDER: ComplianceState[] = ['overdue', 'due_soon', 'pending_review', 'rejected', 'missing', 'current', 'not_applicable']
 
-const FLD = 'w-full px-3 py-2 rounded-lg border border-[#e2e8e4] bg-white text-sm text-[#1a2e25] focus:outline-none focus:ring-2 focus:ring-[#157354]/30 focus:border-[#157354]'
-const LBL = 'block text-xs font-semibold text-[#3d5a4f] mb-1'
+const FLD = 'w-full px-3 py-2 rounded-lg border border-border bg-white text-sm text-text-main focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600'
+const LBL = 'block text-xs font-semibold text-text-muted mb-1'
 
 type Draft = { completedOn: string; hours: string; expiresOn: string; notes: string; naReason: string }
 
@@ -121,6 +125,13 @@ export function ComplianceRecord({
       showAlert('Failed to save: ' + error.message)
       return
     }
+    // Keep the center's own copy of what it just accepted
+    if (changes.status === 'accepted') {
+      const copy = await snapshotAcceptedDocuments(centerId, staffId)
+      if (!copy.success || copy.failed > 0) {
+        showAlert('The document was accepted, but the center copy could not be saved. It will be retried the next time you open this record.')
+      }
+    }
     setOpenId(null)
     onChanged()
   }
@@ -147,15 +158,63 @@ export function ComplianceRecord({
     save(req, record, { not_applicable: value, not_applicable_reason: value ? draft.naReason.trim() : null })
   }
 
-  async function uploadCenterFile(req: CenterDocumentRequirement, file: File) {
+  // Whether this row can be requested from the employee: nothing attached, or what is attached was
+  // rejected or has expired. Items with an open request, and center-kept records, are never requested.
+  function canRequestRow(row: typeof rows[number]) {
+    const { req, record, doc, files, result } = row
+    if (req.evidence_type === 'center_record') return false
+    if (openRequests.some(r => r.requirement_id === req.id)) return false
+    if (result.state === 'not_applicable') return false
+    const attached = !!record?.matched_document_id || files.length > 0 || !!record?.acknowledged_at
+    const expired = result.state === 'overdue' || (!!doc?.expiry_date && new Date(doc.expiry_date) < new Date())
+    return attached
+      ? result.state === 'rejected' || expired
+      : ['missing', 'overdue', 'due_soon', 'rejected'].includes(result.state)
+  }
+
+  const requestable = rows.filter(canRequestRow)
+  const [requestingAll, setRequestingAll] = useState(false)
+  const [phoneFor, setPhoneFor] = useState<CenterDocumentRequirement | null>(null)
+
+  async function requestEverything() {
+    if (requestable.length === 0) return
+    const names = requestable.map(r => r.req.document_name)
+    const preview = names.slice(0, 6).join('\n• ')
+    const ok = await showConfirm(
+      `Request ${names.length} document${names.length === 1 ? '' : 's'} from this employee?\n\n• ${preview}${names.length > 6 ? `\n• and ${names.length - 6} more` : ''}`,
+      { title: 'Request all documents', confirmLabel: 'Send request', tone: 'default' },
+    )
+    if (!ok) return
+    setRequestingAll(true)
+    const res = await requestAllDocuments({ staffId, requirementIds: requestable.map(r => r.req.id) })
+    setRequestingAll(false)
+    if (!res.success) { showAlert(res.error); return }
+    showAlert(`Requested ${res.count ?? 0} document${res.count === 1 ? '' : 's'}. The employee has been notified.`, { title: 'Requests sent', tone: 'default' })
+    onChanged()
+  }
+
+  // Opens the file picker for an Add button, then uploads the chosen file for this employee
+  function pickFile(req: CenterDocumentRequirement) {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = DOCUMENT_ACCEPT
+    input.onchange = () => {
+      const file = input.files?.[0]
+      if (file) uploadCenterFile(req, file)
+    }
+    input.click()
+  }
+
+  /** Saves a document the center adds for this employee: a picked file or one sent from a phone. */
+  async function uploadCenterFile(req: CenterDocumentRequirement, source: UploadSource): Promise<string | void> {
     setUploading(true)
     try {
-      const { fileKey, bucketName } = await uploadStoredFile('internal', file)
+      const { fileKey, bucketName, name } = await storeUpload('internal', source, { staffId })
       const { error } = await supabase.from('center_internal_documents').insert({
         center_id: centerId,
         staff_id: staffId,
         requirement_id: req.id,
-        document_name: file.name,
+        document_name: name,
         file_url: 'r2_private_access',
         file_key: fileKey,
         bucket_name: bucketName,
@@ -163,7 +222,9 @@ export function ComplianceRecord({
       if (error) throw error
       onChanged()
     } catch (err) {
-      showAlert(err instanceof Error ? err.message : 'Upload failed')
+      const message = err instanceof Error ? err.message : 'Upload failed'
+      if (!(source instanceof File)) return message // shown in the phone dialog
+      showAlert(message)
     } finally {
       setUploading(false)
     }
@@ -178,8 +239,8 @@ export function ComplianceRecord({
 
   if (requirements.length === 0) {
     return (
-      <div className="bg-white border border-[#e2e8e4] rounded-2xl p-12 text-center text-[#6b7a73]">
-        No document requirements apply to this employee yet. Add them in Documents.
+      <div className="bg-white border border-border rounded-2xl p-12 text-center text-muted">
+        No document requirements apply to this employee yet. Add them in About → Documents.
       </div>
     )
   }
@@ -187,8 +248,8 @@ export function ComplianceRecord({
   return (
     <div className="space-y-6">
       {/* Summary */}
-      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[#e2e8e4] bg-white px-5 py-4 shadow-sm">
-        <span className="mr-2 text-sm font-semibold text-[#1a2e25]">{complete} of {applicable} complete</span>
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-white px-5 py-4 shadow-sm">
+        <span className="mr-2 text-sm font-semibold text-text-main">{complete} of {applicable} complete</span>
         {STATE_ORDER.filter(s => counts[s] > 0).map(s => (
           <span key={s} className={`rounded-full border px-2.5 py-1 text-xs ${COMPLIANCE_STATE_STYLE[s].className}`}>
             {COMPLIANCE_STATE_STYLE[s].label}: {counts[s]}
@@ -196,9 +257,22 @@ export function ComplianceRecord({
         ))}
         {!startDate && <span className="text-xs text-amber-700">Set the employment start date to calculate due dates.</span>}
         {onRequest && !isSelf && (
-          <button onClick={() => onRequest()} className="ml-auto inline-flex items-center gap-1.5 rounded-xl bg-[#157354] px-4 py-2 text-xs font-bold text-white hover:bg-[#0f4a36]">
+          <div className="ml-auto flex flex-wrap gap-2">
+        {requestable.length > 0 && (
+          <button
+            onClick={requestEverything}
+            disabled={requestingAll}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-brand-600 px-4 py-2 text-xs font-bold text-brand-600 hover:bg-brand-50 disabled:opacity-50"
+          >
+            {requestingAll ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />} Request all ({requestable.length})
+          </button>
+        )}
+        {(
+          <button onClick={() => onRequest()} className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-xs font-bold text-white hover:bg-brand-800">
             <Send className="h-3.5 w-3.5" /> Request document
           </button>
+        )}
+          </div>
         )}
       </div>
 
@@ -218,15 +292,15 @@ export function ComplianceRecord({
         const collapsed = isMedical && !showMedical
 
         return (
-          <section key={section.id} className="overflow-hidden rounded-2xl border border-[#e2e8e4] bg-white shadow-sm">
-            <div className="flex flex-col gap-3 border-b border-[#e2e8e4] bg-[#f8faf9] px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+          <section key={section.id} className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+            <div className="flex flex-col gap-3 border-b border-border bg-surface px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#edf7f3] text-[#157354]"><Icon className="h-5 w-5" /></span>
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600"><Icon className="h-5 w-5" /></span>
                 <div>
-                  <h2 className="text-lg font-bold text-[#1a2e25] flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-text-main flex items-center gap-2">
                     {section.label} {isMedical && <Lock className="h-4 w-4 text-amber-600" />}
                   </h2>
-                  <p className="text-xs text-[#6b7a73]">{sectionRows.length} item{sectionRows.length === 1 ? '' : 's'}</p>
+                  <p className="text-xs text-muted">{sectionRows.length} item{sectionRows.length === 1 ? '' : 's'}</p>
                 </div>
               </div>
               {isMedical && !restricted && (
@@ -240,9 +314,9 @@ export function ComplianceRecord({
             </div>
 
             {restricted ? (
-              <div className="px-6 py-6 text-sm text-[#6b7a73]">Confidential medical file — only the Owner and Admins can view it.</div>
+              <div className="px-6 py-6 text-sm text-muted">Confidential medical file — only the Owner and Admins can view it.</div>
             ) : collapsed ? (
-              <div className="px-6 py-6 text-sm text-[#6b7a73]">
+              <div className="px-6 py-6 text-sm text-muted">
                 Confidential. Opening this file and its documents is recorded in the access log.
                 {sectionRows.some(r => ['overdue', 'pending_review'].includes(r.result.state)) && (
                   <span className="ml-2 font-semibold text-amber-700">Items need attention.</span>
@@ -252,7 +326,7 @@ export function ComplianceRecord({
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[820px] text-left">
                   <thead>
-                    <tr className="border-b border-[#e2e8e4] text-[15px] font-bold text-[#1a2e25]">
+                    <tr className="border-b border-border text-[15px] font-bold text-text-main">
                       <th scope="col" className="px-6 py-4">Item</th>
                       <th scope="col" className="px-4 py-4">Due</th>
                       <th scope="col" className="px-4 py-4">Completed</th>
@@ -261,7 +335,7 @@ export function ComplianceRecord({
                       <th scope="col" className="px-6 py-4 text-right">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#e2e8e4] text-sm font-normal text-[#3d5a4f]">
+                  <tbody className="divide-y divide-border text-sm font-normal text-text-muted">
                     {sectionRows.map((row, index) => {
                       const { req, record, doc, files, result } = row
                       const style = COMPLIANCE_STATE_STYLE[result.state]
@@ -271,19 +345,19 @@ export function ComplianceRecord({
                       return (
                         <Fragment key={req.id}>
                           {showGroup && (
-                            <tr className="bg-[#fbfcfb]">
-                              <td colSpan={6} className="px-6 py-2 text-xs font-bold uppercase tracking-wider text-[#157354]">{req.group_label}</td>
+                            <tr className="bg-surface">
+                              <td colSpan={6} className="px-6 py-2 text-xs font-bold uppercase tracking-wider text-brand-600">{req.group_label}</td>
                             </tr>
                           )}
-                          <tr className={`align-top ${isOpen ? 'bg-[#f8faf9]' : 'hover:bg-[#fbfcfb]'}`}>
+                          <tr className={`align-top ${isOpen ? 'bg-surface' : 'hover:bg-surface'}`}>
                             <td className="px-6 py-4">
-                              <div className="flex flex-wrap items-center gap-1.5 text-[#1a2e25]">
+                              <div className="flex flex-wrap items-center gap-1.5 text-text-main">
                                 {req.document_name}
                                 {req.is_conditional && <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-600">If applicable</span>}
                               </div>
-                              <div className="text-xs text-[#a8b5ae]">{describeDue(req.due_within_days)}{renewal ? ` · ${renewal}` : ''}</div>
+                              <div className="text-xs text-subtle">{describeDue(req.due_within_days)}{renewal ? ` · ${renewal}` : ''}</div>
                               {record?.not_applicable && record.not_applicable_reason && (
-                                <div className="mt-0.5 text-xs text-[#6b7a73]">N/A: {record.not_applicable_reason}</div>
+                                <div className="mt-0.5 text-xs text-muted">N/A: {record.not_applicable_reason}</div>
                               )}
                               {record?.status === 'rejected' && record.review_notes && (
                                 <div className="mt-0.5 text-xs text-red-600">{record.review_notes}</div>
@@ -292,77 +366,94 @@ export function ComplianceRecord({
                             <td className={`px-4 py-4 whitespace-nowrap ${result.state === 'overdue' ? 'text-red-600' : ''}`}>{formatDate(result.dueDate)}</td>
                             <td className="px-4 py-4 whitespace-nowrap">
                               {formatDate(result.completedOn)}
-                              {record?.hours != null && <div className="text-xs text-[#6b7a73]">{record.hours} hrs</div>}
+                              {record?.hours != null && <div className="text-xs text-muted">{record.hours} hrs</div>}
                             </td>
                             <td className="px-4 py-4">
                               <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs ${style.className}`}>{style.label}</span>
                             </td>
                             <td className="px-4 py-4 text-xs">
                               <div className="space-y-1">
-                                {doc && (
-                                  <button onClick={() => openStoredFile('vault', doc.id)} className="flex items-center gap-1 text-[#157354] hover:underline">
+                                {doc && !files.some(f => f.source_document_id === doc.id) && (
+                                  <button onClick={() => openStoredFile('vault', doc.id)} className="flex items-center gap-1 text-brand-600 hover:underline">
                                     <ExternalLink className="h-3 w-3" /> {doc.document_name}
                                   </button>
                                 )}
                                 {files.map(f => (
-                                  <button key={f.id} onClick={() => openStoredFile('internal', f.id)} className="flex items-center gap-1 text-[#157354] hover:underline">
+                                  <button key={f.id} onClick={() => openStoredFile('internal', f.id)} className="flex items-center gap-1 text-brand-600 hover:underline">
                                     <FileText className="h-3 w-3" /> {f.document_name}
+                                    {f.source_document_id && <span className="text-[10px] font-semibold uppercase tracking-wide text-subtle" title="Kept in your center's records when you accepted it">center copy</span>}
                                   </button>
                                 ))}
                                 {record?.acknowledged_at && (
-                                  <div className="flex items-center gap-1 text-[#6b7a73]" title={`Signed "${record.acknowledged_signature}" · version ${record.acknowledged_version}`}>
+                                  <div className="flex items-center gap-1 text-muted" title={`Signed "${record.acknowledged_signature}" · version ${record.acknowledged_version}`}>
                                     <PenLine className="h-3 w-3" /> Signed {formatDate(record.acknowledged_at)}
                                   </div>
                                 )}
-                                {!doc && files.length === 0 && !record?.acknowledged_at && <span className="text-[#a8b5ae]">—</span>}
+                                {!doc && files.length === 0 && !record?.acknowledged_at && <span className="text-subtle">—</span>}
                               </div>
                             </td>
                             <td className="px-6 py-4 text-right">
-                              {!isSelf && (
-                                <div className="flex flex-col items-end gap-1.5">
-                                  <button
-                                    onClick={() => open(row)}
-                                    className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
-                                      result.state === 'pending_review'
-                                        ? 'bg-[#157354] text-white hover:bg-[#0f4a36]'
-                                        : 'border border-[#e2e8e4] text-[#157354] hover:bg-[#edf7f3]'
-                                    }`}
-                                  >
-                                    {isOpen ? 'Close' : result.state === 'pending_review' ? 'Review' : 'Record'}
-                                  </button>
-                                  {(() => {
-                                    const request = openRequests.find(r => r.requirement_id === req.id)
-                                    if (request) {
-                                      return (
-                                        <span className="text-[11px] text-[#6b7a73]">
+                              {!isSelf && (() => {
+                                  // A document is attached: one the employee linked or sent to a request, or a file the center uploaded
+                                  const linked = !!record?.matched_document_id || files.length > 0 || !!record?.acknowledged_at
+                                  const request = openRequests.find(r => r.requirement_id === req.id)
+                                  return (
+                                    <div className="flex flex-col items-end gap-1.5">
+                                      {(
+                                        // Add uploads a document for this employee, on every row
+                                        <button
+                                          type="button"
+                                          disabled={uploading}
+                                          onClick={() => pickFile(req)}
+                                          className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-bold text-brand-600 transition-colors hover:bg-brand-50 disabled:opacity-50"
+                                        >
+                                          {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                                          Add
+                                        </button>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() => setPhoneFor(req)}
+                                        title="Take a photo with your phone"
+                                        className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-bold text-brand-600 transition-colors hover:bg-brand-50"
+                                      >
+                                        <Smartphone className="h-3.5 w-3.5" /> Phone
+                                      </button>
+                                      {linked && (
+                                        <button
+                                          onClick={() => open(row)}
+                                          className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
+                                            result.state === 'pending_review'
+                                              ? 'bg-brand-600 text-white hover:bg-brand-800'
+                                              : 'border border-border text-brand-600 hover:bg-brand-50'
+                                          }`}
+                                        >
+                                          {isOpen ? <X className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                                          {isOpen ? 'Close' : 'Review'}
+                                        </button>
+                                      )}
+                                      {request && (
+                                        <span className="text-[11px] text-muted">
                                           {request.status === 'submitted' ? 'Sent by employee' : `Requested${request.due_date ? ` · due ${formatDate(request.due_date)}` : ''}`}
                                         </span>
-                                      )
-                                    }
-                                    const canRequest = onRequest && req.evidence_type !== 'center_record'
-                                      && ['missing', 'overdue', 'due_soon', 'rejected'].includes(result.state)
-                                    return canRequest ? (
-                                      <button onClick={() => onRequest(req.id)} className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#157354] hover:underline">
-                                        <Send className="h-3 w-3" /> Request
-                                      </button>
-                                    ) : null
-                                  })()}
-                                </div>
-                              )}
+                                      )}
+                                    </div>
+                                  )
+                                })()}
                             </td>
                           </tr>
 
                           {isOpen && (
-                            <tr className="bg-[#f8faf9]">
+                            <tr className="bg-surface">
                               <td colSpan={6} className="px-6 pb-6">
-                                <div className="rounded-xl border border-[#e2e8e4] bg-white p-5 space-y-4">
+                                <div className="rounded-xl border border-border bg-white p-5 space-y-4">
                                   {record?.status === 'pending_review' && doc && (
-                                    <div className="flex flex-wrap items-center gap-2 text-sm text-[#3d5a4f]">
+                                    <div className="flex flex-wrap items-center gap-2 text-sm text-text-muted">
                                       Submitted by the employee:
-                                      <button onClick={() => openStoredFile('vault', doc.id)} className="inline-flex items-center gap-1 font-semibold text-[#157354] hover:underline">
+                                      <button onClick={() => openStoredFile('vault', doc.id)} className="inline-flex items-center gap-1 font-semibold text-brand-600 hover:underline">
                                         <ExternalLink className="h-3.5 w-3.5" /> {doc.document_name}
                                       </button>
-                                      {doc.expiry_date && <span className="text-xs text-[#6b7a73]">(expires {formatDate(doc.expiry_date)})</span>}
+                                      {doc.expiry_date && <span className="text-xs text-muted">(expires {formatDate(doc.expiry_date)})</span>}
                                     </div>
                                   )}
 
@@ -391,16 +482,16 @@ export function ComplianceRecord({
 
                                   {(req.evidence_type === 'center_record' || req.evidence_type === 'training') && (
                                     <div className="flex flex-wrap items-center gap-3">
-                                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-[#a9dac9] px-3 py-2 text-xs font-semibold text-[#157354] hover:bg-[#edf7f3]">
+                                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-brand-200 px-3 py-2 text-xs font-semibold text-brand-600 hover:bg-brand-50">
                                         {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
                                         Upload center record
                                         <input type="file" accept={DOCUMENT_ACCEPT} className="sr-only" disabled={uploading}
                                           onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) uploadCenterFile(req, f) }} />
                                       </label>
                                       {files.map(f => (
-                                        <span key={f.id} className="inline-flex items-center gap-1 rounded-lg bg-[#f8faf9] px-2 py-1 text-xs">
+                                        <span key={f.id} className="inline-flex items-center gap-1 rounded-lg bg-surface px-2 py-1 text-xs">
                                           {f.document_name}
-                                          <button onClick={() => removeCenterFile(f.id)} title="Delete" className="text-[#a8b5ae] hover:text-red-500"><Trash2 className="h-3 w-3" /></button>
+                                          <button onClick={() => removeCenterFile(f.id)} title="Delete" className="text-subtle hover:text-red-500"><Trash2 className="h-3 w-3" /></button>
                                         </span>
                                       ))}
                                     </div>
@@ -414,15 +505,15 @@ export function ComplianceRecord({
                                   )}
 
                                   <div className="flex flex-wrap justify-end gap-2">
-                                    <button onClick={() => setOpenId(null)} className="inline-flex items-center gap-1.5 rounded-lg border border-[#e2e8e4] px-3 py-2 text-xs font-semibold text-[#6b7a73] hover:bg-[#f8faf9]">
+                                    <button onClick={() => setOpenId(null)} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-semibold text-muted hover:bg-surface">
                                       <X className="h-3.5 w-3.5" /> Cancel
                                     </button>
                                     {req.is_conditional && (record?.not_applicable ? (
-                                      <button disabled={saving} onClick={() => setNotApplicable(req, record, false)} className="rounded-lg border border-[#e2e8e4] px-3 py-2 text-xs font-semibold text-[#3d5a4f] hover:bg-[#f8faf9]">
+                                      <button disabled={saving} onClick={() => setNotApplicable(req, record, false)} className="rounded-lg border border-border px-3 py-2 text-xs font-semibold text-text-muted hover:bg-surface">
                                         Undo N/A
                                       </button>
                                     ) : (
-                                      <button disabled={saving} onClick={() => setNotApplicable(req, record, true)} className="rounded-lg border border-[#e2e8e4] px-3 py-2 text-xs font-semibold text-[#3d5a4f] hover:bg-[#f8faf9]">
+                                      <button disabled={saving} onClick={() => setNotApplicable(req, record, true)} className="rounded-lg border border-border px-3 py-2 text-xs font-semibold text-text-muted hover:bg-surface">
                                         Mark N/A
                                       </button>
                                     ))}
@@ -431,8 +522,8 @@ export function ComplianceRecord({
                                         <XCircle className="h-3.5 w-3.5" /> Reject
                                       </button>
                                     )}
-                                    <button disabled={saving} onClick={() => markComplete(req, record)} className="inline-flex items-center gap-1.5 rounded-lg bg-[#157354] px-4 py-2 text-xs font-bold text-white hover:bg-[#0f4a36] disabled:opacity-50">
-                                      {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />} Mark complete
+                                    <button disabled={saving} onClick={() => markComplete(req, record)} className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-xs font-bold text-white hover:bg-brand-800 disabled:opacity-50">
+                                      {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />} Accept
                                     </button>
                                   </div>
                                 </div>
@@ -449,6 +540,17 @@ export function ComplianceRecord({
           </section>
         )
       })}
+      {phoneFor && (
+        <PhoneUploadDialog
+          kind="internal"
+          staffId={staffId}
+          label={phoneFor.document_name}
+          askName
+          confirmLabel="Attach"
+          onClose={() => setPhoneFor(null)}
+          onReceived={upload => uploadCenterFile(phoneFor, upload)}
+        />
+      )}
     </div>
   )
 }

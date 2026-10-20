@@ -211,9 +211,9 @@ export default function ContactPage() {
                       <Phone className="w-6 h-6 text-brand-300 shrink-0 mt-0.5" />
                       <div>
                         <p className="text-xs text-brand-300 font-bold uppercase tracking-wider">Call Us</p>
-                        <span className="text-white font-semibold">
-                          {isHealthcare ? '+1 (704) 555-0155' : '+1 (704) 555-0199'}
-                        </span>
+                        <a href="tel:+17047505858" className="text-white font-semibold hover:underline">
+                          +1 (704) 750-5858
+                        </a>
                       </div>
                     </div>
 
@@ -222,7 +222,6 @@ export default function ContactPage() {
                       <div>
                         <p className="text-xs text-brand-300 font-bold uppercase tracking-wider">Office</p>
                         <span className="text-white font-medium leading-relaxed block">
-                          201 S Tryon St, Suite 1500<br />
                           Charlotte, NC 28202
                         </span>
                       </div>

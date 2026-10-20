@@ -9,7 +9,8 @@ import {
   INSPECTION_RESULT_LABELS, Vendor,
 } from '@/lib/types'
 import { deleteInspectionFile } from '@/app/actions/storage.actions'
-import { openStoredFile, uploadStoredFile, DOCUMENT_ACCEPT } from '@/lib/files'
+import { openStoredFile, storeUpload, DOCUMENT_ACCEPT, type UploadSource } from '@/lib/files'
+import { PhoneUploadButton } from '@/components/center/PhoneUploadDialog'
 import {
   addInterval, daysUntil, formatDate, formatInterval, inspectionStatus,
   InspectionStatus, todayDateOnly, DUE_SOON_DAYS,
@@ -23,18 +24,18 @@ import { showAlert, showConfirm } from '@/lib/dialog'
 const OTHER = '__other__'
 const INTERVAL_UNITS: InspectionIntervalUnit[] = ['days', 'weeks', 'months', 'years']
 
-const inputClass = 'w-full px-4 py-3 rounded-xl border border-[#e2e8e4] focus:outline-none focus:ring-4 focus:ring-[#157354]/10 focus:border-[#157354] transition-all font-medium bg-white'
-const labelClass = 'block font-bold text-[#1a2e25] mb-2 uppercase tracking-widest text-[10px]'
+const inputClass = 'w-full px-4 py-3 rounded-xl border border-border focus:outline-none focus:ring-4 focus:ring-brand-600/10 focus:border-brand-600 transition-all font-medium bg-white'
+const labelClass = 'block font-bold text-text-main mb-2 uppercase tracking-widest text-[10px]'
 
 const STATUS_STYLES: Record<InspectionStatus, { label: string; className: string }> = {
   overdue: { label: 'Overdue', className: 'bg-red-50 text-red-700 border-red-200' },
   due_soon: { label: 'Due soon', className: 'bg-amber-50 text-amber-700 border-amber-200' },
-  ok: { label: 'Current', className: 'bg-[#f0fdf4] text-[#157354] border-[#bbf7d0]' },
+  ok: { label: 'Current', className: 'bg-brand-50 text-brand-600 border-[#bbf7d0]' },
   no_due_date: { label: 'No due date', className: 'bg-slate-50 text-slate-500 border-slate-200' },
 }
 
 const RESULT_STYLES: Record<InspectionResult, string> = {
-  passed: 'text-[#157354]',
+  passed: 'text-brand-600',
   passed_with_conditions: 'text-amber-700',
   failed: 'text-red-600',
 }
@@ -108,9 +109,9 @@ export default function InspectionsPage() {
   const [uploadingFor, setUploadingFor] = useState<string | null>(null) // log id, or 'other'
 
   // Reports attached while recording, and report counts per inspection for the list
-  const [recordFiles, setRecordFiles] = useState<File[]>([])
+  const [recordFiles, setRecordFiles] = useState<UploadSource[]>([])
   // New / edit inspection: files to attach on save, and reports already attached (edit)
-  const [editFiles, setEditFiles] = useState<File[]>([])
+  const [editFiles, setEditFiles] = useState<UploadSource[]>([])
   const [editExisting, setEditExisting] = useState<InspectionFile[]>([])
   const [fileCounts, setFileCounts] = useState<Record<string, number>>({})
   const [historyLoading, setHistoryLoading] = useState(false)
@@ -331,32 +332,33 @@ export default function InspectionsPage() {
   // ── Reports (paper records) ──────────────────
 
   /** Uploads files to secure storage and attaches them to an inspection (and history entry) */
-  async function attachReports(inspectionId: string, logId: string | null, files: File[]) {
+  async function attachReports(inspectionId: string, logId: string | null, files: UploadSource[]) {
     if (!centerId) return []
     const failures: string[] = []
     for (const file of files) {
       try {
-        const { fileKey, bucketName } = await uploadStoredFile('inspection', file)
+        const stored = await storeUpload('inspection', file)
         const { error: insErr } = await supabase.from('center_inspection_files').insert({
           center_id: centerId,
           inspection_id: inspectionId,
           log_id: logId,
-          file_name: file.name,
-          file_key: fileKey,
-          bucket_name: bucketName,
-          content_type: file.type || null,
-          size_bytes: file.size,
+          file_name: stored.name,
+          file_key: stored.fileKey,
+          bucket_name: stored.bucketName,
+          content_type: stored.type || null,
+          size_bytes: stored.size,
           uploaded_by: userId,
         })
         if (insErr) throw insErr
       } catch (err) {
-        failures.push(`${file.name}: ${err instanceof Error ? err.message : 'upload failed'}`)
+        const reason = err instanceof Error ? err.message : (err as { message?: string })?.message ?? 'upload failed'
+        failures.push(`${file.name}: ${reason}`)
       }
     }
     return failures
   }
 
-  async function uploadToHistory(logId: string | null, files: FileList | null) {
+  async function uploadToHistory(logId: string | null, files: FileList | UploadSource[] | null) {
     if (!historyFor || !files || files.length === 0) return
     setUploadingFor(logId ?? 'other')
     const failures = await attachReports(historyFor.id, logId, Array.from(files))
@@ -485,12 +487,12 @@ export default function InspectionsPage() {
   }
 
   /** Drop zone + list of files waiting to be attached when the form is saved */
-  function renderPicker(files: File[], setFiles: React.Dispatch<React.SetStateAction<File[]>>) {
+  function renderPicker(files: UploadSource[], setFiles: React.Dispatch<React.SetStateAction<UploadSource[]>>, phoneLabel = 'Inspection report') {
     return (
       <>
-        <label className="flex items-center gap-3 w-full p-4 border-2 border-dashed border-[#e2e8e4] rounded-xl cursor-pointer hover:border-[#157354] hover:bg-[#f8faf9] transition-all">
-          <Upload className="w-5 h-5 text-[#a8b5ae]" />
-          <span className="text-sm text-[#6b7a73]">Attach the report, certificate or invoice (PDF, photo or Word, up to 15 MB each)</span>
+        <label className="flex items-center gap-3 w-full p-4 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-brand-600 hover:bg-surface transition-all">
+          <Upload className="w-5 h-5 text-subtle" />
+          <span className="text-sm text-muted">Attach the report, certificate or invoice (PDF, photo or Word, up to 15 MB each)</span>
           <input
             type="file"
             multiple
@@ -503,12 +505,16 @@ export default function InspectionsPage() {
             }}
           />
         </label>
+        <div className="mt-2 flex items-center gap-2 text-xs text-muted">
+          <span>Paper copy in hand?</span>
+          <PhoneUploadButton kind="inspection" label={phoneLabel} text="Take a photo with your phone" onReceived={upload => { setFiles(prev => [...prev, upload]) }} />
+        </div>
         {files.length > 0 && (
           <ul className="mt-2 space-y-1.5">
             {files.map((f, i) => (
-              <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-2 rounded-lg bg-[#edf7f3] px-3 py-2 text-sm">
-                <span className="flex min-w-0 items-center gap-2 text-[#1a2e25]"><FileText className="w-4 h-4 shrink-0 text-[#157354]" /><span className="truncate">{f.name}</span><span className="shrink-0 text-xs text-[#6b7a73]">· attaches on save</span></span>
-                <button type="button" onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))} aria-label={`Remove ${f.name}`} className="p-1 text-[#a8b5ae] hover:text-red-500"><X className="w-4 h-4" /></button>
+              <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-2 rounded-lg bg-brand-50 px-3 py-2 text-sm">
+                <span className="flex min-w-0 items-center gap-2 text-text-main"><FileText className="w-4 h-4 shrink-0 text-brand-600" /><span className="truncate">{f.name}</span><span className="shrink-0 text-xs text-muted">· attaches on save</span></span>
+                <button type="button" onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))} aria-label={`Remove ${f.name}`} className="p-1 text-subtle hover:text-red-500"><X className="w-4 h-4" /></button>
               </li>
             ))}
           </ul>
@@ -523,14 +529,14 @@ export default function InspectionsPage() {
     return (
       <div className="mt-3 space-y-1.5">
         {files.map(file => (
-          <div key={file.id} className="flex items-center justify-between gap-2 rounded-lg bg-[#f8faf9] px-3 py-2">
-            <button onClick={() => openStoredFile('inspection', file.id)} className="flex min-w-0 items-center gap-2 text-sm text-[#157354] hover:underline" title={`Uploaded ${new Date(file.uploaded_at).toLocaleDateString()}`}>
+          <div key={file.id} className="flex items-center justify-between gap-2 rounded-lg bg-surface px-3 py-2">
+            <button onClick={() => openStoredFile('inspection', file.id)} className="flex min-w-0 items-center gap-2 text-sm text-brand-600 hover:underline" title={`Uploaded ${new Date(file.uploaded_at).toLocaleDateString()}`}>
               <FileText className="w-4 h-4 shrink-0" /><span className="truncate">{file.file_name}</span>
             </button>
-            <button onClick={() => removeReport(file)} aria-label={`Delete ${file.file_name}`} className="p-1 text-[#a8b5ae] hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+            <button onClick={() => removeReport(file)} aria-label={`Delete ${file.file_name}`} className="p-1 text-subtle hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
           </div>
         ))}
-        <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-bold text-[#157354] hover:underline">
+        <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-bold text-brand-600 hover:underline">
           {uploadingFor === key ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Paperclip className="w-3.5 h-3.5" />}
           {uploadingFor === key ? 'Uploading…' : 'Attach report'}
           <input
@@ -542,6 +548,14 @@ export default function InspectionsPage() {
             onChange={e => { const picked = e.target.files; uploadToHistory(logId, picked); e.target.value = '' }}
           />
         </label>
+        <PhoneUploadButton
+          kind="inspection"
+          label="Inspection report"
+          disabled={uploadingFor !== null}
+          text="From phone"
+          className="ml-4 inline-flex items-center gap-1.5 text-xs font-bold text-brand-600 hover:underline disabled:opacity-50"
+          onReceived={upload => uploadToHistory(logId, [upload])}
+        />
       </div>
     )
   }
@@ -569,7 +583,7 @@ export default function InspectionsPage() {
         )}
       </select>
       {activeVendors.length === 0 && (
-        <p className="text-xs text-[#6b7a73] mt-2">No vendors yet. <Link href="/center/vendors" className="text-[#157354] font-bold hover:underline">Add vendors →</Link></p>
+        <p className="text-xs text-muted mt-2">No vendors yet. <Link href="/center/vendors" className="text-brand-600 font-bold hover:underline">Add vendors →</Link></p>
       )}
     </>
   )
@@ -578,12 +592,12 @@ export default function InspectionsPage() {
     <div className="max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-extrabold text-[#0b3828] mb-1">Inspections</h1>
-          <p className="text-[#6b7a73]">Track every inspection, how often it’s required, and when it’s due next.</p>
+          <h1 className="text-3xl font-extrabold text-heading mb-1">Inspections</h1>
+          <p className="text-muted">Track every inspection, how often it’s required, and when it’s due next.</p>
         </div>
         <button
           onClick={() => openEdit()}
-          className="inline-flex items-center justify-center gap-2 bg-[#fbbf24] text-[#0b3828] font-bold px-6 py-3 rounded-xl hover:bg-[#f59e0b] shadow-sm transition-all active:scale-95"
+          className="inline-flex items-center justify-center gap-2 bg-amber-400 text-heading font-bold px-6 py-3 rounded-xl hover:bg-amber-500 shadow-sm transition-all active:scale-95"
         >
           <Plus className="w-5 h-5" /> Add Inspection
         </button>
@@ -594,47 +608,47 @@ export default function InspectionsPage() {
         {([
           { key: 'overdue', label: 'Overdue', icon: AlertTriangle, tone: 'text-red-600 bg-red-50' },
           { key: 'due_soon', label: `Due in ${DUE_SOON_DAYS} days`, icon: Clock, tone: 'text-amber-600 bg-amber-50' },
-          { key: 'ok', label: 'Current', icon: CalendarCheck, tone: 'text-[#157354] bg-[#edf7f3]' },
+          { key: 'ok', label: 'Current', icon: CalendarCheck, tone: 'text-brand-600 bg-brand-50' },
         ] as const).map(tile => (
           <button
             key={tile.key}
             onClick={() => setFilter(f => (f === tile.key ? 'all' : tile.key))}
-            className={`text-left bg-white border rounded-2xl p-5 flex items-center gap-4 transition-all hover:shadow-md ${filter === tile.key ? 'border-[#157354] ring-4 ring-[#157354]/10' : 'border-[#e2e8e4]'}`}
+            className={`text-left bg-white border rounded-2xl p-5 flex items-center gap-4 transition-all hover:shadow-md ${filter === tile.key ? 'border-brand-600 ring-4 ring-brand-600/10' : 'border-border'}`}
           >
             <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${tile.tone}`}>
               <tile.icon className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-2xl font-black text-[#0b3828]">{counts[tile.key]}</div>
-              <div className="text-xs font-bold uppercase tracking-widest text-[#6b7a73]">{tile.label}</div>
+              <div className="text-2xl font-black text-heading">{counts[tile.key]}</div>
+              <div className="text-xs font-bold uppercase tracking-widest text-muted">{tile.label}</div>
             </div>
           </button>
         ))}
       </div>
 
       {inspections.length === 0 ? (
-        <div className="py-20 bg-white border border-dashed border-[#a9dac9] rounded-[2.5rem] text-center">
-          <ClipboardCheck className="w-16 h-16 text-[#e2e8e4] mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-[#0b3828] mb-2">No inspections tracked yet</h3>
-          <p className="text-[#6b7a73] max-w-sm mx-auto mb-6">Add fire, health, licensing, and maintenance inspections to see what’s due and what’s overdue.</p>
-          <button onClick={() => openEdit()} className="text-[#157354] font-bold hover:underline">Add your first inspection →</button>
+        <div className="py-20 bg-white border border-dashed border-brand-200 rounded-[2.5rem] text-center">
+          <ClipboardCheck className="w-16 h-16 text-border mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-heading mb-2">No inspections tracked yet</h3>
+          <p className="text-muted max-w-sm mx-auto mb-6">Add fire, health, licensing, and maintenance inspections to see what’s due and what’s overdue.</p>
+          <button onClick={() => openEdit()} className="text-brand-600 font-bold hover:underline">Add your first inspection →</button>
         </div>
       ) : (
         <>
           <div className="flex flex-col sm:flex-row gap-3 sm:items-center mb-4">
             <div className="relative flex-1">
-              <Search className="w-4 h-4 text-[#a8b5ae] absolute left-4 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-subtle absolute left-4 top-1/2 -translate-y-1/2" />
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by type, title, or vendor…" className={`${inputClass} pl-10`} />
             </div>
             {filter !== 'all' && (
-              <button onClick={() => setFilter('all')} className="text-sm font-bold text-[#157354] hover:underline">Clear filter</button>
+              <button onClick={() => setFilter('all')} className="text-sm font-bold text-brand-600 hover:underline">Clear filter</button>
             )}
           </div>
 
-          <div className="bg-white border border-[#e2e8e4] rounded-[1.5rem] overflow-hidden shadow-sm">
+          <div className="bg-white border border-border rounded-[1.5rem] overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-[#f8faf9] text-[10px] uppercase tracking-widest text-[#6b7a73]">
+                <thead className="bg-surface text-[10px] uppercase tracking-widest text-muted">
                   <tr>
                     <th className="text-left font-bold px-5 py-3">Inspection</th>
                     <th className="text-left font-bold px-5 py-3">Interval</th>
@@ -644,43 +658,43 @@ export default function InspectionsPage() {
                     <th className="text-right font-bold px-5 py-3">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#f0f4f2]">
+                <tbody className="divide-y divide-border">
                   {visible.length === 0 ? (
-                    <tr><td colSpan={6} className="px-5 py-10 text-center text-[#6b7a73]">No inspections match.</td></tr>
+                    <tr><td colSpan={6} className="px-5 py-10 text-center text-muted">No inspections match.</td></tr>
                   ) : visible.map(i => {
                     const status = inspectionStatus(i.next_due_date)
                     const days = i.next_due_date ? daysUntil(i.next_due_date) : null
                     return (
                       <tr key={i.id} className="hover:bg-[#fafcfb]">
                         <td className="px-5 py-4">
-                          <div className="font-bold text-[#0b3828]">{i.inspection_type}</div>
-                          {i.title && <div className="text-xs text-[#6b7a73]">{i.title}</div>}
+                          <div className="font-bold text-heading">{i.inspection_type}</div>
+                          {i.title && <div className="text-xs text-muted">{i.title}</div>}
                         </td>
-                        <td className="px-5 py-4 text-[#4a5a52] whitespace-nowrap">{formatInterval(i.interval_value, i.interval_unit)}</td>
+                        <td className="px-5 py-4 text-text-muted whitespace-nowrap">{formatInterval(i.interval_value, i.interval_unit)}</td>
                         <td className="px-5 py-4 whitespace-nowrap">
-                          <div className="text-[#1a2e25]">{formatDate(i.last_inspection_date)}</div>
+                          <div className="text-text-main">{formatDate(i.last_inspection_date)}</div>
                           {i.last_result && <div className={`text-xs font-bold ${RESULT_STYLES[i.last_result]}`}>{INSPECTION_RESULT_LABELS[i.last_result]}</div>}
                         </td>
                         <td className="px-5 py-4 whitespace-nowrap">
-                          <div className="text-[#1a2e25]">{formatDate(i.next_due_date)}</div>
+                          <div className="text-text-main">{formatDate(i.next_due_date)}</div>
                           <span className={`inline-block mt-1 px-2 py-0.5 rounded-md border text-[10px] font-bold uppercase tracking-widest ${STATUS_STYLES[status].className}`}>
                             {status === 'overdue' && days !== null ? `${Math.abs(days)}d overdue`
                               : status === 'due_soon' && days !== null ? (days === 0 ? 'Due today' : `In ${days}d`)
                               : STATUS_STYLES[status].label}
                           </span>
                         </td>
-                        <td className="px-5 py-4 text-[#4a5a52]">{i.vendor?.name || <span className="text-[#a8b5ae]">—</span>}</td>
+                        <td className="px-5 py-4 text-text-muted">{i.vendor?.name || <span className="text-subtle">—</span>}</td>
                         <td className="px-5 py-4">
                           <div className="flex items-center justify-end gap-1">
-                            <button onClick={() => openRecord(i)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#157354] text-white text-xs font-bold hover:bg-[#0f4a36] whitespace-nowrap">
+                            <button onClick={() => openRecord(i)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-bold hover:bg-brand-800 whitespace-nowrap">
                               <CheckCircle2 className="w-3.5 h-3.5" /> Record
                             </button>
-                            <button onClick={() => openHistory(i)} aria-label="History and reports" title="History and reports" className="inline-flex items-center gap-1 p-2 text-[#6b7a73] hover:text-[#157354] hover:bg-[#edf7f3] rounded-lg">
+                            <button onClick={() => openHistory(i)} aria-label="History and reports" title="History and reports" className="inline-flex items-center gap-1 p-2 text-muted hover:text-brand-600 hover:bg-brand-50 rounded-lg">
                               <History className="w-4 h-4" />
-                              {fileCounts[i.id] > 0 && <span className="inline-flex items-center gap-0.5 text-xs font-bold text-[#157354]"><Paperclip className="w-3.5 h-3.5" />{fileCounts[i.id]}</span>}
+                              {fileCounts[i.id] > 0 && <span className="inline-flex items-center gap-0.5 text-xs font-bold text-brand-600"><Paperclip className="w-3.5 h-3.5" />{fileCounts[i.id]}</span>}
                             </button>
-                            <button onClick={() => openEdit(i)} aria-label="Edit" title="Edit" className="p-2 text-[#6b7a73] hover:text-[#157354] hover:bg-[#edf7f3] rounded-lg"><Edit2 className="w-4 h-4" /></button>
-                            <button onClick={() => handleDelete(i)} aria-label="Delete" title="Delete" className="p-2 text-[#6b7a73] hover:text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                            <button onClick={() => openEdit(i)} aria-label="Edit" title="Edit" className="p-2 text-muted hover:text-brand-600 hover:bg-brand-50 rounded-lg"><Edit2 className="w-4 h-4" /></button>
+                            <button onClick={() => handleDelete(i)} aria-label="Delete" title="Delete" className="p-2 text-muted hover:text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                           </div>
                         </td>
                       </tr>
@@ -695,11 +709,11 @@ export default function InspectionsPage() {
 
       {/* ── Add / edit modal ── */}
       {editOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0b3828]/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-900/40 backdrop-blur-sm">
           <div className="bg-white w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b border-[#e2e8e4] flex items-center justify-between bg-[#f8faf9]">
-              <h2 className="text-2xl font-black text-[#0b3828] tracking-tight">{editing ? 'Edit Inspection' : 'New Inspection'}</h2>
-              <button onClick={() => setEditOpen(false)} aria-label="Close" className="p-2 hover:bg-[#e2e8e4] rounded-full"><X className="w-5 h-5 text-[#6b7a73]" /></button>
+            <div className="p-6 border-b border-border flex items-center justify-between bg-surface">
+              <h2 className="text-2xl font-black text-heading tracking-tight">{editing ? 'Edit Inspection' : 'New Inspection'}</h2>
+              <button onClick={() => setEditOpen(false)} aria-label="Close" className="p-2 hover:bg-border rounded-full"><X className="w-5 h-5 text-muted" /></button>
             </div>
 
             <form onSubmit={handleSave} className="p-6 space-y-4 overflow-y-auto">
@@ -713,7 +727,7 @@ export default function InspectionsPage() {
                 {form.type_choice === OTHER && (
                   <input autoFocus required value={form.type_other} onChange={e => updateForm({ type_other: e.target.value })} placeholder="Inspection type" className={`${inputClass} mt-2`} />
                 )}
-                <p className="text-xs text-[#6b7a73] mt-2">Manage the type list in <Link href="/center/about#data" className="text-[#157354] font-bold hover:underline">Manage Data</Link>.</p>
+                <p className="text-xs text-muted mt-2">Manage the type list in <Link href="/center/about#data" className="text-brand-600 font-bold hover:underline">Manage Data</Link>.</p>
               </div>
 
               <div>
@@ -729,7 +743,7 @@ export default function InspectionsPage() {
                     {INTERVAL_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                   </select>
                 </div>
-                <p className="text-xs text-[#6b7a73] mt-2">Leave blank for one-time or as-needed inspections.</p>
+                <p className="text-xs text-muted mt-2">Leave blank for one-time or as-needed inspections.</p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -746,9 +760,9 @@ export default function InspectionsPage() {
                     className={inputClass}
                   />
                   {form.due_overridden ? (
-                    <button type="button" onClick={() => updateForm({ due_overridden: false })} className="text-xs text-[#157354] font-bold hover:underline mt-2">Reset to calculated</button>
+                    <button type="button" onClick={() => updateForm({ due_overridden: false })} className="text-xs text-brand-600 font-bold hover:underline mt-2">Reset to calculated</button>
                   ) : (
-                    <p className="text-xs text-[#6b7a73] mt-2">Calculated from last + interval</p>
+                    <p className="text-xs text-muted mt-2">Calculated from last + interval</p>
                   )}
                 </div>
               </div>
@@ -768,15 +782,15 @@ export default function InspectionsPage() {
                 {editExisting.length > 0 && (
                   <ul className="mb-2 space-y-1.5">
                     {editExisting.map(file => (
-                      <li key={file.id} className="flex items-center justify-between gap-2 rounded-lg bg-[#f8faf9] px-3 py-2 text-sm">
-                        <button type="button" onClick={() => openStoredFile('inspection', file.id)} className="flex min-w-0 items-center gap-2 text-[#157354] hover:underline">
+                      <li key={file.id} className="flex items-center justify-between gap-2 rounded-lg bg-surface px-3 py-2 text-sm">
+                        <button type="button" onClick={() => openStoredFile('inspection', file.id)} className="flex min-w-0 items-center gap-2 text-brand-600 hover:underline">
                           <FileText className="w-4 h-4 shrink-0" /><span className="truncate">{file.file_name}</span>
                         </button>
                         <button
                           type="button"
                           onClick={async () => { await removeReport(file); if (editing) loadEditReports(editing.id) }}
                           aria-label={`Delete ${file.file_name}`}
-                          className="p-1 text-[#a8b5ae] hover:text-red-500"
+                          className="p-1 text-subtle hover:text-red-500"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -785,7 +799,7 @@ export default function InspectionsPage() {
                   </ul>
                 )}
                 {renderPicker(editFiles, setEditFiles)}
-                <p className="text-xs text-[#a8b5ae] mt-2">
+                <p className="text-xs text-subtle mt-2">
                   {editing
                     ? 'New files are added to the most recent visit in History.'
                     : form.last_inspection_date ? 'Files are saved with the last inspection date above.' : 'Files are saved under "Other reports" in History.'}
@@ -795,8 +809,8 @@ export default function InspectionsPage() {
               {error && <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{error}</div>}
 
               <div className="pt-2 flex gap-3">
-                <button type="button" onClick={() => setEditOpen(false)} className="flex-1 py-3 px-6 rounded-xl border border-[#e2e8e4] font-bold text-[#6b7a73] hover:bg-[#f8faf9]">Cancel</button>
-                <button type="submit" disabled={saving} className="flex-1 bg-[#157354] text-white font-bold py-3 px-6 rounded-xl hover:bg-[#0f4a36] shadow-lg shadow-[#157354]/20 flex items-center justify-center gap-2 disabled:opacity-60">
+                <button type="button" onClick={() => setEditOpen(false)} className="flex-1 py-3 px-6 rounded-xl border border-border font-bold text-muted hover:bg-surface">Cancel</button>
+                <button type="submit" disabled={saving} className="flex-1 bg-brand-600 text-white font-bold py-3 px-6 rounded-xl hover:bg-brand-800 shadow-lg shadow-brand-600/20 flex items-center justify-center gap-2 disabled:opacity-60">
                   {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Save Inspection'}
                 </button>
               </div>
@@ -807,14 +821,14 @@ export default function InspectionsPage() {
 
       {/* ── Record modal ── */}
       {recording && recordForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0b3828]/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-900/40 backdrop-blur-sm">
           <div className="bg-white w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b border-[#e2e8e4] flex items-start justify-between bg-[#f8faf9]">
+            <div className="p-6 border-b border-border flex items-start justify-between bg-surface">
               <div>
-                <h2 className="text-2xl font-black text-[#0b3828] tracking-tight">Record Inspection</h2>
-                <p className="text-sm text-[#6b7a73]">{recording.inspection_type}{recording.title ? ` · ${recording.title}` : ''}</p>
+                <h2 className="text-2xl font-black text-heading tracking-tight">Record Inspection</h2>
+                <p className="text-sm text-muted">{recording.inspection_type}{recording.title ? ` · ${recording.title}` : ''}</p>
               </div>
-              <button onClick={() => { setRecording(null); setRecordForm(null) }} aria-label="Close" className="p-2 hover:bg-[#e2e8e4] rounded-full"><X className="w-5 h-5 text-[#6b7a73]" /></button>
+              <button onClick={() => { setRecording(null); setRecordForm(null) }} aria-label="Close" className="p-2 hover:bg-border rounded-full"><X className="w-5 h-5 text-muted" /></button>
             </div>
 
             <form onSubmit={handleRecord} className="p-6 space-y-4 overflow-y-auto">
@@ -862,14 +876,14 @@ export default function InspectionsPage() {
 
               <div>
                 <label className={labelClass}>Inspection Report &amp; Paperwork</label>
-                {renderPicker(recordFiles, setRecordFiles)}
+                {renderPicker(recordFiles, setRecordFiles, `${recording.inspection_type} report`)}
               </div>
 
               {error && <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{error}</div>}
 
               <div className="pt-2 flex gap-3">
-                <button type="button" onClick={() => { setRecording(null); setRecordForm(null) }} className="flex-1 py-3 px-6 rounded-xl border border-[#e2e8e4] font-bold text-[#6b7a73] hover:bg-[#f8faf9]">Cancel</button>
-                <button type="submit" disabled={saving} className="flex-1 bg-[#157354] text-white font-bold py-3 px-6 rounded-xl hover:bg-[#0f4a36] shadow-lg shadow-[#157354]/20 flex items-center justify-center gap-2 disabled:opacity-60">
+                <button type="button" onClick={() => { setRecording(null); setRecordForm(null) }} className="flex-1 py-3 px-6 rounded-xl border border-border font-bold text-muted hover:bg-surface">Cancel</button>
+                <button type="submit" disabled={saving} className="flex-1 bg-brand-600 text-white font-bold py-3 px-6 rounded-xl hover:bg-brand-800 shadow-lg shadow-brand-600/20 flex items-center justify-center gap-2 disabled:opacity-60">
                   {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Save Record'}
                 </button>
               </div>
@@ -880,37 +894,37 @@ export default function InspectionsPage() {
 
       {/* ── History drawer ── */}
       {historyFor && (
-        <div className="fixed inset-0 z-40 flex justify-end bg-[#0b3828]/30 backdrop-blur-sm" onClick={() => setHistoryFor(null)}>
+        <div className="fixed inset-0 z-40 flex justify-end bg-brand-900/30 backdrop-blur-sm" onClick={() => setHistoryFor(null)}>
           <div className="bg-white w-full max-w-md h-full shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b border-[#e2e8e4] flex items-start justify-between bg-[#f8faf9]">
+            <div className="p-6 border-b border-border flex items-start justify-between bg-surface">
               <div>
-                <h2 className="text-xl font-black text-[#0b3828]">Inspection History</h2>
-                <p className="text-sm text-[#6b7a73]">{historyFor.inspection_type}{historyFor.title ? ` · ${historyFor.title}` : ''}</p>
+                <h2 className="text-xl font-black text-heading">Inspection History</h2>
+                <p className="text-sm text-muted">{historyFor.inspection_type}{historyFor.title ? ` · ${historyFor.title}` : ''}</p>
               </div>
-              <button onClick={() => setHistoryFor(null)} aria-label="Close" className="p-2 hover:bg-[#e2e8e4] rounded-full"><X className="w-5 h-5 text-[#6b7a73]" /></button>
+              <button onClick={() => setHistoryFor(null)} aria-label="Close" className="p-2 hover:bg-border rounded-full"><X className="w-5 h-5 text-muted" /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-6">
               {historyLoading ? (
-                <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-[#157354]" /></div>
+                <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-brand-600" /></div>
               ) : history.length === 0 ? (
-                <div className="text-center text-[#6b7a73] py-10">No inspections recorded yet.</div>
+                <div className="text-center text-muted py-10">No inspections recorded yet.</div>
               ) : (
                 <ol className="space-y-4">
                   {history.map(log => (
-                    <li key={log.id} className="border border-[#e2e8e4] rounded-2xl p-4 group">
+                    <li key={log.id} className="border border-border rounded-2xl p-4 group">
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <div className="font-bold text-[#0b3828]">{formatDate(log.performed_on)}</div>
+                          <div className="font-bold text-heading">{formatDate(log.performed_on)}</div>
                           {log.result && <div className={`text-xs font-bold ${RESULT_STYLES[log.result]}`}>{INSPECTION_RESULT_LABELS[log.result]}</div>}
                         </div>
-                        <button onClick={() => deleteLog(log)} aria-label="Remove entry" className="p-1.5 text-[#a8b5ae] hover:text-red-500 hover:bg-red-50 rounded-lg sm:opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
+                        <button onClick={() => deleteLog(log)} aria-label="Remove entry" className="p-1.5 text-subtle hover:text-red-500 hover:bg-red-50 rounded-lg sm:opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
                       </div>
                       {(log.vendor?.name || log.inspector_name) && (
-                        <div className="text-sm text-[#4a5a52] mt-2">
+                        <div className="text-sm text-text-muted mt-2">
                           {log.vendor?.name}{log.vendor?.name && log.inspector_name ? ' · ' : ''}{log.inspector_name}
                         </div>
                       )}
-                      {log.notes && <p className="text-sm text-[#6b7a73] mt-2 whitespace-pre-wrap">{log.notes}</p>}
+                      {log.notes && <p className="text-sm text-muted mt-2 whitespace-pre-wrap">{log.notes}</p>}
                       {renderReports(historyFiles.filter(f => f.log_id === log.id), log.id)}
                     </li>
                   ))}
@@ -918,15 +932,15 @@ export default function InspectionsPage() {
               )}
 
               {!historyLoading && (historyFiles.some(f => !f.log_id) || history.length === 0) && (
-                <div className="mt-6 border border-dashed border-[#e2e8e4] rounded-2xl p-4">
-                  <div className="font-bold text-[#0b3828] text-sm">Other reports</div>
-                  <p className="text-xs text-[#6b7a73]">Paperwork not tied to a specific visit (e.g. a service contract or certificate).</p>
+                <div className="mt-6 border border-dashed border-border rounded-2xl p-4">
+                  <div className="font-bold text-heading text-sm">Other reports</div>
+                  <p className="text-xs text-muted">Paperwork not tied to a specific visit (e.g. a service contract or certificate).</p>
                   {renderReports(historyFiles.filter(f => !f.log_id), null)}
                 </div>
               )}
             </div>
-            <div className="p-4 border-t border-[#e2e8e4]">
-              <button onClick={() => openRecord(historyFor)} className="w-full inline-flex items-center justify-center gap-2 bg-[#157354] text-white font-bold py-3 rounded-xl hover:bg-[#0f4a36]">
+            <div className="p-4 border-t border-border">
+              <button onClick={() => openRecord(historyFor)} className="w-full inline-flex items-center justify-center gap-2 bg-brand-600 text-white font-bold py-3 rounded-xl hover:bg-brand-800">
                 <CheckCircle2 className="w-4 h-4" /> Record Inspection
               </button>
             </div>

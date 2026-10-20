@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react'
 import { getDomainConfig, getDomainKey, type DomainKey } from '@/lib/domain-config'
-import { canAccessDomain, wrongDomainMessage, WRONG_DOMAIN_ERROR } from '@/lib/supabase/user-domain'
+import { canAccessDomain, wrongDomainMessage, WRONG_DOMAIN_ERROR, DISABLED_MESSAGES } from '@/lib/supabase/user-domain'
 
 const LOGIN_CONTENT = {
   childcare: {
@@ -58,8 +58,11 @@ export default function LoginPage() {
       const host = window.location.host
       const siteDomain = getDomainKey(host)
       setDomainKey(siteDomain)
-      if (new URLSearchParams(window.location.search).get('error') === WRONG_DOMAIN_ERROR) {
+      const errorParam = new URLSearchParams(window.location.search).get('error')
+      if (errorParam === WRONG_DOMAIN_ERROR) {
         setError(wrongDomainMessage(siteDomain))
+      } else if (errorParam && DISABLED_MESSAGES[errorParam]) {
+        setError(DISABLED_MESSAGES[errorParam])
       }
     }
   }, [])
@@ -75,7 +78,7 @@ export default function LoginPage() {
     const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
 
     if (authError) {
-      setError(authError.message)
+      setError(/banned/i.test(authError.message) ? DISABLED_MESSAGES.account_disabled : authError.message)
       setLoading(false)
       return
     }
@@ -123,7 +126,7 @@ export default function LoginPage() {
           </Link>
 
           <h1 className="text-3xl font-extrabold text-brand-900 mb-2">Welcome back</h1>
-          <p className="text-[#6b7a73] mb-8">Sign in to your {config.appName} account</p>
+          <p className="text-muted mb-8">Sign in to your {config.appName} account</p>
 
           <form onSubmit={handleLogin} className="space-y-5">
             {error && (
@@ -144,7 +147,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={config.onboarding.emailPlaceholder}
-                className="w-full px-4 py-3 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-brand-900 placeholder:text-[#a8b5ae]"
+                className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-brand-900 placeholder:text-subtle"
               />
             </div>
 
@@ -166,12 +169,12 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-4 py-3 pr-12 rounded-xl border border-[#e2e8e4] bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-brand-900"
+                  className="w-full px-4 py-3 pr-12 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-brand-900"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6b7a73] hover:text-brand-600 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-brand-600 transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -192,16 +195,10 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="text-center text-sm text-[#6b7a73] mt-8">
+          <p className="text-center text-sm text-muted mt-8">
             Don't have an account?{' '}
             <Link href="/register" className="text-brand-600 font-semibold hover:underline">
               Get started free
-            </Link>
-          </p>
-          <p className="text-center text-sm text-[#6b7a73] mt-2">
-            Are you a staff member with an invite?{' '}
-            <Link href="/staff/join" className="text-brand-600 font-semibold hover:underline">
-              Join here →
             </Link>
           </p>
         </div>

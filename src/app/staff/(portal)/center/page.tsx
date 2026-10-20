@@ -45,16 +45,16 @@ export default function MyCenterPage() {
 
    if (loading) return (
       <div className="max-w-5xl animate-pulse">
-         <div className="h-40 bg-white rounded-3xl border border-[#e2e8e4] mb-8"></div>
-         <div className="h-64 bg-white rounded-3xl border border-[#e2e8e4]"></div>
+         <div className="h-40 bg-white rounded-3xl border border-border mb-8"></div>
+         <div className="h-64 bg-white rounded-3xl border border-border"></div>
       </div>
    )
 
    if (!membership || !staffId) return (
-      <div className="max-w-5xl text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-[#e2e8e4]">
-         <Building className="w-12 h-12 text-[#a8b5ae] mx-auto mb-4" />
-         <p className="text-[#6b7a73] font-bold">You aren&apos;t assigned to a center yet.</p>
-         <p className="text-sm text-[#a8b5ae] mt-1">Please contact your center administrator.</p>
+      <div className="max-w-5xl text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-border">
+         <Building className="w-12 h-12 text-subtle mx-auto mb-4" />
+         <p className="text-muted font-bold">You aren&apos;t assigned to a center yet.</p>
+         <p className="text-sm text-subtle mt-1">Please contact your center administrator.</p>
       </div>
    )
 
@@ -72,27 +72,27 @@ export default function MyCenterPage() {
    return (
       <div className="max-w-5xl">
          <div className="mb-10">
-            <h1 className="text-4xl font-black text-[#0b3828] mb-2 tracking-tight">My Center</h1>
-            <p className="text-[#6b7a73] text-lg font-medium">Your workplace details and required documentation.</p>
+            <h1 className="text-4xl font-black text-heading mb-2 tracking-tight">My Center</h1>
+            <p className="text-muted text-lg font-medium">Your workplace details and required documentation.</p>
          </div>
 
-         <div className="bg-white rounded-[2rem] border-2 border-[#f0f4f2] overflow-hidden shadow-sm mb-8">
-            <div className="p-8 flex flex-col md:flex-row items-center gap-6 border-b-2 border-[#f0f4f2]">
-               <div className="w-16 h-16 rounded-2xl bg-[#157354] flex items-center justify-center shadow-lg shadow-[#157354]/20 shrink-0">
+         <div className="bg-white rounded-[2rem] border-2 border-border overflow-hidden shadow-sm mb-8">
+            <div className="p-8 flex flex-col md:flex-row items-center gap-6 border-b-2 border-border">
+               <div className="w-16 h-16 rounded-2xl bg-brand-600 flex items-center justify-center shadow-lg shadow-brand-600/20 shrink-0">
                   <Building className="w-8 h-8 text-white" />
                </div>
                <div className="flex-1 text-center md:text-left">
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-1">
-                     <h2 className="text-2xl font-black text-[#0b3828] leading-tight">{center.name}</h2>
-                     <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.1em] border-2 bg-[#edf7f3] text-[#157354] border-[#d4ede4]">
+                     <h2 className="text-2xl font-black text-heading leading-tight">{center.name}</h2>
+                     <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.1em] border-2 bg-brand-50 text-brand-600 border-brand-100">
                         {EMPLOYMENT_CLASS_LABELS[membership.employment_class]} Employee
                      </span>
-                     <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.1em] border-2 ${membership.status === 'active' ? 'bg-[#f0fdf4] text-[#157354] border-[#dcfce7]' : 'bg-[#f8faf9] text-[#6b7a73] border-[#e2e8e4]'}`}>
+                     <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.1em] border-2 ${membership.status === 'active' ? 'bg-brand-50 text-brand-600 border-[#dcfce7]' : 'bg-surface text-muted border-border'}`}>
                         {membership.status}
                      </span>
                   </div>
-                  <div className="text-[#6b7a73] font-medium flex items-center justify-center md:justify-start gap-1.5 text-sm mt-2">
-                     <Clock className="w-4 h-4 text-[#a8b5ae]" /> Joined {new Date(membership.added_at).toLocaleDateString()}
+                  <div className="text-muted font-medium flex items-center justify-center md:justify-start gap-1.5 text-sm mt-2">
+                     <Clock className="w-4 h-4 text-subtle" /> Joined {new Date(membership.added_at).toLocaleDateString()}
                   </div>
                </div>
             </div>
@@ -100,13 +100,13 @@ export default function MyCenterPage() {
             <div className="p-8 grid gap-6 sm:grid-cols-2">
                {details.map(({ label, Icon, value, href }) => (
                   <div key={label}>
-                     <div className="flex items-center gap-2 mb-2 text-[#6b7a73]">
-                        <Icon className="w-4 h-4 text-[#a8b5ae]" />
+                     <div className="flex items-center gap-2 mb-2 text-muted">
+                        <Icon className="w-4 h-4 text-subtle" />
                         <span className="text-xs font-black uppercase tracking-widest">{label}</span>
                      </div>
-                     <p className="text-[#0b3828] font-bold text-lg leading-tight break-words">
+                     <p className="text-heading font-bold text-lg leading-tight break-words">
                         {value ? (
-                           href ? <a href={href} className="hover:text-[#157354] hover:underline transition-colors">{value}</a> : value
+                           href ? <a href={href} className="hover:text-brand-600 hover:underline transition-colors">{value}</a> : value
                         ) : 'Not provided'}
                      </p>
                   </div>
@@ -114,7 +114,7 @@ export default function MyCenterPage() {
             </div>
          </div>
 
-         <div className="p-8 bg-[#f8faf9] rounded-[2rem] border-2 border-[#f0f4f2]">
+         <div className="p-8 bg-surface rounded-[2rem] border-2 border-border">
             <CenterChecklist
                centerId={membership.center_id}
                staffId={staffId}
