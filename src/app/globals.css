@@ -29,7 +29,12 @@
 
   /* ── Typography ── */
   --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-display: Georgia, 'Times New Roman', serif;
   --font-mono: var(--font-mono), 'JetBrains Mono', ui-monospace, monospace;
+  --type-page-title: 1.875rem;
+  --type-section-title: 1.5rem;
+  --type-card-title: 1rem;
+  --type-body: 0.9rem;
 
   /* ── Commit-style spacing tokens ── */
   --tracking-tight:   -0.025em;
@@ -165,157 +170,50 @@ h1, h2, h3, h4, h5, h6 {
 ::-webkit-scrollbar-thumb { background: var(--color-brand-200); border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-brand-400); }
 
-/* ══════════════════════════════════════════════════════════════════
-   CENTER DASHBOARD — Unified Typography System
-   Scoped to .center-shell so it only affects the admin dashboard.
-   Applied via the layout wrapper — no page edits needed.
-   ══════════════════════════════════════════════════════════════════ */
-
-/* Page headings — h1 */
-.center-shell h1 {
-  font-size: 1.75rem;       /* 28px — was 3–5xl */
-  font-weight: 700;          /* bold, not black */
-  letter-spacing: -0.02em;
+/* Shared portal typography, scaled to match the subscription reference. */
+.center-shell h1, .staff-shell h1 {
+  font-family: var(--font-display);
+  font-size: var(--type-page-title);
+  font-weight: 400;
+  letter-spacing: 0;
   line-height: 1.2;
   color: var(--color-text-dark);
 }
 
-/* Section headings — h2 */
-.center-shell h2 {
-  font-size: 1.05rem;
-  font-weight: 600;          /* semibold */
-  letter-spacing: -0.01em;
-  color: var(--color-text-main);
-  text-transform: none;      /* kill rogue uppercase */
+.center-shell h2, .staff-shell h2 {
+  font-family: var(--font-display);
+  font-size: var(--type-section-title);
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.25;
+  color: var(--color-text-dark);
+  text-transform: none;
 }
 
-/* Sub-headings — h3 */
-.center-shell h3 {
-  font-size: 0.875rem;
+.center-shell h3, .staff-shell h3 {
+  font-size: var(--type-card-title);
   font-weight: 600;
   letter-spacing: 0;
+  line-height: 1.35;
   text-transform: none;
   color: var(--color-text-main);
 }
 
-/* Eyebrow labels — the tiny uppercase things above headings */
-.center-shell .label-eyebrow {
-  font-size: 0.65rem;
-  font-weight: 500;
-  letter-spacing: 0.08em;    /* gentle, not blaring */
-  text-transform: uppercase;
-  color: #a8b5ae;
-}
-
-/* Form labels */
-.center-shell label {
-  font-size: 0.75rem;        /* 12px */
-  font-weight: 500;
-  letter-spacing: 0.02em;    /* was tracking-widest = 0.1em */
-  text-transform: none;
-  color: var(--color-text-muted);
-}
-
-/* Table / list column headers */
-.center-shell thead th,
-.center-shell .col-header {
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #a8b5ae;
-}
-
-/* Stat numbers on dashboard cards */
-.center-shell .stat-number {
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1;
-}
-
-/* Body / descriptive text */
-.center-shell p {
-  font-size: 0.9rem;
+.center-shell p, .staff-shell p {
+  font-size: var(--type-body);
   font-weight: 400;
-  color: #6b7a73;
   line-height: 1.6;
 }
 
-/* Button text — keep purposeful weight but not all-caps */
-.center-shell button,
-.center-shell a[role="button"] {
-  letter-spacing: -0.01em;
-}
-
-/* Status / badge pills — soften the tracking */
-.center-shell .badge,
-.center-shell [class*="tracking-widest"] {
-  letter-spacing: 0.05em;    /* was 0.1em+ */
-}
-
-/* Input fields — lighter weight text */
-.center-shell input,
-.center-shell select,
-.center-shell textarea {
-  font-weight: 400;          /* was font-black in several pages */
-  color: var(--color-text-main);
-}
-
-/* "View All" / small action links */
-.center-shell .link-action {
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-/* ══════════════════════════════════════════════════════════════════
-   STAFF PORTAL — Unified Typography System
-   Scoped to .staff-shell (applied via staff layout wrapper).
-   Normalizes the heavy font-black / tracking-[0.3em] / all-caps
-   patterns across Shifts, Centers, Profile, Documents pages.
-   ══════════════════════════════════════════════════════════════════ */
-
-/* Page headings — h1 (Shifts page had text-6xl font-black) */
-.staff-shell h1 {
-  font-size: 1.875rem;       /* 30px — proportionally larger than center since it's consumer-facing */
-  font-weight: 700;
-  letter-spacing: -0.025em;
-  line-height: 1.2;
-  color: var(--color-text-dark);
-}
-
-/* Section / card headings — h2 */
-.staff-shell h2 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--color-text-main);
-  text-transform: none;
-}
-
-/* Sub-headings — h3 (shift card center names were text-5xl font-black) */
-.staff-shell h3 {
-  font-size: 1.25rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-  text-transform: none;
-  color: var(--color-text-dark);
-}
-
-/* Eyebrow labels (the "Expansion Marketplace" type tags above headings) */
-.staff-shell .label-eyebrow {
+.center-shell .label-eyebrow, .staff-shell .label-eyebrow,
+.center-shell thead th, .center-shell .col-header {
   font-size: 0.65rem;
   font-weight: 500;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: var(--color-brand-600);
 }
 
-/* Form labels */
-.staff-shell label {
+.center-shell label, .staff-shell label {
   font-size: 0.75rem;
   font-weight: 500;
   letter-spacing: 0.02em;
@@ -323,41 +221,35 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-text-muted);
 }
 
-/* Descriptive / body text */
-.staff-shell p {
-  font-size: 0.9rem;
-  font-weight: 400;
-  color: var(--color-muted);
-  line-height: 1.6;
+.center-shell button, .center-shell a[role="button"],
+.staff-shell [role="tab"], .staff-shell nav button {
+  letter-spacing: 0;
 }
 
-/* Tame the all-caps tracking-widest labels used heavily on shift cards */
+.center-shell .badge, .staff-shell .badge {
+  letter-spacing: 0.05em;
+}
+
+.center-shell [class*="tracking-widest"],
 .staff-shell [class*="tracking-widest"],
 .staff-shell [class*="tracking-\\[0\\.3em\\]"],
 .staff-shell [class*="tracking-\\[0\\.25em\\]"] {
   letter-spacing: 0.07em;
 }
 
-/* Input / select / textarea */
-.staff-shell input,
-.staff-shell select,
-.staff-shell textarea {
+.center-shell input, .center-shell select, .center-shell textarea,
+.staff-shell input, .staff-shell select, .staff-shell textarea {
   font-weight: 400;
   color: var(--color-text-main);
 }
 
-/* Status pill / badge tracking */
-.staff-shell .badge {
-  letter-spacing: 0.05em;
+.center-shell .link-action {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
-/* Tab bar buttons */
-.staff-shell [role="tab"],
-.staff-shell nav button {
-  letter-spacing: -0.01em;
-}
-
-/* Small metadata text (dates, times, locations on cards) */
 .staff-shell .meta-text {
   font-size: 0.75rem;
   font-weight: 500;
