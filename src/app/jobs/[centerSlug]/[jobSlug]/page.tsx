@@ -42,6 +42,7 @@ function jobPostingJsonLd(job: PublicJob, baseUrl: string) {
     hiringOrganization: {
       '@type': 'Organization',
       name: job.center.name,
+      ...(job.center.publicHandle ? { url: `${baseUrl}/centers/${job.center.publicHandle}` } : {}),
       ...(job.center.logo_url ? { logo: job.center.logo_url } : {}),
     },
     jobLocation: {
@@ -97,7 +98,9 @@ export default async function PublicJobPage({ params }: Props) {
         <div className="mb-8 rounded-[2rem] border-2 border-border bg-white p-8 shadow-sm">
           <h1 className="text-3xl font-black tracking-tight text-heading">{job.title}</h1>
           <p className="mt-2 flex flex-wrap items-center gap-3 text-muted">
-            <span className="font-bold text-text-main">{job.center.name}</span>
+            {job.center.publicHandle
+              ? <Link href={`/centers/${job.center.publicHandle}`} className="font-bold text-text-main hover:text-brand-600 hover:underline">{job.center.name}</Link>
+              : <span className="font-bold text-text-main">{job.center.name}</span>}
             {place && <span className="inline-flex items-center gap-1"><MapPin className="h-4 w-4" />{place}</span>}
           </p>
           <div className="mt-4 flex flex-wrap gap-2 text-sm">

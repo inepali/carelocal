@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, LayoutDashboard, Users, UserPlus, Info, Calendar, Tags, LifeBuoy, ClipboardCheck, Truck, Baby, Building2, UserCircle, Inbox, ShieldCheck, Briefcase } from 'lucide-react'
+import { LogOut, LayoutDashboard, Users, UserPlus, Info, Calendar, Tags, LifeBuoy, ClipboardCheck, Truck, Baby, Building2, UserCircle, Inbox, ShieldCheck, Briefcase, CalendarCheck } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { CenterContext } from './context'
@@ -93,6 +93,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
     { name: staffTerm, href: '/center/team_member', icon: Users },
     ...(jobsEnabled ? [{ name: 'Jobs', href: '/center/jobs', icon: Briefcase }] : []),
     { name: 'Requests', href: '/center/requests', icon: Inbox },
+    { name: 'Tours', href: '/center/tours', icon: CalendarCheck },
     { name: 'Compliance', href: '/center/compliance', icon: ShieldCheck },
     { name: 'Inspections', href: '/center/inspections', icon: ClipboardCheck },
     { name: 'Vendors', href: '/center/vendors', icon: Truck },

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import type { DomainKey } from '@/lib/domain-config'
 import { getDomainConfig } from '@/lib/domain-config'
 import { formatPay, EMPLOYMENT_TYPE_LABELS } from '@/lib/jobs'
@@ -14,8 +15,7 @@ export function JobsShell({ domain, children }: { domain: DomainKey; children: R
         <div className="mx-auto flex h-20 max-w-6xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-2" aria-label={config.appName}>
             {domain === 'childcare' ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src="/logo.png" alt={config.appName} width={64} height={64} className="h-16 w-16 rounded-xl object-contain" />
+              <Image src="/logo.png" alt={config.appName} width={64} height={64} priority className="h-16 w-16 rounded-xl object-contain" />
             ) : (
               <>
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-sm font-bold text-white">{config.logoShort}</span>
@@ -25,6 +25,7 @@ export function JobsShell({ domain, children }: { domain: DomainKey; children: R
           </Link>
           <div className="flex items-center gap-5 text-sm font-medium">
             <Link href="/jobs" className="text-muted hover:text-brand-600">Jobs</Link>
+            <Link href="/centers" className="text-muted hover:text-brand-600">Centers</Link>
             <Link href="/login" className="text-brand-600 hover:text-brand-800">Log in</Link>
             <Link href="/register?type=staff" className="rounded-lg bg-brand-600 px-4 py-2 font-semibold text-white shadow-sm hover:bg-brand-800">Join free</Link>
           </div>
@@ -36,6 +37,7 @@ export function JobsShell({ domain, children }: { domain: DomainKey; children: R
           <span>© {new Date().getFullYear()} {config.appName}</span>
           <div className="flex gap-4">
             <Link href="/jobs" className="hover:text-brand-600">All jobs</Link>
+            <Link href="/centers" className="hover:text-brand-600">Find a center</Link>
             <Link href="/contact" className="hover:text-brand-600">Contact</Link>
             <Link href="/privacy" className="hover:text-brand-600">Privacy</Link>
             <Link href="/terms" className="hover:text-brand-600">Terms</Link>

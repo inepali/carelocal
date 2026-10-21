@@ -3,12 +3,13 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { CenterProgram, CenterTeamMember, CenterAboutItem } from '@/lib/types'
-import { Building2, BookOpen, Users, ListPlus, Clock, Mail, CreditCard, Database, ExternalLink, FileText } from 'lucide-react'
+import { Building2, BookOpen, Users, ListPlus, Clock, Mail, CreditCard, Database, ExternalLink, FileText, Globe } from 'lucide-react'
 import CenterProfileTab from './_components/CenterProfileTab'
 import AboutListEditor from './_components/AboutListEditor'
 import SubscriptionTab from './_components/SubscriptionTab'
 import ManageDataTab from './_components/ManageDataTab'
 import DocumentsTab from './_components/DocumentsTab'
+import PublicPageTab from './_components/PublicPageTab'
 import { useLookups } from '@/hooks/use-lookups'
 import { lookupLabel } from '@/lib/lookups'
 import { normalizeWebUrl } from '@/lib/utils'
@@ -19,6 +20,7 @@ const TABS = [
   { id: 'team', name: 'Team', icon: Users },
   { id: 'data', name: 'Manage Data', icon: Database },
   { id: 'documents', name: 'Documents', icon: FileText },
+  { id: 'public', name: 'Public Page', icon: Globe },
   { id: 'subscription', name: 'Subscription', icon: CreditCard },
   { id: 'others', name: 'Others', icon: ListPlus },
 ] as const
@@ -229,6 +231,10 @@ export default function CenterAboutPage() {
 
           <div role="tabpanel" id="about-panel-documents" aria-labelledby="about-tab-documents" hidden={activeTab !== 'documents'}>
             {activeTab === 'documents' && <DocumentsTab />}
+          </div>
+
+          <div role="tabpanel" id="about-panel-public" aria-labelledby="about-tab-public" hidden={activeTab !== 'public'}>
+            <PublicPageTab centerId={centerId} />
           </div>
 
           <div role="tabpanel" id="about-panel-subscription" aria-labelledby="about-tab-subscription" hidden={activeTab !== 'subscription'}>

@@ -61,8 +61,21 @@ export function siteForDomain(domainKey: string | null | undefined) {
   return { senderName, senderEmail, appUrl }
 }
 
-function escapeHtml(value: string) {
+export function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
+}
+
+/** One transactional email from the site's sender (does nothing when email is not configured). */
+export async function sendEmail({ to, subject, html, domainKey, replyTo }: { to: string; subject: string; html: string; domainKey?: string | null; replyTo?: string }) {
+  if (!process.env.RESEND_API_KEY) return false
+  const site = siteForDomain(domainKey)
+  try {
+    await new Resend(process.env.RESEND_API_KEY).emails.send({ from: `${site.senderName} <${site.senderEmail}>`, to, subject, html, ...(replyTo ? { replyTo } : {}) })
+    return true
+  } catch (err) {
+    console.error(`Email failed for ${to}:`, err)
+    return false
+  }
 }
 
 export async function notifyUsers(userIds: string[], payload: NotifyPayload, domainKey?: string | null) {
