@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Shift, StaffProfile } from '@/lib/types'
 import Link from 'next/link'
-import { Calendar, Users, AlertCircle, FileText, ArrowRight, CheckCircle2, Clock, UserPlus, Globe, Star, AlertTriangle, CalendarCheck, Eye, Inbox } from 'lucide-react'
+import { Calendar, Users, AlertCircle, FileText, ArrowRight, CheckCircle2, Clock, UserPlus, Globe, Star, AlertTriangle, CalendarCheck, Eye, Inbox, Download } from 'lucide-react'
 import { useCenterContext } from '../context'
 import { loadCenterCompliance, countStates } from '@/lib/compliance-data'
 import { inspectionStatus, DUE_SOON_DAYS } from '@/lib/inspections'
@@ -296,11 +296,14 @@ export default function DashboardOverview() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Upcoming Shifts */}
-        <div className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm flex flex-col">
-          <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-surface/50">
-            <h2 className="text-xl font-black text-heading tracking-tight">Upcoming Open Shifts</h2>
-            <Link href="/center/shifts" className="text-brand-600 font-black text-xs uppercase tracking-widest hover:underline">View All</Link>
+        <div className="flex flex-col">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-heading">Upcoming Open Shifts</h2>
+            <Link href="/center/shifts" className="inline-flex items-center gap-1.5 text-sm font-bold text-brand-600 hover:underline">
+              View all <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
+          <div className="bg-white rounded-2xl border border-border overflow-hidden shadow-sm flex flex-col flex-1">
           <div className="p-6 flex-1 space-y-4">
             {upcomingShifts.length === 0 ? (
               <div className="py-12 text-center">
@@ -331,13 +334,18 @@ export default function DashboardOverview() {
               ))
             )}
           </div>
+          </div>
         </div>
 
         {/* Recent Activity */}
-        <div className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm flex flex-col">
-          <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-surface/50">
-             <h2 className="text-xl font-black text-heading tracking-tight">Recent Activity</h2>
+        <div className="flex flex-col">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-heading">Recent Activity</h2>
+            <button type="button" className="inline-flex items-center gap-1.5 text-sm font-bold text-brand-600 hover:underline">
+              Download activity report <Download className="h-4 w-4" />
+            </button>
           </div>
+          <div className="bg-white rounded-2xl border border-border overflow-hidden shadow-sm flex flex-col flex-1">
           <div className="p-6 flex-1 space-y-2">
             {recentActivity.length === 0 ? (
               <div className="py-12 text-center">
@@ -360,10 +368,6 @@ export default function DashboardOverview() {
               ))
             )}
           </div>
-          <div className="p-6 mt-auto">
-             <button className="w-full py-4 bg-surface rounded-2xl text-brand-600 font-black text-xs uppercase tracking-widest hover:bg-brand-50 transition-all border border-border">
-                Download Activity Report
-             </button>
           </div>
         </div>
       </div>
