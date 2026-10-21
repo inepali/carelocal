@@ -16,11 +16,12 @@ interface Form {
   showPhone: boolean
   showEmail: boolean
   showLicense: boolean
+  showCapacity: boolean
   showCareScore: boolean
   toursEnabled: boolean
 }
 
-const EMPTY: Form = { enabled: false, handle: '', description: '', showPhone: true, showEmail: true, showLicense: true, showCareScore: true, toursEnabled: true }
+const EMPTY: Form = { enabled: false, handle: '', description: '', showPhone: true, showEmail: true, showLicense: true, showCapacity: true, showCareScore: true, toursEnabled: true }
 
 /** "Kiddie Academy of Harrisburg!" -> "kiddie-academy-of-harrisburg" (letters, numbers and single dashes) */
 const toHandle = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60)
@@ -35,10 +36,12 @@ export default function PublicPageTab({ centerId }: { centerId: string }) {
   const [saved, setSaved] = useState<{ enabled: boolean; handle: string } | null>(null)
   const [suggestion, setSuggestion] = useState('')
   const [origin, setOrigin] = useState('')
+  // Programs, team members and Others items already published (a page with none of these and no description stays out of search)
+  const [contentCount, setContentCount] = useState<number | null>(null)
 
   const load = useCallback(async () => {
     const { data } = await supabase.from('centers')
-      .select('name, city, state, domain_key, public_enabled, public_handle, public_description, public_show_phone, public_show_email, public_show_license, public_show_care_score, public_tours_enabled')
+      .select('name, city, state, domain_key, public_enabled, public_handle, public_description, public_show_phone, public_show_email, public_show_license, public_show_capacity, public_show_care_score, public_tours_enabled')
       .eq('id', centerId).single()
     if (data) {
       setForm({
@@ -48,6 +51,7 @@ export default function PublicPageTab({ centerId }: { centerId: string }) {
         showPhone: data.public_show_phone ?? true,
         showEmail: data.public_show_email ?? true,
         showLicense: data.public_show_license ?? true,
+        showCapacity: data.public_show_capacity ?? true,
         showCareScore: data.public_show_care_score ?? true,
         toursEnabled: data.public_tours_enabled ?? true,
       })
@@ -55,6 +59,12 @@ export default function PublicPageTab({ centerId }: { centerId: string }) {
       setSuggestion(toHandle([data.name, data.city, data.state].filter(Boolean).join(' ')))
       setOrigin(siteUrl(getDomainKey(window.location.host)))
     }
+    const counts = await Promise.all([
+      supabase.from('center_programs').select('id', { count: 'exact', head: true }).eq('center_id', centerId).eq('is_active', true),
+      supabase.from('center_team_members').select('id', { count: 'exact', head: true }).eq('center_id', centerId),
+      supabase.from('center_about_items').select('id', { count: 'exact', head: true }).eq('center_id', centerId),
+    ])
+    setContentCount(counts.reduce((sum, r) => sum + (r.count ?? 0), 0))
     setLoading(false)
   }, [supabase, centerId])
 
@@ -76,6 +86,7 @@ export default function PublicPageTab({ centerId }: { centerId: string }) {
       public_show_phone: form.showPhone,
       public_show_email: form.showEmail,
       public_show_license: form.showLicense,
+      public_show_capacity: form.showCapacity,
       public_show_care_score: form.showCareScore,
       public_tours_enabled: form.toursEnabled,
     }).eq('id', centerId)
@@ -95,7 +106,9 @@ export default function PublicPageTab({ centerId }: { centerId: string }) {
 
   if (loading) return <div className="h-40 animate-pulse rounded-2xl border border-border bg-white" />
 
-  const check = (key: 'showPhone' | 'showEmail' | 'showLicense' | 'showCareScore', label: string, hint: string) => (
+  const thin = form.enabled && contentCount === 0 && !form.description.trim()
+
+  const check = (key: 'showPhone' | 'showEmail' | 'showLicense' | 'showCapacity' | 'showCareScore', label: string, hint: string) => (
     <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border px-4 py-3 hover:bg-surface">
       <input type="checkbox" checked={form[key]} onChange={e => setForm({ ...form, [key]: e.target.checked })} className="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-600" />
       <span><span className="block text-sm font-medium text-text-main">{label}</span><span className="block text-xs text-muted">{hint}</span></span>
@@ -143,6 +156,7 @@ export default function PublicPageTab({ centerId }: { centerId: string }) {
             {check('showPhone', 'Phone number', 'From your Center Profile')}
             {check('showEmail', 'Email address', 'From your Center Profile')}
             {check('showLicense', 'License number', 'From your Center Profile')}
+            {check('showCapacity', 'Capacity', 'From your Center Profile. Shown only if you entered one')}
             {check('showCareScore', 'Care Score', 'Your average rating and how many ratings it is based on')}
           </div>
         </div>
@@ -154,6 +168,12 @@ export default function PublicPageTab({ centerId }: { centerId: string }) {
             <span><span className="block text-sm font-medium text-text-main">Show a “Schedule a Tour” button</span><span className="block text-xs text-muted">Visitors pick a date and time and share their details. You confirm each request from Tours, and you are notified by email and in the app.</span></span>
           </label>
         </div>
+
+        {thin && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Your page works, but Google will not list it yet because there is little to read. Add an “About your center” text above, or a program, a team member or an item under Others, and it becomes eligible to appear in search.
+          </div>
+        )}
 
         <div className="rounded-xl border border-border bg-surface p-4 text-xs text-muted">
           <p className="mb-1 font-semibold text-text-main">Always shown on the page</p>

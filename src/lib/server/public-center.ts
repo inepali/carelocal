@@ -27,6 +27,7 @@ export interface PublicCenterPage {
   phone: string | null               // null unless the center shows it
   email: string | null
   licenseNumber: string | null
+  capacity: number | null            // null unless the center shows it
   careScore: { average: number; count: number } | null
   toursEnabled: boolean
   /** Newest change across the center, its programs, team and About items (sitemap lastmod, dateModified) */
@@ -49,7 +50,7 @@ export interface PublicCenterSummary {
   lastModified: string
 }
 
-const CENTER_COLUMNS = 'id, slug, public_handle, name, address, city, state, zip, phone, email, license_number, logo_url, public_description, public_show_phone, public_show_email, public_show_license, public_show_care_score, public_tours_enabled, updated_at'
+const CENTER_COLUMNS = 'id, slug, public_handle, name, address, city, state, zip, phone, email, license_number, max_capacity, logo_url, public_description, public_show_phone, public_show_email, public_show_license, public_show_capacity, public_show_care_score, public_tours_enabled, updated_at'
 
 const newest = (...dates: (string | null | undefined)[]) =>
   dates.filter((d): d is string => !!d).reduce((a, b) => (new Date(b) > new Date(a) ? b : a))
@@ -93,6 +94,7 @@ export const getPublicCenter = cache(async (domain: DomainKey, handle: string): 
     phone: c.public_show_phone ? c.phone ?? null : null,
     email: c.public_show_email ? c.email ?? null : null,
     licenseNumber: c.public_show_license ? c.license_number ?? null : null,
+    capacity: c.public_show_capacity !== false && c.max_capacity ? c.max_capacity : null,
     careScore: ratings.length > 0
       ? { average: ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length, count: ratings.length }
       : null,

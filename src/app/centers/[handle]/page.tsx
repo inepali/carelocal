@@ -2,12 +2,12 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { headers } from 'next/headers'
 import { notFound, permanentRedirect } from 'next/navigation'
-import { BadgeCheck, BookOpen, Briefcase, Clock, ExternalLink, Mail, MapPin, Navigation, Phone, Star, Users } from 'lucide-react'
+import { BadgeCheck, BookOpen, UsersRound, Briefcase, Clock, ExternalLink, Mail, MapPin, Navigation, Phone, Star, Users } from 'lucide-react'
 import { getDomainKey, getDomainConfig } from '@/lib/domain-config'
 import { getPublicCenter, listNearbyCenters } from '@/lib/server/public-center'
 import { citySlug, listPublicJobsForCenter, publicRoleLabels } from '@/lib/server/public-jobs'
 import {
-  capitalize, centerCrumbs, centerDescription, centerJsonLd, centerPath, centerTitle, centerUrl, cityPath, jsonLdString, nounFor, placeOf,
+  capitalize, centerCrumbs, centerDescription, centerJsonLd, centerPath, centerTitle, centerUrl, cityPath, formatPhone, jsonLdString, nounFor, placeOf,
 } from '@/lib/center-seo'
 import { JobsShell, PublicJobCard } from '@/app/jobs/_components/JobsShell'
 import { ScheduleTourButton } from './_components/ScheduleTourButton'
@@ -56,7 +56,7 @@ export default async function PublicCenterPage({ params }: Props) {
 
   const [jobs, roleLabels, nearby] = await Promise.all([
     listPublicJobsForCenter(domain, center.slug),
-    publicRoleLabels(domain),
+    publicRoleLabels(domain, center.id),
     listNearbyCenters(domain, center.city, center.state, center.handle),
   ])
   const noun = nounFor(domain)
@@ -101,20 +101,21 @@ export default async function PublicCenterPage({ params }: Props) {
                   </span>
                 )}
                 {center.licenseNumber && <span className="inline-flex items-center gap-1.5"><BadgeCheck className="h-4 w-4 shrink-0 text-brand-600" aria-hidden />License {center.licenseNumber}</span>}
+                {center.capacity && <span className="inline-flex items-center gap-1.5"><UsersRound className="h-4 w-4 shrink-0 text-brand-600" aria-hidden />Capacity {center.capacity.toLocaleString('en-US')}</span>}
               </div>
               {(center.phone || center.email) && (
                 <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm">
-                  {center.phone && <a href={`tel:${center.phone}`} className="inline-flex items-center gap-1.5 font-semibold text-brand-600 hover:underline"><Phone className="h-4 w-4" aria-hidden />{center.phone}</a>}
+                  {center.phone && <a href={`tel:${formatPhone(center.phone).tel}`} className="inline-flex items-center gap-1.5 font-semibold text-brand-600 hover:underline"><Phone className="h-4 w-4" aria-hidden />{formatPhone(center.phone).display}</a>}
                   {center.email && <a href={`mailto:${center.email}`} className="inline-flex items-center gap-1.5 font-semibold text-brand-600 hover:underline"><Mail className="h-4 w-4" aria-hidden />{center.email}</a>}
                 </div>
               )}
             </div>
           </div>
-          <div className="mt-6 flex flex-wrap items-center gap-3">
+          <div className="mt-5 flex flex-wrap items-center gap-2">
             {center.toursEnabled && <ScheduleTourButton handle={center.handle} centerName={center.name} domain={domain} />}
-            {jobs.length > 0 && <a href="#jobs" className={center.toursEnabled ? 'rounded-xl border-2 border-brand-600/20 bg-white px-6 py-3 text-sm font-black text-brand-600 hover:border-brand-600' : 'rounded-xl bg-brand-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-brand-600/20 hover:bg-brand-800'}>See {jobs.length} open job{jobs.length === 1 ? '' : 's'}</a>}
-            <Link href={`/register?invite=${encodeURIComponent(center.slug)}`} rel="nofollow" className="rounded-xl border-2 border-brand-600/20 bg-white px-6 py-3 text-sm font-black text-brand-600 hover:border-brand-600">Join this center</Link>
-            {mapsUrl && <a href={mapsUrl} target="_blank" rel="noopener noreferrer" aria-label={`Directions to ${center.name}`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-brand-600"><Navigation className="h-4 w-4" aria-hidden /> Directions</a>}
+            {jobs.length > 0 && <a href="#jobs" className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-800">See {jobs.length} open job{jobs.length === 1 ? '' : 's'}</a>}
+            <Link href={`/register?invite=${encodeURIComponent(center.slug)}`} rel="nofollow" className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-800">Join Our Team</Link>
+            {mapsUrl && <a href={mapsUrl} target="_blank" rel="noopener noreferrer" aria-label={`Directions to ${center.name}`} className="inline-flex items-center gap-1 px-1 text-xs font-semibold text-muted hover:text-brand-600"><Navigation className="h-3.5 w-3.5" aria-hidden /> Directions</a>}
           </div>
         </header>
 
@@ -164,11 +165,14 @@ export default async function PublicCenterPage({ params }: Props) {
             <h2 id="team-heading" className={SECTION_TITLE}><Users className="h-5 w-5 text-brand-600" aria-hidden /> Our team</h2>
             <div className="grid gap-5 sm:grid-cols-2">
               {center.team.map(t => {
-                const heading = t.title || (t.role ? roleLabels[t.role] : null)
+                const role = t.role ? roleLabels[t.role] : null
+                // The role is shown with the title; skip it when the title already says the same thing
+                const showRole = !!role && role.toLowerCase() !== (t.title ?? '').trim().toLowerCase()
                 return (
                   <div key={t.id}>
                     <h3 className="font-bold text-text-main">{t.name}</h3>
-                    {heading && <p className="text-sm font-semibold text-brand-600">{heading}</p>}
+                    {t.title && <p className="text-sm font-semibold text-brand-600">{t.title}</p>}
+                    {showRole && <span className="mt-1 inline-flex rounded-full border border-brand-100 bg-brand-50 px-2.5 py-0.5 text-xs font-semibold text-brand-600">{role}</span>}
                     {t.bio && <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-text-muted">{t.bio}</p>}
                   </div>
                 )

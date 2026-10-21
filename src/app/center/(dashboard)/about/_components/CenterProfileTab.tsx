@@ -98,6 +98,7 @@ export default function CenterProfileTab() {
         state: center.state,
         zip: center.zip,
         license_number: center.license_number,
+        max_capacity: center.max_capacity ?? null,
         metro_area_id: center.metro_area_id,
         timezone: center.timezone,
         staff_term: center.staff_term,
@@ -280,14 +281,29 @@ export default function CenterProfileTab() {
                   </div>
                 </div>
 
-                <div className="pt-4">
-                  <label className="block text-sm font-medium text-text-main mb-1.5">State License No.</label>
-                  <input 
-                    type="text" 
-                    value={center.license_number || ''}
-                    onChange={(e) => setCenter({...center, license_number: e.target.value})}
-                    className="w-full px-4 py-3 rounded-xl border border-border bg-white text-text-main focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition"
-                  />
+                <div className="pt-4 grid sm:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-text-main mb-1.5">State License No.</label>
+                    <input
+                      type="text"
+                      value={center.license_number || ''}
+                      onChange={(e) => setCenter({...center, license_number: e.target.value})}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-white text-text-main focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-main mb-1.5">Capacity</label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      inputMode="numeric"
+                      value={center.max_capacity ?? ''}
+                      onChange={(e) => setCenter({...center, max_capacity: e.target.value === '' ? undefined : Math.max(0, Math.floor(Number(e.target.value)))})}
+                      placeholder="e.g. 120"
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-white text-text-main focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition"
+                    />
+                  </div>
                 </div>
               </div>
 

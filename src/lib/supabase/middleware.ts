@@ -64,9 +64,11 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const isCenterRoute = request.nextUrl.pathname.startsWith('/center')
-  const isStaffRoute = request.nextUrl.pathname.startsWith('/staff')
-  const isAdminRoute = request.nextUrl.pathname.startsWith('/admin')
+  // An area is the path itself or anything under it: '/center' and '/center/jobs', but not the public '/centers/<handle>'
+  const inArea = (area: string) => request.nextUrl.pathname === area || request.nextUrl.pathname.startsWith(`${area}/`)
+  const isCenterRoute = inArea('/center')
+  const isStaffRoute = inArea('/staff')
+  const isAdminRoute = inArea('/admin')
 
   // 1. Basic Auth Protection
   if ((isCenterRoute || isStaffRoute || isAdminRoute) && !user) {
@@ -84,7 +86,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // 2b. Disabled accounts and centers (set by a super admin). Super admins are never locked out.
-  const isMobilePortal = request.nextUrl.pathname.startsWith('/mobile') && request.nextUrl.pathname !== '/mobile/login'
+  const isMobilePortal = inArea('/mobile') && request.nextUrl.pathname !== '/mobile/login'
   if (user && user.app_metadata?.is_super_admin !== true && (isCenterRoute || isStaffRoute || isMobilePortal)) {
     let disabledError: string | null = user.app_metadata?.disabled === true ? ACCOUNT_DISABLED_ERROR : null
 
@@ -113,7 +115,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // 3. Vertical Lock: accounts may only use the vertical (childcare/healthcare/senior) they signed up on
-  const isMobileRoute = request.nextUrl.pathname.startsWith('/mobile') && request.nextUrl.pathname !== '/mobile/login'
+  const isMobileRoute = inArea('/mobile') && request.nextUrl.pathname !== '/mobile/login'
   if (user && (isCenterRoute || isStaffRoute || isMobileRoute)) {
     const siteDomain = domainKey
     if (!(await canAccessDomain(supabase, user, siteDomain))) {

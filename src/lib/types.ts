@@ -55,6 +55,7 @@ export interface Center {
   public_show_email?: boolean
   public_show_license?: boolean
   public_show_care_score?: boolean
+  public_show_capacity?: boolean
   public_tours_enabled?: boolean
   staff_term?: string
   work_area_term?: string

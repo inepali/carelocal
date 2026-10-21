@@ -102,8 +102,8 @@ export function ScheduleTourButton({ handle, centerName, domain }: { handle: str
 
   return (
     <>
-      <button type="button" onClick={openModal} className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-brand-600/20 hover:bg-brand-800">
-        <CalendarCheck className="h-4 w-4" /> Schedule a Tour
+      <button type="button" onClick={openModal} className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-800">
+        <CalendarCheck className="h-3.5 w-3.5" /> Schedule a Tour
       </button>
 
       {open && (

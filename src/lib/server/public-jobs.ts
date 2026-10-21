@@ -110,9 +110,11 @@ export async function getPublicJob(domain: DomainKey, centerSlug: string, jobSlu
   return normalize(data as Row[] | null)[0] ?? null
 }
 
-/** Role labels (the vertical's platform defaults) for public pages */
-export async function publicRoleLabels(domain: DomainKey): Promise<Record<string, string>> {
-  const { data } = await db().from('center_lookups').select('value, label')
-    .is('center_id', null).eq('group_name', 'Role').eq('domain_key', domain)
-  return Object.fromEntries((data ?? []).map(r => [r.value, r.label]))
+/** Role labels for public pages: the vertical's platform defaults, plus the center's own roles when a center is given (those win) */
+export async function publicRoleLabels(domain: DomainKey, centerId?: string): Promise<Record<string, string>> {
+  const { data } = await db().from('center_lookups').select('value, label, center_id')
+    .eq('group_name', 'Role').eq('domain_key', domain)
+    .or(centerId ? `center_id.is.null,center_id.eq.${centerId}` : 'center_id.is.null')
+  const rows = data ?? []
+  return Object.fromEntries([...rows.filter(r => !r.center_id), ...rows.filter(r => r.center_id)].map(r => [r.value, r.label]))
 }

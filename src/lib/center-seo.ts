@@ -21,6 +21,14 @@ export function clip(text: string, max: number) {
   return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), max - 20))}…`
 }
 
+/** US numbers as typed (7047505858, 704-750-5858 …) -> "(704) 750-5858" for people and "+1-704-750-5858" for machines; anything else is left as entered */
+export function formatPhone(raw: string) {
+  const digits = raw.replace(/D/g, '')
+  const ten = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits
+  if (ten.length !== 10) return { display: raw.trim(), tel: raw.replace(/[^d+]/g, ''), schema: raw.trim() }
+  return { display: `(${ten.slice(0, 3)}) ${ten.slice(3, 6)}-${ten.slice(6)}`, tel: `+1${ten}`, schema: `+1-${ten.slice(0, 3)}-${ten.slice(3, 6)}-${ten.slice(6)}` }
+}
+
 export const centerPath = (handle: string) => `/centers/${handle}`
 export const centerUrl = (domain: DomainKey, handle: string) => `${siteUrl(domain)}${centerPath(handle)}`
 export const cityPath = (c: { city: string | null; state: string | null }) => `/centers/in/${citySlug(c.city, c.state)}`
@@ -84,8 +92,9 @@ export function centerJsonLd(c: PublicCenterPage, domain: DomainKey, title: stri
         url,
         description,
         ...(c.logoUrl ? { logo: c.logoUrl, image: c.logoUrl } : {}),
-        ...(c.phone ? { telephone: c.phone } : {}),
+        ...(c.phone ? { telephone: formatPhone(c.phone).schema } : {}),
         ...(c.email ? { email: c.email } : {}),
+        ...(c.capacity ? { maximumAttendeeCapacity: c.capacity } : {}),
         ...(c.licenseNumber ? { identifier: { '@type': 'PropertyValue', name: 'License number', value: c.licenseNumber } } : {}),
         address: {
           '@type': 'PostalAddress',
