@@ -47,6 +47,14 @@ export interface Center {
   stripe_customer_id?: string
   trial_ends_at?: string
   trial_months?: number
+  // Public page (/centers/<handle>); off until the center turns it on
+  public_enabled?: boolean
+  public_handle?: string | null
+  public_description?: string | null
+  public_show_phone?: boolean
+  public_show_email?: boolean
+  public_show_license?: boolean
+  public_show_care_score?: boolean
   staff_term?: string
   work_area_term?: string
   domain_key?: string

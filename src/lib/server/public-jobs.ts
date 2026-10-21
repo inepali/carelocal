@@ -90,6 +90,14 @@ export async function listJobCities(domain: DomainKey) {
   return [...map.values()].sort((a, b) => b.count - a.count || a.city.localeCompare(b.city))
 }
 
+/** Every published job at one center (by the center slug), newest first */
+export async function listPublicJobsForCenter(domain: DomainKey, centerSlug: string): Promise<PublicJob[]> {
+  const { data } = await db().from('job_postings').select(JOB_COLUMNS)
+    .eq('status', 'published').eq('domain_key', domain).eq('center.slug', centerSlug)
+    .order('published_at', { ascending: false })
+  return normalize(data as Row[] | null)
+}
+
 /** One published job by its public URL; null when it is not (or no longer) published */
 export async function getPublicJob(domain: DomainKey, centerSlug: string, jobSlug: string): Promise<PublicJob | null> {
   const { data } = await db().from('job_postings').select(JOB_COLUMNS)

@@ -3,6 +3,7 @@ import { headers } from 'next/headers'
 import { getDomainKey } from '@/lib/domain-config'
 import { siteUrl } from '@/lib/site'
 import { listJobCities, listPublicJobs } from '@/lib/server/public-jobs'
+import { listPublicCenterHandles } from '@/lib/server/public-center'
 
 /** Public pages worth ranking, per domain (login / password pages are noindex). */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -12,12 +13,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const lastModified = new Date()
 
   // Open jobs and the cities hiring (Google for Jobs reads the JobPosting data on each job page)
-  const [jobs, cities] = await Promise.all([listPublicJobs(domain), listJobCities(domain)]).catch(() => [[], []] as const)
+  const [jobs, cities, centers] = await Promise.all([listPublicJobs(domain), listJobCities(domain), listPublicCenterHandles(domain)]).catch(() => [[], [], []] as const)
 
   return [
     { url: baseUrl, lastModified, changeFrequency: 'weekly', priority: 1.0 },
     { url: `${baseUrl}/jobs`, lastModified, changeFrequency: 'daily', priority: 0.9 },
     ...cities.map(c => ({ url: `${baseUrl}/jobs/in/${c.slug}`, lastModified, changeFrequency: 'daily' as const, priority: 0.8 })),
+    ...centers.map(c => ({ url: `${baseUrl}/centers/${c.handle}`, lastModified: new Date(c.updatedAt), changeFrequency: 'weekly' as const, priority: 0.7 })),
     ...jobs.map(j => ({ url: `${baseUrl}/jobs/${j.center.slug}/${j.slug}`, lastModified: new Date(j.updated_at), changeFrequency: 'weekly' as const, priority: 0.7 })),
     { url: `${baseUrl}/register`, lastModified, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${baseUrl}/contact`, lastModified, changeFrequency: 'monthly', priority: 0.7 },
