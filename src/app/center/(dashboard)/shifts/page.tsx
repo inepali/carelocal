@@ -268,7 +268,7 @@ export default function CenterShiftsPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto pb-12">
+    <div className="max-w-7xl pb-12">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600 mb-2">Schedule</p>
@@ -314,7 +314,7 @@ export default function CenterShiftsPage() {
                       <div className={`flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold ${dateKey === todayKey ? 'bg-brand-600 text-white' : 'text-text-main'}`}>
                         {dayNumber}
                       </div>
-                      {dateKey >= todayKey && (
+                      {dateKey >= todayKey && index % 7 !== 0 && index % 7 !== 6 && (   // no Post button on Sunday / Saturday
                         <Link href={`/center/shifts/new?date=${dateKey}`} className="pointer-events-none flex items-center gap-1 rounded-lg bg-amber-400 px-2 py-1 text-[10px] font-bold text-heading opacity-0 transition-opacity hover:bg-amber-500 group-hover:pointer-events-auto group-hover:opacity-100">
                           Post New Shift
                         </Link>

@@ -144,7 +144,7 @@ export default function ChildcareHomePage() {
         <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.jpg" alt="CareLocal" width={64} height={64} className="h-16 w-16 rounded-xl object-contain" />
+            <img src="/logo.png" alt="CareLocal" width={64} height={64} className="h-16 w-16 rounded-xl object-contain" />
           </Link>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-muted">
             <ProductsMenu />

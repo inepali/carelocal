@@ -310,7 +310,7 @@ export default function StaffReviewPage() {
   }
 
   if (loading) return (
-    <div className="max-w-5xl mx-auto p-8 animate-pulse space-y-6">
+    <div className="max-w-6xl animate-pulse space-y-6">
       <div className="h-8 w-40 bg-slate-200 rounded" />
       <div className="h-40 bg-white rounded-3xl border border-border" />
       <div className="h-72 bg-white rounded-3xl border border-border" />
@@ -340,7 +340,7 @@ export default function StaffReviewPage() {
   const attentionCount = complianceResults.filter(r => r.result.state === 'overdue' || r.result.state === 'pending_review').length
 
   return (
-    <div className="max-w-5xl mx-auto pb-20 px-4">
+    <div className="max-w-6xl pb-20">
       {/* Back */}
       <div className="mb-8">
         <Link href="/center/team_member" className="inline-flex items-center gap-2 text-sm text-muted hover:text-brand-600 transition-colors font-bold">

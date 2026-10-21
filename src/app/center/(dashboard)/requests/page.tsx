@@ -72,7 +72,7 @@ export default function DocumentRequestsPage() {
   const today = new Date().toISOString().slice(0, 10)
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-6xl">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-extrabold text-heading mb-1">Document Requests</h1>
@@ -148,7 +148,7 @@ export default function DocumentRequestsPage() {
                       <td className="px-6 py-4">
                         <div className="flex flex-wrap items-center justify-end gap-1.5">
                           {row.submitted_document_id && (
-                            <button onClick={() => openStoredFile('vault', row.submitted_document_id!)} className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-brand-600 hover:bg-brand-50">
+                            <button onClick={() => openStoredFile('vault', row.submitted_document_id!)} className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-800">
                               <ExternalLink className="h-3.5 w-3.5" /> View
                             </button>
                           )}

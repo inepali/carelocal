@@ -240,7 +240,7 @@ export default function ShiftDetailPage() {
   const confirmedClaim = claims.find(c => c.status === 'confirmed')
 
   return (
-    <div className="max-w-6xl mx-auto pb-24">
+    <div className="max-w-6xl pb-24">
       {/* Header */}
       <div className="mb-8">
         <Link 

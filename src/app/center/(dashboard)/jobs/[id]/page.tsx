@@ -86,7 +86,7 @@ export default function JobBoardPage() {
   const closed = cards.filter(c => !BOARD_STAGES.includes(c.stage))
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl">
       <Link href="/center/jobs" className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-muted hover:text-brand-600"><ArrowLeft className="h-4 w-4" /> Back to Jobs</Link>
 
       <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">

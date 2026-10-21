@@ -21,7 +21,7 @@ export interface EmployeeCompliance {
 }
 
 type StatusRow = Pick<CenterStaffDocumentStatus,
-  'staff_id' | 'requirement_id' | 'status' | 'completed_on' | 'reviewed_at' | 'expires_on' | 'not_applicable' | 'acknowledged_version'> & {
+  'staff_id' | 'requirement_id' | 'status' | 'completed_on' | 'reviewed_at' | 'expires_on' | 'due_on' | 'not_applicable' | 'acknowledged_version'> & {
   matched_document: { expiry_date: string | null } | { expiry_date: string | null }[] | null
 }
 
@@ -41,7 +41,7 @@ export async function loadCenterCompliance(supabase: SupabaseClient, centerId: s
     supabase.from('center_document_requirements').select('*').eq('center_id', centerId)
       .order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
     supabase.from('center_staff_document_status')
-      .select('staff_id, requirement_id, status, completed_on, reviewed_at, expires_on, not_applicable, acknowledged_version, matched_document:staff_documents(expiry_date)')
+      .select('staff_id, requirement_id, status, completed_on, reviewed_at, expires_on, due_on, not_applicable, acknowledged_version, matched_document:staff_documents(expiry_date)')
       .eq('center_id', centerId),
   ])
 

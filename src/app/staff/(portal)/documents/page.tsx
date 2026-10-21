@@ -159,21 +159,46 @@ function DocumentsContent() {
 
   return (
     <div className="max-w-5xl pb-32">
-      <div className="mb-10 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <h1 className="text-4xl font-black text-heading mb-2 tracking-tight">My Documents</h1>
           <p className="text-muted text-lg font-medium">Upload and manage your credentials. These will be visible to centers you work with.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setDocCategory(categoryFilter !== 'all' ? categoryFilter : '')
-            setShowUpload(true)
-          }}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 font-semibold text-white shadow-sm transition-colors hover:bg-brand-800 shrink-0"
-        >
-          <Plus className="h-5 w-5" /> Add Document
-        </button>
+      </div>
+
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="flex items-center gap-2 text-lg font-bold text-text-main"><FileText className="h-5 w-5 text-brand-600" /> All Documents</h2>
+          <p className="text-xs text-muted">
+            {filteredDocuments.length} document{filteredDocuments.length === 1 ? '' : 's'}
+            {categoryFilter !== 'all' && ` in ${categoryLabel(categoryFilter)}`}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {visibleDocuments.length > 0 && (
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              aria-label="Filter by category"
+              className="rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-medium text-text-main focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600"
+            >
+              <option value="all">All categories</option>
+              {categoryTypes.map(t => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setDocCategory(categoryFilter !== 'all' ? categoryFilter : '')
+              setShowUpload(true)
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-800 shrink-0"
+          >
+            <Plus className="h-4 w-4" /> Add Document
+          </button>
+        </div>
       </div>
 
       {showUpload && (
@@ -285,32 +310,6 @@ function DocumentsContent() {
         </div>
       ) : (
         <section className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
-          <div className="flex flex-col gap-3 border-b border-border bg-surface px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
-                <FileText className="h-5 w-5" />
-              </span>
-              <div>
-                <h2 className="text-lg font-bold text-text-main">All Documents</h2>
-                <p className="text-xs text-muted">
-                  {filteredDocuments.length} document{filteredDocuments.length === 1 ? '' : 's'}
-                  {categoryFilter !== 'all' && ` in ${categoryLabel(categoryFilter)}`}
-                </p>
-              </div>
-            </div>
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              aria-label="Filter by category"
-              className="rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-medium text-text-main focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600"
-            >
-              <option value="all">All categories</option>
-              {categoryTypes.map(t => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
-          </div>
-
           {filteredDocuments.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[720px] text-left">

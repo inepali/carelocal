@@ -589,7 +589,7 @@ export default function InspectionsPage() {
   )
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-6xl">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-extrabold text-heading mb-1">Inspections</h1>

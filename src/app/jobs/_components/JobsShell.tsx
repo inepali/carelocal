@@ -15,7 +15,7 @@ export function JobsShell({ domain, children }: { domain: DomainKey; children: R
           <Link href="/" className="flex items-center gap-2" aria-label={config.appName}>
             {domain === 'childcare' ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src="/logo.jpg" alt={config.appName} width={64} height={64} className="h-16 w-16 rounded-xl object-contain" />
+              <img src="/logo.png" alt={config.appName} width={64} height={64} className="h-16 w-16 rounded-xl object-contain" />
             ) : (
               <>
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-sm font-bold text-white">{config.logoShort}</span>

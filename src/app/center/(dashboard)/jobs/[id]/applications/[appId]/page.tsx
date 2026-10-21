@@ -178,7 +178,7 @@ export default function ApplicationDetailPage() {
   const canMove = ['applied', 'reviewing', 'interview'].includes(app.stage)
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-6xl">
       <Link href={`/center/jobs/${jobId}`} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-muted hover:text-brand-600"><ArrowLeft className="h-4 w-4" /> Back to {job.title}</Link>
 
       <div className="mb-8 flex flex-col gap-5 rounded-2xl border border-border bg-white p-6 shadow-sm md:flex-row md:items-center">

@@ -208,11 +208,8 @@ function CentersContent() {
 
          {/* Center Discovery */}
          <div className="mb-12">
+            <h2 className="text-2xl font-black text-heading mb-6 px-2">Find a New Center</h2>
             <div className="bg-white border-2 border-brand-600/10 rounded-[2rem] p-8 shadow-xl shadow-brand-600/5">
-               <h2 className="text-xl font-black text-heading mb-6 flex items-center gap-3">
-                  <Search className="w-6 h-6 text-brand-600" />
-                  Find a New Center
-               </h2>
                <div className="flex flex-col sm:flex-row gap-4">
                   <div className="flex-1 relative">
                      <input

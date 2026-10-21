@@ -76,7 +76,7 @@ export default function CenterAboutPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto pb-24 px-6 md:px-10">
+    <div className="max-w-6xl pb-24">
       <div className="mb-8">
         <h1 className="text-3xl font-extrabold text-heading mb-2">About</h1>
         <p className="text-muted">Manage your center profile, programs, leadership team, and additional information.</p>

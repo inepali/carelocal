@@ -226,7 +226,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .center-shell .label-eyebrow, .staff-shell .label-eyebrow,
-.center-shell thead th, .center-shell .col-header {
+.center-shell .col-header {
   font-size: 0.65rem;
   font-weight: 500;
   letter-spacing: 0.07em;
@@ -234,8 +234,21 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-subtle);
 }
 
+.center-shell thead th {
+  font-size: 0.65rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+/* Table headers everywhere: bold and dark on a light band (beats the per-table utility classes) */
+thead th {
+  font-weight: 700;
+  color: var(--color-heading);
+  background-color: var(--color-surface);
+}
+
 .center-shell label, .staff-shell label {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   font-weight: 500;
   letter-spacing: 0.02em;
   text-transform: none;

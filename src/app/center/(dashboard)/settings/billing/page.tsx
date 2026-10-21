@@ -146,7 +146,7 @@ export default function BillingPage() {
   const tierOrder: SubscriptionTier[] = ['starter', 'growth', 'network']
 
   return (
-    <div className="max-w-5xl mx-auto pb-24 px-6 md:px-10">
+    <div className="max-w-5xl pb-24">
       <div className="mb-12 text-center max-w-2xl mx-auto">
         <h1 className="text-4xl font-extrabold text-heading mb-4">Choose Your Plan</h1>
         <p className="text-muted text-lg mb-8">Select the right plan to manage your staff, compliance, and shifts effectively.</p>

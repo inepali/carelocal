@@ -92,7 +92,7 @@ export default function DashboardOverview() {
         supabase.from('center_staff_document_status').select('*', { count: 'exact', head: true }).eq('center_id', centerId).eq('status', 'pending_review'),
         supabase.from('shifts').select('*, work_areas(name)').eq('center_id', centerId).eq('status', 'open').neq('is_archived', true).gte('shift_date', today).order('shift_date', { ascending: true }).limit(3),
         supabase.from('shift_claims').select('*, staff_profiles(first_name, last_name), shifts(shift_date, start_time, work_area_id, work_areas(name))').eq('status', 'pending').order('claimed_at', { ascending: false }).limit(3),
-        supabase.from('center_staff').select('*, staff_profiles(first_name, last_name)').eq('center_id', centerId).order('added_at', { ascending: false }).limit(3),
+        supabase.from('center_staff').select('*, staff_profiles(first_name, last_name)').eq('center_id', centerId).eq('status', 'active').order('added_at', { ascending: false }).limit(3),
         supabase.from('shift_reviews').select('rating').eq('reviewee_id', centerId).eq('reviewer_type', 'staff')
       ])
 
@@ -148,14 +148,14 @@ export default function DashboardOverview() {
         ...(claimsData || []).map(c => ({
           id: c.id,
           type: 'claim',
-          text: `${c.staff_profiles.first_name} claimed shift for ${c.shifts.work_areas?.name || 'Any Room'}`,
+          text: `${c.staff_profiles?.first_name || 'A staff member'} claimed shift for ${c.shifts?.work_areas?.name || 'Any Room'}`,
           time: c.claimed_at,
           icon: Calendar
         })),
         ...(poolData || []).map(p => ({
           id: p.staff_id,
           type: 'join',
-          text: `${p.staff_profiles.first_name} joined your staff pool`,
+          text: `${p.staff_profiles?.first_name || 'A staff member'} joined your staff pool`,
           time: p.added_at,
           icon: UserPlus
         }))
@@ -181,7 +181,7 @@ export default function DashboardOverview() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-6xl">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
         <div>
           <div className="flex items-center gap-2 text-brand-600 font-black uppercase tracking-[0.3em] text-[10px] mb-2">

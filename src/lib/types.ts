@@ -212,6 +212,7 @@ export interface CenterStaffDocumentStatus {
   completed_on?: string | null
   hours?: number | null
   expires_on?: string | null
+  due_on?: string | null           // due date set by the center; replaces the calculated one
   not_applicable: boolean
   not_applicable_reason?: string | null
   acknowledged_at?: string | null

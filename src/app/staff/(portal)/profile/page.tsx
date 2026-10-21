@@ -71,32 +71,6 @@ function fmtDate(date?: string) {
   return date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
 }
 
-function ProfileSection({ Icon, title, subtitle, action, children }: {
-  Icon: React.ElementType
-  title: string
-  subtitle?: string
-  action?: React.ReactNode
-  children: React.ReactNode
-}) {
-  return (
-    <section className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
-      <div className="flex flex-col gap-3 border-b border-border bg-surface px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
-            <Icon className="h-5 w-5" />
-          </span>
-          <div>
-            <h2 className="text-lg font-bold text-text-main">{title}</h2>
-            {subtitle && <p className="text-xs text-muted">{subtitle}</p>}
-          </div>
-        </div>
-        {action}
-      </div>
-      {children}
-    </section>
-  )
-}
-
 function AddButton({ onClick }: { onClick: () => void }) {
   return (
     <button
@@ -622,14 +596,17 @@ function ExperienceTab({ staffId, supabase }: { staffId: string; supabase: any }
 
 
   return (
-    <ProfileSection
-      Icon={Briefcase}
-      title="Work Experience"
-      subtitle={`${items.length} position${items.length === 1 ? '' : 's'}`}
-      action={!form && <AddButton onClick={() => setForm({ is_current: false })} />}
-    >
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="flex items-center gap-2 text-lg font-bold text-text-main"><Briefcase className="h-5 w-5 text-brand-600" /> Work Experience</h2>
+          <p className="text-xs text-muted">{items.length} position{items.length === 1 ? '' : 's'}</p>
+        </div>
+        {!form && <AddButton onClick={() => setForm({ is_current: false })} />}
+      </div>
+
       {form && (
-        <div className="p-6 space-y-4 border-b border-border bg-surface">
+        <div className="space-y-4 rounded-2xl border border-border bg-surface p-6">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-heading">{form.id ? 'Edit' : 'New'} Experience</h3>
             <button onClick={() => setForm(null)} className="text-subtle hover:text-heading transition-colors"><X className="w-5 h-5" /></button>
@@ -703,6 +680,8 @@ function ExperienceTab({ staffId, supabase }: { staffId: string; supabase: any }
         </div>
       )}
 
+      {!(form && !loading && items.length === 0) && (
+      <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
       {loading ? (
         <div className="p-6 animate-pulse space-y-3">
           <div className="h-8 bg-surface-2 rounded-lg" />
@@ -745,7 +724,9 @@ function ExperienceTab({ staffId, supabase }: { staffId: string; supabase: any }
           </table>
         </div>
       )}
-    </ProfileSection>
+      </div>
+      )}
+    </div>
   )
 }
 
@@ -802,21 +783,23 @@ function ReferencesTab({ staffId, supabase }: { staffId: string; supabase: any }
   const missing = Math.max(0, MIN_STAFF_REFERENCES - items.length)
 
   return (
-    <ProfileSection
-      Icon={Link2}
-      title="References"
-      subtitle={`${items.length} of at least ${MIN_STAFF_REFERENCES}`}
-      action={!form && <AddButton onClick={() => setForm({})} />}
-    >
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="flex items-center gap-2 text-lg font-bold text-text-main"><Link2 className="h-5 w-5 text-brand-600" /> References</h2>
+          <p className="text-xs text-muted">{items.length} of at least {MIN_STAFF_REFERENCES}</p>
+        </div>
+        {!form && <AddButton onClick={() => setForm({})} />}
+      </div>
       {!loading && missing > 0 && (
-        <div className="px-6 py-3 text-sm font-medium text-amber-800 bg-amber-50 border-b border-amber-200 flex items-center gap-2">
+        <div className="rounded-xl px-4 py-3 text-sm font-medium text-amber-800 bg-amber-50 border border-amber-200 flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 shrink-0" />
           Add {missing} more reference{missing === 1 ? '' : 's'}. Centers ask for at least {MIN_STAFF_REFERENCES} professional references.
         </div>
       )}
 
       {form && (
-        <div className="p-6 space-y-4 border-b border-border bg-surface">
+        <div className="space-y-4 rounded-2xl border border-border bg-surface p-6">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-heading">{form.id ? 'Edit' : 'New'} Reference</h3>
             <button onClick={() => setForm(null)} className="text-subtle hover:text-heading transition-colors"><X className="w-5 h-5" /></button>
@@ -847,6 +830,8 @@ function ReferencesTab({ staffId, supabase }: { staffId: string; supabase: any }
         </div>
       )}
 
+      {!(form && !loading && items.length === 0) && (
+      <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
       {loading ? (
         <div className="p-6 animate-pulse space-y-3">
           <div className="h-8 bg-surface-2 rounded-lg" />
@@ -885,7 +870,9 @@ function ReferencesTab({ staffId, supabase }: { staffId: string; supabase: any }
           </table>
         </div>
       )}
-    </ProfileSection>
+      </div>
+      )}
+    </div>
   )
 }
 
@@ -941,14 +928,16 @@ function CredentialsTab({ staffId, supabase, vaultDocs }: { staffId: string; sup
 
 
   return (
-    <ProfileSection
-      Icon={Award}
-      title="Credentials & Certifications"
-      subtitle={`${items.length} credential${items.length === 1 ? '' : 's'}`}
-      action={!form && <AddButton onClick={() => setForm({})} />}
-    >
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="flex items-center gap-2 text-lg font-bold text-text-main"><Award className="h-5 w-5 text-brand-600" /> Credentials &amp; Certifications</h2>
+          <p className="text-xs text-muted">{items.length} credential{items.length === 1 ? '' : 's'}</p>
+        </div>
+        {!form && <AddButton onClick={() => setForm({})} />}
+      </div>
       {form && (
-        <div className="p-6 space-y-4 border-b border-border bg-surface">
+        <div className="space-y-4 rounded-2xl border border-border bg-surface p-6">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-heading">{form.id ? 'Edit' : 'New'} Credential</h3>
             <button onClick={() => setForm(null)} className="text-subtle hover:text-heading"><X className="w-5 h-5" /></button>
@@ -993,6 +982,8 @@ function CredentialsTab({ staffId, supabase, vaultDocs }: { staffId: string; sup
         </div>
       )}
 
+      {!(form && !loading && items.length === 0) && (
+      <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
       {loading ? (
         <div className="p-6 animate-pulse space-y-3">
           <div className="h-8 bg-surface-2 rounded-lg" />
@@ -1048,7 +1039,9 @@ function CredentialsTab({ staffId, supabase, vaultDocs }: { staffId: string; sup
           </table>
         </div>
       )}
-    </ProfileSection>
+      </div>
+      )}
+    </div>
   )
 }
 
@@ -1088,7 +1081,13 @@ function AvailabilityTab({
 
 
   return (
-    <ProfileSection Icon={CalendarDays} title="Availability" subtitle="When you are open to picking up shifts">
+    <div className="space-y-4">
+      <div>
+        <h2 className="flex items-center gap-2 text-lg font-bold text-text-main"><CalendarDays className="h-5 w-5 text-brand-600" /> Availability</h2>
+        <p className="text-xs text-muted">When you are open to picking up shifts</p>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-white shadow-sm">
       <div className="p-6 space-y-6">
         {message && (
           <div className={`p-3 rounded-xl text-sm font-medium border ${message.includes('Error') ? 'bg-red-50 text-red-700 border-red-100' : 'bg-brand-50 text-[#16a34a] border-[#bbf7d0]'}`}>
@@ -1154,7 +1153,8 @@ function AvailabilityTab({
           </button>
         </div>
       </div>
-    </ProfileSection>
+      </div>
+    </div>
   )
 }
 

@@ -166,7 +166,7 @@ export default function PostShiftPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto pb-12">
+    <div className="max-w-2xl pb-12">
       <div className="mb-6">
         <Link
           href="/center/shifts"

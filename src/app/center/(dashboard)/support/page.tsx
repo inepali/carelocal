@@ -80,7 +80,7 @@ export default function CenterSupportPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-6xl">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
         <div>
           <h1 className="text-3xl font-extrabold text-heading mb-1">Support</h1>

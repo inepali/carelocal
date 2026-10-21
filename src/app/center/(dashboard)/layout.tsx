@@ -113,7 +113,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
           <Link href="/center/dashboard" className="flex items-center gap-2">
             {domainKey === 'childcare' ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src="/logo.jpg" alt="CareLocal" width={64} height={64} className="h-16 w-16 rounded-xl object-contain bg-white" />
+              <img src="/logo.png" alt="CareLocal" width={64} height={64} className="h-16 w-16 rounded-xl object-contain bg-white" />
             ) : (
               <div className="w-7 h-7 rounded-md bg-brand-600 flex items-center justify-center">
                 <span className="text-white font-bold text-xs">{domainKey === 'healthcare' ? 'CLH' : 'CLS'}</span>

@@ -48,7 +48,7 @@ export default function CenterJobsPage() {
     : null
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-6xl">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-extrabold text-heading mb-1">Jobs</h1>
@@ -111,7 +111,7 @@ export default function CenterJobsPage() {
                       <td className="px-4 py-4">{daysOpen(job) ?? '—'}</td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-2">
-                          <Link href={`/center/jobs/${job.id}/edit`} className="rounded-lg border border-border px-3 py-1.5 text-xs font-bold text-brand-600 hover:bg-brand-50">Edit</Link>
+                          <Link href={`/center/jobs/${job.id}/edit`} className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-800">Edit</Link>
                           <Link href={`/center/jobs/${job.id}`} className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-800">Applicants</Link>
                         </div>
                       </td>

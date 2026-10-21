@@ -53,7 +53,6 @@ type FormState = {
   dueDays: string            // '' = no deadline
   renewalType: RenewalType
   renewalMonths: string
-  groupLabel: string
   roles: string[]
   classes: EmploymentClass[]
 }
@@ -61,7 +60,7 @@ type FormState = {
 const EMPTY_FORM: FormState = {
   name: '', notes: '', category: '', section: 'personnel', newSectionName: '', evidenceType: 'staff_document',
   isRequired: true, isConfidential: false, isConditional: false, dueDays: '', renewalType: 'none',
-  renewalMonths: '12', groupLabel: '', roles: [], classes: [],
+  renewalMonths: '12', roles: [], classes: [],
 }
 
 export default function DocumentsTab() {
@@ -141,7 +140,6 @@ export default function DocumentsTab() {
       ...EMPTY_FORM,
       section: section ?? 'personnel',
       isConfidential: section === 'health',
-      groupLabel: section === 'health_safety' ? 'Health & Safety Training' : '',
     })
     setShowForm(true)
     setShowTemplates(false)
@@ -163,7 +161,6 @@ export default function DocumentsTab() {
       dueDays: req.due_within_days == null ? '' : String(req.due_within_days),
       renewalType: req.renewal_type,
       renewalMonths: String(req.renewal_months ?? 12),
-      groupLabel: req.group_label || '',
       roles: req.applies_to || [],
       classes: req.applies_to_class || [],
     })
@@ -237,7 +234,6 @@ export default function DocumentsTab() {
       due_within_days: form.dueDays === '' ? null : Math.max(0, parseInt(form.dueDays, 10) || 0),
       renewal_type: form.renewalType,
       renewal_months: form.renewalType === 'interval' ? Math.max(1, parseInt(form.renewalMonths, 10) || 12) : null,
-      group_label: form.groupLabel.trim() || null,
       applies_to: form.roles.length > 0 ? form.roles : null,
       applies_to_class: form.classes.length > 0 ? form.classes : null,
       ...templateData,
@@ -364,7 +360,7 @@ export default function DocumentsTab() {
       due_within_days: item.due_within_days,
       renewal_type: item.renewal_type,
       renewal_months: item.renewal_type === 'interval' ? item.renewal_months ?? 12 : null,
-      group_label: item.group_label,
+      group_label: null,
       applies_to: null,
       applies_to_class: item.applies_to_class,
       sort_order: nextSort[item.section] = (nextSort[item.section] ?? 0) + 1,
@@ -503,7 +499,7 @@ export default function DocumentsTab() {
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className={LBL}>Due</label>
                 <select
@@ -531,10 +527,6 @@ export default function DocumentsTab() {
                     <span className="text-sm text-muted">months</span>
                   </div>
                 )}
-              </div>
-              <div>
-                <label className={LBL}>Group (optional)</label>
-                <input value={form.groupLabel} onChange={e => setForm({ ...form, groupLabel: e.target.value })} placeholder="e.g. Health & Safety Training" className={FLD} />
               </div>
             </div>
 

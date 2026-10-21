@@ -151,7 +151,7 @@ export function computeCompliance(
   req: Pick<CenterDocumentRequirement, 'due_within_days' | 'renewal_type' | 'renewal_months'>
     & Partial<Pick<CenterDocumentRequirement, 'policy_version' | 'policy_updated_at'>>,
   record: Pick<CenterStaffDocumentStatus, 'status' | 'completed_on' | 'reviewed_at' | 'expires_on' | 'not_applicable'>
-    & Partial<Pick<CenterStaffDocumentStatus, 'acknowledged_version'>> | null | undefined,
+    & Partial<Pick<CenterStaffDocumentStatus, 'acknowledged_version' | 'due_on'>> | null | undefined,
   employmentStartDate: string | null | undefined,
   documentExpiry?: string | null,
   today: Date = new Date(),
@@ -161,15 +161,17 @@ export function computeCompliance(
 
   if (record?.not_applicable) return { state: 'not_applicable', dueDate: null, completedOn: null }
 
+  // A due date the center set by hand replaces the calculated one
+  const override = parseDate(record?.due_on)
   const start = parseDate(employmentStartDate)
-  const initialDue = start && req.due_within_days != null ? addDays(start, req.due_within_days) : null
+  const initialDue = override ?? (start && req.due_within_days != null ? addDays(start, req.due_within_days) : null)
 
   // Acknowledged an older version of a policy that has since changed: acknowledge again
   if (
     record?.status === 'accepted' && req.renewal_type === 'policy_change' &&
     record.acknowledged_version != null && (req.policy_version ?? 1) > record.acknowledged_version
   ) {
-    const due = parseDate(req.policy_updated_at) ?? now
+    const due = override ?? parseDate(req.policy_updated_at) ?? now
     return { state: due < now ? 'overdue' : 'due_soon', dueDate: due, completedOn: parseDate(record.completed_on) }
   }
 
@@ -178,6 +180,7 @@ export function computeCompliance(
     let next: Date | null = null
     if (req.renewal_type === 'interval' && req.renewal_months && completedOn) next = addMonths(completedOn, req.renewal_months)
     if (req.renewal_type === 'document_expiry') next = parseDate(record.expires_on) ?? parseDate(documentExpiry)
+    if (override) next = override
 
     const state: ComplianceState = !next ? 'current' : next < now ? 'overdue' : next <= soon ? 'due_soon' : 'current'
     return { state, dueDate: next, completedOn }

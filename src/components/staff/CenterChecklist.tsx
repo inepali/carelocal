@@ -217,7 +217,7 @@ export function CenterChecklist({
                                                             <button onClick={() => handleUnlink(record.id)} className="font-semibold text-red-600 hover:underline">Unlink</button>
                                                          )}
                                                          {(record?.status !== 'accepted' || result.state === 'overdue' || result.state === 'due_soon') && (
-                                                            <button onClick={() => setLinkingReq(req)} className="rounded-lg bg-brand-900 px-3 py-1.5 font-bold text-white hover:bg-black">
+                                                            <button onClick={() => setLinkingReq(req)} className="rounded-lg bg-brand-600 px-3 py-1.5 font-bold text-white hover:bg-brand-800">
                                                                {doc ? 'Replace' : req.evidence_type === 'training' ? 'Link certificate' : 'Link document'}
                                                             </button>
                                                          )}

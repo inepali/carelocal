@@ -82,45 +82,46 @@ export function JobAlerts() {
   const roles = roleLookups.filter(r => r.is_active)
 
   return (
-    <section className="mb-8 rounded-2xl border border-border bg-white p-5 shadow-sm">
-      <div className="mb-3 flex items-center gap-2">
-        <Bell className="h-5 w-5 text-brand-600" />
-        <h2 className="text-lg font-bold text-text-main">Job alerts</h2>
+    <section className="mb-8">
+      <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <h2 className="flex items-center gap-2 text-lg font-bold text-text-main"><Bell className="h-5 w-5 text-brand-600" /> Job alerts</h2>
+          <p className="text-xs text-muted">Get a notification when a center posts a job that matches.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} aria-label="Role" className="rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-medium text-text-main focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600">
+            <option value="">Any role</option>
+            {roles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+          </select>
+          <select value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} aria-label="Area" className="rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-medium text-text-main focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600">
+            <option value="">Anywhere in my metro area</option>
+            {cities.map(c => <option key={`${c.city}|${c.state ?? ''}`} value={`${c.city}|${c.state ?? ''}`}>{c.city}{c.state ? `, ${c.state}` : ''}</option>)}
+          </select>
+          <button disabled={saving || !staffId} onClick={add} className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-800 disabled:opacity-50 shrink-0">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Add alert
+          </button>
+        </div>
       </div>
-      <p className="mb-4 text-sm text-muted">Get a notification when a center posts a job that matches. You can pause or delete an alert any time.</p>
 
-      {loading ? (
-        <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-brand-600" /></div>
-      ) : (
-        <>
-          {alerts.length > 0 && (
-            <ul className="mb-4 divide-y divide-border rounded-xl border border-border">
-              {alerts.map(a => (
-                <li key={a.id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
-                  <span className={`flex-1 ${a.is_active ? 'text-text-main' : 'text-subtle line-through'}`}>{describe(a)}</span>
-                  <button onClick={() => toggle(a)} title={a.is_active ? 'Pause' : 'Resume'} className="rounded-lg p-1.5 text-muted hover:bg-brand-50 hover:text-brand-600">
-                    {a.is_active ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
-                  </button>
-                  <button onClick={() => remove(a)} title="Delete" className="rounded-lg p-1.5 text-subtle hover:bg-red-50 hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="flex flex-wrap items-center gap-2">
-            <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} className="rounded-xl border border-border bg-white px-3 py-2 text-sm">
-              <option value="">Any role</option>
-              {roles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-            </select>
-            <select value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} className="rounded-xl border border-border bg-white px-3 py-2 text-sm">
-              <option value="">Anywhere in my metro area</option>
-              {cities.map(c => <option key={`${c.city}|${c.state ?? ''}`} value={`${c.city}|${c.state ?? ''}`}>{c.city}{c.state ? `, ${c.state}` : ''}</option>)}
-            </select>
-            <button disabled={saving || !staffId} onClick={add} className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-800 disabled:opacity-50">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Add alert
-            </button>
-          </div>
-        </>
-      )}
+      <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+        {loading ? (
+          <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-brand-600" /></div>
+        ) : alerts.length === 0 ? (
+          <div className="px-6 py-6 text-sm text-muted">No job alerts yet. Choose a role and area above, then select Add alert.</div>
+        ) : (
+          <ul className="divide-y divide-border">
+            {alerts.map(a => (
+              <li key={a.id} className="flex items-center gap-3 px-6 py-3 text-sm">
+                <span className={`flex-1 ${a.is_active ? 'text-text-main' : 'text-subtle line-through'}`}>{describe(a)}</span>
+                <button onClick={() => toggle(a)} title={a.is_active ? 'Pause' : 'Resume'} className="rounded-lg p-1.5 text-muted hover:bg-brand-50 hover:text-brand-600">
+                  {a.is_active ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+                </button>
+                <button onClick={() => remove(a)} title="Delete" className="rounded-lg p-1.5 text-subtle hover:bg-red-50 hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </section>
   )
 }

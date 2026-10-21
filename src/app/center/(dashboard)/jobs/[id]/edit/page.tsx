@@ -28,7 +28,7 @@ export default function EditJobPage() {
   }, [id])
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-6xl">
       <Link href={`/center/jobs/${id}`} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-muted hover:text-brand-600"><ArrowLeft className="h-4 w-4" /> Back to the job</Link>
       <h1 className="mb-8 text-3xl font-extrabold text-heading">Edit job</h1>
       {missing ? <p className="text-muted">Job not found.</p>
