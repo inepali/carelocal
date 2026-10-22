@@ -247,6 +247,7 @@ export function ScheduleTourButton({ handle, centerName, domain }: { handle: str
                           ))}
                         </div>
                       </div>
+                      <p className="text-xs text-muted">We share these details with {centerName} so it can respond and arrange your tour. See our <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-600 hover:underline">Privacy Policy</a>. Please do not include medical details.</p>
                       <div>
                         <label className={LBL} htmlFor="tour-message">Anything else we should know?</label>
                         <textarea id="tour-message" rows={3} maxLength={1000} value={form.message} onChange={e => set('message', e.target.value)} className={`${FLD} resize-none`} placeholder="Questions, accessibility needs, who will join you on the tour…" />

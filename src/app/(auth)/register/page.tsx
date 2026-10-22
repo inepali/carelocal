@@ -474,6 +474,8 @@ function RegisterForm() {
                     >
                       Terms & Conditions
                     </button>
+                    {' '}and{' '}
+                    <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline">Privacy Policy</a>
                   </label>
                 </div>
 
