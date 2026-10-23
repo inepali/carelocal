@@ -102,24 +102,31 @@ export async function purgeCenter(
   }
 
   // Collect everything that needs cleaning up outside the center's own rows
-  const [{ data: internalDocs }, { data: inspectionFiles }, { data: templates }, { data: admins }] = await Promise.all([
+  const [{ data: internalDocs }, { data: inspectionFiles }, { data: templates }, { data: admins }, { data: childFiles }] = await Promise.all([
     db.from('center_internal_documents').select('file_key, bucket_name').eq('center_id', centerId),
     db.from('center_inspection_files').select('file_key, bucket_name').eq('center_id', centerId),
     // audience-ok: purging a center must remove the stored files of every audience
     db.from('center_document_requirements').select('template_file_key, template_bucket_name').eq('center_id', centerId),
     db.from('center_admins').select('user_id').eq('center_id', centerId),
+    db.from('child_files').select('file_key, bucket_name').eq('center_id', centerId),
   ])
   const files: StoredFile[] = [
     ...(internalDocs ?? []).map(d => ({ bucket: d.bucket_name, key: d.file_key })),
     ...(inspectionFiles ?? []).map(d => ({ bucket: d.bucket_name, key: d.file_key })),
     ...(templates ?? []).map(d => ({ bucket: d.template_bucket_name, key: d.template_file_key })),
+    ...(childFiles ?? []).map(d => ({ bucket: d.bucket_name, key: d.file_key })),
   ]
   const adminUserIds = (admins ?? []).map(a => a.user_id as string)
 
   // Ratings are keyed by id without a foreign key, so they are not removed by the cascade
   await db.from('shift_reviews').delete().or(`reviewee_id.eq.${centerId},reviewer_id.eq.${centerId}`)
 
-  // Every table that references centers deletes with it (ON DELETE CASCADE)
+  // Children are protected from cascade deletion on purpose (ON DELETE RESTRICT). A purge removes them
+  // explicitly, with their guardians, records, files and audit trail (those cascade from the child).
+  const { count: childCount, error: childError } = await db.from('children').delete({ count: 'exact' }).eq('center_id', centerId)
+  if (childError) return fail(`Could not remove the center's child records: ${childError.message}`)
+
+  // Every other table that references centers deletes with it (ON DELETE CASCADE)
   const { error } = await db.from('centers').delete().eq('id', centerId)
   if (error) return fail(`Could not delete the center: ${error.message}`)
 
@@ -140,7 +147,7 @@ export async function purgeCenter(
     }
   }
 
-  console.warn(`[data-cleanup] super admin ${caller.id} deleted center ${center.id} "${center.name}"`)
+  console.warn(`[data-cleanup] super admin ${caller.id} deleted center ${center.id} "${center.name}" (${childCount ?? 0} child records)`)
   return { success: true, filesRemoved: storage.removed, filesFailed: storage.failed, accountsRemoved }
 }
 
