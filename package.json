@@ -11,7 +11,8 @@
     "cap:sync": "next build && npx cap sync",
     "cap:open:ios": "npx cap open ios",
     "cap:open:android": "npx cap open android",
-    "check:audience": "node scripts/check-audience.mjs"
+    "check:audience": "node scripts/check-audience.mjs",
+    "test:rls": "node --experimental-strip-types --no-warnings scripts/rls/child-access.test.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1030.0",
