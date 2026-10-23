@@ -66,10 +66,10 @@ async function must(promise, what) {
   return data
 }
 
-async function makeUser(label) {
+async function makeUser(label, appMetadata) {
   const email = `${label}-${RUN}@${EMAIL_DOMAIN}`
   const password = `${randomBytes(12).toString('hex')}Aa1!`
-  const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true })
+  const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, ...(appMetadata ? { app_metadata: appMetadata } : {}) })
   if (error) throw new Error(`createUser ${label}: ${errText(error)}`)
   created.users.push(data.user.id)
   return { id: data.user.id, email, password, label }
@@ -122,8 +122,8 @@ async function main() {
   await sweepStale()
 
   // Two centers and the people around them
-  const A = await makeCenter('a')
-  const B = await makeCenter('b')
+  const A = await makeCenter('a', { child_files_enabled: true })
+  const B = await makeCenter('b', { child_files_enabled: true })
   const people = {}
   for (const label of ['ownerA', 'adminA', 'staffAdminA', 'regularA', 'subA', 'outsider', 'ownerB']) people[label] = await makeUser(label)
 
@@ -297,6 +297,106 @@ async function main() {
   await admin.from('children').delete().eq('center_id', D)
   const deliberate = await admin.from('centers').delete().eq('id', D)
   check('once the children are removed on purpose the center can be deleted', !deliberate.error, errText(deliberate.error))
+
+  // 9. The Child Files switch ──────────────────────────────────────────────────────────────────────
+  console.log('')
+  console.log('9. The Child Files switch')
+  await admin.from('centers').update({ child_files_enabled: false }).eq('id', A)
+  for (const t of TABLES) {
+    const { data } = await clients.ownerA.from(t).select('id')
+    check(`switch off: ownerA reads ${t} → 0 rows`, (data ?? []).length === 0, `${(data ?? []).length} row(s)`)
+  }
+  const offInsert = await clients.ownerA.from('children').insert(newChild(A)).select('id')
+  check('switch off: ownerA cannot add a child', !!offInsert.error && !(offInsert.data?.length), errText(offInsert.error) || 'it succeeded')
+  await clients.ownerA.from('centers').update({ child_files_enabled: true }).eq('id', A)
+  const flagNow = (await admin.from('centers').select('child_files_enabled').eq('id', A).single()).data?.child_files_enabled
+  check('a center owner cannot turn the switch on for their own center', flagNow === false, `flag is ${flagNow}`)
+  const superU = await makeUser('superAdmin', { is_super_admin: true })
+  const superClient = await signIn(superU)
+  await superClient.from('centers').update({ child_files_enabled: true }).eq('id', A)
+  const flagAfter = (await admin.from('centers').select('child_files_enabled').eq('id', A).single()).data?.child_files_enabled
+  check('a super admin can turn the switch on', flagAfter === true, `flag is ${flagAfter}`)
+  const superReads = await superClient.from('children').select('id')
+  check('even a super admin cannot read child records through the app', (superReads.data ?? []).length === 0, `${(superReads.data ?? []).length} row(s)`)
+  const back = await clients.ownerA.from('children').select('id')
+  check('switch on again: ownerA sees the center children', (back.data ?? []).length >= 1, `${(back.data ?? []).length} row(s)`)
+
+  // 10. The data layer the screens use ─────────────────────────────────────────────────────────────
+  console.log('')
+  console.log('10. Screen data layer (as the signed-in owner)')
+  const kids = await import('../../src/lib/children.ts')
+  const engine = await import('../../src/lib/compliance.ts')
+  const ownerSb = clients.ownerA
+  const today = new Date()
+  const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const daysAgo = n => iso(new Date(today.getFullYear(), today.getMonth(), today.getDate() - n))
+  const daysFromNow = n => daysAgo(-n)
+
+  const added = await kids.addChild(ownerSb, A,
+    { first_name: 'Cora', last_name: 'Data', date_of_birth: '2023-02-03', enrolled_on: daysAgo(40), first_attended_on: daysAgo(40), classroom_id: classA.id },
+    [{ name: 'Dana Data', relationship: 'Mother', phone: '7045550100', email: 'dana@example.invalid' }, { name: 'Dale Data', relationship: 'Father' }])
+  check('addChild creates an enrolled child', added.success && added.child.status === 'enrolled', JSON.stringify(added).slice(0, 200))
+  const dataChild = added.child
+  const contacts = (await admin.from('child_guardians').select('is_primary, can_pick_up').eq('child_id', dataChild.id)).data ?? []
+  check('two contacts: the first is primary and nobody is authorized for pick-up by default',
+    contacts.length === 2 && contacts.filter(g => g.is_primary).length === 1 && contacts.every(g => g.can_pick_up === false), JSON.stringify(contacts))
+
+  const overview = await kids.loadChildrenOverview(ownerSb, A)
+  check('the list loads the children, the NC child rules and the classrooms',
+    overview.success && overview.children.some(c => c.id === dataChild.id) && overview.requirements.length >= 17 && overview.classrooms.length >= 1, overview.success ? `${overview.requirements.length} rules` : overview.error)
+
+  const file = await kids.loadChildFile(ownerSb, dataChild.id)
+  const rule = key => file.requirements.find(r => r.template_key === 'nc-child:' + key)
+  const immunization = rule('immunization')
+  const application = rule('application')
+  const start = dataChild.first_attended_on
+  const stateOf = (req, record) => engine.computeCompliance(req, record, start, null, today).state
+  check('the file loads guardians, rules and the audit trail', !!file && file.guardians.length === 2 && file.audit.length >= 1 && !!immunization && !!application)
+  check('40 days after the first day a missing immunization record is OVERDUE (30-day rule)', stateOf(immunization, null) === 'overdue', stateOf(immunization, null))
+  check('a missing application is overdue (it was due on day 1)', stateOf(application, null) === 'overdue', stateOf(application, null))
+
+  const extended = await kids.saveChildRecord(ownerSb, A, dataChild.id, immunization.id, { due_on: daysFromNow(20), review_notes: 'Physician certified a longer series' }, people.ownerA.id)
+  check('the director can record a physician extension (a due date) with a comment', extended.success && extended.record.due_on === daysFromNow(20) && /Physician/.test(extended.record.review_notes ?? ''), extended.success ? '' : extended.error)
+  check('with the extension the item is no longer overdue', extended.success && stateOf(immunization, extended.record) !== 'overdue', extended.success ? stateOf(immunization, extended.record) : '')
+  const accepted = await kids.saveChildRecord(ownerSb, A, dataChild.id, immunization.id, { status: 'accepted', completed_on: daysAgo(5), due_on: null }, people.ownerA.id)
+  check('accepting the record makes it current', accepted.success && stateOf(immunization, accepted.record) === 'current', accepted.success ? stateOf(immunization, accepted.record) : accepted.error)
+  check('the record shows who reviewed it and when', accepted.success && accepted.record.reviewed_by === people.ownerA.id && !!accepted.record.reviewed_at)
+  const auditAfter = (await ownerSb.from('child_audit_log').select('summary').eq('child_id', dataChild.id)).data ?? []
+  check('the status change is in the audit trail by name, with no health details', auditAfter.some(a => /Immunization Record.*accepted/.test(a.summary ?? '')), JSON.stringify(auditAfter.map(a => a.summary)).slice(0, 200))
+
+  const classified = await kids.setImmunizationStatus(ownerSb, dataChild.id, 'complete')
+  check('the immunization status can be classified for the state report', classified.success && classified.child.immunization_status === 'complete')
+  const withdrawn = await kids.withdrawChild(ownerSb, dataChild.id, daysAgo(0))
+  check('withdrawing records the date that starts the 1-year retention clock', withdrawn.success && withdrawn.child.status === 'withdrawn' && withdrawn.child.withdrawn_on === daysAgo(0))
+  const reenrolled = await kids.reenrollChild(ownerSb, dataChild.id, daysAgo(0))
+  check('a withdrawn child can be re-enrolled', reenrolled.success && reenrolled.child.status === 'enrolled' && reenrolled.child.withdrawn_on === null)
+
+  const pickup = await kids.saveGuardian(ownerSb, A, dataChild.id, { name: 'Pat Pickup', relationship: 'Aunt', can_pick_up: true })
+  const pickupAudit = (await ownerSb.from('child_audit_log').select('summary').eq('child_id', dataChild.id)).data ?? []
+  check('authorizing someone for pick-up is audited', pickup.success && pickupAudit.some(a => /Pat Pickup.*authorized to pick up/.test(a.summary ?? '')))
+  const removedContact = await kids.deleteGuardian(ownerSb, pickup.guardian.id)
+  check('a contact can be removed', removedContact.success)
+
+  const regularFile = await kids.loadChildFile(clients.regularA, dataChild.id)
+  check('a regular employee gets nothing from loadChildFile (the same answer as not found)', regularFile === null)
+  const regularSave = await kids.saveChildRecord(clients.regularA, A, dataChild.id, immunization.id, { status: 'accepted' }, people.regularA.id)
+  check('a regular employee cannot save a record', regularSave.success === false)
+  const regularAdd = await kids.addChild(clients.regularA, A, { first_name: 'X', last_name: 'Y', date_of_birth: '2022-01-01' })
+  check('a regular employee cannot add a child, and the message is a plain sentence', regularAdd.success === false && /not turned on|do not have access/.test(regularAdd.error), regularAdd.error)
+
+  const tour = await must(admin.from('center_tour_requests').insert({
+    center_id: A, first_name: 'Tess', last_name: 'Tour', email: 'tess@example.invalid', phone: '7045550111', tour_type: 'in_person',
+    alternate_times: 'Weekdays after 3', children: [{ name: 'Milo Tour', dob: null }, { name: 'Nia', dob: '2024-01-02' }],
+  }).select('*').single(), 'tour request')
+  const enrolledFromTour = await kids.enrollFromTourRequest(ownerSb, tour, 0, { date_of_birth: '2023-06-07' })
+  check('a tour request child becomes an enrolled child linked to the request',
+    enrolledFromTour.success && enrolledFromTour.child.first_name === 'Milo' && enrolledFromTour.child.last_name === 'Tour' && enrolledFromTour.child.source_tour_request_id === tour.id,
+    enrolledFromTour.success ? '' : enrolledFromTour.error)
+  const tourGuardians = enrolledFromTour.success ? (await admin.from('child_guardians').select('is_primary, is_emergency_contact, can_pick_up').eq('child_id', enrolledFromTour.child.id)).data ?? [] : []
+  check('the parent who asked is the primary and emergency contact, NOT authorized for pick-up',
+    tourGuardians.length === 1 && tourGuardians[0].is_primary && tourGuardians[0].is_emergency_contact && tourGuardians[0].can_pick_up === false)
+  const noSuchChild = await kids.enrollFromTourRequest(ownerSb, tour, 5, { date_of_birth: '2023-01-01' })
+  check('a child that is not on the request is refused', noSuchChild.success === false)
 }
 
 let crashed = null

@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { LogOut, LayoutDashboard, Users, UserPlus, Info, Calendar, Tags, LifeBuoy, ClipboardCheck, Truck, Baby, Building2, UserCircle, Inbox, ShieldCheck, Briefcase, CalendarCheck } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
-import { CenterContext } from './context'
+import { CenterContext, canOpenChildFiles } from './context'
 import type { DomainKey } from '@/lib/domain-config'
 
 // Dev/demo tool: jumps the browser to another vertical's domain (it does not change the
@@ -29,6 +29,9 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
   const [domainKey, setDomainKey] = useState<DomainKey>('childcare')
   const [hasStaffProfile, setHasStaffProfile] = useState(false)
   const [jobsEnabled, setJobsEnabled] = useState(false)
+  const [centerId, setCenterId] = useState<string | null>(null)
+  const [role, setRole] = useState<string | null>(null)
+  const [childFilesEnabled, setChildFilesEnabled] = useState(false)
 
   useEffect(() => {
     async function loadCenter() {
@@ -38,16 +41,24 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
       const { data } = await supabase
         .from('center_admins')
         .select(`
+          role,
+          center_id,
           centers (
             name,
             staff_term,
             work_area_term,
             domain_key,
-            jobs_enabled
+            jobs_enabled,
+            child_files_enabled
           )
         `)
         .eq('user_id', user.id)
         .single()
+
+      if (data) {
+        setRole((data as { role?: string }).role ?? null)
+        setCenterId((data as { center_id?: string }).center_id ?? null)
+      }
 
       if (data && data.centers) {
         // @ts-ignore - Supabase type inference limitation with joins
@@ -60,6 +71,8 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
         if (data.centers.domain_key) setDomainKey(data.centers.domain_key)
         // @ts-ignore
         setJobsEnabled(!!data.centers.jobs_enabled)
+        // @ts-ignore
+        setChildFilesEnabled(!!data.centers.child_files_enabled)
       }
 
       // Admins who are also employees can switch to their own staff portal
@@ -91,6 +104,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
     { name: 'Dashboard', href: '/center/dashboard', icon: LayoutDashboard },
     { name: 'Shifts', href: '/center/shifts', icon: Calendar },
     { name: staffTerm, href: '/center/team_member', icon: Users },
+    ...(canOpenChildFiles({ domainKey, role, childFilesEnabled }) ? [{ name: 'Children', href: '/center/children', icon: Baby }] : []),
     ...(jobsEnabled ? [{ name: 'Jobs', href: '/center/jobs', icon: Briefcase }] : []),
     { name: 'Requests', href: '/center/requests', icon: Inbox },
     { name: 'Tours', href: '/center/tours', icon: CalendarCheck },
@@ -106,7 +120,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <CenterContext.Provider value={{ staffTerm, workAreaTerm, domainKey }}>
+    <CenterContext.Provider value={{ staffTerm, workAreaTerm, domainKey, centerId, role, childFilesEnabled }}>
       <div className="center-shell min-h-screen bg-surface flex font-sans">
       {/* ── Sidebar ── */}
       <aside className="w-64 bg-brand-900 text-white flex flex-col fixed inset-y-0 z-10">

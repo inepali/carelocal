@@ -5,6 +5,8 @@ import { CalendarCheck, CalendarClock, Loader2, Mail, Phone, X } from 'lucide-re
 import { createClient } from '@/lib/supabase/client'
 import { updateTourRequest } from '@/app/actions/tour-requests.actions'
 import { showAlert, showConfirm } from '@/lib/dialog'
+import { canOpenChildFiles, useCenterContext } from '../context'
+import { EnrollFromTour } from '../children/_components/EnrollFromTour'
 import {
   CONTACT_TIMES, TOUR_STATUS_LABELS, TOUR_STATUS_STYLE, TOUR_TIME_SLOTS, formatSlot, formatTourDate, topicLabel,
   type CenterTourRequest, type TourStatus,
@@ -32,6 +34,7 @@ function whenOf(r: CenterTourRequest) {
 
 /** Center admin: tour requests from the public page. Confirm, complete or cancel each one. */
 export default function ToursPage() {
+  const ctx = useCenterContext()
   const [loading, setLoading] = useState(true)
   const [rows, setRows] = useState<CenterTourRequest[]>([])
   const [filter, setFilter] = useState<Filter>('new')
@@ -169,6 +172,7 @@ export default function ToursPage() {
                   </ul>
                 </div>
               )}
+              {canOpenChildFiles(ctx) && <EnrollFromTour request={open} />}
               {open.alternate_times && <div><div className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted">When they are free</div><p className="whitespace-pre-line text-text-main">{open.alternate_times}</p></div>}
               {open.topics.length > 0 && (
                 <div>

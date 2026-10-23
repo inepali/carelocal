@@ -35,6 +35,10 @@ type Fail = { success: false; error: string }
 const fail = (error: string): Fail => ({ success: false, error })
 const NOT_FOUND = 'Child not found or you do not have access to it.'
 
+/** A plain-language answer when the storage bucket has not been set up, instead of a generic failure */
+const NOT_CONFIGURED = 'File storage for child records is not set up yet. Ask your administrator to set R2_CHILD_BUCKET.'
+const setupProblem = (error: unknown) => (error instanceof Error && error.message.includes('R2_CHILD_BUCKET') ? NOT_CONFIGURED : null)
+
 function childBucket() {
   const bucket = process.env.R2_CHILD_BUCKET
   if (!bucket) throw new Error('R2_CHILD_BUCKET is not set')
@@ -73,7 +77,7 @@ export async function getChildUploadUrl(childId: string, contentType: string, si
     return { success: true as const, uploadUrl, fileKey, bucketName }
   } catch (error) {
     console.error('[child-files] upload url failed:', error)
-    return fail('Failed to prepare the upload.')
+    return fail(setupProblem(error) ?? 'Failed to prepare the upload.')
   }
 }
 
@@ -128,7 +132,7 @@ export async function registerChildFile(childId: string, input: {
     return { success: true as const, fileId: data.id as string }
   } catch (error) {
     console.error('[child-files] register failed:', error)
-    return fail('Failed to save the file.')
+    return fail(setupProblem(error) ?? 'Failed to save the file.')
   }
 }
 
@@ -156,7 +160,7 @@ export async function getChildFileUrl(fileId: string) {
     return { success: true as const, url }
   } catch (error) {
     console.error('[child-files] view url failed:', error)
-    return fail('Failed to open the document.')
+    return fail(setupProblem(error) ?? 'Failed to open the document.')
   }
 }
 
@@ -179,6 +183,6 @@ export async function deleteChildFile(fileId: string) {
     return { success: true as const }
   } catch (error) {
     console.error('[child-files] delete failed:', error)
-    return fail('Failed to delete the file.')
+    return fail(setupProblem(error) ?? 'Failed to delete the file.')
   }
 }
