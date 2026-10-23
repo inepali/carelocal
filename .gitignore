@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# one-off local debugging scripts (use the service-role key; never commit)
+/scripts/local/
