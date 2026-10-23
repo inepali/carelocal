@@ -28,7 +28,7 @@ const HOW_IT_WORKS = [
   {
     step: '02',
     title: 'Invite nursing pool',
-    desc: 'Send unique invite links to your RNs, LPNs, CNAs, and caregivers. Their accounts are always free.',
+    desc: 'Send unique invite links to your RNs, LPNs, CNAs, and caregivers. Their accounts are free to join.',
     icon: Users,
   },
   {
@@ -122,7 +122,7 @@ const FAQS = [
   },
   {
     q: "Is CareLocal Health free for nurses and CNAs?",
-    a: "Yes! Nurse, CNA, and caregiver accounts are 100% free. Health staff can create profiles, upload certifications, and claim shifts from any mobile browser without paying any fees or subscriptions. While account usage has no limits, a small platform maintenance fee is applied to the staff member's balance for each assigned shift."
+    a: "Yes, it is free to join. Nurse, CNA, and caregiver accounts have no subscription: create a profile, upload certifications, and claim shifts from any mobile browser. A small platform maintenance fee, set by your metro area, may be added to your balance when you check in to a shift."
   },
   {
     q: "How does the 3-month free trial work?",
@@ -208,7 +208,7 @@ export default function HealthcareHomePage() {
           </div>
 
           <p className="mt-5 text-sm text-brand-500">
-            3-month free trial · No setup fees · Nursing accounts always 100% free
+            3-month free trial · No setup fees · Free staff accounts
           </p>
         </div>
 
@@ -307,7 +307,7 @@ export default function HealthcareHomePage() {
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-brand-900 mb-4">Simple, transparent pricing</h2>
             <p className="text-brand-500 text-lg max-w-xl mx-auto">
-              Facilities pay a flat monthly subscription. Medical staff accounts are <strong>always free</strong>.
+              Facilities pay a flat monthly subscription. Medical staff accounts are <strong>free to join</strong>.
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-6">

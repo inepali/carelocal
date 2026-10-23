@@ -85,7 +85,7 @@ export const DOMAIN_CONFIGS: Record<DomainKey, DomainConfig> = {
       subtitle: 'CareLocal is the staffing coordination platform built exclusively for childcare centers. Post a shift, blast your staff pool via SMS, and get confirmation — before you finish your coffee.',
       ctaPrimary: 'Start your free trial',
       ctaSecondary: 'See how it works',
-      footnote: '3-month free trial · No credit card required · Staff accounts always free'
+      footnote: '3-month free trial · No credit card required · Staff accounts free to join'
     },
     stats: [
       { val: '< 4 hrs', label: 'Avg. shift fill time' },
@@ -102,7 +102,7 @@ export const DOMAIN_CONFIGS: Record<DomainKey, DomainConfig> = {
       {
         step: '02',
         title: 'Invite your staff pool',
-        desc: 'Send unique invite links to your teachers, floaters, support staff, and cooks. Their accounts are always free.',
+        desc: 'Send unique invite links to your teachers, floaters, support staff, and cooks. Their accounts are free to join.',
         iconName: 'Users'
       },
       {
@@ -159,7 +159,7 @@ export const DOMAIN_CONFIGS: Record<DomainKey, DomainConfig> = {
       },
       {
         q: 'Is CareLocal free for daycare teachers and substitutes?',
-        a: "Yes! Teacher, floater, and substitute accounts are 100% free. Childcare staff can create profiles, upload certifications, and claim shifts from any mobile browser without paying any fees or subscriptions. While account usage has no limits, a small platform maintenance fee is applied to the staff member's balance for each assigned shift."
+        a: "Yes, it is free to join. Teacher, floater, and substitute accounts have no subscription: create a profile, upload certifications, and claim shifts from any mobile browser. A small platform maintenance fee, set by your metro area, may be added to your balance when you check in to a shift."
       },
       {
         q: 'How does the 3-month free trial work?',
@@ -230,7 +230,7 @@ export const DOMAIN_CONFIGS: Record<DomainKey, DomainConfig> = {
       subtitle: 'CareLocal Health is the staffing coordination platform built exclusively for healthcare facilities. Post a shift, blast your credentialed nursing pool via SMS, and get shifts claimed instantly.',
       ctaPrimary: 'Start free clinic trial',
       ctaSecondary: 'Learn details',
-      footnote: '3-month free trial · No setup fees · Nursing accounts always 100% free'
+      footnote: '3-month free trial · No setup fees · Free staff accounts'
     },
     stats: [
       { val: '< 15 mins', label: 'Avg. shift fill time' },
@@ -247,7 +247,7 @@ export const DOMAIN_CONFIGS: Record<DomainKey, DomainConfig> = {
       {
         step: '02',
         title: 'Invite nursing pool',
-        desc: 'Send unique invite links to your RNs, LPNs, CNAs, and caregivers. Their accounts are always free.',
+        desc: 'Send unique invite links to your RNs, LPNs, CNAs, and caregivers. Their accounts are free to join.',
         iconName: 'Users'
       },
       {
@@ -304,7 +304,7 @@ export const DOMAIN_CONFIGS: Record<DomainKey, DomainConfig> = {
       },
       {
         q: 'Is CareLocal Health free for nurses and CNAs?',
-        a: "Yes! Nurse, CNA, and caregiver accounts are 100% free. Health staff can create profiles, upload certifications, and claim shifts from any mobile browser without paying any fees or subscriptions. While account usage has no limits, a small platform maintenance fee is applied to the staff member's balance for each assigned shift."
+        a: "Yes, it is free to join. Nurse, CNA, and caregiver accounts have no subscription: create a profile, upload certifications, and claim shifts from any mobile browser. A small platform maintenance fee, set by your metro area, may be added to your balance when you check in to a shift."
       },
       {
         q: 'How does the 3-month free trial work?',
@@ -379,7 +379,7 @@ DOMAIN_CONFIGS.senior = {
     subtitle: 'CareLocal Senior helps home-care agencies, assisted-living communities, and senior-care teams fill call-outs with a trusted, qualified caregiver network.',
     ctaPrimary: 'Start your free trial',
     ctaSecondary: 'See how it works',
-    footnote: '3-month free trial · No setup fees · Caregiver accounts always free'
+    footnote: '3-month free trial · No setup fees · Free to join for caregivers'
   },
   stats: [
     { val: '< 2 hrs', label: 'Avg. coverage response' },

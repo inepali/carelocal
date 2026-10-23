@@ -7,7 +7,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const org = config.domainKey === 'healthcare' ? 'Facilities' : config.domainKey === 'senior' ? 'Care organizations' : 'Childcare centers'
   return {
     title: 'Start Your Free Trial',
-    description: `Create your ${config.appName} account. ${org} get a free trial of staffing and compliance tools — staff accounts are always free.`,
+    description: `Create your ${config.appName} account. ${org} get a free trial of staffing and compliance tools — staff accounts are free to join.`,
     alternates: { canonical: '/register' },
   }
 }

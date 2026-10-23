@@ -206,7 +206,7 @@ function RegisterForm() {
           </h1>
           <p className="text-muted mb-8">
             {isStaffInvite 
-              ? 'Complete your profile to start claiming shifts. Staff accounts are always free.' 
+              ? 'Complete your profile to start claiming shifts. Staff accounts are free to join.' 
               : config.onboarding.roleSubtitle}
           </p>
 

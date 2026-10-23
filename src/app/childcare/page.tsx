@@ -28,7 +28,7 @@ const HOW_IT_WORKS = [
   {
     step: '02',
     title: 'Invite your staff pool',
-    desc: 'Send unique invite links to your teachers, floaters, support staff, and cooks. Their accounts are always free.',
+    desc: 'Send unique invite links to your teachers, floaters, support staff, and cooks. Their accounts are free to join.',
     icon: Users,
   },
   {
@@ -126,7 +126,7 @@ const FAQS = [
   },
   {
     q: "Is CareLocal free for daycare teachers and substitutes?",
-    a: "Yes! Teacher, floater, and substitute accounts are 100% free. Childcare staff can create profiles, upload certifications, and claim shifts from any mobile browser without paying any fees or subscriptions. While account usage has no limits, a small platform maintenance fee is applied to the staff member's balance for each assigned shift."
+    a: "Yes, it is free to join. Teacher, floater, and substitute accounts have no subscription: create a profile, upload certifications, and claim shifts from any mobile browser. A small platform maintenance fee, set by your metro area, may be added to your balance when you check in to a shift."
   },
   {
     q: "How does the 3-month free trial work?",
@@ -210,7 +210,7 @@ export default function ChildcareHomePage() {
           </div>
 
           <p className="mt-5 text-sm text-muted">
-            3-month free trial · No credit card required · Staff accounts always free
+            3-month free trial · No credit card required · Staff accounts free to join
           </p>
         </div>
 
@@ -309,7 +309,7 @@ export default function ChildcareHomePage() {
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-heading mb-4">Simple, transparent pricing</h2>
             <p className="text-muted text-lg max-w-xl mx-auto">
-              Centers pay a flat monthly subscription. Staff accounts are <strong>always free</strong>.
+              Centers pay a flat monthly subscription. Staff accounts are <strong>free to join</strong>.
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-6">
