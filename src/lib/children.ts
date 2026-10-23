@@ -48,7 +48,7 @@ async function childRequirements(supabase: SupabaseClient, centerId: string) {
 }
 
 async function classrooms(supabase: SupabaseClient, centerId: string) {
-  const { data } = await supabase.from('work_areas').select('id, name').eq('center_id', centerId).eq('is_active', true).order('name')
+  const { data } = await supabase.from('work_areas').select('id, name').eq('center_id', centerId).eq('is_active', true).order('sort_order').order('name')
   return (data ?? []) as Classroom[]
 }
 

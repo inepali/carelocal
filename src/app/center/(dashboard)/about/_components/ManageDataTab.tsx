@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Edit2, Trash2, Save, X, Loader2, Database, RotateCcw } from 'lucide-react'
+import { Plus, Edit2, Trash2, Save, X, Loader2, Database, RotateCcw, ChevronUp, ChevronDown } from 'lucide-react'
 import {
   LOOKUP_GROUPS, fetchLookupRows, mergeLookups, resolveLookupScope,
   type LookupGroup, type LookupItem
@@ -156,6 +156,31 @@ export default function ManageDataTab() {
     await afterChange(error)
   }
 
+  // Rearrange: renumber the whole list so every item has a distinct position, saving only what changed.
+  // A platform default that moves gets a center row (same label and value) to hold its position.
+  async function move(index: number, delta: -1 | 1) {
+    if (!scope) return
+    const target = index + delta
+    if (target < 0 || target >= items.length) return
+    const list = [...items]
+    ;[list[index], list[target]] = [list[target], list[index]]
+    const changed = list.map((item, i) => ({ item, position: i })).filter(({ item, position }) => item.sort_order !== position)
+    setItems(list.map((item, i) => ({ ...item, sort_order: i })))
+    const results = await Promise.all(changed.map(({ item, position }) => item.centerRowId
+      ? supabase.from('center_lookups').update({ sort_order: position }).eq('id', item.centerRowId)
+      : supabase.from('center_lookups').insert({
+          center_id: scope.centerId,
+          group_name: activeGroup,
+          label: item.label,
+          value: item.value,
+          is_active: item.is_active,
+          sort_order: position,
+          domain_key: scope.domainKey,
+        })))
+    const failed = results.find(r => r.error)
+    await afterChange(failed?.error ?? null)
+  }
+
   async function handleRemove(item: LookupItem) {
     if (!item.centerRowId) return
     const message = item.source === 'override'
@@ -268,8 +293,8 @@ export default function ManageDataTab() {
               </div>
             ) : (
               <div className="space-y-3">
-                {items.map(item => {
-                  const badge = SOURCE_BADGE[item.source]
+                {items.map((item, index) => {
+                  const badge = SOURCE_BADGE[item.source === 'override' && item.defaultRow?.label === item.label && item.defaultRow.is_active === item.is_active ? 'default' : item.source]
                   return (
                     <div key={item.value} className="flex items-center justify-between p-4 bg-white border border-border rounded-2xl hover:border-brand-600 transition-colors group">
                       {editing === item.value ? (
@@ -322,6 +347,8 @@ export default function ManageDataTab() {
 
                       {editing !== item.value && (
                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                          <button onClick={() => move(index, -1)} disabled={index === 0} title="Move up" className="p-1.5 text-muted hover:text-brand-600 bg-slate-50 hover:bg-brand-50 rounded-lg transition-colors disabled:opacity-30"><ChevronUp className="w-4 h-4" /></button>
+                          <button onClick={() => move(index, 1)} disabled={index === items.length - 1} title="Move down" className="p-1.5 text-muted hover:text-brand-600 bg-slate-50 hover:bg-brand-50 rounded-lg transition-colors disabled:opacity-30"><ChevronDown className="w-4 h-4" /></button>
                           <button
                             onClick={() => toggleStatus(item)}
                             className="px-3 py-1.5 text-xs font-bold rounded-lg border border-border hover:bg-slate-50 text-muted"

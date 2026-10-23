@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { WorkArea } from '@/lib/types'
-import { Plus, Edit2, Trash2, Save, X, Loader2, Home, Users } from 'lucide-react'
+import { Plus, Edit2, Trash2, Save, X, Loader2, Home, Users, ChevronUp, ChevronDown } from 'lucide-react'
 import { showConfirm } from '@/lib/dialog'
 
 type FormState = { name: string; ageGroup: string; capacity: string }
@@ -29,6 +29,7 @@ export function WorkAreasPanel({ centerId, workAreaTerm }: { centerId: string; w
       .from('work_areas')
       .select('*')
       .eq('center_id', centerId)
+      .order('sort_order', { ascending: true })
       .order('name', { ascending: true })
     if (error) setError(error.message)
     setWorkAreas(data || [])
@@ -58,7 +59,7 @@ export function WorkAreasPanel({ centerId, workAreaTerm }: { centerId: string; w
       capacity: form.capacity ? parseInt(form.capacity, 10) : null,
     }
     const { error } = editing === 'new'
-      ? await supabase.from('work_areas').insert({ ...payload, center_id: centerId, is_active: true })
+      ? await supabase.from('work_areas').insert({ ...payload, center_id: centerId, is_active: true, sort_order: (workAreas[workAreas.length - 1]?.sort_order ?? -1) + 1 })
       : await supabase.from('work_areas').update(payload).eq('id', editing)
     setSaving(false)
     if (error) {
@@ -73,6 +74,20 @@ export function WorkAreasPanel({ centerId, workAreaTerm }: { centerId: string; w
     const { error } = await supabase.from('work_areas').update({ is_active: !area.is_active }).eq('id', area.id)
     if (error) setError(error.message)
     else loadData()
+  }
+
+  async function move(index: number, delta: -1 | 1) {
+    const target = index + delta
+    if (target < 0 || target >= workAreas.length) return
+    const list = [...workAreas]
+    ;[list[index], list[target]] = [list[target], list[index]]
+    const changed = list.map((a, i) => ({ id: a.id, sort_order: i, before: a.sort_order })).filter(a => a.sort_order !== a.before)
+    setWorkAreas(list.map((a, i) => ({ ...a, sort_order: i })))
+    const results = await Promise.all(changed.map(c => supabase.from('work_areas').update({ sort_order: c.sort_order }).eq('id', c.id)))
+    if (results.some(r => r.error)) {
+      setError('Failed to save the new order')
+      loadData()
+    }
   }
 
   async function handleDelete(area: WorkArea) {
@@ -164,7 +179,7 @@ export function WorkAreasPanel({ centerId, workAreaTerm }: { centerId: string; w
           </div>
         ) : (
           <div className="space-y-3">
-            {workAreas.map(area => (
+            {workAreas.map((area, index) => (
               <div key={area.id} className="flex items-center justify-between p-4 bg-white border border-border rounded-2xl hover:border-brand-600 transition-colors group">
                 {editing === area.id ? (
                   <div className="flex-1 flex flex-col sm:flex-row items-start sm:items-center gap-3">
@@ -185,6 +200,8 @@ export function WorkAreasPanel({ centerId, workAreaTerm }: { centerId: string; w
                     </div>
 
                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                      <button onClick={() => move(index, -1)} disabled={index === 0} title="Move up" className="p-1.5 text-muted hover:text-brand-600 bg-slate-50 hover:bg-brand-50 rounded-lg transition-colors disabled:opacity-30"><ChevronUp className="w-4 h-4" /></button>
+                      <button onClick={() => move(index, 1)} disabled={index === workAreas.length - 1} title="Move down" className="p-1.5 text-muted hover:text-brand-600 bg-slate-50 hover:bg-brand-50 rounded-lg transition-colors disabled:opacity-30"><ChevronDown className="w-4 h-4" /></button>
                       <button
                         onClick={() => toggleStatus(area)}
                         className="px-3 py-1.5 text-xs font-bold rounded-lg border border-border hover:bg-slate-50 text-muted"

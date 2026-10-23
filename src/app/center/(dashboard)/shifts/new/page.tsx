@@ -56,6 +56,8 @@ export default function PostShiftPage() {
           .from('work_areas')
           .select('*')
           .eq('center_id', adminData.center_id)
+          .order('sort_order', { ascending: true })
+          .order('name', { ascending: true })
 
         if (rooms) setWorkAreas(rooms)
       }

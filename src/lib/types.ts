@@ -243,6 +243,8 @@ export interface WorkArea {
   capacity?: number
   notes?: string
   is_active: boolean
+  /** Position in dropdowns (Manage Data lets the center rearrange them) */
+  sort_order: number
   created_at: string
 }
 

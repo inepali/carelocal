@@ -105,6 +105,8 @@ export default function ShiftDetailPage() {
         .from('work_areas')
         .select('*')
         .eq('center_id', shiftData.center_id)
+        .order('sort_order', { ascending: true })
+        .order('name', { ascending: true })
       
       setWorkAreas(rooms || [])
 

@@ -28,7 +28,7 @@ export function EnrollFromTour({ request }: { request: CenterTourRequest }) {
     const supabase = createClient()
     Promise.all([
       supabase.from('children').select('*').eq('source_tour_request_id', request.id),
-      supabase.from('work_areas').select('id, name').eq('center_id', request.center_id).eq('is_active', true).order('name'),
+      supabase.from('work_areas').select('id, name').eq('center_id', request.center_id).eq('is_active', true).order('sort_order').order('name'),
     ]).then(([kids, rooms]) => {
       setExisting((kids.data ?? []) as Child[])
       setClassrooms((rooms.data ?? []) as Classroom[])

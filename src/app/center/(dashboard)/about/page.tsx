@@ -9,6 +9,8 @@ import AboutListEditor from './_components/AboutListEditor'
 import SubscriptionTab from './_components/SubscriptionTab'
 import ManageDataTab from './_components/ManageDataTab'
 import DocumentsTab from './_components/DocumentsTab'
+import ChildDocumentsTab from './_components/ChildDocumentsTab'
+import { canOpenChildFiles, useCenterContext } from '../context'
 import PublicPageTab from './_components/PublicPageTab'
 import { useLookups } from '@/hooks/use-lookups'
 import { lookupLabel } from '@/lib/lookups'
@@ -35,6 +37,16 @@ export default function CenterAboutPage() {
     return TABS.find(t => t.id === hash)?.id ?? 'profile'
   })
   const [centerId, setCenterId] = useState<string | null>(null)
+  // Staff / Children switch on the Documents tab (children only for childcare centers with Child Files on)
+  const ctx = useCenterContext()
+  const showChildToggle = canOpenChildFiles(ctx)
+  const [docAudience, setDocAudience] = useState<'staff' | 'child'>(() => {
+    try { return window.localStorage.getItem('about-docs-audience') === 'child' ? 'child' : 'staff' } catch { return 'staff' }
+  })
+  function selectAudience(a: 'staff' | 'child') {
+    setDocAudience(a)
+    try { window.localStorage.setItem('about-docs-audience', a) } catch { /* remembering the choice is optional */ }
+  }
   // Roles from Manage Data → Roles
   const { data: roleLookups } = useLookups('Role')
   const roleOptions = roleLookups.filter(r => r.is_active).map(r => ({ value: r.value, label: r.label }))
@@ -230,7 +242,26 @@ export default function CenterAboutPage() {
           </div>
 
           <div role="tabpanel" id="about-panel-documents" aria-labelledby="about-tab-documents" hidden={activeTab !== 'documents'}>
-            {activeTab === 'documents' && <DocumentsTab />}
+            {activeTab === 'documents' && (
+              <>
+                {showChildToggle && (
+                  <div role="group" aria-label="Whose documents" className="mb-8 inline-flex rounded-xl border border-border bg-white p-1">
+                    {(['staff', 'child'] as const).map(a => (
+                      <button
+                        key={a}
+                        type="button"
+                        aria-pressed={docAudience === a}
+                        onClick={() => selectAudience(a)}
+                        className={`rounded-lg px-5 py-2 text-sm font-semibold transition-colors ${docAudience === a ? 'bg-brand-600 text-white' : 'text-muted hover:bg-surface'}`}
+                      >
+                        {a === 'staff' ? 'Staff' : 'Children'}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {showChildToggle && docAudience === 'child' ? <ChildDocumentsTab /> : <DocumentsTab />}
+              </>
+            )}
           </div>
 
           <div role="tabpanel" id="about-panel-public" aria-labelledby="about-tab-public" hidden={activeTab !== 'public'}>

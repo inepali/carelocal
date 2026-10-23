@@ -397,6 +397,30 @@ async function main() {
     tourGuardians.length === 1 && tourGuardians[0].is_primary && tourGuardians[0].is_emergency_contact && tourGuardians[0].can_pick_up === false)
   const noSuchChild = await kids.enrollFromTourRequest(ownerSb, tour, 5, { date_of_birth: '2023-01-01' })
   check('a child that is not on the request is refused', noSuchChild.success === false)
+
+  // 10. Managing the child checklist (About > Documents > Children) ────────────────────────────────
+  console.log('\n10. Managing child requirements')
+  const newRule = { center_id: A, audience: 'child', document_name: 'RLS Field Trip Permission', section: 'child_custom_enrichment', section_label: 'Enrichment', document_category: 'other', evidence_type: 'staff_document', is_required: true, is_confidential: true }
+  const addRule = await ownerSb.from('center_document_requirements').insert(newRule).select('id').single()
+  check('the owner can add a child requirement, including a custom child section', !addRule.error && !!addRule.data?.id, errText(addRule.error))
+  const editRule = addRule.data ? await ownerSb.from('center_document_requirements').update({ due_within_days: 14, renewal_type: 'interval', renewal_months: 12 }).eq('id', addRule.data.id).select('due_within_days').single() : { error: { message: 'no rule' } }
+  check('the owner can edit it (due date and renewal)', !editRule.error && editRule.data?.due_within_days === 14, errText(editRule.error))
+  const childInStaff = await ownerSb.from('center_document_requirements').insert({ ...newRule, section: 'personnel', document_name: 'RLS bad 1' })
+  check('a child requirement cannot be put in a staff section', !!childInStaff.error, 'inserted')
+  const staffInChild = await ownerSb.from('center_document_requirements').insert({ ...newRule, audience: 'staff', document_name: 'RLS bad 2' })
+  check('a staff requirement cannot be put in a child section', !!staffInChild.error, 'inserted')
+  const staffView = (await ownerSb.from('center_document_requirements').select('id').eq('center_id', A).eq('audience', 'staff')).data ?? []
+  check('the staff checklist never lists child requirements', !!addRule.data && !staffView.some(r => r.id === addRule.data.id))
+  if (addRule.data) {
+    await must(admin.from('child_documents').insert({ center_id: A, child_id: dataChild.id, requirement_id: addRule.data.id, status: 'accepted' }).select('id').single(), 'doc for rule')
+    const ruleFile = await must(admin.from('child_files').insert({ center_id: A, child_id: dataChild.id, requirement_id: addRule.data.id, file_key: `child/${A}/${dataChild.id}/${randomUUID()}.pdf`, bucket_name: 'rls-test', file_name: 'permission.pdf' }).select('id').single(), 'file for rule')
+    const delRule = await ownerSb.from('center_document_requirements').delete().eq('id', addRule.data.id).select('id')
+    const leftover = (await admin.from('child_documents').select('id').eq('requirement_id', addRule.data.id)).data ?? []
+    const keptFile = (await admin.from('child_files').select('id, requirement_id').eq('id', ruleFile.id).maybeSingle()).data
+    check('deleting a rule removes its statuses but keeps the uploaded file, now unfiled', !delRule.error && delRule.data?.length === 1 && leftover.length === 0 && !!keptFile && keptFile.requirement_id === null, errText(delRule.error))
+  }
+  const regularRule = await clients.regularA.from('center_document_requirements').insert({ ...newRule, document_name: 'RLS regular' }).select('id')
+  check('a regular employee cannot add a child requirement', !!regularRule.error || !regularRule.data?.length)
 }
 
 let crashed = null
