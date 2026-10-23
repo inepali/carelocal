@@ -181,6 +181,8 @@ export interface StaffDocument {
 export interface CenterDocumentRequirement {
   id: string
   center_id: string
+  /** Who the rule is for. Staff screens must only ever list 'staff' rules (see scripts/check-audience.mjs) */
+  audience?: 'staff' | 'child'
   document_name: string
   document_category: DocumentCategory
   is_required: boolean

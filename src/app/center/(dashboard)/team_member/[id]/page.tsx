@@ -144,6 +144,7 @@ export default function StaffReviewPage() {
         .from('center_document_requirements')
         .select('*')
         .eq('center_id', admin.center_id)
+        .eq('audience', 'staff')
         .order('sort_order', { ascending: true })
       setRequirements((reqs || []).filter(r => appliesToEmploymentClass(r, memberClass)))
 

@@ -46,7 +46,7 @@ export function CenterChecklist({
       const supabase = createClient()
 
       const [{ data: allReqs }, { data: statusData }, { data: docs }, { data: membership }] = await Promise.all([
-         supabase.from('center_document_requirements').select('*').eq('center_id', centerId)
+         supabase.from('center_document_requirements').select('*').eq('center_id', centerId).eq('audience', 'staff')
             .order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
          supabase.from('center_staff_document_status').select('*').eq('center_id', centerId).eq('staff_id', staffId),
          supabase.from('staff_documents').select('*').eq('staff_id', staffId).order('uploaded_at', { ascending: false }),

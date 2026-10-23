@@ -154,6 +154,7 @@ function DocumentsContent() {
           .from('center_document_requirements')
           .select('*')
           .eq('center_id', centerData.id)
+          .eq('audience', 'staff')
           .order('sort_order', { ascending: true })
         setRequirements((reqs || []).filter(r => !r.is_internal && appliesToEmploymentClass(r, membership?.employment_class)))
         setStartDate(membership?.employment_start_date ?? null)

@@ -74,7 +74,7 @@ export function JobForm({ job, jobItems }: { job?: JobPosting; jobItems?: { requ
       if (!user) return
       const { data: admin } = await supabase.from('center_admins').select('center_id').eq('user_id', user.id).limit(1).maybeSingle()
       if (!admin) return
-      const { data } = await supabase.from('center_document_requirements').select('*').eq('center_id', admin.center_id)
+      const { data } = await supabase.from('center_document_requirements').select('*').eq('center_id', admin.center_id).eq('audience', 'staff')
         .order('sort_order', { ascending: true }).order('created_at', { ascending: true })
       const reqs = ((data ?? []) as CenterDocumentRequirement[]).filter(r => !r.is_internal && r.evidence_type !== 'center_record')
       setRequirements(reqs)

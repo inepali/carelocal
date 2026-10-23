@@ -109,6 +109,7 @@ export default function DocumentsTab() {
         .from('center_document_requirements')
         .select('*')
         .eq('center_id', id)
+        .eq('audience', 'staff')
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true })
       setRequirements(data || [])

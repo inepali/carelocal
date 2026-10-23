@@ -105,6 +105,7 @@ export async function purgeCenter(
   const [{ data: internalDocs }, { data: inspectionFiles }, { data: templates }, { data: admins }] = await Promise.all([
     db.from('center_internal_documents').select('file_key, bucket_name').eq('center_id', centerId),
     db.from('center_inspection_files').select('file_key, bucket_name').eq('center_id', centerId),
+    // audience-ok: purging a center must remove the stored files of every audience
     db.from('center_document_requirements').select('template_file_key, template_bucket_name').eq('center_id', centerId),
     db.from('center_admins').select('user_id').eq('center_id', centerId),
   ])

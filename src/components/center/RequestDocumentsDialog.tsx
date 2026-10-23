@@ -69,7 +69,7 @@ export function RequestDocumentsDialog({
       supabase.from('center_staff')
         .select('staff_id, employment_class, employment_start_date, status, staff_profiles(first_name, last_name)')
         .eq('center_id', centerId).eq('status', 'active'),
-      supabase.from('center_document_requirements').select('*').eq('center_id', centerId)
+      supabase.from('center_document_requirements').select('*').eq('center_id', centerId).eq('audience', 'staff')
         .neq('evidence_type', 'center_record').order('section').order('sort_order'),
       supabase.from('center_staff_document_status')
         .select('staff_id, requirement_id, status, completed_on, reviewed_at, expires_on, not_applicable, acknowledged_version, matched_document:staff_documents(expiry_date)')

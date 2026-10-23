@@ -22,7 +22,7 @@ export async function exportCenterRequirementsAsTemplate(centerId: string, name:
   const db = admin()
   const [{ data: center }, { data: rows, error }] = await Promise.all([
     db.from('centers').select('domain_key').eq('id', centerId).maybeSingle(),
-    db.from('center_document_requirements').select('*').eq('center_id', centerId)
+    db.from('center_document_requirements').select('*').eq('center_id', centerId).eq('audience', 'staff')
       .order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
   ])
   if (error || !center) return { success: false as const, error: error?.message ?? 'Center not found' }

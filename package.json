@@ -10,7 +10,8 @@
     "lint": "eslint",
     "cap:sync": "next build && npx cap sync",
     "cap:open:ios": "npx cap open ios",
-    "cap:open:android": "npx cap open android"
+    "cap:open:android": "npx cap open android",
+    "check:audience": "node scripts/check-audience.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1030.0",

@@ -38,7 +38,7 @@ export async function loadCenterCompliance(supabase: SupabaseClient, centerId: s
       .select('staff_id, employment_class, employment_start_date, staff_profiles(user_id, first_name, last_name)')
       .eq('center_id', centerId)
       .eq('status', 'active'),
-    supabase.from('center_document_requirements').select('*').eq('center_id', centerId)
+    supabase.from('center_document_requirements').select('*').eq('center_id', centerId).eq('audience', 'staff')
       .order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
     supabase.from('center_staff_document_status')
       .select('staff_id, requirement_id, status, completed_on, reviewed_at, expires_on, due_on, not_applicable, acknowledged_version, matched_document:staff_documents(expiry_date)')
