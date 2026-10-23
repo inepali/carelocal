@@ -20,6 +20,7 @@ import Link from 'next/link'
 import { exportCenterRequirementsAsTemplate } from '@/app/actions/requirement-templates.actions'
 import { setCenterEnabled } from '@/app/actions/account-status.actions'
 import { setCenterJobsEnabled } from '@/app/actions/jobs.actions'
+import { setCenterChildFilesEnabled } from '@/app/actions/child-files-admin.actions'
 import { purgeCenter } from '@/app/actions/data-cleanup.actions'
 import { PurgeDialog } from '@/components/admin/PurgeDialog'
 import { showAlert, showConfirm, showPrompt } from '@/lib/dialog'
@@ -102,6 +103,19 @@ export default function AdminCentersPage() {
     const res = await setCenterJobsEnabled(center.id, enabling)
     if (!res.success) { showAlert(res.error); return }
     setCenters(prev => prev.map(c => c.id === center.id ? { ...c, jobs_enabled: enabling } : c))
+  }
+
+  const toggleChildFiles = async (center: { id: string; name: string; child_files_enabled?: boolean }) => {
+    const enabling = !center.child_files_enabled
+    if (!await showConfirm(
+      enabling
+        ? `Turn on Child Files for ${center.name}? Its owner and administrators will be able to store children\u2019s records. Only do this once the child records data addendum is accepted.`
+        : `Turn off Child Files for ${center.name}? Nobody at the center can open child records until it is turned on again. Nothing is deleted.`,
+      { title: 'Child Files pilot', confirmLabel: enabling ? 'Turn on' : 'Turn off', tone: 'default' },
+    )) return
+    const res = await setCenterChildFilesEnabled(center.id, enabling)
+    if (!res.success) { showAlert(res.error); return }
+    setCenters(prev => prev.map(c => c.id === center.id ? { ...c, child_files_enabled: enabling } : c))
   }
 
   const exportChecklist = async (center: { id: string; name: string }) => {
@@ -242,6 +256,15 @@ export default function AdminCentersPage() {
                          >
                            {center.jobs_enabled ? 'Jobs on' : 'Jobs off'}
                          </button>
+                         {(center.domain_key ?? 'childcare') === 'childcare' && (
+                           <button
+                             onClick={() => toggleChildFiles(center)}
+                             title="Child Files (child records pilot)"
+                             className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${center.child_files_enabled ? 'text-teal-700 border-teal-200 bg-teal-50 hover:bg-teal-100' : 'text-slate-500 border-slate-200 hover:text-teal-700 hover:border-teal-200'}`}
+                           >
+                             {center.child_files_enabled ? 'Children on' : 'Children off'}
+                           </button>
+                         )}
                          <button
                            onClick={() => toggleEnabled(center)}
                            className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${center.is_active === false ? 'text-emerald-600 border-emerald-200 hover:bg-emerald-50' : 'text-slate-500 border-slate-200 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50'}`}
