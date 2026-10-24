@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, Receipt as ReceiptIcon, Plus, Edit2, Loader2, FileText, Lock } from 'lucide-react'
@@ -13,14 +14,28 @@ type VendorOption = { id: string; name: string }
 const inputClass = 'px-3 py-2.5 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-4 focus:ring-brand-600/10 focus:border-brand-600'
 const formatDay = (iso: string) => new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
+// useSearchParams needs a Suspense boundary so the page can still be prerendered
 export default function ReceiptsPage() {
+  return <Suspense><Receipts /></Suspense>
+}
+
+function Receipts() {
   const supabase = createClient()
   const ctx = useCenterContext()
   const allowed = canManageReceipts(ctx)
   const [loading, setLoading] = useState(true)
   const [receipts, setReceipts] = useState<Receipt[]>([])
   const [vendors, setVendors] = useState<VendorOption[]>([])
-  const [vendorFilter, setVendorFilter] = useState(() => (typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('vendor') ?? ''))
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  // The vendor filter lives in the URL (?vendor=<id>), so a vendor's "N receipts" link opens already filtered
+  const vendorFilter = searchParams.get('vendor') ?? ''
+  function setVendorFilter(vendor: string) {
+    const params = new URLSearchParams(searchParams.toString())
+    if (vendor) params.set('vendor', vendor); else params.delete('vendor')
+    router.replace(params.size ? `${pathname}?${params}` : pathname, { scroll: false })
+  }
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [dialog, setDialog] = useState<{ receipt: Receipt | null } | null>(null)
