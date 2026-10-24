@@ -83,7 +83,7 @@ export default function AdminMetrosPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto pb-12">
+    <div className="pb-12">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-extrabold text-[#0f172a] mb-2">Metro Areas</h1>

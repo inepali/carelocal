@@ -51,7 +51,7 @@ export default function AdminSupportPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div>
       <div className="mb-10">
         <h1 className="text-3xl font-extrabold text-slate-900 mb-2">Support Tickets</h1>
         <p className="text-slate-500">Manage and resolve center support requests.</p>
