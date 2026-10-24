@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { ArrowLeft, Baby, Check, FileText, Loader2, Search, Trash2, Upload } from 'lucide-react'
+import { ArrowLeft, Baby, Check, FileText, Loader2, Lock, Search, Trash2, Upload } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { canOpenChildFiles, useCenterContext } from '../../../context'
 import { deleteChildFile, registerChildFile } from '@/app/actions/child-files.actions'
@@ -120,7 +120,7 @@ export default function ChildIncidentsPage() {
         </div>
       </div>
 
-      <p className="mb-4 text-sm text-muted">Upload each completed incident form as a PDF or a photo (up to 15 MB), then type a short description next to it so it is easy to find later. Only the owner and administrators can see them.</p>
+      <p className="mb-4 text-sm text-muted">Upload each completed incident form as a PDF or a photo (up to 15 MB), then type a short description next to it so it is easy to find later. Once a form has a description it is kept on file and cannot be deleted. Only the owner and administrators can see them.</p>
 
       <section className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-border bg-surface px-6 py-4">
@@ -149,9 +149,15 @@ export default function ChildIncidentsPage() {
                   <NoteField form={form} onSaved={note => setForms(prev => prev.map(f => f.id === form.id ? { ...f, incident_note: note } : f))} />
                   <div className="flex shrink-0 items-center gap-2">
                     <span className="text-xs text-muted">{formatDate(form.created_at.slice(0, 10))}</span>
-                    <button type="button" disabled={busy} onClick={() => remove(form)} aria-label="Delete incident form" className="rounded-lg p-1.5 text-subtle hover:bg-red-50 hover:text-red-500">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    {form.incident_note ? (
+                      <span title="Incident forms with a description are kept on file and cannot be deleted" className="p-1.5 text-subtle">
+                        <Lock className="h-4 w-4" />
+                      </span>
+                    ) : (
+                      <button type="button" disabled={busy} onClick={() => remove(form)} aria-label="Delete incident form" className="rounded-lg p-1.5 text-subtle hover:bg-red-50 hover:text-red-500">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </li>
@@ -163,7 +169,7 @@ export default function ChildIncidentsPage() {
   )
 }
 
-/** The description sits inline next to each form. It saves when the field loses focus, on Enter, or with the check mark; Escape undoes. */
+/** The description sits inline next to each form. It saves when the field loses focus, on Enter, or with the check mark; Escape undoes. It can be reworded but not cleared. */
 function NoteField({ form, onSaved }: { form: IncidentForm; onSaved: (note: string | null) => void }) {
   const saved = form.incident_note ?? ''
   const [draft, setDraft] = useState(saved)
@@ -172,6 +178,8 @@ function NoteField({ form, onSaved }: { form: IncidentForm; onSaved: (note: stri
 
   async function save() {
     if (!dirty || saving) return
+    // Once described, a form is locked on file: the description can change but not be cleared
+    if (saved && !draft.trim()) { setDraft(saved); showAlert('A description cannot be removed once added. You can reword it instead.'); return }
     setSaving(true)
     const note = draft.trim() || null
     const { error } = await createClient().from('child_files').update({ incident_note: note }).eq('id', form.id)

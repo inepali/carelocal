@@ -199,8 +199,10 @@ export async function deleteChildFile(fileId: string) {
   try {
     const { supabase, user } = await session()
     if (!user) return fail('Please sign in again.')
-    const { data: file } = await supabase.from('child_files').select('id, file_key, bucket_name').eq('id', fileId).maybeSingle()
+    const { data: file } = await supabase.from('child_files').select('id, file_key, bucket_name, category, incident_note').eq('id', fileId).maybeSingle()
     if (!file) return fail('Document not found or you do not have access to it.')
+    // Also enforced by the child_files_incident_lock trigger
+    if (file.category === 'incident' && file.incident_note) return fail('An incident form with a description cannot be deleted.')
 
     const { data: removed, error } = await supabase.from('child_files').delete().eq('id', fileId).select('id')
     if (error || !removed?.length) return fail(error?.message ?? 'Could not delete the file.')
