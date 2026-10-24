@@ -13,7 +13,7 @@ import { IMMUNIZATION_STATUS_LABELS, type Child, type ChildDocumentStatus, type 
 import { formatDate } from '@/lib/compliance'
 import { showAlert } from '@/lib/dialog'
 import { AddChildDialog } from './_components/AddChildDialog'
-import { BTN, Pill } from './_components/ui'
+import { BTN, BTN_QUIET_SM, Pill } from './_components/ui'
 
 const IMMUNIZATION_STYLE: Record<ImmunizationStatus, string> = {
   missing: 'bg-amber-50 text-amber-700 border-amber-200',
@@ -163,7 +163,12 @@ export default function ChildrenPage() {
                       </div>
                     </td>
                     <td className="px-4 py-4"><Pill className={IMMUNIZATION_STYLE[child.immunization_status]}>{IMMUNIZATION_STATUS_LABELS[child.immunization_status]}</Pill></td>
-                    <td className="px-6 py-4 text-right"><Link href={`/center/children/${child.id}`} className={BTN}>Open file</Link></td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-2">
+                        <Link href={`/center/children/${child.id}`} className={BTN}>Files</Link>
+                        <Link href={`/center/children/${child.id}/incidents`} className={BTN_QUIET_SM}>Incidents</Link>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -58,7 +58,7 @@ async function readableChild(supabase: Awaited<ReturnType<typeof createClient>>,
 }
 
 /** Step 1 of an upload: a short-lived link to PUT one file to. Nothing is recorded until registerChildFile. */
-export async function getChildUploadUrl(childId: string, contentType: string, sizeBytes: number) {
+export async function getChildUploadUrl(childId: string, contentType: string, sizeBytes: number, category: 'record' | 'incident' = 'record') {
   try {
     const { supabase, user } = await session()
     if (!user) return fail('Please sign in again.')
@@ -70,7 +70,9 @@ export async function getChildUploadUrl(childId: string, contentType: string, si
     if (!sizeBytes || sizeBytes > MAX_UPLOAD_BYTES) return fail('Files must be smaller than 15 MB.')
 
     const bucketName = childBucket()
-    const fileKey = `child/${child.center_id}/${child.id}/${randomUUID()}.${ext}`
+    // Incident forms get their own folder inside the child's folder
+    const folder = category === 'incident' ? 'incidents/' : ''
+    const fileKey = `child/${child.center_id}/${child.id}/${folder}${randomUUID()}.${ext}`
     const uploadUrl = await getSignedUrl(r2, new PutObjectCommand({
       Bucket: bucketName, Key: fileKey, ContentType: contentType, ContentLength: sizeBytes,
     }), { expiresIn: UPLOAD_URL_TTL_SECONDS })
@@ -91,6 +93,7 @@ export async function registerChildFile(childId: string, input: {
   fileName: string
   contentType: string
   requirementId?: string | null
+  category?: 'record' | 'incident'
 }) {
   try {
     const { supabase, user } = await session()
@@ -98,7 +101,8 @@ export async function registerChildFile(childId: string, input: {
     const child = await readableChild(supabase, childId)
     if (!child) return fail(NOT_FOUND)
 
-    const prefix = `child/${child.center_id}/${child.id}/`
+    const category = input.category === 'incident' ? 'incident' : 'record'
+    const prefix = `child/${child.center_id}/${child.id}/${category === 'incident' ? 'incidents/' : ''}`
     if (!input.fileKey.startsWith(prefix) || input.fileKey.includes('..')) return fail('That file is not in this child’s folder.')
     if (!ALLOWED_TYPES[input.contentType]) return fail('Please upload a PDF or a photo (JPG, PNG, WebP, HEIC).')
 
@@ -115,7 +119,8 @@ export async function registerChildFile(childId: string, input: {
     const { data, error } = await supabase.from('child_files').insert({
       center_id: child.center_id,
       child_id: child.id,
-      requirement_id: input.requirementId ?? null,
+      requirement_id: category === 'incident' ? null : input.requirementId ?? null,
+      category,
       file_key: input.fileKey,
       bucket_name: bucketName,
       file_name: input.fileName.slice(0, 200),

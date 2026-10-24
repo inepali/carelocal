@@ -79,7 +79,7 @@ export async function loadChildFile(supabase: SupabaseClient, childId: string) {
   const [guardians, records, files, audit, reqs, rooms] = await Promise.all([
     supabase.from('child_guardians').select('*').eq('child_id', childId).order('created_at'),
     supabase.from('child_documents').select('*').eq('child_id', childId),
-    supabase.from('child_files').select('*').eq('child_id', childId).order('created_at', { ascending: false }),
+    supabase.from('child_files').select('*').eq('child_id', childId).eq('category', 'record').order('created_at', { ascending: false }),
     supabase.from('child_audit_log').select('*').eq('child_id', childId).order('changed_at', { ascending: false }).limit(100),
     childRequirements(supabase, (child as Child).center_id),
     classrooms(supabase, (child as Child).center_id),

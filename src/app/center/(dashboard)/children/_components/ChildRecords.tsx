@@ -8,7 +8,9 @@ import { childRows, childStartDate, engineRecord, summarizeChild, type ChildRow 
 import { CHILD_SECTIONS } from '@/lib/child-template'
 import { saveChildRecord, type ChildRequirement, type RecordChanges } from '@/lib/children'
 import { openChildFile, uploadChildFile } from '@/lib/child-files'
-import { deleteChildFile } from '@/app/actions/child-files.actions'
+import { deleteChildFile, registerChildFile } from '@/app/actions/child-files.actions'
+import { PhoneUploadButton } from '@/components/center/PhoneUploadDialog'
+import type { PhoneUpload } from '@/lib/files'
 import type { Child, ChildDocumentStatus, ChildFile } from '@/lib/child-types'
 import { showAlert, showConfirm } from '@/lib/dialog'
 import { BTN, FLD, LBL, Pill } from './ui'
@@ -110,6 +112,13 @@ export function ChildRecords({ child, requirements, records, files, userId, onCh
     input.click()
   }
 
+  /** A photo sent from the phone is already in storage: just record it against the item */
+  async function recordFromPhone(requirementId: string | null, upload: PhoneUpload) {
+    const res = await registerChildFile(child.id, { fileKey: upload.fileKey, fileName: upload.name, contentType: upload.type, requirementId })
+    if (!res.success) return res.error
+    onChanged()
+  }
+
   async function removeFile(file: ChildFile) {
     if (!await showConfirm(`Delete ${file.file_name}? This cannot be undone.`, { title: 'Delete file', confirmLabel: 'Delete' })) return
     const res = await deleteChildFile(file.id)
@@ -203,6 +212,7 @@ export function ChildRecords({ child, requirements, records, files, userId, onCh
                             <button type="button" disabled={uploadingId === req.id} onClick={() => pickFile(req.id)} className={BTN}>
                               {uploadingId === req.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} Add
                             </button>
+                            <PhoneUploadButton kind="child_record" childId={child.id} label={req.document_name} text="Phone" onReceived={upload => recordFromPhone(req.id, upload)} />
                             <button onClick={() => open(row)} className={BTN}>
                               {isOpen ? <X className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />} {isOpen ? 'Close' : 'Review'}
                             </button>
@@ -277,6 +287,7 @@ export function ChildRecords({ child, requirements, records, files, userId, onCh
           <button type="button" disabled={uploadingId === 'other'} onClick={() => pickFile(null)} className={BTN}>
             {uploadingId === 'other' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} Add
           </button>
+          <PhoneUploadButton kind="child_record" childId={child.id} label="Other document" text="Phone" onReceived={upload => recordFromPhone(null, upload)} />
         </div>
         <div className="divide-y divide-border text-sm">
           {otherFiles.length === 0 ? <div className="px-6 py-5 text-muted">None.</div> : otherFiles.map(f => (

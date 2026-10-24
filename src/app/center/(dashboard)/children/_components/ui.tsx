@@ -6,6 +6,7 @@ import { X } from 'lucide-react'
 export const FLD = 'w-full px-3.5 py-2.5 rounded-xl border border-border bg-white text-sm text-text-main focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600'
 export const LBL = 'block text-sm font-medium text-text-main mb-1.5'
 export const BTN = 'inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-800 disabled:opacity-50'
+export const BTN_QUIET_SM = 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-bold text-brand-600 hover:bg-brand-50 disabled:opacity-50'
 export const BTN_PRIMARY = 'inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-800 disabled:opacity-50'
 export const BTN_QUIET = 'inline-flex items-center justify-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-bold text-muted hover:bg-surface disabled:opacity-50'
 

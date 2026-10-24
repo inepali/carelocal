@@ -9,7 +9,7 @@ import { StaffAvatar } from '@/components/StaffAvatar'
 import { useStaffRoles } from '@/lib/hooks/useStaffRoles'
 import { lookupLabel } from '@/lib/lookups'
 import { showAlert, showConfirm } from '@/lib/dialog'
-import { refreshJobReadiness, setJobStatus } from '@/app/actions/jobs.actions'
+import { refreshJobReadiness, reopenFilledJob, setJobStatus } from '@/app/actions/jobs.actions'
 import {
   BOARD_STAGES, EMPLOYMENT_TYPE_LABELS, JOB_STATUS_STYLE, STAGE_LABELS, formatInterviewTime, formatPay, readinessBadge,
   type JobApplication, type JobPosting, type JobStatus,
@@ -70,6 +70,15 @@ export default function JobBoardPage() {
     load().then(() => refreshJobReadiness(id)).then(() => load())
   }, [id, load])
 
+  async function reopen() {
+    if (!await showConfirm('Reopen this job? It goes live again and starts taking applications for one more opening.', { confirmLabel: 'Reopen' })) return
+    setBusy(true)
+    const res = await reopenFilledJob(id)
+    setBusy(false)
+    if (!res.success) { showAlert(res.error); return }
+    load()
+  }
+
   async function changeStatus(status: Exclude<JobStatus, 'filled'>, confirmText?: string) {
     if (confirmText && !await showConfirm(confirmText, { tone: status === 'closed' ? 'danger' : 'default' })) return
     setBusy(true)
@@ -103,8 +112,15 @@ export default function JobBoardPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href={`/center/jobs/${job.id}/edit`} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-white px-4 py-2 text-sm font-bold text-brand-600 hover:bg-brand-50"><Pencil className="h-4 w-4" /> Edit</Link>
-          {(job.status === 'draft' || job.status === 'closed') && (
-            <button disabled={busy} onClick={() => changeStatus('published')} className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-800 disabled:opacity-50">{job.status === 'draft' ? 'Publish' : 'Reopen'}</button>
+          {job.status === 'draft' && (
+            <button disabled={busy} onClick={() => changeStatus('published')} className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-800 disabled:opacity-50">Publish</button>
+          )}
+          {job.status === 'filled' && (
+            <button disabled={busy} onClick={reopen} className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-800 disabled:opacity-50">Reopen</button>
+          )}
+          {job.status === 'closed' && (
+            <button disabled={busy} onClick={() => changeStatus('archived', 'Archive this job? It moves out of your jobs list (you can still show archived jobs). A closed job cannot be reopened.')}
+              className="rounded-xl border border-border bg-white px-4 py-2 text-sm font-bold text-muted hover:bg-surface disabled:opacity-50">Archive</button>
           )}
           {job.status === 'published' && (
             <button disabled={busy} onClick={() => changeStatus('paused')} className="rounded-xl border border-border bg-white px-4 py-2 text-sm font-bold text-muted hover:bg-surface disabled:opacity-50">Pause</button>

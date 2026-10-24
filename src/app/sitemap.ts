@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next'
 import { headers } from 'next/headers'
 import { getDomainKey } from '@/lib/domain-config'
 import { siteUrl } from '@/lib/site'
-import { listJobCities, listPublicJobs } from '@/lib/server/public-jobs'
+import { listJobCities, listJobCityRoles, listPublicJobs } from '@/lib/server/public-jobs'
 import { listCenterCities, listPublicCenterHandles } from '@/lib/server/public-center'
 
 /** Public pages worth ranking, per domain (login / password pages are noindex). */
@@ -13,12 +13,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const lastModified = new Date()
 
   // Open jobs and the cities hiring (Google for Jobs reads the JobPosting data on each job page)
-  const [jobs, cities, centers, centerCities] = await Promise.all([listPublicJobs(domain), listJobCities(domain), listPublicCenterHandles(domain), listCenterCities(domain)]).catch(() => [[], [], [], []] as const)
+  const [jobs, cities, cityRoles, centers, centerCities] = await Promise.all([listPublicJobs(domain), listJobCities(domain), listJobCityRoles(domain), listPublicCenterHandles(domain), listCenterCities(domain)]).catch(() => [[], [], [], [], []] as const)
 
   return [
     { url: baseUrl, lastModified, changeFrequency: 'weekly', priority: 1.0 },
     { url: `${baseUrl}/jobs`, lastModified, changeFrequency: 'daily', priority: 0.9 },
     ...cities.map(c => ({ url: `${baseUrl}/jobs/in/${c.slug}`, lastModified, changeFrequency: 'daily' as const, priority: 0.8 })),
+    ...cityRoles.map(r => ({ url: `${baseUrl}/jobs/in/${r.citySlug}/${r.roleSlug}`, lastModified, changeFrequency: 'daily' as const, priority: 0.75 })),
     // Centers with a public page that has something to read (thin pages are noindex and left out)
     ...(centers.length > 0 ? [{ url: `${baseUrl}/centers`, lastModified, changeFrequency: 'daily' as const, priority: 0.8 }] : []),
     ...centerCities.map(c => ({ url: `${baseUrl}/centers/in/${c.slug}`, lastModified, changeFrequency: 'weekly' as const, priority: 0.7 })),

@@ -16,13 +16,15 @@ import type { PhoneUpload } from '@/lib/files'
  * onReceived may return an error message; the upload is then rolled back (deleted).
  */
 export function PhoneUploadDialog({
-  kind, label, staffId, askName = false, confirmLabel = 'Use this file', onClose, onReceived,
+  kind, label, staffId, childId, askName = false, confirmLabel = 'Use this file', onClose, onReceived,
 }: {
   kind: HandoffKind
   /** What the phone shows ("Inspection report", "CPR Certification", …) */
   label: string
   /** The employee, for center files about an employee (kind 'internal') */
   staffId?: string
+  /** The child, for child files (kinds 'child_record' and 'child_incident') */
+  childId?: string
   /** Show an editable document name before confirming */
   askName?: boolean
   confirmLabel?: string
@@ -42,7 +44,7 @@ export function PhoneUploadDialog({
 
   // Creates a handoff and draws its QR code (state is only set after the first await)
   async function start() {
-    const res = await createUploadHandoff({ kind, label, staffId })
+    const res = await createUploadHandoff({ kind, label, staffId, childId })
     if (!res.success) { setStatus('error'); setError(res.error); return }
     setHandoffId(res.handoffId)
     setExpiresAt(new Date(res.expiresAt).getTime())
@@ -194,11 +196,12 @@ export function PhoneUploadDialog({
 
 /** A small "Use phone" button that opens the dialog; drop it next to any file picker. */
 export function PhoneUploadButton({
-  kind, label, staffId, onReceived, className, text = 'Use phone', disabled, variant = 'text',
+  kind, label, staffId, childId, onReceived, className, text = 'Use phone', disabled, variant = 'text',
 }: {
   kind: HandoffKind
   label: string
   staffId?: string
+  childId?: string
   onReceived: (upload: PhoneUpload) => Promise<string | void> | string | void
   className?: string
   text?: string
@@ -230,7 +233,7 @@ export function PhoneUploadButton({
           <Smartphone className="h-3.5 w-3.5" /> {text}
         </button>
       )}
-      {open && <PhoneUploadDialog kind={kind} label={label} staffId={staffId} onClose={() => setOpen(false)} onReceived={onReceived} />}
+      {open && <PhoneUploadDialog kind={kind} label={label} staffId={staffId} childId={childId} onClose={() => setOpen(false)} onReceived={onReceived} />}
     </>
   )
 }

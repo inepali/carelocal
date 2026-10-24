@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Briefcase, Loader2, Plus, Users } from 'lucide-react'
+import { Briefcase, ExternalLink, Loader2, Plus, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import {
   BOARD_STAGES, EMPLOYMENT_TYPE_LABELS, JOB_STATUS_STYLE, STAGE_LABELS, formatPay,
@@ -13,8 +13,10 @@ import {
 export default function CenterJobsPage() {
   const [loading, setLoading] = useState(true)
   const [enabled, setEnabled] = useState(false)
+  const [centerSlug, setCenterSlug] = useState<string | null>(null)
   const [jobs, setJobs] = useState<JobPosting[]>([])
   const [now, setNow] = useState(0)
+  const [showArchived, setShowArchived] = useState(false)
   const [counts, setCounts] = useState<Record<string, Partial<Record<ApplicationStage, number>>>>({})
 
   useEffect(() => {
@@ -22,9 +24,10 @@ export default function CenterJobsPage() {
     ;(async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const { data: admin } = await supabase.from('center_admins').select('center_id, centers(jobs_enabled)').eq('user_id', user.id).limit(1).maybeSingle()
-      const center = (Array.isArray(admin?.centers) ? admin.centers[0] : admin?.centers) as { jobs_enabled?: boolean } | null
+      const { data: admin } = await supabase.from('center_admins').select('center_id, centers(jobs_enabled, slug)').eq('user_id', user.id).limit(1).maybeSingle()
+      const center = (Array.isArray(admin?.centers) ? admin.centers[0] : admin?.centers) as { jobs_enabled?: boolean; slug?: string } | null
       setEnabled(!!center?.jobs_enabled)
+      setCenterSlug(center?.slug ?? null)
       if (!admin) { setLoading(false); return }
 
       const [{ data: jobRows }, { data: apps }] = await Promise.all([
@@ -42,6 +45,9 @@ export default function CenterJobsPage() {
       setLoading(false)
     })()
   }, [])
+
+  const archivedCount = jobs.filter(j => j.status === 'archived').length
+  const visibleJobs = jobs.filter(j => showArchived || j.status !== 'archived')
 
   const daysOpen = (job: JobPosting) => job.published_at
     ? Math.max(0, Math.floor((now - new Date(job.published_at).getTime()) / 86_400_000))
@@ -77,6 +83,13 @@ export default function CenterJobsPage() {
           <Link href="/center/jobs/new" className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 font-semibold text-white hover:bg-brand-800"><Plus className="h-5 w-5" /> New job</Link>
         </div>
       ) : (
+        <>
+        {archivedCount > 0 && (
+          <label className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-muted">
+            <input type="checkbox" checked={showArchived} onChange={e => setShowArchived(e.target.checked)} className="accent-brand-600" />
+            Show archived ({archivedCount})
+          </label>
+        )}
         <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[820px] text-left">
@@ -90,14 +103,21 @@ export default function CenterJobsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border text-sm text-text-muted">
-                {jobs.map(job => {
+                {visibleJobs.map(job => {
                   const c = counts[job.id] ?? {}
                   const open = BOARD_STAGES.reduce((n, s) => n + (c[s] ?? 0), 0)
                   const style = JOB_STATUS_STYLE[job.status]
                   return (
                     <tr key={job.id} className="align-top hover:bg-surface">
                       <td className="px-6 py-4">
-                        <Link href={`/center/jobs/${job.id}`} className="font-semibold text-text-main hover:text-brand-600 hover:underline">{job.title}</Link>
+                        <div className="flex items-center gap-1.5">
+                          <Link href={`/center/jobs/${job.id}`} className="font-semibold text-text-main hover:text-brand-600 hover:underline">{job.title}</Link>
+                          {centerSlug && job.status !== 'draft' && (
+                            <a href={`/jobs/${centerSlug}/${job.slug}`} target="_blank" rel="noopener noreferrer" title="View the public page" aria-label={`View the public page for ${job.title}`} className="rounded p-1 text-subtle hover:bg-brand-50 hover:text-brand-600">
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </a>
+                          )}
+                        </div>
                         <div className="text-xs text-muted">{EMPLOYMENT_TYPE_LABELS[job.employment_type]} · {formatPay(job)}</div>
                       </td>
                       <td className="px-4 py-4"><span className={`inline-flex rounded-full border px-2.5 py-1 text-xs ${style.className}`}>{style.label}</span></td>
@@ -122,6 +142,7 @@ export default function CenterJobsPage() {
             </table>
           </div>
         </div>
+        </>
       )}
     </div>
   )

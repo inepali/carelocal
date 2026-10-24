@@ -5,8 +5,9 @@ import { notFound } from 'next/navigation'
 import { ArrowLeft, CalendarDays, Clock, MapPin } from 'lucide-react'
 import { getDomainKey, getDomainConfig } from '@/lib/domain-config'
 import { siteUrl } from '@/lib/site'
-import { getPublicJob, publicRoleLabels, citySlug, type PublicJob } from '@/lib/server/public-jobs'
-import { EMPLOYMENT_TYPE_LABELS, benefitLabel, formatPay } from '@/lib/jobs'
+import { createClient } from '@/lib/supabase/server'
+import { getPublicJob, listPublicJobRequirements, publicRoleLabels, citySlug, type PublicJob } from '@/lib/server/public-jobs'
+import { EMPLOYMENT_TYPE_LABELS, JOB_STATUS_STYLE, NEEDED_AT_LABELS, benefitLabel, formatPay } from '@/lib/jobs'
 import { JobsShell, jobPath } from '../../_components/JobsShell'
 
 type Props = { params: Promise<{ centerSlug: string; jobSlug: string }> }
@@ -60,7 +61,9 @@ function jobPostingJsonLd(job: PublicJob, baseUrl: string) {
     directApply: false,
     url: `${baseUrl}${jobPath(job)}`,
   }
-  if (job.closes_at) data.validThrough = job.closes_at
+  // A job that is no longer open is marked as expired, so Google Jobs drops it while the page itself stays up
+  if (job.status !== 'published') data.validThrough = job.updated_at
+  else if (job.closes_at) data.validThrough = job.closes_at
   if (job.start_date) data.jobStartDate = job.start_date
   if (job.pay_min != null) {
     data.baseSalary = {
@@ -81,11 +84,17 @@ export default async function PublicJobPage({ params }: Props) {
   const job = await getPublicJob(domain, centerSlug, jobSlug)
   if (!job) notFound()
 
-  const roles = await publicRoleLabels(domain)
+  const [roles, requirements] = await Promise.all([publicRoleLabels(domain), listPublicJobRequirements(job.id)])
   const config = getDomainConfig(domain)
   const applyPath = `/staff/jobs/${job.id}?apply=1`
   const place = [job.center.city, job.center.state].filter(Boolean).join(', ')
   const jsonLd = JSON.stringify(jobPostingJsonLd(job, siteUrl(domain))).replace(/</g, '\\u003c')
+  const open = job.status === 'published'
+  const closedNotice = job.status === 'paused' ? 'This job is not taking applications right now.'
+    : job.status === 'filled' ? 'This position has been filled.' : 'This job is closed.'
+  // Signed-in people (center admins, staff) also see the job's real status; visitors only see whether it is open
+  const { data: { user } } = await (await createClient()).auth.getUser()
+  const statusStyle = JOB_STATUS_STYLE[job.status]
 
   return (
     <JobsShell domain={domain}>
@@ -96,6 +105,9 @@ export default async function PublicJobPage({ params }: Props) {
         </Link>
 
         <div className="mb-8 rounded-[2rem] border-2 border-border bg-white p-8 shadow-sm">
+          {user && (
+            <p className="mb-3"><span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${statusStyle.className}`}>Status: {statusStyle.label}</span> <span className="text-xs text-muted">Only you can see this label.</span></p>
+          )}
           <h1 className="text-3xl font-black tracking-tight text-heading">{job.title}</h1>
           <p className="mt-2 flex flex-wrap items-center gap-3 text-muted">
             {job.center.publicHandle
@@ -112,15 +124,42 @@ export default async function PublicJobPage({ params }: Props) {
             <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-4 w-4" />Starts {job.start_date ? new Date(`${job.start_date}T00:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'as soon as possible'}</span>
             {(job.schedule_summary || job.hours_per_week) && <span className="inline-flex items-center gap-1.5"><Clock className="h-4 w-4" />{[job.schedule_summary, job.hours_per_week ? `${job.hours_per_week} hrs/week` : null].filter(Boolean).join(' · ')}</span>}
           </div>
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            <Link href={`/login?redirect=${encodeURIComponent(applyPath)}`} className="rounded-xl bg-brand-600 px-8 py-3 text-sm font-black text-white shadow-lg shadow-brand-600/20 hover:bg-brand-800">Apply</Link>
-            <span className="text-sm text-muted">New to {config.appName}? <Link href={`/register?type=staff&redirect=${encodeURIComponent(applyPath)}`} className="font-semibold text-brand-600 hover:underline">Create a free account</Link></span>
-          </div>
+          {open ? (
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <Link href={`/login?redirect=${encodeURIComponent(applyPath)}`} className="inline-flex items-center rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-800">Apply</Link>
+              <span className="text-sm text-muted">New to {config.appName}? <Link href={`/register?type=staff&redirect=${encodeURIComponent(applyPath)}`} className="font-semibold text-brand-600 hover:underline">Create a free account</Link></span>
+            </div>
+          ) : (
+            <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+              <div className="font-bold">{closedNotice}</div>
+              <Link href={place ? `/jobs/in/${citySlug(job.center.city, job.center.state)}` : '/jobs'} className="font-semibold text-brand-600 hover:underline">{place ? `See open jobs in ${place}` : 'See all open jobs'}</Link>
+            </div>
+          )}
         </div>
 
         <div className="rounded-2xl border border-border bg-white p-8 shadow-sm">
           <h2 className="mb-3 text-lg font-bold text-text-main">About the job</h2>
           <p className="whitespace-pre-line leading-relaxed text-text-muted">{job.description}</p>
+          {requirements.length > 0 && (
+            <>
+              <h2 className="mb-1 mt-8 text-lg font-bold text-text-main">Documents you will need</h2>
+              <p className="mb-3 text-sm text-muted">Have these ready. You can keep them in your free account and reuse them for every job.</p>
+              <div className="space-y-4">
+                {(['apply', 'offer', 'start'] as const).map(when => {
+                  const items = requirements.filter(r => r.neededAt === when)
+                  if (items.length === 0) return null
+                  return (
+                    <div key={when}>
+                      <h3 className="mb-1.5 text-sm font-bold uppercase tracking-widest text-muted">{NEEDED_AT_LABELS[when]}</h3>
+                      <ul className="list-disc space-y-1 pl-5 text-text-muted">
+                        {items.map(r => <li key={`${when}-${r.name}`}>{r.name}</li>)}
+                      </ul>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          )}
           {job.benefits.length > 0 && (
             <>
               <h3 className="mb-2 mt-6 text-sm font-bold uppercase tracking-widest text-muted">Benefits</h3>

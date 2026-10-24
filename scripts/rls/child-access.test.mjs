@@ -459,6 +459,87 @@ async function main() {
     const delReceipt = await ownerSb.from('center_receipts').delete().eq('id', addReceipt.data.id).select('id')
     check('the owner can delete a receipt', !delReceipt.error && delReceipt.data?.length === 1, errText(delReceipt.error))
   }
+
+  // 12. Child incident forms ────────────────────────────────────────────────────────────────────────
+  console.log('\n12. Incident forms')
+  const incidentRow = (extra = {}) => ({
+    center_id: A, child_id: dataChild.id, category: 'incident', requirement_id: null, bucket_name: 'rls-test', file_name: 'incident.pdf',
+    file_key: `child/${A}/${dataChild.id}/incidents/${randomUUID()}.pdf`, ...extra,
+  })
+  const incident = await ownerSb.from('child_files').insert(incidentRow()).select('id, category').single()
+  check('the owner can record an incident form in the incidents folder', !incident.error && incident.data?.category === 'incident', errText(incident.error))
+  const adminIncident = await clients.adminA.from('child_files').insert(incidentRow()).select('id').single()
+  check('an administrator can record an incident form', !adminIncident.error, errText(adminIncident.error))
+  const outsideFolder = await ownerSb.from('child_files').insert(incidentRow({ file_key: `child/${A}/${dataChild.id}/${randomUUID()}.pdf` }))
+  check('an incident form outside the incidents folder is refused', !!outsideFolder.error, 'inserted')
+  const recordInIncidents = await ownerSb.from('child_files').insert(incidentRow({ category: 'record' }))
+  check('a checklist record cannot be stored in the incidents folder', !!recordInIncidents.error, 'inserted')
+  const withRequirement = await ownerSb.from('child_files').insert(incidentRow({ requirement_id: reqs.childA.id }))
+  check('an incident form cannot be tied to a checklist item', !!withRequirement.error, 'inserted')
+  const otherChildFolder = await ownerSb.from('child_files').insert(incidentRow({ file_key: `child/${A}/${childB.id}/incidents/${randomUUID()}.pdf` }))
+  check('an incident form cannot point into another child\'s folder', !!otherChildFolder.error, 'inserted')
+  for (const label of ['regularA', 'staffAdminA', 'subA', 'outsider', 'ownerB']) {
+    const seen = (await clients[label].from('child_files').select('id').eq('child_id', dataChild.id).eq('category', 'incident')).data ?? []
+    const tried = await clients[label].from('child_files').insert(incidentRow())
+    check(`${label} cannot see or add incident forms`, seen.length === 0 && !!tried.error, errText(tried.error))
+  }
+  const loaded = await kids.loadChildFile(ownerSb, dataChild.id)
+  check('incident forms do not appear among the checklist files', !!loaded && !loaded.files.some(f => f.category === 'incident'))
+  const incidentAudit = (await ownerSb.from('child_audit_log').select('summary').eq('child_id', dataChild.id)).data ?? []
+  check('adding an incident form is audited by name only', incidentAudit.some(a => /^Incident form added: incident\.pdf$/.test(a.summary ?? '')), JSON.stringify(incidentAudit.map(a => a.summary)).slice(0, 200))
+  if (incident.data) {
+    const removed = await ownerSb.from('child_files').delete().eq('id', incident.data.id).select('id')
+    check('the owner can delete an incident form', !removed.error && removed.data?.length === 1, errText(removed.error))
+  }
+
+  // 13. Job lifecycle: pause and resume until closed; a closed job is final and can only be archived ────
+  console.log('\n13. Job status lifecycle')
+  await must(admin.from('centers').update({ jobs_enabled: true }).eq('id', A), 'enable jobs')
+  const job = await must(admin.from('job_postings').insert({
+    center_id: A, slug: `rls-job-${RUN}`, title: 'RLS Teacher', employment_type: 'full_time', description: 'Test job', pay_min: 15, status: 'draft',
+  }).select('id').single(), 'job')
+  const jobStatus = async next => (await ownerSb.from('job_postings').update({ status: next }).eq('id', job.id).select('status').maybeSingle())
+  const step = async (next) => { const r = await jobStatus(next); return { ok: !r.error && r.data?.status === next, error: r.error } }
+  check('a draft cannot be archived', !(await step('archived')).ok)
+  check('a draft can be published', (await step('published')).ok)
+  check('a published job can be paused', (await step('paused')).ok)
+  check('a paused job can be resumed', (await step('published')).ok)
+  check('a paused job can be closed', (await step('paused')).ok && (await step('closed')).ok)
+  const reopen = await step('published')
+  check('a closed job can never be reopened', !reopen.ok, errText(reopen.error))
+  const toPaused = await step('paused')
+  check('a closed job cannot be paused or put back to draft either', !toPaused.ok && !(await step('draft')).ok)
+  check('a closed job can be archived', (await step('archived')).ok)
+  const fromArchive = await step('closed')
+  check('an archived job cannot be changed back', !fromArchive.ok && !(await step('published')).ok, errText(fromArchive.error))
+  const regularJob = await clients.regularA.from('job_postings').update({ status: 'published' }).eq('id', job.id).select('id')
+  check('a regular employee cannot change a job', !regularJob.data?.length)
+  await admin.from('job_postings').delete().eq('id', job.id)
+
+  // 14. Super admin job limit per center ────────────────────────────────────────────────────────────
+  console.log('\n14. Job limit override')
+  const mkJob = async n => (await must(admin.from('job_postings').insert({
+    center_id: A, slug: `rls-limit-${RUN}-${n}`, title: `RLS Limit ${n}`, employment_type: 'full_time', description: 'Test job', pay_min: 15, status: 'draft',
+  }).select('id').single(), `limit job ${n}`)).id
+  const [j1, j2] = [await mkJob(1), await mkJob(2)]
+  const publish = async id => (await ownerSb.from('job_postings').update({ status: 'published' }).eq('id', id).select('status').maybeSingle())
+  await must(admin.from('centers').update({ job_limit_override: 1 }).eq('id', A), 'limit 1')
+  check('with a limit of 1 the first job can be published', (await publish(j1)).data?.status === 'published')
+  const second = await publish(j2)
+  check('with a limit of 1 a second job is refused', !!second.error && /allows 1 active job/.test(second.error.message), errText(second.error))
+  const selfRaise = await ownerSb.from('centers').update({ job_limit_override: -1 }).eq('id', A).select('job_limit_override').maybeSingle()
+  const afterSelf = (await admin.from('centers').select('job_limit_override').eq('id', A).single()).data
+  check('a center cannot raise its own job limit', afterSelf?.job_limit_override === 1, JSON.stringify({ afterSelf, error: selfRaise.error?.message }))
+  await must(admin.from('centers').update({ job_limit_override: 2 }).eq('id', A), 'limit 2')
+  check('raising the limit to 2 lets the second job through', (await publish(j2)).data?.status === 'published')
+  const j3 = await mkJob(3)
+  check('and a third is refused', !!(await publish(j3)).error)
+  await must(admin.from('centers').update({ job_limit_override: -1 }).eq('id', A), 'unlimited')
+  check('unlimited lets the third job through', (await publish(j3)).data?.status === 'published')
+  const badLimit = await admin.from('centers').update({ job_limit_override: -5 }).eq('id', A)
+  check('a nonsense limit is refused by the database', !!badLimit.error)
+  await must(admin.from('centers').update({ job_limit_override: null }).eq('id', A), 'plan default')
+  await admin.from('job_postings').delete().in('id', [j1, j2, j3])
 }
 
 let crashed = null

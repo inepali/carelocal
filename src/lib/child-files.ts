@@ -17,15 +17,15 @@ export async function openChildFile(fileId: string) {
 }
 
 /** Uploads one file for a child (a PDF or a photo) and records it. Returns the new file id. */
-export async function uploadChildFile(childId: string, file: File, requirementId?: string | null) {
-  const presigned = await getChildUploadUrl(childId, file.type, file.size)
+export async function uploadChildFile(childId: string, file: File, requirementId?: string | null, category: 'record' | 'incident' = 'record') {
+  const presigned = await getChildUploadUrl(childId, file.type, file.size, category)
   if (!presigned.success) throw new Error(presigned.error)
 
   const put = await fetch(presigned.uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } })
   if (!put.ok) throw new Error('Upload failed. Please try again.')
 
   const saved = await registerChildFile(childId, {
-    fileKey: presigned.fileKey, fileName: file.name, contentType: file.type, requirementId: requirementId ?? null,
+    fileKey: presigned.fileKey, fileName: file.name, contentType: file.type, requirementId: requirementId ?? null, category,
   })
   if (!saved.success) throw new Error(saved.error)
   return saved.fileId

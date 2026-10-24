@@ -83,6 +83,8 @@ export interface ChildFile {
   content_type: string | null
   size_bytes: number | null
   source: 'center' | 'parent'
+  /** 'incident' = an uploaded incident form; 'record' = a checklist record or other file */
+  category: 'record' | 'incident'
   uploaded_by: string | null
   created_at: string
 }

@@ -10,6 +10,7 @@ import {
   MoreHorizontal, 
   LogIn,
   Power,
+  Briefcase,
   ShieldCheck,
   CreditCard,
   MapPin,
@@ -20,7 +21,7 @@ import {
 import Link from 'next/link'
 import { exportCenterRequirementsAsTemplate } from '@/app/actions/requirement-templates.actions'
 import { setCenterEnabled } from '@/app/actions/account-status.actions'
-import { setCenterJobsEnabled } from '@/app/actions/jobs.actions'
+import { setCenterJobLimit, setCenterJobsEnabled } from '@/app/actions/jobs.actions'
 import { setCenterChildFilesEnabled } from '@/app/actions/child-files-admin.actions'
 import { purgeCenter } from '@/app/actions/data-cleanup.actions'
 import { PurgeDialog } from '@/components/admin/PurgeDialog'
@@ -33,7 +34,7 @@ export default function AdminCentersPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [purging, setPurging] = useState<{ id: string; name: string } | null>(null)
   // The row menu is drawn at a fixed spot under its button so the table's scroll area cannot clip it
-  const [menu, setMenu] = useState<{ center: { id: string; name: string; is_active?: boolean }; top: number; right: number } | null>(null)
+  const [menu, setMenu] = useState<{ center: { id: string; name: string; is_active?: boolean; job_limit_override?: number | null }; top: number; right: number } | null>(null)
 
   useEffect(() => {
     if (!menu) return
@@ -120,6 +121,24 @@ export default function AdminCentersPage() {
     const res = await setCenterJobsEnabled(center.id, enabling)
     if (!res.success) { showAlert(res.error); return }
     setCenters(prev => prev.map(c => c.id === center.id ? { ...c, jobs_enabled: enabling } : c))
+  }
+
+  /** The override as people type and read it: blank = plan default, "unlimited", or a number */
+  const describeJobLimit = (value: number | null | undefined) => value == null ? '' : value === -1 ? 'unlimited' : String(value)
+
+  const changeJobLimit = async (center: { id: string; name: string; job_limit_override?: number | null }) => {
+    const answer = await showPrompt(
+      `How many active jobs may ${center.name} have at once? Enter a number, "unlimited", or leave blank to follow the plan (trial 1, Starter 2, Growth 5, Network unlimited).`,
+      describeJobLimit(center.job_limit_override),
+      { title: 'Job limit' },
+    )
+    if (answer === null || answer === undefined) return
+    const text = answer.trim().toLowerCase()
+    const limit = text === '' ? null : text === 'unlimited' ? -1 : Number(text)
+    if (limit !== null && !Number.isInteger(limit)) { showAlert('Enter a whole number, "unlimited", or leave it blank.'); return }
+    const res = await setCenterJobLimit(center.id, limit)
+    if (!res.success) { showAlert(res.error); return }
+    setCenters(prev => prev.map(c => c.id === center.id ? { ...c, job_limit_override: limit } : c))
   }
 
   const toggleChildFiles = async (center: { id: string; name: string; child_files_enabled?: boolean }) => {
@@ -265,7 +284,7 @@ export default function AdminCentersPage() {
                            title={center.jobs_enabled ? 'Job postings are on. Click to turn off.' : 'Job postings are off. Click to turn on.'}
                            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${center.jobs_enabled ? 'text-violet-700 border-violet-200 bg-violet-50 hover:bg-violet-100' : 'text-slate-400 border-slate-200 hover:text-violet-700 hover:border-violet-200'}`}
                          >
-                           <span className={`w-1.5 h-1.5 rounded-full ${center.jobs_enabled ? 'bg-violet-500' : 'bg-slate-300'}`} /> Jobs
+                           <span className={`w-1.5 h-1.5 rounded-full ${center.jobs_enabled ? 'bg-violet-500' : 'bg-slate-300'}`} /> Jobs{center.job_limit_override != null && <span className="normal-case tracking-normal font-bold" title="Job limit set by you">· {center.job_limit_override === -1 ? '∞' : center.job_limit_override}</span>}
                          </button>
                          {(center.domain_key ?? 'childcare') === 'childcare' && (
                            <button
@@ -317,6 +336,9 @@ export default function AdminCentersPage() {
             </Link>
             <button role="menuitem" onClick={() => { const c = menu.center; setMenu(null); exportChecklist(c) }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-700 hover:bg-violet-50 hover:text-violet-700">
               <FileDown className="w-4 h-4" /> Export requirements template
+            </button>
+            <button role="menuitem" onClick={() => { const c = menu.center; setMenu(null); changeJobLimit(c) }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-700 hover:bg-violet-50 hover:text-violet-700">
+              <Briefcase className="w-4 h-4" /> Job limit…{menu.center.job_limit_override != null && <span className="ml-auto text-xs font-semibold text-slate-400">{describeJobLimit(menu.center.job_limit_override)}</span>}
             </button>
             <button role="menuitem" onClick={() => { const c = menu.center; setMenu(null); toggleEnabled(c) }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-100">
               <Power className="w-4 h-4" /> {menu.center.is_active === false ? 'Enable center' : 'Disable center'}

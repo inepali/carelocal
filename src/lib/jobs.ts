@@ -10,7 +10,7 @@ import { computeCompliance } from '@/lib/compliance'
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export type EmploymentType = 'full_time' | 'part_time'
-export type JobStatus = 'draft' | 'published' | 'paused' | 'closed' | 'filled'
+export type JobStatus = 'draft' | 'published' | 'paused' | 'closed' | 'filled' | 'archived'
 export type NeededAt = 'apply' | 'offer' | 'start'
 export type ApplicationStage = 'applied' | 'reviewing' | 'interview' | 'offer' | 'hired' | 'rejected' | 'withdrawn'
 
@@ -79,6 +79,7 @@ export const JOB_STATUS_STYLE: Record<JobStatus, { label: string; className: str
   paused:    { label: 'Paused',    className: 'bg-amber-50 text-amber-700 border-amber-200' },
   closed:    { label: 'Closed',    className: 'bg-slate-100 text-slate-500 border-slate-200' },
   filled:    { label: 'Filled',    className: 'bg-sky-50 text-sky-700 border-sky-200' },
+  archived:  { label: 'Archived',  className: 'bg-slate-50 text-slate-400 border-slate-200' },
 }
 
 export const STAGE_LABELS: Record<ApplicationStage, string> = {

@@ -26,6 +26,8 @@ export interface PublicCenter {
 export interface PublicJob {
   id: string
   slug: string
+  /** published = open; the others stay readable at the same address so search engines keep the page */
+  status: 'published' | 'paused' | 'filled' | 'closed' | 'archived'
   title: string
   role_value: string | null
   employment_type: EmploymentType
@@ -44,7 +46,7 @@ export interface PublicJob {
   center: PublicCenter
 }
 
-const JOB_COLUMNS = 'id, slug, title, role_value, employment_type, description, schedule_summary, hours_per_week, pay_min, pay_max, pay_unit, benefits, start_date, openings, published_at, closes_at, updated_at, center:centers!inner(name, slug, address, city, state, zip, logo_url, is_active, public_enabled, public_handle)'
+const JOB_COLUMNS = 'id, slug, status, title, role_value, employment_type, description, schedule_summary, hours_per_week, pay_min, pay_max, pay_unit, benefits, start_date, openings, published_at, closes_at, updated_at, center:centers!inner(name, slug, address, city, state, zip, logo_url, is_active, public_enabled, public_handle)'
 
 /** "Charlotte, NC" -> "charlotte-nc" */
 export function citySlug(city: string | null | undefined, state: string | null | undefined) {
@@ -103,9 +105,14 @@ export const listPublicJobsForCenter = cache(async (domain: DomainKey, centerSlu
 })
 
 /** One published job by its public URL; null when it is not (or no longer) published */
+/**
+ * One job by its address. Open jobs and jobs that are paused, filled, closed or archived are all returned (only
+ * drafts are not), so a job's page stays up and indexed after it stops taking applications. Lists and the sitemap
+ * still show open jobs only.
+ */
 export async function getPublicJob(domain: DomainKey, centerSlug: string, jobSlug: string): Promise<PublicJob | null> {
   const { data } = await db().from('job_postings').select(JOB_COLUMNS)
-    .eq('status', 'published').eq('domain_key', domain).eq('slug', jobSlug).eq('center.slug', centerSlug)
+    .in('status', ['published', 'paused', 'filled', 'closed', 'archived']).eq('domain_key', domain).eq('slug', jobSlug).eq('center.slug', centerSlug)
     .limit(1)
   return normalize(data as Row[] | null)[0] ?? null
 }
@@ -117,4 +124,47 @@ export async function publicRoleLabels(domain: DomainKey, centerId?: string): Pr
     .or(centerId ? `center_id.is.null,center_id.eq.${centerId}` : 'center_id.is.null')
   const rows = data ?? []
   return Object.fromEntries([...rows.filter(r => !r.center_id), ...rows.filter(r => r.center_id)].map(r => [r.value, r.label]))
+}
+
+/** "home_health_aide" -> "home-health-aide": the role part of /jobs/in/<city>/<role> */
+export const roleSlug = (value: string) => value.toLowerCase().replace(/_/g, '-')
+
+/** Published jobs in one city for one role ("charlotte-nc", "teacher") */
+export async function listPublicJobsInCityRole(domain: DomainKey, city: string, role: string) {
+  const { jobs, city: name, state } = await listPublicJobsInCity(domain, city)
+  const inRole = jobs.filter(j => j.role_value && roleSlug(j.role_value) === role)
+  return { jobs: inRole, roleValue: inRole[0]?.role_value ?? null, city: name, state }
+}
+
+/** City and role pairs that have open jobs, with counts (for role links and the sitemap) */
+export async function listJobCityRoles(domain: DomainKey) {
+  const jobs = await listPublicJobs(domain)
+  const map = new Map<string, { citySlug: string; roleSlug: string; roleValue: string; count: number }>()
+  for (const j of jobs) {
+    if (!j.center.city || !j.role_value) continue
+    const city = citySlug(j.center.city, j.center.state)
+    const key = `${city}/${roleSlug(j.role_value)}`
+    const entry = map.get(key) ?? { citySlug: city, roleSlug: roleSlug(j.role_value), roleValue: j.role_value, count: 0 }
+    entry.count++
+    map.set(key, entry)
+  }
+  return [...map.values()]
+}
+
+export type PublicJobRequirement = { name: string; neededAt: 'apply' | 'offer' | 'start' }
+
+/**
+ * The documents a job asks for, by name only (never the center's notes or any file), with when each is needed.
+ * Shown on the public job page so applicants know what to have ready.
+ */
+export async function listPublicJobRequirements(jobId: string): Promise<PublicJobRequirement[]> {
+  const { data } = await db().from('job_posting_requirements')
+    .select('needed_at, requirement:center_document_requirements!inner(document_name, sort_order)')
+    .eq('job_id', jobId)
+  type Row = { needed_at: PublicJobRequirement['neededAt']; requirement: { document_name: string; sort_order: number | null } | { document_name: string; sort_order: number | null }[] }
+  return ((data ?? []) as unknown as Row[])
+    .map(r => ({ r, req: Array.isArray(r.requirement) ? r.requirement[0] : r.requirement }))
+    .filter(x => x.req?.document_name)
+    .sort((a, b) => (a.req.sort_order ?? 0) - (b.req.sort_order ?? 0) || a.req.document_name.localeCompare(b.req.document_name))
+    .map(x => ({ name: x.req.document_name, neededAt: x.r.needed_at }))
 }

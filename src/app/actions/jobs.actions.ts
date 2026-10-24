@@ -162,6 +162,12 @@ export async function updateJob(jobId: string, input: JobInput): Promise<Result>
 
 /** Publish / pause / close / back to draft. Tier limit, past-due and pay rules are enforced by the database. */
 export async function setJobStatus(jobId: string, status: Exclude<JobStatus, 'filled'>): Promise<Result> {
+  if (status === 'published') {
+    // Publishing a closed job is refused by the database; say why before asking it
+    const { supabase: s } = await session()
+    const { data: current } = await s.from('job_postings').select('status').eq('id', jobId).maybeSingle()
+    if (current?.status === 'closed' || current?.status === 'archived') return fail('A closed job cannot be reopened. Post a new job instead.')
+  }
   const { supabase, user } = await session()
   if (!user) return fail('Please sign in again.')
   const { data: job, error } = await supabase.from('job_postings').update({ status }).eq('id', jobId)
@@ -172,6 +178,30 @@ export async function setJobStatus(jobId: string, status: Exclude<JobStatus, 'fi
   if (status === 'closed') await notifyOpenApplicants(job.id, job.title, 'closed')
   // First publish: tell staff whose job alerts match (sent once per posting)
   if (status === 'published') await sendJobAlerts(job.id).catch(err => console.error('[jobs] job alerts failed', err))
+  revalidatePath('/center/jobs')
+  revalidatePath(`/center/jobs/${jobId}`)
+  revalidatePath('/staff/jobs')
+  revalidatePath('/jobs')
+  return { success: true }
+}
+
+/**
+ * Reopens a filled job (it goes live again). The new opening is for one more person: if every opening is already
+ * hired, the count goes up by one so the job does not fill again straight away. A closed job can never be reopened
+ * (the database refuses it).
+ */
+export async function reopenFilledJob(jobId: string): Promise<Result> {
+  const { supabase, user } = await session()
+  if (!user) return fail('Please sign in again.')
+  const { data: job } = await supabase.from('job_postings').select('id, status, openings').eq('id', jobId).maybeSingle()
+  if (!job) return fail('Job not found.')
+  if (job.status !== 'filled') return fail('Only a filled job can be reopened this way.')
+
+  const { count } = await supabase.from('job_applications').select('id', { count: 'exact', head: true }).eq('job_id', jobId).eq('stage', 'hired')
+  const openings = Math.max(job.openings as number, (count ?? 0) + 1)
+  const { error } = await supabase.from('job_postings').update({ status: 'published', openings }).eq('id', jobId)
+  if (error) return fail(dbError(error, 'Could not reopen the job.'))
+
   revalidatePath('/center/jobs')
   revalidatePath(`/center/jobs/${jobId}`)
   revalidatePath('/staff/jobs')
@@ -195,6 +225,20 @@ async function notifyOpenApplicants(jobId: string, title: string, why: 'closed' 
       type: 'job_closed', referenceId: app.id, url: '/staff/applications', emailCta: 'View applications',
     }, center?.domain_key).catch(() => {})
   }
+}
+
+/**
+ * Super admin: how many active (published or paused) jobs a center may have. null = the plan's default,
+ * -1 = unlimited, otherwise an exact number. The database refuses changes from anyone else.
+ */
+export async function setCenterJobLimit(centerId: string, limit: number | null): Promise<Result> {
+  const { user } = await session()
+  if (user?.app_metadata?.is_super_admin !== true) return fail('Not allowed')
+  if (limit !== null && (!Number.isInteger(limit) || limit < -1 || limit > 1000)) return fail('Enter a whole number from 0 to 1000, or unlimited.')
+  const { error } = await service().from('centers').update({ job_limit_override: limit }).eq('id', centerId)
+  if (error) return fail(error.message)
+  console.warn(`[jobs] super admin ${user.id} set the job limit of center ${centerId} to ${limit === null ? 'plan default' : limit === -1 ? 'unlimited' : limit}`)
+  return { success: true }
 }
 
 /** Super admin: turn hiring on or off for a center (the Phase 1 pilot gate). */

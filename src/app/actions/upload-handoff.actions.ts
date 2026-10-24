@@ -20,7 +20,7 @@ import { getSignedInUserId, isCenterAdminOf } from '@/lib/server/staff-access'
  * person who created it, works once, and the phone can only upload: it never sees documents.
  */
 
-export type HandoffKind = 'internal' | 'inspection' | 'template' | 'vault' | 'receipt'
+export type HandoffKind = 'internal' | 'inspection' | 'template' | 'vault' | 'receipt' | 'child_record' | 'child_incident'
 
 const admin = () => createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
@@ -45,6 +45,8 @@ const BUCKET_ENV: Record<HandoffKind, string> = {
   inspection: 'R2_CENTER_BUCKET_INTERNAL',
   template: 'R2_CENTER_BUCKET',
   receipt: 'R2_RECEIPT_BUCKET',
+  child_record: 'R2_CHILD_BUCKET',
+  child_incident: 'R2_CHILD_BUCKET',
 }
 
 const BASE_ENV = ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY']
@@ -94,6 +96,7 @@ type HandoffRow = {
   label: string | null
   center_id: string | null
   staff_id: string | null
+  child_id: string | null
   created_by: string | null
   status: string
   file_key: string | null
@@ -136,7 +139,7 @@ async function adminCenterId(userId: string) {
  *   template   center admin, center-wide
  *   vault      a staff member, into their own library
  */
-export async function createUploadHandoff(input: { kind: HandoffKind; label: string; staffId?: string | null }) {
+export async function createUploadHandoff(input: { kind: HandoffKind; label: string; staffId?: string | null; childId?: string | null }) {
   return guarded('createUploadHandoff', async () => {
     const userId = await getSignedInUserId()
     if (!userId) return fail('Please sign in again.')
@@ -145,6 +148,7 @@ export async function createUploadHandoff(input: { kind: HandoffKind; label: str
     const db = admin()
     let centerId: string | null = null
     let staffId: string | null = null
+    let childId: string | null = null
 
     if (input.kind === 'vault') {
       const { data: profile } = await db.from('staff_profiles').select('id').eq('user_id', userId).maybeSingle()
@@ -157,6 +161,17 @@ export async function createUploadHandoff(input: { kind: HandoffKind; label: str
         // Owner and administrators only, the same rule the database applies to receipts
         const { data: member } = await db.from('center_admins').select('role').eq('center_id', centerId).eq('user_id', userId).maybeSingle()
         if (!member || !['owner', 'admin'].includes(member.role as string)) return fail('Only the owner and administrators can add receipts.')
+      }
+      if (input.kind === 'child_record' || input.kind === 'child_incident') {
+        // Same rule as the child tables: owner or admin of a center with Child Files turned on, for one of its children
+        const { data: member } = await db.from('center_admins').select('role').eq('center_id', centerId).eq('user_id', userId).maybeSingle()
+        if (!member || !['owner', 'admin'].includes(member.role as string)) return fail('Only the owner and administrators can add child records.')
+        const { data: center } = await db.from('centers').select('child_files_enabled').eq('id', centerId).maybeSingle()
+        if (!center?.child_files_enabled) return fail('Child Files is not turned on for your center.')
+        if (!input.childId) return fail('Choose a child first.')
+        const { data: child } = await db.from('children').select('id').eq('id', input.childId).eq('center_id', centerId).maybeSingle()
+        if (!child) return fail('Child not found.')
+        childId = child.id as string
       }
       if (input.kind === 'internal') {
         if (!input.staffId) return fail('Choose an employee first.')
@@ -174,6 +189,7 @@ export async function createUploadHandoff(input: { kind: HandoffKind; label: str
       label: input.label.slice(0, 120),
       center_id: centerId,
       staff_id: staffId,
+      child_id: childId,
       created_by: userId,
       expires_at: expiresAt,
     }).select('id').single()
@@ -281,6 +297,8 @@ function storageKey(row: HandoffRow, ext: string) {
     case 'inspection': return `inspection/${row.center_id}/${file}`
     case 'template': return `template/${row.center_id}/${file}`
     case 'receipt': return `receipts/${row.center_id}/${file}`
+    case 'child_record': return `child/${row.center_id}/${row.child_id}/${file}`
+    case 'child_incident': return `child/${row.center_id}/${row.child_id}/incidents/${file}`
     case 'vault': return `vault/${row.created_by}/${file}`
   }
 }

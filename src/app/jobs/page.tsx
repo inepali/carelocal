@@ -50,7 +50,7 @@ export default async function PublicJobsPage() {
             No open jobs right now. <Link href="/register?type=staff" className="font-semibold text-brand-600 hover:underline">Create a free account</Link> and turn on job alerts to hear about new ones first.
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid gap-3 lg:grid-cols-2">
             {jobs.map(job => <PublicJobCard key={job.id} job={job} roleLabel={job.role_value ? roles[job.role_value] : undefined} />)}
           </div>
         )}
