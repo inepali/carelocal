@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, ResolvingMetadata } from 'next'
 import Link from 'next/link'
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
@@ -7,6 +7,7 @@ import { siteUrl } from '@/lib/site'
 import { listPublicCentersInCity } from '@/lib/server/public-center'
 import { capitalize, jsonLdString, listJsonLd, nounFor } from '@/lib/center-seo'
 import { JobsShell } from '@/app/jobs/_components/JobsShell'
+import { shareTags } from '@/lib/jobs-seo'
 import { CenterCard } from '../../_components/CenterCard'
 
 type Props = { params: Promise<{ city: string }> }
@@ -15,7 +16,7 @@ async function siteDomain() {
   return getDomainKey((await headers()).get('host') || '')
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params }: Props, parent: ResolvingMetadata): Promise<Metadata> {
   const { city } = await params
   const domain = await siteDomain()
   const { centers, city: name, state } = await listPublicCentersInCity(domain, city)
@@ -29,7 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     alternates: { canonical },
-    openGraph: { title, description, url: canonical, type: 'website', locale: 'en_US', siteName: getDomainConfig(domain).appName },
+    ...(await shareTags(parent, domain, { title, description, path: `/centers/in/${city}` })),
   }
 }
 

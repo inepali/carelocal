@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, ResolvingMetadata } from 'next'
 import Link from 'next/link'
 import { headers } from 'next/headers'
 import { MapPin } from 'lucide-react'
@@ -7,13 +7,14 @@ import { siteUrl } from '@/lib/site'
 import { listCenterCities, listPublicCenters } from '@/lib/server/public-center'
 import { capitalize, jsonLdString, listJsonLd, nounFor } from '@/lib/center-seo'
 import { JobsShell } from '@/app/jobs/_components/JobsShell'
+import { shareTags } from '@/lib/jobs-seo'
 import { CenterCard } from './_components/CenterCard'
 
 async function siteDomain() {
   return getDomainKey((await headers()).get('host') || '')
 }
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata(_props: unknown, parent: ResolvingMetadata): Promise<Metadata> {
   const domain = await siteDomain()
   const noun = nounFor(domain)
   const centers = await listPublicCenters(domain)
@@ -25,7 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
     alternates: { canonical: `${siteUrl(domain)}/centers` },
     // Nothing to list yet: keep the empty page out of search
     robots: centers.length === 0 ? { index: false, follow: true } : { index: true, follow: true },
-    openGraph: { title, description, url: `${siteUrl(domain)}/centers`, type: 'website', locale: 'en_US', siteName: getDomainConfig(domain).appName },
+    ...(await shareTags(parent, domain, { title, description, path: '/centers' })),
   }
 }
 

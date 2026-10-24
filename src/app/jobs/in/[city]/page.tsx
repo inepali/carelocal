@@ -1,10 +1,12 @@
-import type { Metadata } from 'next'
+import type { Metadata, ResolvingMetadata } from 'next'
 import Link from 'next/link'
 import { headers } from 'next/headers'
 import { ArrowLeft } from 'lucide-react'
 import { getDomainKey, getDomainConfig } from '@/lib/domain-config'
 import { listPublicJobsInCity, publicRoleLabels, roleSlug } from '@/lib/server/public-jobs'
 import { JobsShell, PublicJobCard, verticalNoun } from '../../_components/JobsShell'
+import { jobsCrumbs, jobsListJsonLd, shareTags } from '@/lib/jobs-seo'
+import { jsonLdString } from '@/lib/center-seo'
 
 type Props = { params: Promise<{ city: string }> }
 
@@ -20,16 +22,21 @@ function prettyCity(slug: string) {
   return state ? `${city}, ${state}` : city
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params }: Props, parent: ResolvingMetadata): Promise<Metadata> {
   const { city } = await params
   const domain = await siteDomain()
-  const { city: name, state } = await listPublicJobsInCity(domain, city)
+  const { jobs, city: name, state } = await listPublicJobsInCity(domain, city)
   const place = name ? `${name}${state ? `, ${state}` : ''}` : prettyCity(city)
   const noun = verticalNoun(domain)
+  const title = `${noun[0].toUpperCase()}${noun.slice(1)} jobs in ${place}`
+  const description = `${jobs.length > 0 ? `${jobs.length} open ` : 'Open '}full-time and part-time ${noun} job${jobs.length === 1 ? '' : 's'} in ${place} on ${getDomainConfig(domain).appName}. Apply in one tap.`
   return {
-    title: `${noun[0].toUpperCase()}${noun.slice(1)} jobs in ${place}`,
-    description: `Open full-time and part-time ${noun} jobs in ${place} on ${getDomainConfig(domain).appName}. Apply in one tap.`,
+    title,
+    description,
     alternates: { canonical: `/jobs/in/${city}` },
+    // A city with no open jobs has nothing to rank: keep it out of search (the link stays working)
+    ...(jobs.length === 0 ? { robots: { index: false, follow: true } } : {}),
+    ...(await shareTags(parent, domain, { title: `${title} | ${getDomainConfig(domain).appName}`, description, path: `/jobs/in/${city}` })),
   }
 }
 
@@ -45,8 +52,11 @@ export default async function CityJobsPage({ params }: Props) {
   for (const j of jobs) if (j.role_value) counts.set(j.role_value, (counts.get(j.role_value) ?? 0) + 1)
   const roleChips = [...counts].map(([value, count]) => ({ slug: roleSlug(value), label: roles[value] ?? value, count })).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
 
+  const jsonLd = jsonLdString(jobsListJsonLd(domain, `${noun[0].toUpperCase()}${noun.slice(1)} jobs in ${place}`, `/jobs/in/${city}`, jobs, jobsCrumbs(domain, [{ name: place, path: `/jobs/in/${city}` }])))
+
   return (
     <JobsShell domain={domain}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
       <section className="mx-auto max-w-6xl px-6 py-14">
         <Link href="/jobs" className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-muted hover:text-brand-600"><ArrowLeft className="h-4 w-4" /> All jobs</Link>
         <h1 className="mb-2 text-4xl font-extrabold tracking-tight text-heading">{noun[0].toUpperCase()}{noun.slice(1)} jobs in {place}</h1>

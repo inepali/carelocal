@@ -85,6 +85,8 @@ export interface ChildFile {
   source: 'center' | 'parent'
   /** 'incident' = an uploaded incident form; 'record' = a checklist record or other file */
   category: 'record' | 'incident'
+  /** A short description of an incident form (incident forms only, up to 500 characters) */
+  incident_note?: string | null
   uploaded_by: string | null
   created_at: string
 }

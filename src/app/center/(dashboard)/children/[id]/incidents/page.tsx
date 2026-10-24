@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { ArrowLeft, Baby, FileText, Loader2, Trash2, Upload } from 'lucide-react'
+import { ArrowLeft, Baby, FileText, Loader2, Pencil, Search, Trash2, Upload } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { canOpenChildFiles, useCenterContext } from '../../../context'
 import { deleteChildFile, registerChildFile } from '@/app/actions/child-files.actions'
@@ -12,9 +12,11 @@ import { openChildFile, uploadChildFile } from '@/lib/child-files'
 import type { PhoneUpload } from '@/lib/files'
 import { formatDate } from '@/lib/compliance'
 import { showAlert, showConfirm } from '@/lib/dialog'
-import { BTN_PRIMARY } from '../../_components/ui'
+import { BTN, BTN_PRIMARY, BTN_QUIET, BTN_QUIET_SM, FLD } from '../../_components/ui'
 
-type IncidentForm = { id: string; file_name: string; created_at: string }
+type IncidentForm = { id: string; file_name: string; created_at: string; incident_note: string | null }
+
+const NOTE_MAX = 500
 type ChildName = { id: string; first_name: string; last_name: string }
 
 const ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp,.heic,application/pdf,image/*'
@@ -28,13 +30,17 @@ export default function ChildIncidentsPage() {
   const [forms, setForms] = useState<IncidentForm[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+  const [search, setSearch] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [draft, setDraft] = useState('')
+  const [savingNote, setSavingNote] = useState(false)
   const input = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
     const supabase = createClient()
     const [{ data: childRow }, { data: files, error }] = await Promise.all([
       supabase.from('children').select('id, first_name, last_name').eq('id', id).maybeSingle(),
-      supabase.from('child_files').select('id, file_name, created_at').eq('child_id', id).eq('category', 'incident').order('created_at', { ascending: false }),
+      supabase.from('child_files').select('id, file_name, created_at, incident_note').eq('child_id', id).eq('category', 'incident').order('created_at', { ascending: false }),
     ])
     if (error) showAlert('Could not load the incident forms: ' + error.message)
     setChild(childRow as ChildName | null)
@@ -65,6 +71,21 @@ export default function ChildIncidentsPage() {
     await load()
   }
 
+  function startNote(form: IncidentForm) {
+    setEditingId(form.id)
+    setDraft(form.incident_note ?? '')
+  }
+
+  async function saveNote(form: IncidentForm) {
+    setSavingNote(true)
+    const note = draft.trim()
+    const { error } = await createClient().from('child_files').update({ incident_note: note || null }).eq('id', form.id)
+    setSavingNote(false)
+    if (error) { showAlert('Could not save the details: ' + error.message); return }
+    setForms(prev => prev.map(f => f.id === form.id ? { ...f, incident_note: note || null } : f))
+    setEditingId(null)
+  }
+
   async function remove(form: IncidentForm) {
     if (!await showConfirm(`Delete the incident form "${form.file_name}"? This cannot be undone.`, { title: 'Delete incident form', tone: 'danger', confirmLabel: 'Delete' })) return
     setBusy(true)
@@ -73,6 +94,9 @@ export default function ChildIncidentsPage() {
     if (!res.success) { showAlert(res.error); return }
     load()
   }
+
+  const query = search.trim().toLowerCase()
+  const shown = query ? forms.filter(f => `${f.file_name} ${f.incident_note ?? ''}`.toLowerCase().includes(query)) : forms
 
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-brand-600" /></div>
 
@@ -94,7 +118,7 @@ export default function ChildIncidentsPage() {
         <div>
           <h1 className="mb-1 text-3xl font-extrabold text-heading">Incidents</h1>
           <p className="text-muted">
-            {child.first_name} {child.last_name} · <Link href={`/center/children/${child.id}`} className="font-semibold text-brand-600 hover:underline">Open file</Link>
+            {child.first_name} {child.last_name} · <Link href={`/center/children/${child.id}`} className="font-semibold text-brand-600 hover:underline">Files</Link>
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -114,29 +138,68 @@ export default function ChildIncidentsPage() {
         </div>
       </div>
 
-      <p className="mb-4 text-sm text-muted">Upload each completed incident form as a PDF or a photo (up to 15 MB). Only the owner and administrators can see them.</p>
+      <p className="mb-4 text-sm text-muted">Upload each completed incident form as a PDF or a photo (up to 15 MB), then add a short description so it is easy to find later. Only the owner and administrators can see them.</p>
 
       <section className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-border bg-surface px-6 py-4">
           <h2 className="text-lg font-bold text-text-main">Incident forms</h2>
-          <span className="text-sm text-muted">{forms.length} on file</span>
+          <span className="text-sm text-muted">{query ? `${shown.length} of ${forms.length}` : `${forms.length} on file`}</span>
         </div>
+        {forms.length > 0 && (
+          <div className="relative border-b border-border px-6 py-3">
+            <Search className="absolute left-9 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search file names and descriptions" className={`${FLD} pl-10`} />
+          </div>
+        )}
         {forms.length === 0 ? (
           <p className="px-6 py-12 text-center text-sm text-muted">No incident forms for this child yet.</p>
+        ) : shown.length === 0 ? (
+          <p className="px-6 py-10 text-center text-sm text-muted">No incident forms match “{search.trim()}”.</p>
         ) : (
           <ul className="divide-y divide-border">
-            {forms.map(form => (
-              <li key={form.id} className="flex items-center justify-between gap-4 px-6 py-3.5">
-                <button type="button" onClick={() => openChildFile(form.id)} className="flex min-w-0 items-center gap-2.5 text-left text-sm font-semibold text-text-main hover:text-brand-600">
-                  <FileText className="h-4 w-4 shrink-0 text-brand-600" />
-                  <span className="truncate">{form.file_name}</span>
-                </button>
-                <div className="flex shrink-0 items-center gap-3">
-                  <span className="text-xs text-muted">{formatDate(form.created_at.slice(0, 10))}</span>
-                  <button type="button" disabled={busy} onClick={() => remove(form)} aria-label="Delete incident form" className="rounded-lg p-1.5 text-subtle hover:bg-red-50 hover:text-red-500">
-                    <Trash2 className="h-4 w-4" />
+            {shown.map(form => (
+              <li key={form.id} className="px-6 py-3.5">
+                <div className="flex items-center justify-between gap-4">
+                  <button type="button" onClick={() => openChildFile(form.id)} className="flex min-w-0 items-center gap-2.5 text-left text-sm font-semibold text-text-main hover:text-brand-600">
+                    <FileText className="h-4 w-4 shrink-0 text-brand-600" />
+                    <span className="truncate">{form.file_name}</span>
                   </button>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="text-xs text-muted">{formatDate(form.created_at.slice(0, 10))}</span>
+                    {editingId !== form.id && (
+                      <button type="button" onClick={() => startNote(form)} className={BTN_QUIET_SM}>
+                        <Pencil className="h-3.5 w-3.5" /> {form.incident_note ? 'Edit' : 'Add details'}
+                      </button>
+                    )}
+                    <button type="button" disabled={busy} onClick={() => remove(form)} aria-label="Delete incident form" className="rounded-lg p-1.5 text-subtle hover:bg-red-50 hover:text-red-500">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
+                {editingId === form.id ? (
+                  <div className="mt-3">
+                    <textarea
+                      autoFocus
+                      rows={3}
+                      maxLength={NOTE_MAX}
+                      value={draft}
+                      onChange={e => setDraft(e.target.value)}
+                      placeholder="What happened, in a sentence or two (for example: fell on the playground, ice applied, parent called)"
+                      className={`${FLD} resize-none`}
+                    />
+                    <div className="mt-2 flex items-center justify-between gap-3">
+                      <span className="text-xs text-subtle">{draft.length} / {NOTE_MAX}</span>
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => setEditingId(null)} className={BTN_QUIET}>Cancel</button>
+                        <button type="button" disabled={savingNote} onClick={() => saveNote(form)} className={BTN}>
+                          {savingNote ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Save details
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : form.incident_note ? (
+                  <p className="mt-2 whitespace-pre-line pl-[26px] text-sm text-text-muted">{form.incident_note}</p>
+                ) : null}
               </li>
             ))}
           </ul>

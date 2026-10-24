@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, ResolvingMetadata } from 'next'
 import Link from 'next/link'
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
@@ -9,6 +9,8 @@ import { createClient } from '@/lib/supabase/server'
 import { getPublicJob, listPublicJobRequirements, publicRoleLabels, citySlug, type PublicJob } from '@/lib/server/public-jobs'
 import { EMPLOYMENT_TYPE_LABELS, JOB_STATUS_STYLE, NEEDED_AT_LABELS, benefitLabel, formatPay } from '@/lib/jobs'
 import { JobsShell, jobPath } from '../../_components/JobsShell'
+import { jobBreadcrumbJsonLd, jobsCrumbs, shareTags } from '@/lib/jobs-seo'
+import { clip } from '@/lib/center-seo'
 
 type Props = { params: Promise<{ centerSlug: string; jobSlug: string }> }
 
@@ -16,17 +18,27 @@ async function siteDomain() {
   return getDomainKey((await headers()).get('host') || '')
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params }: Props, parent: ResolvingMetadata): Promise<Metadata> {
   const { centerSlug, jobSlug } = await params
   const domain = await siteDomain()
   const job = await getPublicJob(domain, centerSlug, jobSlug)
   if (!job) return { title: 'Job not found', robots: { index: false } }
   const place = [job.center.city, job.center.state].filter(Boolean).join(', ')
+  // Short enough to show in full in search results (the brand name is left off to make room)
+  // The longest wording that still fits; the job's own title is always kept whole
+  const candidates = [
+    `${job.title} at ${job.center.name}${place ? ` · ${place}` : ''}`,
+    `${job.title} at ${job.center.name}`,
+    ...(place ? [`${job.title} · ${place}`] : []),
+  ]
+  const title = candidates.find(c => c.length <= 62) ?? clip(job.title, 62)
+  const facts = [EMPLOYMENT_TYPE_LABELS[job.employment_type], formatPay(job)].filter(Boolean).join(' · ')
+  const description = clip(`${facts}. ${job.title} at ${job.center.name}${place ? ` in ${place}` : ''}. ${job.description}`, 158)
   return {
-    title: `${job.title} at ${job.center.name}${place ? ` · ${place}` : ''}`,
-    description: `${EMPLOYMENT_TYPE_LABELS[job.employment_type]} · ${formatPay(job)}. ${job.description.slice(0, 140)}`,
+    title: { absolute: title },
+    description,
     alternates: { canonical: jobPath(job) },
-    openGraph: { title: `${job.title} at ${job.center.name}`, type: 'website' },
+    ...(await shareTags(parent, domain, { title, description, path: jobPath(job) })),
   }
 }
 
@@ -89,6 +101,10 @@ export default async function PublicJobPage({ params }: Props) {
   const applyPath = `/staff/jobs/${job.id}?apply=1`
   const place = [job.center.city, job.center.state].filter(Boolean).join(', ')
   const jsonLd = JSON.stringify(jobPostingJsonLd(job, siteUrl(domain))).replace(/</g, '\\u003c')
+  const crumbLd = JSON.stringify(jobBreadcrumbJsonLd(domain, jobsCrumbs(domain, [
+    ...(place ? [{ name: place, path: `/jobs/in/${citySlug(job.center.city, job.center.state)}` }] : []),
+    { name: job.title, path: jobPath(job) },
+  ]))).replace(/</g, '\\u003c')
   const open = job.status === 'published'
   const closedNotice = job.status === 'paused' ? 'This job is not taking applications right now.'
     : job.status === 'filled' ? 'This position has been filled.' : 'This job is closed.'
@@ -99,6 +115,7 @@ export default async function PublicJobPage({ params }: Props) {
   return (
     <JobsShell domain={domain}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: crumbLd }} />
       <section className="mx-auto max-w-4xl px-6 py-12">
         <Link href={place ? `/jobs/in/${citySlug(job.center.city, job.center.state)}` : '/jobs'} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-muted hover:text-brand-600">
           <ArrowLeft className="h-4 w-4" /> {place ? `Jobs in ${place}` : 'All jobs'}

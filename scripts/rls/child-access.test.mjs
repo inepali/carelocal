@@ -488,6 +488,18 @@ async function main() {
   const incidentAudit = (await ownerSb.from('child_audit_log').select('summary').eq('child_id', dataChild.id)).data ?? []
   check('adding an incident form is audited by name only', incidentAudit.some(a => /^Incident form added: incident\.pdf$/.test(a.summary ?? '')), JSON.stringify(incidentAudit.map(a => a.summary)).slice(0, 200))
   if (incident.data) {
+    const noteText = 'Fell from the climber, ice applied, mother called'
+    const withNote = await ownerSb.from('child_files').update({ incident_note: noteText }).eq('id', incident.data.id).select('incident_note').maybeSingle()
+    check('the owner can add a short description to an incident form', !withNote.error && withNote.data?.incident_note === noteText, errText(withNote.error))
+    const tooLong = await ownerSb.from('child_files').update({ incident_note: 'x'.repeat(501) }).eq('id', incident.data.id)
+    check('a description over 500 characters is refused', !!tooLong.error)
+    const regularNote = await clients.regularA.from('child_files').update({ incident_note: 'tampered' }).eq('id', incident.data.id).select('id')
+    const stillThere = (await admin.from('child_files').select('incident_note').eq('id', incident.data.id).single()).data
+    check('a regular employee cannot change a description', !regularNote.data?.length && stillThere?.incident_note === noteText)
+    const noteAudit = (await ownerSb.from('child_audit_log').select('summary, changed_fields').eq('child_id', dataChild.id)).data ?? []
+    check('the activity log says a description changed but never records its words', !JSON.stringify(noteAudit).includes('climber') && noteAudit.some(a => (a.changed_fields ?? []).includes('incident_note')), JSON.stringify(noteAudit).slice(0, 160))
+    const recordNote = await ownerSb.from('child_files').insert({ ...incidentRow(), category: 'record', file_key: `child/${A}/${dataChild.id}/${randomUUID()}.pdf`, incident_note: 'nope' })
+    check('only incident forms can carry a description', !!recordNote.error, 'inserted')
     const removed = await ownerSb.from('child_files').delete().eq('id', incident.data.id).select('id')
     check('the owner can delete an incident form', !removed.error && removed.data?.length === 1, errText(removed.error))
   }

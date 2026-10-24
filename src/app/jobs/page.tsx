@@ -1,23 +1,23 @@
-import type { Metadata } from 'next'
+import type { Metadata, ResolvingMetadata } from 'next'
 import Link from 'next/link'
 import { headers } from 'next/headers'
 import { MapPin } from 'lucide-react'
 import { getDomainKey, getDomainConfig } from '@/lib/domain-config'
 import { listJobCities, listPublicJobs, publicRoleLabels } from '@/lib/server/public-jobs'
 import { JobsShell, PublicJobCard, verticalNoun } from './_components/JobsShell'
+import { jobsCrumbs, jobsListJsonLd, shareTags } from '@/lib/jobs-seo'
+import { jsonLdString } from '@/lib/center-seo'
 
 async function siteDomain() {
   return getDomainKey((await headers()).get('host') || '')
 }
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata(_props: unknown, parent: ResolvingMetadata): Promise<Metadata> {
   const domain = await siteDomain()
   const noun = verticalNoun(domain)
-  return {
-    title: `${noun[0].toUpperCase()}${noun.slice(1)} jobs`,
-    description: `Full-time and part-time ${noun} jobs at local centers on ${getDomainConfig(domain).appName}. Apply in one tap with your documents and references.`,
-    alternates: { canonical: '/jobs' },
-  }
+  const title = `${noun[0].toUpperCase()}${noun.slice(1)} jobs`
+  const description = `Full-time and part-time ${noun} jobs at local centers on ${getDomainConfig(domain).appName}. Apply in one tap with your documents and references.`
+  return { title, description, alternates: { canonical: '/jobs' }, ...(await shareTags(parent, domain, { title: `${title} | ${getDomainConfig(domain).appName}`, description, path: '/jobs' })) }
 }
 
 /** Public: every open job on this site, and the cities hiring */
@@ -25,9 +25,11 @@ export default async function PublicJobsPage() {
   const domain = await siteDomain()
   const [jobs, cities, roles] = await Promise.all([listPublicJobs(domain), listJobCities(domain), publicRoleLabels(domain)])
   const noun = verticalNoun(domain)
+  const jsonLd = jsonLdString(jobsListJsonLd(domain, `${noun[0].toUpperCase()}${noun.slice(1)} jobs`, '/jobs', jobs, jobsCrumbs(domain)))
 
   return (
     <JobsShell domain={domain}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
       <section className="mx-auto max-w-6xl px-6 py-14">
         <h1 className="mb-2 text-4xl font-extrabold tracking-tight text-heading">{noun[0].toUpperCase()}{noun.slice(1)} jobs near you</h1>
         <p className="mb-10 max-w-2xl text-lg text-muted">Regular full-time and part-time positions at local centers. Create a free account, keep your documents in one place, and apply in one tap.</p>
