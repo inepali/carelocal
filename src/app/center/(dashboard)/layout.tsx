@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, LayoutDashboard, Users, UserPlus, Info, Calendar, Tags, LifeBuoy, ClipboardCheck, Truck, Receipt, Baby, Building2, UserCircle, Inbox, ShieldCheck, Briefcase, CalendarCheck } from 'lucide-react'
+import { LogOut, LayoutDashboard, Users, UserPlus, Info, Calendar, Tags, LifeBuoy, ClipboardCheck, Truck, Baby, Building2, UserCircle, Inbox, ShieldCheck, Briefcase, CalendarCheck } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
-import { CenterContext, canOpenChildFiles, canManageReceipts } from './context'
+import { CenterContext, canOpenChildFiles } from './context'
 import type { DomainKey } from '@/lib/domain-config'
 
 // Dev/demo tool: jumps the browser to another vertical's domain (it does not change the
@@ -110,8 +110,8 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
     { name: 'Tours', href: '/center/tours', icon: CalendarCheck },
     { name: 'Compliance', href: '/center/compliance', icon: ShieldCheck },
     { name: 'Inspections', href: '/center/inspections', icon: ClipboardCheck },
-    { name: 'Vendors', href: '/center/vendors', icon: Truck },
-    ...(canManageReceipts({ role }) ? [{ name: 'Receipts', href: '/center/receipts', icon: Receipt }] : []),
+    // Receipts has no menu item of its own: it opens from a vendor's receipts link
+    { name: 'Vendors', href: '/center/vendors', icon: Truck, also: ['/center/receipts'] },
     { name: 'Support', href: '/center/support', icon: LifeBuoy },
     { name: 'About', href: '/center/about', icon: Info },
   ]
@@ -168,7 +168,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
 
         <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-1">
           {NAVIGATION.map((item) => {
-            const isActive = pathname === item.href
+            const isActive = pathname === item.href || ('also' in item && item.also?.includes(pathname))
             return (
               <Link
                 key={item.name}

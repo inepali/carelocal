@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Receipt as ReceiptIcon, Plus, Edit2, Loader2, FileText, Lock } from 'lucide-react'
+import { ArrowLeft, Receipt as ReceiptIcon, Plus, Edit2, Loader2, FileText, Lock } from 'lucide-react'
 import { ReceiptDialog, formatMoney, type Receipt } from '@/components/center/ReceiptDialog'
 import { openStoredFile } from '@/lib/files'
 import { canManageReceipts, useCenterContext } from '../context'
@@ -59,6 +60,8 @@ export default function ReceiptsPage() {
 
   return (
     <div className="max-w-6xl">
+      <Link href="/center/vendors" className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-muted hover:text-brand-600"><ArrowLeft className="h-4 w-4" /> Back to Vendors</Link>
+
       <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <h1 className="mb-1 text-3xl font-extrabold text-heading">Receipts</h1>
