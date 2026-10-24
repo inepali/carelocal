@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, LayoutDashboard, Users, UserPlus, Info, Calendar, Tags, LifeBuoy, ClipboardCheck, Truck, Baby, Building2, UserCircle, Inbox, ShieldCheck, Briefcase, CalendarCheck } from 'lucide-react'
+import { LogOut, LayoutDashboard, Users, UserPlus, Info, Calendar, Tags, LifeBuoy, ClipboardCheck, Truck, Receipt, Baby, Building2, UserCircle, Inbox, ShieldCheck, Briefcase, CalendarCheck } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
-import { CenterContext, canOpenChildFiles } from './context'
+import { CenterContext, canOpenChildFiles, canManageReceipts } from './context'
 import type { DomainKey } from '@/lib/domain-config'
 
 // Dev/demo tool: jumps the browser to another vertical's domain (it does not change the
@@ -111,6 +111,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
     { name: 'Compliance', href: '/center/compliance', icon: ShieldCheck },
     { name: 'Inspections', href: '/center/inspections', icon: ClipboardCheck },
     { name: 'Vendors', href: '/center/vendors', icon: Truck },
+    ...(canManageReceipts({ role }) ? [{ name: 'Receipts', href: '/center/receipts', icon: Receipt }] : []),
     { name: 'Support', href: '/center/support', icon: LifeBuoy },
     { name: 'About', href: '/center/about', icon: Info },
   ]

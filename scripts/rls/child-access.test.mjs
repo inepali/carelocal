@@ -421,6 +421,44 @@ async function main() {
   }
   const regularRule = await clients.regularA.from('center_document_requirements').insert({ ...newRule, document_name: 'RLS regular' }).select('id')
   check('a regular employee cannot add a child requirement', !!regularRule.error || !regularRule.data?.length)
+
+  // 11. Purchase receipts (owner and administrators only) ───────────────────────────────────────────
+  console.log('\n11. Receipts')
+  const vendorA = await must(admin.from('center_vendors').insert({ center_id: A, name: 'RLS Vendor A' }).select('id').single(), 'vendor A')
+  const vendorB = await must(admin.from('center_vendors').insert({ center_id: B, name: 'RLS Vendor B' }).select('id').single(), 'vendor B')
+  const receiptRow = (center, extra = {}) => ({
+    center_id: center, receipt_date: '2026-10-01', amount: 42.5, file_name: 'receipt.jpg', bucket_name: 'rls-test',
+    file_key: `receipts/${center}/${randomUUID()}.jpg`, ...extra,
+  })
+  const addReceipt = await ownerSb.from('center_receipts').insert(receiptRow(A, { vendor_id: vendorA.id })).select('id, amount').single()
+  check('the owner can add a receipt with a vendor, date and amount', !addReceipt.error && Number(addReceipt.data?.amount) === 42.5, errText(addReceipt.error))
+  const adminReceipt = await clients.adminA.from('center_receipts').insert(receiptRow(A)).select('id').single()
+  check('an administrator can add a receipt', !adminReceipt.error, errText(adminReceipt.error))
+  const editReceipt = addReceipt.data ? await ownerSb.from('center_receipts').update({ amount: 50 }).eq('id', addReceipt.data.id).select('amount').single() : { error: { message: 'no receipt' } }
+  check('the owner can correct the amount', !editReceipt.error && Number(editReceipt.data?.amount) === 50, errText(editReceipt.error))
+  for (const label of ['regularA', 'staffAdminA', 'subA', 'outsider']) {
+    const seen = (await clients[label].from('center_receipts').select('id').eq('center_id', A)).data ?? []
+    const tried = await clients[label].from('center_receipts').insert(receiptRow(A))
+    check(`${label} cannot read or add receipts`, seen.length === 0 && !!tried.error, errText(tried.error))
+  }
+  const otherSees = (await clients.ownerB.from('center_receipts').select('id').eq('center_id', A)).data ?? []
+  const otherAdds = await clients.ownerB.from('center_receipts').insert(receiptRow(A))
+  check('another center\'s owner cannot see or add receipts here', otherSees.length === 0 && !!otherAdds.error, errText(otherAdds.error))
+  const anonReceipts = await clients.anonymous.from('center_receipts').select('id')
+  check('a signed-out visitor gets nothing', !anonReceipts.data?.length)
+  const foreignVendor = await ownerSb.from('center_receipts').insert(receiptRow(A, { vendor_id: vendorB.id }))
+  check('a receipt cannot use another center\'s vendor', !!foreignVendor.error, 'inserted')
+  const wrongFolder = await ownerSb.from('center_receipts').insert(receiptRow(A, { file_key: `receipts/${B}/${randomUUID()}.jpg` }))
+  check('a receipt file must sit in the center\'s own receipts folder', !!wrongFolder.error, 'inserted')
+  const negative = await ownerSb.from('center_receipts').insert(receiptRow(A, { amount: -1 }))
+  check('a negative amount is refused', !!negative.error, 'inserted')
+  if (addReceipt.data) {
+    await must(admin.from('center_vendors').delete().eq('id', vendorA.id), 'delete vendor A')
+    const kept = (await admin.from('center_receipts').select('id, vendor_id').eq('id', addReceipt.data.id).maybeSingle()).data
+    check('deleting a vendor keeps its receipts (vendor cleared)', !!kept && kept.vendor_id === null)
+    const delReceipt = await ownerSb.from('center_receipts').delete().eq('id', addReceipt.data.id).select('id')
+    check('the owner can delete a receipt', !delReceipt.error && delReceipt.data?.length === 1, errText(delReceipt.error))
+  }
 }
 
 let crashed = null

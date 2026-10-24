@@ -34,7 +34,7 @@ export const INTEGRATIONS: Integration[] = [
     id: 'r2', name: 'Cloudflare R2', category: 'File storage', stage: 'live',
     description: 'Private buckets for staff documents, center records and (separately) child records.',
     env: ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_EMPLOYEE_BUCKET', 'R2_CENTER_BUCKET', 'R2_CENTER_BUCKET_INTERNAL'],
-    optionalEnv: ['R2_CHILD_BUCKET'],
+    optionalEnv: ['R2_CHILD_BUCKET', 'R2_RECEIPT_BUCKET'],
     manageUrl: 'https://dash.cloudflare.com',
   },
   {

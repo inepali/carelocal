@@ -20,7 +20,7 @@ import { getSignedInUserId, isCenterAdminOf } from '@/lib/server/staff-access'
  * person who created it, works once, and the phone can only upload: it never sees documents.
  */
 
-export type HandoffKind = 'internal' | 'inspection' | 'template' | 'vault'
+export type HandoffKind = 'internal' | 'inspection' | 'template' | 'vault' | 'receipt'
 
 const admin = () => createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
@@ -44,6 +44,7 @@ const BUCKET_ENV: Record<HandoffKind, string> = {
   internal: 'R2_CENTER_BUCKET_INTERNAL',
   inspection: 'R2_CENTER_BUCKET_INTERNAL',
   template: 'R2_CENTER_BUCKET',
+  receipt: 'R2_RECEIPT_BUCKET',
 }
 
 const BASE_ENV = ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY']
@@ -152,6 +153,11 @@ export async function createUploadHandoff(input: { kind: HandoffKind; label: str
     } else {
       centerId = await adminCenterId(userId)
       if (!centerId || !(await isCenterAdminOf(userId, centerId))) return fail('Only center admins can do this.')
+      if (input.kind === 'receipt') {
+        // Owner and administrators only, the same rule the database applies to receipts
+        const { data: member } = await db.from('center_admins').select('role').eq('center_id', centerId).eq('user_id', userId).maybeSingle()
+        if (!member || !['owner', 'admin'].includes(member.role as string)) return fail('Only the owner and administrators can add receipts.')
+      }
       if (input.kind === 'internal') {
         if (!input.staffId) return fail('Choose an employee first.')
         const { data: membership } = await db.from('center_staff').select('staff_id').eq('center_id', centerId).eq('staff_id', input.staffId).maybeSingle()
@@ -274,6 +280,7 @@ function storageKey(row: HandoffRow, ext: string) {
     case 'internal': return `employee_files/${row.center_id}/${row.staff_id}/${file}`
     case 'inspection': return `inspection/${row.center_id}/${file}`
     case 'template': return `template/${row.center_id}/${file}`
+    case 'receipt': return `receipts/${row.center_id}/${file}`
     case 'vault': return `vault/${row.created_by}/${file}`
   }
 }

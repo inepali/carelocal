@@ -102,19 +102,21 @@ export async function purgeCenter(
   }
 
   // Collect everything that needs cleaning up outside the center's own rows
-  const [{ data: internalDocs }, { data: inspectionFiles }, { data: templates }, { data: admins }, { data: childFiles }] = await Promise.all([
+  const [{ data: internalDocs }, { data: inspectionFiles }, { data: templates }, { data: admins }, { data: childFiles }, { data: receiptFiles }] = await Promise.all([
     db.from('center_internal_documents').select('file_key, bucket_name').eq('center_id', centerId),
     db.from('center_inspection_files').select('file_key, bucket_name').eq('center_id', centerId),
     // audience-ok: purging a center must remove the stored files of every audience
     db.from('center_document_requirements').select('template_file_key, template_bucket_name').eq('center_id', centerId),
     db.from('center_admins').select('user_id').eq('center_id', centerId),
     db.from('child_files').select('file_key, bucket_name').eq('center_id', centerId),
+    db.from('center_receipts').select('file_key, bucket_name').eq('center_id', centerId),
   ])
   const files: StoredFile[] = [
     ...(internalDocs ?? []).map(d => ({ bucket: d.bucket_name, key: d.file_key })),
     ...(inspectionFiles ?? []).map(d => ({ bucket: d.bucket_name, key: d.file_key })),
     ...(templates ?? []).map(d => ({ bucket: d.template_bucket_name, key: d.template_file_key })),
     ...(childFiles ?? []).map(d => ({ bucket: d.bucket_name, key: d.file_key })),
+    ...(receiptFiles ?? []).map(d => ({ bucket: d.bucket_name, key: d.file_key })),
   ]
   const adminUserIds = (admins ?? []).map(a => a.user_id as string)
 

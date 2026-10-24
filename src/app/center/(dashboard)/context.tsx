@@ -24,6 +24,9 @@ export const CenterContext = createContext<CenterContextType>({
 
 export const useCenterContext = () => useContext(CenterContext)
 
+/** Receipts are kept by the owner and administrators only (the database enforces the same rule) */
+export const canManageReceipts = (ctx: Pick<CenterContextType, 'role'>) => ctx.role === 'owner' || ctx.role === 'admin'
+
 /** Only the owner and administrators may open child records (the database enforces the same rule) */
 export const canOpenChildFiles = (ctx: Pick<CenterContextType, 'domainKey' | 'role' | 'childFilesEnabled'>) =>
   ctx.domainKey === 'childcare' && ctx.childFilesEnabled && (ctx.role === 'owner' || ctx.role === 'admin')

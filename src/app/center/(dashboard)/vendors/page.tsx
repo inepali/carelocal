@@ -3,8 +3,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Vendor } from '@/lib/types'
-import { Plus, Edit2, Trash2, Loader2, Truck, Phone, Mail, Globe, X, Search, User } from 'lucide-react'
+import { Plus, Edit2, Trash2, Loader2, Truck, Phone, Mail, Globe, X, Search, User, Smartphone } from 'lucide-react'
 import { showAlert, showConfirm } from '@/lib/dialog'
+import { ReceiptDialog } from '@/components/center/ReceiptDialog'
+import { canManageReceipts, useCenterContext } from '../context'
+import Link from 'next/link'
 
 type VendorForm = {
   name: string
@@ -28,6 +31,9 @@ const labelClass = 'block font-bold text-text-main mb-2 uppercase tracking-wides
 
 export default function VendorsPage() {
   const supabase = createClient()
+  const canReceipts = canManageReceipts(useCenterContext())
+  const [receiptCounts, setReceiptCounts] = useState<Record<string, number>>({})
+  const [receiptFor, setReceiptFor] = useState<Vendor | null>(null)
   const [loading, setLoading] = useState(true)
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [inspectionCounts, setInspectionCounts] = useState<Record<string, number>>({})
@@ -66,6 +72,13 @@ export default function VendorsPage() {
         if (row.vendor_id) counts[row.vendor_id] = (counts[row.vendor_id] || 0) + 1
       }
       setInspectionCounts(counts)
+
+      if (canReceipts) {
+        const { data: receiptRows } = await supabase.from('center_receipts').select('vendor_id').eq('center_id', admin.center_id).not('vendor_id', 'is', null)
+        const receipts: Record<string, number> = {}
+        for (const row of receiptRows || []) if (row.vendor_id) receipts[row.vendor_id] = (receipts[row.vendor_id] || 0) + 1
+        setReceiptCounts(receipts)
+      }
     }
     setLoading(false)
   }
@@ -236,12 +249,39 @@ export default function VendorsPage() {
                 )}
               </div>
 
-              <div className="pt-4 mt-4 border-t border-border text-xs font-bold text-muted">
-                {inspectionCounts[vendor.id] || 0} inspection{(inspectionCounts[vendor.id] || 0) === 1 ? '' : 's'} assigned
+              <div className="pt-4 mt-4 border-t border-border text-xs font-bold text-muted flex items-center justify-between gap-2">
+                <div>
+                  <div>{inspectionCounts[vendor.id] || 0} inspection{(inspectionCounts[vendor.id] || 0) === 1 ? '' : 's'} assigned</div>
+                  {canReceipts && (
+                    <Link href={`/center/receipts?vendor=${vendor.id}`} className="hover:text-brand-600 hover:underline">
+                      {receiptCounts[vendor.id] || 0} receipt{(receiptCounts[vendor.id] || 0) === 1 ? '' : 's'}
+                    </Link>
+                  )}
+                </div>
+                {canReceipts && (
+                  <button
+                    onClick={() => setReceiptFor(vendor)}
+                    title="Add a receipt (photo from your phone)"
+                    aria-label={`Add a receipt for ${vendor.name}`}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-2 text-xs font-bold text-brand-600 transition-colors hover:bg-brand-50"
+                  >
+                    <Smartphone className="h-4 w-4" /> Receipt
+                  </button>
+                )}
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      {receiptFor && centerId && (
+        <ReceiptDialog
+          centerId={centerId}
+          vendors={vendors.map(v => ({ id: v.id, name: v.name }))}
+          initialVendorId={receiptFor.id}
+          onClose={() => setReceiptFor(null)}
+          onSaved={() => { setReceiptFor(null); loadData() }}
+        />
       )}
 
       {isModalOpen && (
