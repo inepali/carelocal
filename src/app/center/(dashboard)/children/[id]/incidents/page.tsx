@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { ArrowLeft, Baby, FileText, Loader2, Pencil, Search, Trash2, Upload } from 'lucide-react'
+import { ArrowLeft, Baby, Check, FileText, Loader2, Search, Trash2, Upload } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { canOpenChildFiles, useCenterContext } from '../../../context'
 import { deleteChildFile, registerChildFile } from '@/app/actions/child-files.actions'
@@ -12,7 +12,7 @@ import { openChildFile, uploadChildFile } from '@/lib/child-files'
 import type { PhoneUpload } from '@/lib/files'
 import { formatDate } from '@/lib/compliance'
 import { showAlert, showConfirm } from '@/lib/dialog'
-import { BTN, BTN_PRIMARY, BTN_QUIET, BTN_QUIET_SM, FLD } from '../../_components/ui'
+import { BTN_PRIMARY, FLD } from '../../_components/ui'
 
 type IncidentForm = { id: string; file_name: string; created_at: string; incident_note: string | null }
 
@@ -31,9 +31,6 @@ export default function ChildIncidentsPage() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [search, setSearch] = useState('')
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [draft, setDraft] = useState('')
-  const [savingNote, setSavingNote] = useState(false)
   const input = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
@@ -69,21 +66,6 @@ export default function ChildIncidentsPage() {
     const res = await registerChildFile(id, { fileKey: phoneUpload.fileKey, fileName: phoneUpload.name, contentType: phoneUpload.type, category: 'incident' })
     if (!res.success) return res.error
     await load()
-  }
-
-  function startNote(form: IncidentForm) {
-    setEditingId(form.id)
-    setDraft(form.incident_note ?? '')
-  }
-
-  async function saveNote(form: IncidentForm) {
-    setSavingNote(true)
-    const note = draft.trim()
-    const { error } = await createClient().from('child_files').update({ incident_note: note || null }).eq('id', form.id)
-    setSavingNote(false)
-    if (error) { showAlert('Could not save the details: ' + error.message); return }
-    setForms(prev => prev.map(f => f.id === form.id ? { ...f, incident_note: note || null } : f))
-    setEditingId(null)
   }
 
   async function remove(form: IncidentForm) {
@@ -138,7 +120,7 @@ export default function ChildIncidentsPage() {
         </div>
       </div>
 
-      <p className="mb-4 text-sm text-muted">Upload each completed incident form as a PDF or a photo (up to 15 MB), then add a short description so it is easy to find later. Only the owner and administrators can see them.</p>
+      <p className="mb-4 text-sm text-muted">Upload each completed incident form as a PDF or a photo (up to 15 MB), then type a short description next to it so it is easy to find later. Only the owner and administrators can see them.</p>
 
       <section className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-border bg-surface px-6 py-4">
@@ -159,52 +141,70 @@ export default function ChildIncidentsPage() {
           <ul className="divide-y divide-border">
             {shown.map(form => (
               <li key={form.id} className="px-6 py-3.5">
-                <div className="flex items-center justify-between gap-4">
-                  <button type="button" onClick={() => openChildFile(form.id)} className="flex min-w-0 items-center gap-2.5 text-left text-sm font-semibold text-text-main hover:text-brand-600">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+                  <button type="button" onClick={() => openChildFile(form.id)} className="flex min-w-0 shrink-0 items-center gap-2.5 text-left text-sm font-semibold text-text-main hover:text-brand-600 sm:max-w-[45%]">
                     <FileText className="h-4 w-4 shrink-0 text-brand-600" />
                     <span className="truncate">{form.file_name}</span>
                   </button>
+                  <NoteField form={form} onSaved={note => setForms(prev => prev.map(f => f.id === form.id ? { ...f, incident_note: note } : f))} />
                   <div className="flex shrink-0 items-center gap-2">
                     <span className="text-xs text-muted">{formatDate(form.created_at.slice(0, 10))}</span>
-                    {editingId !== form.id && (
-                      <button type="button" onClick={() => startNote(form)} className={BTN_QUIET_SM}>
-                        <Pencil className="h-3.5 w-3.5" /> {form.incident_note ? 'Edit' : 'Add details'}
-                      </button>
-                    )}
                     <button type="button" disabled={busy} onClick={() => remove(form)} aria-label="Delete incident form" className="rounded-lg p-1.5 text-subtle hover:bg-red-50 hover:text-red-500">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
-                {editingId === form.id ? (
-                  <div className="mt-3">
-                    <textarea
-                      autoFocus
-                      rows={3}
-                      maxLength={NOTE_MAX}
-                      value={draft}
-                      onChange={e => setDraft(e.target.value)}
-                      placeholder="What happened, in a sentence or two (for example: fell on the playground, ice applied, parent called)"
-                      className={`${FLD} resize-none`}
-                    />
-                    <div className="mt-2 flex items-center justify-between gap-3">
-                      <span className="text-xs text-subtle">{draft.length} / {NOTE_MAX}</span>
-                      <div className="flex gap-2">
-                        <button type="button" onClick={() => setEditingId(null)} className={BTN_QUIET}>Cancel</button>
-                        <button type="button" disabled={savingNote} onClick={() => saveNote(form)} className={BTN}>
-                          {savingNote ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Save details
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ) : form.incident_note ? (
-                  <p className="mt-2 whitespace-pre-line pl-[26px] text-sm text-text-muted">{form.incident_note}</p>
-                ) : null}
               </li>
             ))}
           </ul>
         )}
       </section>
+    </div>
+  )
+}
+
+/** The description sits inline next to each form. It saves when the field loses focus, on Enter, or with the check mark; Escape undoes. */
+function NoteField({ form, onSaved }: { form: IncidentForm; onSaved: (note: string | null) => void }) {
+  const saved = form.incident_note ?? ''
+  const [draft, setDraft] = useState(saved)
+  const [saving, setSaving] = useState(false)
+  const dirty = draft.trim() !== saved
+
+  async function save() {
+    if (!dirty || saving) return
+    setSaving(true)
+    const note = draft.trim() || null
+    const { error } = await createClient().from('child_files').update({ incident_note: note }).eq('id', form.id)
+    setSaving(false)
+    if (error) { showAlert('Could not save the details: ' + error.message); return }
+    setDraft(note ?? '')
+    onSaved(note)
+  }
+
+  return (
+    <div className="flex min-w-0 flex-1 items-center gap-1.5">
+      <input
+        value={draft}
+        maxLength={NOTE_MAX}
+        title={draft || undefined}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={save}
+        onKeyDown={e => {
+          if (e.key === 'Enter') e.currentTarget.blur()
+          if (e.key === 'Escape') setDraft(saved)
+        }}
+        placeholder="What happened? (e.g. fell on the playground, ice applied)"
+        aria-label={`Description for ${form.file_name}`}
+        className={`${FLD} py-1.5 text-sm`}
+      />
+      {saving ? (
+        <Loader2 className="h-4 w-4 shrink-0 animate-spin text-brand-600" />
+      ) : dirty ? (
+        // mousedown keeps focus in the field so blur does not save a second time
+        <button type="button" onMouseDown={e => e.preventDefault()} onClick={save} aria-label="Save description" className="shrink-0 rounded-lg p-1.5 text-brand-600 hover:bg-brand-50">
+          <Check className="h-4 w-4" />
+        </button>
+      ) : null}
     </div>
   )
 }

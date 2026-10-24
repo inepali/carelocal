@@ -57,6 +57,29 @@ async function readableChild(supabase: Awaited<ReturnType<typeof createClient>>,
   return data as { id: string; center_id: string } | null
 }
 
+/**
+ * Incident forms are named for the day and the child, not whatever the phone called the photo:
+ * 2026-10-24_Jane_Doe_incident.jpg. The date is the center's local day. A second form on the same day gets _2, _3, ...
+ */
+async function incidentFileName(supabase: Awaited<ReturnType<typeof createClient>>, child: { id: string; center_id: string }, ext: string) {
+  const [{ data: kid }, { data: center }] = await Promise.all([
+    supabase.from('children').select('first_name, last_name').eq('id', child.id).maybeSingle(),
+    supabase.from('centers').select('timezone').eq('id', child.center_id).maybeSingle(),
+  ])
+  let date: string
+  try {
+    date = new Intl.DateTimeFormat('en-CA', { timeZone: center?.timezone || 'America/New_York' }).format(new Date())
+  } catch {
+    date = new Date().toISOString().slice(0, 10)
+  }
+  const name = `${kid?.first_name ?? ''} ${kid?.last_name ?? ''}`.trim().replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_|_$/g, '') || 'child'
+  const base = `${date}_${name}_incident`
+
+  const { count } = await supabase.from('child_files').select('id', { count: 'exact', head: true })
+    .eq('child_id', child.id).eq('category', 'incident').like('file_name', `${base}%`)
+  return `${base}${count ? `_${count + 1}` : ''}.${ext}`.slice(0, 200)
+}
+
 /** Step 1 of an upload: a short-lived link to PUT one file to. Nothing is recorded until registerChildFile. */
 export async function getChildUploadUrl(childId: string, contentType: string, sizeBytes: number, category: 'record' | 'incident' = 'record') {
   try {
@@ -123,7 +146,9 @@ export async function registerChildFile(childId: string, input: {
       category,
       file_key: input.fileKey,
       bucket_name: bucketName,
-      file_name: input.fileName.slice(0, 200),
+      file_name: category === 'incident'
+        ? await incidentFileName(supabase, child, ALLOWED_TYPES[input.contentType])
+        : input.fileName.slice(0, 200),
       content_type: input.contentType,
       size_bytes: size ?? null,
       source: 'center',
