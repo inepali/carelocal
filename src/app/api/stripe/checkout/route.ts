@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
         },
       ],
       success_url: `${appUrl}/center/dashboard?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl}/center/settings/billing`,
+      cancel_url: `${appUrl}/center/about#subscription`,
       metadata: {
         center_id: admin.center_id,
         tier: tierId,

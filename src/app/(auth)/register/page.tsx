@@ -176,14 +176,8 @@ function RegisterForm() {
         return
       }
 
-      await supabase.from('subscriptions').insert({
-        center_id: centerId,
-        tier: 'starter',
-        status: 'trialing',
-        current_period_start: new Date().toISOString(),
-        // 3-month free trial
-        current_period_end: new Date(new Date().setMonth(new Date().getMonth() + 3)).toISOString(),
-      })
+      // No subscription yet: the database starts every new center on the 3-month Free Trial tier
+      // (subscription_tier 'trial', status 'trialing'). They upgrade from About → Subscription.
 
       router.push('/center/dashboard')
     }

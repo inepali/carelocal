@@ -1,6 +1,22 @@
 import type { DomainKey } from '@/lib/domain-config'
 
-export type SubscriptionTier = 'starter' | 'growth' | 'network' | 'enterprise'
+export type SubscriptionTier = 'trial' | 'starter' | 'growth' | 'network' | 'enterprise'
+
+/** What each tier is called on screen. 'trial' is the 3-month free trial every new center starts on, before any Stripe subscription. */
+/** Days left in a center's free trial (0 once it is over). It runs trial_months (default 3) from trial_started_at. */
+export function trialDaysLeft(center: { trial_started_at?: string | null; created_at: string; trial_months?: number | null }) {
+  const end = new Date(center.trial_started_at || center.created_at)
+  end.setMonth(end.getMonth() + (center.trial_months || 3))
+  return Math.max(0, Math.ceil((end.getTime() - Date.now()) / 86_400_000))
+}
+
+export const TIER_LABELS: Record<SubscriptionTier, string> = {
+  trial: 'Free Trial',
+  starter: 'Starter',
+  growth: 'Growth',
+  network: 'Network',
+  enterprise: 'Enterprise',
+}
 export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused'
 export type StaffType = string  // A 'Role' value from center_lookups
 export type AgeGroup = 'infant' | 'toddler' | 'preschool' | 'school_age' | 'mixed'
@@ -47,6 +63,7 @@ export interface Center {
   stripe_customer_id?: string
   trial_ends_at?: string
   trial_months?: number
+  trial_started_at?: string
   // Public page (/centers/<handle>); off until the center turns it on
   public_enabled?: boolean
   public_handle?: string | null
@@ -344,6 +361,7 @@ export const AGE_GROUP_LABELS: Record<AgeGroup, string> = {
 export function getTierLimits(domainKey: DomainKey): Record<SubscriptionTier, { maxLocations: number; maxStaff: number; pricePerMonth: number }> {
   if (domainKey === 'senior') {
     return {
+      trial: { maxLocations: 10, maxStaff: 300, pricePerMonth: 0 }, // full access while trialing
       starter: { maxLocations: 1, maxStaff: 30, pricePerMonth: 79 },
       growth: { maxLocations: 3, maxStaff: 100, pricePerMonth: 199 },
       network: { maxLocations: 10, maxStaff: 300, pricePerMonth: 399 },
@@ -352,6 +370,7 @@ export function getTierLimits(domainKey: DomainKey): Record<SubscriptionTier, { 
   }
   if (domainKey === 'healthcare') {
     return {
+      trial: { maxLocations: 10, maxStaff: 300, pricePerMonth: 0 }, // full access while trialing
       starter: { maxLocations: 1, maxStaff: 30, pricePerMonth: 99 },
       growth: { maxLocations: 3, maxStaff: 100, pricePerMonth: 249 },
       network: { maxLocations: 10, maxStaff: 300, pricePerMonth: 499 },
@@ -359,6 +378,7 @@ export function getTierLimits(domainKey: DomainKey): Record<SubscriptionTier, { 
     }
   }
   return {
+    trial: { maxLocations: 10, maxStaff: 300, pricePerMonth: 0 }, // full access while trialing
     starter: { maxLocations: 1, maxStaff: 30, pricePerMonth: 49 },
     growth: { maxLocations: 3, maxStaff: 100, pricePerMonth: 99 },
     network: { maxLocations: 10, maxStaff: 300, pricePerMonth: 199 },

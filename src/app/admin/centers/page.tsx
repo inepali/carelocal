@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
+import { TIER_LABELS, type SubscriptionTier } from '@/lib/types'
 import { 
   Building2, 
   Search, 
@@ -247,7 +248,7 @@ export default function AdminCentersPage() {
                        <div className="flex items-center gap-2 mb-1">
                           <CreditCard className="w-3.5 h-3.5 text-blue-500" />
                           <span className="text-xs font-black uppercase tracking-wider text-slate-700">
-                            {center.subscription_tier}
+                            {TIER_LABELS[center.subscription_tier as SubscriptionTier] ?? center.subscription_tier}
                           </span>
                        </div>
                        {sub?.current_period_end && (

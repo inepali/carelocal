@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Shift, StaffProfile } from '@/lib/types'
+import { Shift, StaffProfile, trialDaysLeft as trialDaysLeftFor } from '@/lib/types'
 import Link from 'next/link'
 import { Calendar, Users, AlertCircle, FileText, ArrowRight, CheckCircle2, Clock, UserPlus, Globe, Star, AlertTriangle, CalendarCheck, Eye, Inbox, Download } from 'lucide-react'
 import { useCenterContext } from '../context'
@@ -56,7 +56,7 @@ export default function DashboardOverview() {
 
       const { data: centerData } = await supabase
         .from('centers')
-        .select('created_at, trial_months, subscription_status, subscriptions(status)')
+        .select('created_at, trial_months, trial_started_at, subscription_status, subscriptions(status)')
         .eq('id', centerId)
         .single()
 
@@ -65,13 +65,9 @@ export default function DashboardOverview() {
       if (centerData) {
         const sub = centerData.subscriptions?.[0]
         const isActive = centerData.subscription_status === 'active' || (sub && sub.status === 'active')
-        
         if (!isActive) {
-          const trialMonths = centerData.trial_months || 3
-          const trialEnd = new Date(centerData.created_at)
-          trialEnd.setMonth(trialEnd.getMonth() + trialMonths)
-          trialDaysLeft = Math.ceil((trialEnd.getTime() - new Date().getTime()) / (1000 * 3600 * 24))
-          if (trialDaysLeft > 0) isTrialing = true
+          trialDaysLeft = trialDaysLeftFor(centerData)
+          isTrialing = trialDaysLeft > 0
         }
       }
 
@@ -203,8 +199,8 @@ export default function DashboardOverview() {
                <div className="text-sm font-bold text-amber-600">You have {stats.trialDaysLeft} days remaining on your free trial.</div>
              </div>
            </div>
-           <Link href="/center/settings/billing" className="bg-amber-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-[#b45309] transition-colors shadow-sm whitespace-nowrap text-center">
-             Subscribe Now
+           <Link href="/center/about#subscription" className="bg-amber-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-[#b45309] transition-colors shadow-sm whitespace-nowrap text-center">
+             Upgrade
            </Link>
         </div>
       )}

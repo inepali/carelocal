@@ -6,14 +6,8 @@ import { getTierLimits, SubscriptionTier } from '@/lib/types'
 import type { DomainKey } from '@/lib/domain-config'
 import { CheckCircle2, ShieldCheck, CreditCard, Loader2 } from 'lucide-react'
 
-// You would replace these with actual Stripe Price IDs from your Stripe Dashboard
-const STRIPE_PRICES = {
-  starter: process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER || 'price_starter_placeholder',
-  growth: process.env.NEXT_PUBLIC_STRIPE_PRICE_GROWTH || 'price_growth_placeholder',
-  network: process.env.NEXT_PUBLIC_STRIPE_PRICE_NETWORK || 'price_network_placeholder',
-}
-
-export default function BillingPage() {
+/** The plans a center can subscribe to, shown inside About → Subscription. Trial centers subscribe through Stripe checkout; paying centers change plans in the Stripe portal. */
+export default function PlanPicker() {
   const [loading, setLoading] = useState<SubscriptionTier | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly')
@@ -38,13 +32,15 @@ export default function BillingPage() {
       if (admin) {
         const { data: center } = await supabase
           .from('centers')
-          .select('subscription_tier, subscription_status, domain_key')
+          .select('subscription_tier, subscription_status, domain_key, stripe_customer_id')
           .eq('id', admin.center_id)
           .single()
 
         if (center) {
           setCurrentTier(center.subscription_tier as SubscriptionTier)
-          setIsActive(center.subscription_status === 'active' || center.subscription_status === 'trialing')
+          // Only a center with a Stripe customer has a subscription to change in the billing portal. Centers on the
+          // in-app free trial are 'trialing' with no customer yet: they subscribe through checkout instead.
+          setIsActive(!!center.stripe_customer_id && (center.subscription_status === 'active' || center.subscription_status === 'trialing'))
           if (center.domain_key) {
             setDomainKey(center.domain_key as DomainKey)
           }
@@ -146,10 +142,10 @@ export default function BillingPage() {
   const tierOrder: SubscriptionTier[] = ['starter', 'growth', 'network']
 
   return (
-    <div className="max-w-5xl pb-24">
-      <div className="mb-12 text-center max-w-2xl mx-auto">
-        <h1 className="text-4xl font-extrabold text-heading mb-4">Choose Your Plan</h1>
-        <p className="text-muted text-lg mb-8">Select the right plan to manage your staff, compliance, and shifts effectively.</p>
+    <div>
+      <div className="mb-8 text-center max-w-2xl mx-auto">
+        <h3 className="text-2xl font-black text-heading mb-2">Choose Your Plan</h3>
+        <p className="text-muted mb-6">Upgrade any time. Your free trial ends as soon as a paid plan starts.</p>
         
         <div className="inline-flex items-center p-1 bg-surface-2 rounded-xl relative">
           <button
