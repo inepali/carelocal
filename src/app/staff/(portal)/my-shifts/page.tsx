@@ -11,6 +11,8 @@ import { ReviewModal } from '@/components/ReviewModal'
 import { useLookups } from '@/hooks/use-lookups'
 import { lookupLabel } from '@/lib/lookups'
 import { showAlert } from '@/lib/dialog'
+import { loadClaimBlockers, type ClaimBlocker } from '@/lib/claim-gate'
+import { ClaimBlockedDialog } from '@/components/staff/ClaimBlockedDialog'
 
 export default function MyShiftsPage() {
   const { data: roleLookups } = useLookups('Role')
@@ -32,6 +34,7 @@ export default function MyShiftsPage() {
   const [reviewingShift, setReviewingShift] = useState<any>(null)
   const [reviewedCenterIds, setReviewedCenterIds] = useState<Set<string>>(new Set())
   const [showBalanceModal, setShowBalanceModal] = useState(false)
+  const [claimBlock, setClaimBlock] = useState<{ centerName: string; slug: string; blockers: ClaimBlocker[] } | null>(null)
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const today = new Date()
     return new Date(today.getFullYear(), today.getMonth(), 1)
@@ -176,6 +179,16 @@ export default function MyShiftsPage() {
     }
 
     setClaimingShiftId(shiftId)
+
+    // Restriction: every document the center requires must be valid (not expired, rejected or overdue)
+    const shift = shifts.find(s => s.id === shiftId)
+    const blockers = shift ? await loadClaimBlockers(supabase, shift.center_id) : []
+    if (shift && blockers.length > 0) {
+      setClaimBlock({ centerName: shift.centers?.name ?? 'this center', slug: shift.centers?.slug ?? '', blockers })
+      setClaimingShiftId(null)
+      return
+    }
+
     const isAlreadyInterested = interestedShiftIds.has(shiftId)
 
     const { error } = isAlreadyInterested
@@ -628,6 +641,15 @@ export default function MyShiftsPage() {
       )}
 
       */}
+      {claimBlock && (
+        <ClaimBlockedDialog
+          centerName={claimBlock.centerName}
+          blockers={claimBlock.blockers}
+          onClose={() => setClaimBlock(null)}
+          onFix={() => { router.push(`/staff/documents?center=${claimBlock.slug}`); setClaimBlock(null) }}
+        />
+      )}
+
       {/* ── Outstanding Balance Warning Modal ── */}
       {showBalanceModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

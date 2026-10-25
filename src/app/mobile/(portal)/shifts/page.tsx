@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/client'
 import { MapPin, CheckCircle2, Loader2, ShieldCheck, Globe, Calendar, Clock, AlertCircle, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useToast } from '../../layout'
+import { loadClaimBlockers, type ClaimBlocker } from '@/lib/claim-gate'
+import { ClaimBlockedDialog } from '@/components/staff/ClaimBlockedDialog'
 
 interface Shift {
   id: string
@@ -55,6 +57,7 @@ export default function MobileShiftsPage() {
   const [confirmedShiftIds, setConfirmedShiftIds] = useState<Set<string>>(new Set())
   const [claimingShiftId, setClaimingShiftId] = useState<string | null>(null)
   const [showBalanceModal, setShowBalanceModal] = useState(false)
+  const [claimBlock, setClaimBlock] = useState<{ centerName: string; slug: string; blockers: ClaimBlocker[] } | null>(null)
 
   useEffect(() => {
     async function loadData() {
@@ -162,6 +165,15 @@ export default function MobileShiftsPage() {
     }
 
     setClaimingShiftId(shiftId)
+
+    // Restriction: every document the center requires must be valid (not expired, rejected or overdue)
+    const shift = shifts.find(s => s.id === shiftId)
+    const blockers = shift ? await loadClaimBlockers(supabase, shift.center_id) : []
+    if (shift && blockers.length > 0) {
+      setClaimBlock({ centerName: shift.centers?.name ?? 'this center', slug: shift.centers?.slug ?? '', blockers })
+      setClaimingShiftId(null)
+      return
+    }
 
     const { error } = await supabase.from('shift_claims').insert({
       shift_id: shiftId,
@@ -332,6 +344,15 @@ export default function MobileShiftsPage() {
             )
           })}
         </div>
+      )}
+
+      {claimBlock && (
+        <ClaimBlockedDialog
+          centerName={claimBlock.centerName}
+          blockers={claimBlock.blockers}
+          onClose={() => setClaimBlock(null)}
+          onFix={() => { router.push(`/mobile/documents?center=${claimBlock.slug}`); setClaimBlock(null) }}
+        />
       )}
 
       {/* ── Balance Modal ── */}

@@ -552,6 +552,84 @@ async function main() {
   check('a nonsense limit is refused by the database', !!badLimit.error)
   await must(admin.from('centers').update({ job_limit_override: null }).eq('id', A), 'plan default')
   await admin.from('job_postings').delete().in('id', [j1, j2, j3])
+
+  // 15. A substitute cannot claim a shift while a document the center requires is expired, rejected or overdue ────
+  console.log('\n15. Shift claim document gate')
+  const ymd = offset => { const d = new Date(); d.setDate(d.getDate() + offset); return d.toISOString().slice(0, 10) }
+  const subStaff = (await must(admin.from('staff_profiles').select('id').eq('user_id', people.subA.id).single(), 'sub staff')).id
+  const gateShift = await must(admin.from('shifts').insert({ center_id: A, shift_date: '2099-01-05', start_time: '08:00', end_time: '14:00', status: 'open' }).select('id').single(), 'gate shift')
+  const clearClaims = () => admin.from('shift_claims').delete().eq('shift_id', gateShift.id).eq('staff_id', subStaff)
+  const claimAs = (client, status = 'pending') => client.from('shift_claims').insert({ shift_id: gateShift.id, staff_id: subStaff, status })
+  const blockersOf = async () => ((await clients.subA.rpc('my_claim_blockers', { p_center_id: A })).data ?? [])
+
+  /** One requirement (plus the substitute's record for it) and whether a claim is then refused, and why */
+  async function gateCase(label, reqFields, record, expected, matchedDocumentId = null) {
+    const req = await must(admin.from('center_document_requirements').insert({
+      center_id: A, document_name: `RLS Gate ${label}`, section: 'personnel', audience: 'staff', document_category: 'other', ...reqFields,
+    }).select('id').single(), `gate req ${label}`)
+    if (record) await must(admin.from('center_staff_document_status').insert({
+      center_id: A, staff_id: subStaff, requirement_id: req.id, matched_document_id: matchedDocumentId, ...record,
+    }).select('id'), `gate record ${label}`)
+    const attempt = await claimAs(clients.subA)
+    const listed = (await blockersOf()).find(b => b.requirement_id === req.id)
+    await clearClaims()
+    await admin.from('center_document_requirements').delete().eq('id', req.id)
+    const refused = !!attempt.error && /required documents/.test(attempt.error.message) && attempt.error.message.includes(`RLS Gate ${label}`)
+    const ok = expected ? refused && listed?.reason === expected : !attempt.error && !listed
+    check(label, ok, `${errText(attempt.error)} | listed: ${listed?.reason ?? 'no'}`)
+  }
+
+  const expiring = { renewal_type: 'document_expiry' }
+  await gateCase('with nothing wrong a substitute can claim', {}, null, null)
+  await gateCase('a document not yet due does not block', {}, { status: 'missing', due_on: ymd(5) }, null)
+  await gateCase('an expired document blocks the claim', expiring, { status: 'accepted', completed_on: ymd(-400), expires_on: ymd(-1) }, 'expired')
+  await gateCase('a document that expires today is still valid', expiring, { status: 'accepted', completed_on: ymd(-300), expires_on: ymd(0) }, null)
+  await gateCase('a document that expires later is fine', expiring, { status: 'accepted', completed_on: ymd(-30), expires_on: ymd(60) }, null)
+  await gateCase('a rejected document blocks the claim', {}, { status: 'rejected' }, 'rejected')
+  await gateCase('a document waiting for review does not block', {}, { status: 'pending_review' }, null)
+  const staleFile = await must(admin.from('staff_documents').insert({ staff_id: subStaff, document_name: 'RLS stale card', file_url: 'x', expiry_date: ymd(-3) }).select('id').single(), 'stale doc')
+  await gateCase('a waiting document whose file is already expired blocks', expiring, { status: 'pending_review' }, 'expired', staleFile.id)
+  await admin.from('staff_documents').delete().eq('id', staleFile.id)
+  await gateCase('a required item that is past its deadline and not provided blocks', {}, { status: 'missing', due_on: ymd(-2) }, 'missing')
+  await gateCase('an overdue yearly renewal blocks the claim', { renewal_type: 'interval', renewal_months: 12 }, { status: 'accepted', completed_on: ymd(-500) }, 'renewal_due')
+  await gateCase('a renewal that is not due yet does not block', { renewal_type: 'interval', renewal_months: 12 }, { status: 'accepted', completed_on: ymd(-30) }, null)
+  await gateCase('an optional document never blocks', { ...expiring, is_required: false }, { status: 'accepted', completed_on: ymd(-400), expires_on: ymd(-1) }, null)
+  await gateCase('an "if applicable" item without a record does not block', { is_required: false, is_conditional: true }, null, null)
+  await gateCase('an "if applicable" item with an expired record blocks', { ...expiring, is_required: false, is_conditional: true }, { status: 'accepted', completed_on: ymd(-400), expires_on: ymd(-1) }, 'expired')
+  await gateCase('a center-only record never blocks', { ...expiring, is_internal: true, evidence_type: 'center_record' }, { status: 'accepted', completed_on: ymd(-400), expires_on: ymd(-1) }, null)
+  await gateCase('an item marked not applicable never blocks', expiring, { status: 'accepted', completed_on: ymd(-400), expires_on: ymd(-1), not_applicable: true }, null)
+  await gateCase('a requirement for regular employees does not block a substitute', { ...expiring, applies_to_class: ['regular'] }, { status: 'accepted', completed_on: ymd(-400), expires_on: ymd(-1) }, null)
+
+  // The rule is per center: an expired item at center B says nothing about center A
+  const reqB = await must(admin.from('center_document_requirements').insert({ center_id: B, document_name: 'RLS Gate B', section: 'personnel', audience: 'staff', document_category: 'other', renewal_type: 'document_expiry' }).select('id').single(), 'gate req B')
+  await must(admin.from('center_staff_document_status').insert({ center_id: B, staff_id: subStaff, requirement_id: reqB.id, status: 'accepted', completed_on: ymd(-400), expires_on: ymd(-1) }).select('id'), 'gate record B')
+  const crossCenter = await claimAs(clients.subA)
+  check('an expired item at another center does not block this center', !crossCenter.error, errText(crossCenter.error))
+  await clearClaims()
+  check('and it does block a shift at that center', (await clients.subA.rpc('my_claim_blockers', { p_center_id: B })).data?.some(b => b.requirement_id === reqB.id))
+  await admin.from('center_document_requirements').delete().eq('id', reqB.id)
+
+  // While something is blocking: interest is allowed, committing is not, and the center is not gated
+  const blocking = await must(admin.from('center_document_requirements').insert({ center_id: A, document_name: 'RLS Gate Blocking', section: 'personnel', audience: 'staff', document_category: 'other', renewal_type: 'document_expiry' }).select('id').single(), 'blocking req')
+  await must(admin.from('center_staff_document_status').insert({ center_id: A, staff_id: subStaff, requirement_id: blocking.id, status: 'accepted', completed_on: ymd(-400), expires_on: ymd(-1) }).select('id'), 'blocking record')
+  const interest = await claimAs(clients.subA, 'interested')
+  check('a substitute can still save interest in a shift', !interest.error, errText(interest.error))
+  const upgrade = await clients.subA.from('shift_claims').update({ status: 'pending' }).eq('shift_id', gateShift.id).eq('staff_id', subStaff).select('id')
+  check('but cannot turn that interest into a claim', !!upgrade.error && /required documents/.test(upgrade.error.message), errText(upgrade.error))
+  await clearClaims()
+  const byCenter = await admin.from('shift_claims').insert({ shift_id: gateShift.id, staff_id: subStaff, status: 'pending' })
+  check('a center can still place a substitute on a shift', !byCenter.error, errText(byCenter.error))
+  const confirmed = await clients.ownerA.from('shift_claims').update({ status: 'confirmed' }).eq('shift_id', gateShift.id).eq('staff_id', subStaff).select('id')
+  check('and confirm a claim', !confirmed.error && confirmed.data?.length === 1, errText(confirmed.error))
+  await clearClaims()
+  const probe = await clients.subA.rpc('staff_claim_blockers', { p_staff_id: subStaff, p_center_id: A })
+  check('the checker cannot be called directly for other people', !!probe.error, 'callable')
+  const otherView = await clients.outsider.rpc('my_claim_blockers', { p_center_id: A })
+  check('my_claim_blockers only answers for the caller', !otherView.error && (otherView.data ?? []).length === 0, errText(otherView.error))
+  const anonView = await clients.anonymous.rpc('my_claim_blockers', { p_center_id: A })
+  check('and is closed to signed-out visitors', !!anonView.error)
+  await admin.from('center_document_requirements').delete().eq('id', blocking.id)
+  await admin.from('shifts').delete().eq('id', gateShift.id)
 }
 
 let crashed = null

@@ -9,6 +9,8 @@ import { payStaffBalance } from '@/app/actions/staff-billing.actions'
 import { useLookups } from '@/hooks/use-lookups'
 import { lookupLabel } from '@/lib/lookups'
 import { showAlert } from '@/lib/dialog'
+import { loadClaimBlockers, type ClaimBlocker } from '@/lib/claim-gate'
+import { ClaimBlockedDialog } from '@/components/staff/ClaimBlockedDialog'
 
 export default function StaffShiftsPage() {
   const { data: roleLookups } = useLookups('Role')
@@ -34,6 +36,7 @@ export default function StaffShiftsPage() {
   // Maintenance fee payment states
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
   const [showBalanceModal, setShowBalanceModal] = useState(false)
+  const [claimBlock, setClaimBlock] = useState<{ centerName: string; slug: string; blockers: ClaimBlocker[] } | null>(null)
   const [activeAlertShiftId, setActiveAlertShiftId] = useState<string | null>(null)
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
   const [paymentSuccessMessage, setPaymentSuccessMessage] = useState<string | null>(null)
@@ -175,6 +178,16 @@ export default function StaffShiftsPage() {
      }
 
     setClaimingShiftId(shiftId)
+
+    // Restriction: every document the center requires must be valid (not expired, rejected or overdue)
+    const shift = shifts.find(s => s.id === shiftId)
+    const blockers = shift ? await loadClaimBlockers(supabase, shift.center_id) : []
+    if (shift && blockers.length > 0) {
+      setClaimBlock({ centerName: shift.centers?.name ?? 'this center', slug: shift.centers?.slug ?? '', blockers })
+      setClaimingShiftId(null)
+      return
+    }
+
     const isAlreadyInterested = interestedShiftIds.has(shiftId)
 
     const { error } = isAlreadyInterested
@@ -545,6 +558,15 @@ export default function StaffShiftsPage() {
         </div>
       )}
       */}
+      {claimBlock && (
+        <ClaimBlockedDialog
+          centerName={claimBlock.centerName}
+          blockers={claimBlock.blockers}
+          onClose={() => setClaimBlock(null)}
+          onFix={() => { router.push(`/staff/documents?center=${claimBlock.slug}`); setClaimBlock(null) }}
+        />
+      )}
+
       {/* ── Outstanding Balance Warning Modal ── */}
       {showBalanceModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
