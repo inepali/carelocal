@@ -144,7 +144,7 @@ export default function PlanPicker() {
   const tierOrder: SubscriptionTier[] = ['starter', 'growth', 'network']
 
   return (
-    <div>
+    <div id="plans" className="scroll-mt-24">
       <div className="mb-8 text-center max-w-2xl mx-auto">
         <h3 className="text-2xl font-black text-heading mb-2">Choose Your Plan</h3>
         <p className="text-muted mb-6">Upgrade any time. Your free trial ends as soon as a paid plan starts.</p>

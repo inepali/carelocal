@@ -30,6 +30,26 @@ export default function SharedPlanCard({ centerId, plan, onChanged }: { centerId
 
   const createInvite = () => run(() => createClient().rpc('create_center_link_invite', { p_center_id: centerId }))
 
+  /** Make an invite code, or, when the plan has no free slot (or can't share at all), explain and offer an upgrade. */
+  async function addCenter() {
+    const cap = plan.centers_cap
+    const full = cap !== null && plan.centers_used >= cap
+    if (plan.can_share && !full) return createInvite()
+
+    const tier = TIER_LABELS[plan.own_tier]
+    if (plan.can_share && plan.own_tier !== 'growth') {
+      showAlert(`Your ${tier} plan covers ${cap} centers and all ${plan.centers_used} are in use. Contact us about an Enterprise plan to add more, or remove a center first.`, { title: 'Center limit reached' })
+      return
+    }
+    const message = plan.can_share
+      ? `Your Growth plan covers ${cap} centers and all ${plan.centers_used} are in use. Upgrade to Network to add up to 10 centers, or remove a center first.`
+      : ['growth', 'network', 'enterprise'].includes(plan.own_tier)
+        ? `Your ${tier} plan isn't active, so it can't cover other centers. Renew it to add centers.`
+        : `Your ${tier} plan covers just this center. Upgrade to Growth (up to 3 centers) or Network (up to 10) to add more.`
+    const ok = await showConfirm(message, { title: plan.can_share ? 'Center limit reached' : 'Upgrade to add centers', confirmLabel: 'See plans' })
+    if (ok) document.getElementById('plans')?.scrollIntoView({ behavior: 'smooth' })
+  }
+
   async function join() {
     if (!code.trim()) return
     if (await run(() => createClient().rpc('accept_center_link_invite', { p_center_id: centerId, p_code: code.trim() }))) setCode('')
@@ -135,12 +155,12 @@ export default function SharedPlanCard({ centerId, plan, onChanged }: { centerId
           </div>
         )}
 
-        {plan.is_owner && plan.can_share && (
+        {plan.is_owner && (
           <div className="mt-5">
-            <button type="button" disabled={busy || full} onClick={createInvite} className={`${btn} bg-brand-600 text-white hover:bg-brand-800`}>
+            <button type="button" disabled={busy} onClick={addCenter} className={`${btn} bg-brand-600 text-white hover:bg-brand-800`}>
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Add a center
             </button>
-            {full && <span className="ml-3 text-sm text-muted">All centers on your plan are in use. Upgrade to add more.</span>}
+            {full && <span className="ml-3 text-sm text-muted">All {plan.centers_cap} centers on your plan are in use.</span>}
           </div>
         )}
       </div>
@@ -151,6 +171,15 @@ export default function SharedPlanCard({ centerId, plan, onChanged }: { centerId
   if (!plan.is_owner) return null
   return (
     <div className={card}>
+      <div className="mb-6 flex flex-col gap-3 border-b border-border pb-6 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 className="text-lg font-black text-heading">Centers on this plan</h3>
+          <p className="text-sm text-muted">Your {TIER_LABELS[plan.own_tier]} plan covers 1 center. Growth covers up to 3 and Network up to 10.</p>
+        </div>
+        <button type="button" disabled={busy} onClick={addCenter} className={`${btn} shrink-0 bg-brand-600 text-white hover:bg-brand-800`}>
+          <Plus className="h-4 w-4" /> Add a center
+        </button>
+      </div>
       <h3 className="text-lg font-black text-heading">Join another center&rsquo;s plan</h3>
       <p className="mb-4 text-sm text-muted">
         If this center is part of a group on a Growth or Network plan, enter the invite code from the main center&rsquo;s owner. Your center stays separate; only the plan is shared.

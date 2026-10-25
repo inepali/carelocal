@@ -203,12 +203,13 @@ CREATE TRIGGER trg_center_plan_changed
 CREATE OR REPLACE FUNCTION public.center_primary_deleted()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
+  -- Left on for the rest of this delete: the foreign key's ON DELETE SET NULL on the secondaries runs after this
+  -- trigger and must get past guard_center_plan
+  PERFORM set_config('carelocal.plan_write', 'on', true);
   IF public.plan_can_share(OLD.subscription_tier, OLD.subscription_status) THEN
-    PERFORM set_config('carelocal.plan_write', 'on', true);
     UPDATE public.centers
        SET shared_grace_tier = OLD.subscription_tier, shared_grace_until = now() + interval '30 days'
      WHERE primary_center_id = OLD.id;
-    PERFORM set_config('carelocal.plan_write', 'off', true);
   END IF;
   RETURN OLD;
 END $$;
