@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Center, SubscriptionTier, getTierLimits, MetroArea } from '@/lib/types'
+import { Center, SubscriptionTier, getTierLimits, MetroArea, TIER_LABELS } from '@/lib/types'
+import { loadCenterPlan } from '@/lib/center-plan'
 import { Building2, Save, MapPin, ShieldCheck, Loader2, ExternalLink, Clock, Globe, ArrowRight } from 'lucide-react'
 import { getDomainKey, type DomainKey } from '@/lib/domain-config'
 import { showAlert } from '@/lib/dialog'
@@ -17,6 +18,8 @@ export default function CenterProfileTab() {
   
   const [activeStaffCount, setActiveStaffCount] = useState(0)
   const [activeLocationCount, setActiveLocationCount] = useState(0)
+  const [effectiveTier, setEffectiveTier] = useState<SubscriptionTier | null>(null)
+  const [locationCap, setLocationCap] = useState<number | null | undefined>(undefined)
   const [portalLoading, setPortalLoading] = useState(false)
   const [siteDomain, setSiteDomain] = useState<DomainKey>('childcare')
 
@@ -69,14 +72,15 @@ export default function CenterProfileTab() {
         setActiveStaffCount(staffCount)
       }
 
-      // Fetch active location count (managed centers by this user)
-      const { count: locationCount, error: locationCountErr } = await supabase
-        .from('center_admins')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-
-      if (!locationCountErr && locationCount !== null) {
-        setActiveLocationCount(locationCount)
+      // The plan this center actually gets, and how many centers share it (a secondary's comes from its primary)
+      try {
+        const plan = await loadCenterPlan(admin.center_id)
+        setEffectiveTier(plan.tier)
+        setActiveLocationCount(plan.centers_used)
+        setLocationCap(plan.centers_cap)
+      } catch (err) {
+        console.error('[profile] plan summary:', err)
+        setActiveLocationCount(1)
       }
     }
     setLoading(false)
@@ -142,9 +146,10 @@ export default function CenterProfileTab() {
 
   if (loading) return <div className="p-12 animate-pulse font-black text-slate-300">Loading Center Profile...</div>
 
-  const tier = (center.subscription_tier as SubscriptionTier) || 'starter'
+  const tier = effectiveTier ?? (center.subscription_tier as SubscriptionTier) ?? 'trial'
   const domainKey = (center.domain_key as DomainKey) || 'childcare'
-  const limits = getTierLimits(domainKey)[tier]
+  const tierLimits = getTierLimits(domainKey)[tier] ?? getTierLimits(domainKey).trial
+  const limits = { ...tierLimits, maxLocations: locationCap === undefined ? tierLimits.maxLocations : locationCap ?? Infinity }
 
   const staffPercentage = limits.maxStaff === Infinity 
     ? 0 
@@ -333,7 +338,7 @@ export default function CenterProfileTab() {
             
             <div className="mb-12 relative z-10">
               <div className="text-[10px] text-brand-300 uppercase tracking-[0.25em] font-black mb-2 opacity-60">Tier Status</div>
-              <div className="text-5xl font-black capitalize tracking-tighter">{tier}</div>
+              <div className="text-5xl font-black tracking-tighter">{TIER_LABELS[tier] ?? tier}</div>
               <div className="text-xs text-brand-200 mt-4 flex items-center gap-1.5 font-bold uppercase tracking-widest">
                 <Clock className="w-4 h-4" /> 
                 {center.subscription_status === 'trialing' ? 'Expansion Active' : 'Premium Region'}

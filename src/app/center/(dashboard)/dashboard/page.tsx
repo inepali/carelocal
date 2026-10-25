@@ -6,6 +6,7 @@ import { Shift, StaffProfile, trialDaysLeft as trialDaysLeftFor } from '@/lib/ty
 import Link from 'next/link'
 import { Calendar, Users, AlertCircle, FileText, ArrowRight, CheckCircle2, Clock, UserPlus, Globe, Star, AlertTriangle, CalendarCheck, Eye, Inbox, Download } from 'lucide-react'
 import { useCenterContext } from '../context'
+import { loadCenterPlan } from '@/lib/center-plan'
 import { loadCenterCompliance, countStates } from '@/lib/compliance-data'
 import { inspectionStatus, DUE_SOON_DAYS } from '@/lib/inspections'
 
@@ -68,6 +69,11 @@ export default function DashboardOverview() {
         if (!isActive) {
           trialDaysLeft = trialDaysLeftFor(centerData)
           isTrialing = trialDaysLeft > 0
+          // A center on another center's plan (or in its 30-day grace) is not on its own trial
+          if (isTrialing) {
+            const plan = await loadCenterPlan(centerId).catch(() => null)
+            if (plan && plan.source !== 'own') isTrialing = false
+          }
         }
       }
 

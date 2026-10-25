@@ -1,14 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2, CreditCard, ShieldCheck, AlertCircle } from 'lucide-react'
 import { TIER_LABELS, trialDaysLeft, type SubscriptionTier } from '@/lib/types'
+import { loadCenterPlan, type CenterPlanSummary } from '@/lib/center-plan'
+import { useCenterContext } from '../../context'
 import PlanPicker from './PlanPicker'
+import SharedPlanCard from './SharedPlanCard'
 import { showAlert } from '@/lib/dialog'
 
+const formatDay = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+
 export default function SubscriptionTab() {
-  const supabase = createClient()
+  const { centerId } = useCenterContext()
   const [loading, setLoading] = useState(true)
   const [portalLoading, setPortalLoading] = useState(false)
   const [subscription, setSubscription] = useState<{
@@ -17,38 +22,33 @@ export default function SubscriptionTab() {
     hasCustomer: boolean;
     trialDaysLeft: number;
   } | null>(null)
+  const [plan, setPlan] = useState<CenterPlanSummary | null>(null)
 
-  useEffect(() => {
-    async function fetchSubscription() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      const { data: admin } = await supabase
-        .from('center_admins')
-        .select('center_id')
-        .eq('user_id', user.id)
-        .single()
-
-      if (admin) {
-        const { data: center } = await supabase
-          .from('centers')
-          .select('subscription_tier, subscription_status, stripe_customer_id, created_at, trial_months, trial_started_at')
-          .eq('id', admin.center_id)
-          .single()
-
-        if (center) {
-          setSubscription({
-            tier: center.subscription_tier,
-            status: center.subscription_status,
-            hasCustomer: !!center.stripe_customer_id,
-            trialDaysLeft: trialDaysLeft(center),
-          })
-        }
-      }
-      setLoading(false)
+  const load = useCallback(async () => {
+    if (!centerId) return
+    const [{ data: center }, summary] = await Promise.all([
+      createClient()
+        .from('centers')
+        .select('subscription_tier, subscription_status, stripe_customer_id, created_at, trial_months, trial_started_at')
+        .eq('id', centerId)
+        .single(),
+      loadCenterPlan(centerId).catch(err => { console.error('[subscription] plan summary:', err); return null }),
+    ])
+    if (center) {
+      setSubscription({
+        // The plan this center actually gets (a secondary's comes from its primary)
+        tier: summary?.tier ?? center.subscription_tier,
+        status: summary?.status ?? center.subscription_status,
+        hasCustomer: !!center.stripe_customer_id,
+        trialDaysLeft: trialDaysLeft(center),
+      })
     }
-    fetchSubscription()
-  }, [])
+    setPlan(summary)
+    setLoading(false)
+  }, [centerId])
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { load() }, [load])
 
   const handleManageSubscription = async () => {
     setPortalLoading(true)
@@ -78,8 +78,9 @@ export default function SubscriptionTab() {
     )
   }
 
+  const shared = plan?.source === 'primary'
   const isTrial = subscription?.tier === 'trial'
-  // A trial is not a paid plan: only a Stripe-backed subscription counts as active
+  // A trial is not a paid plan: only a Stripe-backed subscription (or a shared one) counts as active
   const isActive = !isTrial && (subscription?.status === 'active' || subscription?.status === 'trialing')
 
   return (
@@ -98,11 +99,11 @@ export default function SubscriptionTab() {
             <div>
               <h2 className="text-xl font-black text-heading">Current Plan</h2>
               <p className="text-sm font-bold text-muted">
-                Status: <span className={isActive ? 'text-brand-600 uppercase tracking-wider text-[11px]' : 'text-amber-600 uppercase tracking-wider text-[11px]'}>{isTrial ? 'Free trial' : subscription?.status || 'None'}</span>
+                Status: <span className={isActive ? 'text-brand-600 uppercase tracking-wider text-[11px]' : 'text-amber-600 uppercase tracking-wider text-[11px]'}>{isTrial ? 'Free trial' : shared ? 'Shared' : subscription?.status || 'None'}</span>
               </p>
             </div>
           </div>
-          
+
           {isActive && (
             <div className="px-4 py-2 bg-brand-50 text-[#16a34a] rounded-lg text-sm font-bold flex items-center gap-2">
               <ShieldCheck className="w-4 h-4" /> Active Plan
@@ -115,6 +116,14 @@ export default function SubscriptionTab() {
             <div className="mb-6">
               <div className="text-sm font-bold text-muted mb-1 uppercase tracking-widest">Selected Tier</div>
               <div className="text-3xl font-black text-text-main">{TIER_LABELS[subscription.tier as SubscriptionTier] ?? subscription.tier}</div>
+              {shared && plan?.primary && (
+                <p className="mt-2 text-sm font-bold text-brand-600">Shared from {plan.primary.name}</p>
+              )}
+              {plan?.source === 'grace' && plan.grace_until && !plan.primary && (
+                <p className="mt-2 text-sm font-bold text-amber-600">
+                  Your shared plan has ended. This center keeps it until {formatDay(plan.grace_until)}; choose a plan below to keep going.
+                </p>
+              )}
               {isTrial && (
                 <p className="mt-2 text-sm font-bold text-amber-600">
                   {subscription.trialDaysLeft > 0
@@ -130,7 +139,7 @@ export default function SubscriptionTab() {
             </div>
           )}
 
-          {subscription?.hasCustomer && (
+          {subscription?.hasCustomer && !shared && (
             <div className="flex flex-col sm:flex-row gap-4 mt-8 pt-6 border-t border-slate-100">
               <button
                 onClick={handleManageSubscription}
@@ -143,15 +152,18 @@ export default function SubscriptionTab() {
             </div>
           )}
 
-          {subscription?.hasCustomer && (
+          {subscription?.hasCustomer && !shared && (
             <p className="text-xs font-bold text-subtle mt-4">
-              Clicking "Manage Subscription" will open the secure Stripe billing portal where you can update your payment method, download invoices, upgrade, downgrade, or cancel your plan.
+              Clicking &quot;Manage Subscription&quot; will open the secure Stripe billing portal where you can update your payment method, download invoices, upgrade, downgrade, or cancel your plan.
             </p>
           )}
         </div>
       </div>
 
-      <PlanPicker />
+      {plan && centerId && <SharedPlanCard centerId={centerId} plan={plan} onChanged={load} />}
+
+      {/* A center on a shared plan is billed through its primary */}
+      {!shared && <PlanPicker />}
     </div>
   )
 }

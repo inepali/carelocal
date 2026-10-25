@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/server/stripe'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@supabase/supabase-js'
 import { SubscriptionTier } from '@/lib/types'
 
 
@@ -35,7 +35,12 @@ export async function GET(req: NextRequest) {
         const subscription = await stripe.subscriptions.retrieve(session.subscription as string)
         const mappedStatus = mapSubscriptionStatus(subscription.status)
         
-        const supabase = await createClient()
+        // Server key: plan columns are guarded against browser sessions (see the center_plan_sharing migration).
+        // Safe here because the tier and center come from Stripe's own session, not from the caller.
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        )
         
         // Update center status
         const { error: updateCenterError } = await supabase
