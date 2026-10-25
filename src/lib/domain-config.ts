@@ -178,7 +178,7 @@ export const DOMAIN_CONFIGS: Record<DomainKey, DomainConfig> = {
       },
       {
         name: 'Growth',
-        price: 129,
+        price: 99,
         desc: 'For growing centers with multiple rooms or a second location.',
         features: ['Up to 3 locations', 'Up to 100 staff profiles', 'Everything in Starter', 'Staff preference & priority blast', 'Scheduling calendar', 'Payroll export (CSV)', 'Document expiry reminders', 'Staff reliability scores'],
         cta: 'Start free trial',
@@ -187,7 +187,7 @@ export const DOMAIN_CONFIGS: Record<DomainKey, DomainConfig> = {
       },
       {
         name: 'Network',
-        price: 279,
+        price: 199,
         desc: 'For multi-site operators managing a shared staff pool.',
         features: ['Up to 10 locations', 'Up to 300 staff profiles', 'Everything in Growth', 'Shared staff pool across locations', 'Mobile PWA for staff', 'QuickBooks / Gusto export', 'Priority support'],
         cta: 'Start free trial',

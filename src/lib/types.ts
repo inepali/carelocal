@@ -360,8 +360,8 @@ export function getTierLimits(domainKey: DomainKey): Record<SubscriptionTier, { 
   }
   return {
     starter: { maxLocations: 1, maxStaff: 30, pricePerMonth: 49 },
-    growth: { maxLocations: 3, maxStaff: 100, pricePerMonth: 129 },
-    network: { maxLocations: 10, maxStaff: 300, pricePerMonth: 279 },
+    growth: { maxLocations: 3, maxStaff: 100, pricePerMonth: 99 },
+    network: { maxLocations: 10, maxStaff: 300, pricePerMonth: 199 },
     enterprise: { maxLocations: Infinity, maxStaff: Infinity, pricePerMonth: 0 },
   }
 }
