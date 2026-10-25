@@ -38,9 +38,11 @@ export default function PlanPicker() {
 
         if (center) {
           setCurrentTier(center.subscription_tier as SubscriptionTier)
-          // Only a center with a Stripe customer has a subscription to change in the billing portal. Centers on the
-          // in-app free trial are 'trialing' with no customer yet: they subscribe through checkout instead.
-          setIsActive(!!center.stripe_customer_id && (center.subscription_status === 'active' || center.subscription_status === 'trialing'))
+          // Only a paid plan can be changed in the billing portal. A paid tier is set by the Stripe webhook once checkout
+          // completes; a Stripe customer alone (e.g. an abandoned checkout) is not a subscription. Centers on the Free
+          // Trial tier subscribe through checkout instead.
+          const paidTier = !!center.subscription_tier && center.subscription_tier !== 'trial'
+          setIsActive(paidTier && !!center.stripe_customer_id && (center.subscription_status === 'active' || center.subscription_status === 'trialing'))
           if (center.domain_key) {
             setDomainKey(center.domain_key as DomainKey)
           }
