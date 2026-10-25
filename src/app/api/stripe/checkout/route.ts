@@ -89,10 +89,11 @@ export async function POST(req: NextRequest) {
 
       // Note: Must use a service role key if RLS blocks updates from API routes without auth context, 
       // but since we are using createClient which uses the user's cookies, RLS should allow this update.
-      await supabase
+      const { error: saveError } = await supabase
         .from('centers')
         .update({ stripe_customer_id: customerId })
         .eq('id', admin.center_id)
+      if (saveError) console.error('[stripe] checkout: could not save the new customer id', admin.center_id, saveError.message)
     }
 
     const origin = req.headers.get('origin')
