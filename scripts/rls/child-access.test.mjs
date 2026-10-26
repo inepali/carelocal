@@ -500,8 +500,14 @@ async function main() {
     check('the activity log says a description changed but never records its words', !JSON.stringify(noteAudit).includes('climber') && noteAudit.some(a => (a.changed_fields ?? []).includes('incident_note')), JSON.stringify(noteAudit).slice(0, 160))
     const recordNote = await ownerSb.from('child_files').insert({ ...incidentRow(), category: 'record', file_key: `child/${A}/${dataChild.id}/${randomUUID()}.pdf`, incident_note: 'nope' })
     check('only incident forms can carry a description', !!recordNote.error, 'inserted')
-    const removed = await ownerSb.from('child_files').delete().eq('id', incident.data.id).select('id')
-    check('the owner can delete an incident form', !removed.error && removed.data?.length === 1, errText(removed.error))
+    const lockedDelete = await ownerSb.from('child_files').delete().eq('id', incident.data.id).select('id')
+    const lockedRow = (await admin.from('child_files').select('id').eq('id', incident.data.id)).data
+    check('a described incident form cannot be deleted', (!!lockedDelete.error || !lockedDelete.data?.length) && lockedRow?.length === 1, errText(lockedDelete.error))
+    const cleared = await ownerSb.from('child_files').update({ incident_note: null }).eq('id', incident.data.id)
+    check('and its description cannot be cleared to unlock it', !!cleared.error, 'cleared')
+    const plain = await ownerSb.from('child_files').insert(incidentRow()).select('id').single()
+    const plainGone = plain.data ? await ownerSb.from('child_files').delete().eq('id', plain.data.id).select('id') : null
+    check('the owner can still delete an incident form that has no description', !plain.error && plainGone?.data?.length === 1, errText(plain.error ?? plainGone?.error))
   }
 
   // 13. Job lifecycle: pause and resume until closed; a closed job is final and can only be archived ────
@@ -630,6 +636,63 @@ async function main() {
   check('and is closed to signed-out visitors', !!anonView.error)
   await admin.from('center_document_requirements').delete().eq('id', blocking.id)
   await admin.from('shifts').delete().eq('id', gateShift.id)
+
+  // 16. Getting started checklist: the super admin lists states and documents, staff tick their own items ────
+  console.log('\n16. Getting started checklist')
+  const superSb = superClient   // the super admin signed in for section 6
+  const regularStaff = (await must(admin.from('staff_profiles').select('id').eq('user_id', people.regularA.id).single(), 'regular staff')).id
+  await admin.from('onboarding_states').delete().eq('state_code', 'ZZ')
+
+  const centerAddsState = await clients.ownerA.from('onboarding_states').insert({ state_code: 'ZZ', domain_key: 'childcare' })
+  check('a center owner cannot add a state', !!centerAddsState.error, 'inserted')
+  const staffAddsState = await clients.subA.from('onboarding_states').insert({ state_code: 'ZZ', domain_key: 'childcare' })
+  check('a staff member cannot add a state', !!staffAddsState.error, 'inserted')
+  const zz = await superSb.from('onboarding_states').insert({ state_code: 'ZZ', domain_key: 'childcare' }).select('id').single()
+  check('the super admin can add a state', !zz.error && !!zz.data?.id, errText(zz.error))
+  check('the same state cannot be added twice for a vertical', !!(await superSb.from('onboarding_states').insert({ state_code: 'ZZ', domain_key: 'childcare' })).error)
+  check('but can be added for another vertical', !(await superSb.from('onboarding_states').insert({ state_code: 'ZZ', domain_key: 'healthcare' })).error)
+  check('a state code must be two capital letters', !!(await superSb.from('onboarding_states').insert({ state_code: 'zz', domain_key: 'senior' })).error && !!(await superSb.from('onboarding_states').insert({ state_code: 'ZZZ', domain_key: 'senior' })).error)
+  check('an unknown vertical is refused', !!(await superSb.from('onboarding_states').insert({ state_code: 'ZY', domain_key: 'bakery' })).error)
+
+  const docRow = (extra = {}) => ({ state_id: zz.data.id, document_name: 'RLS Background check', ...extra })
+  check('a center owner cannot add a state document', !!(await clients.ownerA.from('state_required_docs').insert(docRow())).error)
+  const doc1 = await superSb.from('state_required_docs').insert(docRow({ instructions: 'Order it online', link_url: 'https://example.com/form' })).select('id').single()
+  check('the super admin can add a state document', !doc1.error && !!doc1.data?.id, errText(doc1.error))
+  check('a document needs a name', !!(await superSb.from('state_required_docs').insert(docRow({ document_name: '   ' }))).error)
+  check('a document link must be http or https', !!(await superSb.from('state_required_docs').insert(docRow({ link_url: 'javascript:alert(1)' }))).error)
+
+  const readStates = async client => (await client.from('onboarding_states').select('id').eq('id', zz.data.id)).data ?? []
+  const readDocs = async client => (await client.from('state_required_docs').select('id').eq('id', doc1.data.id)).data ?? []
+  check('signed-in staff can read the state list and its documents', (await readStates(clients.subA)).length === 1 && (await readDocs(clients.subA)).length === 1)
+  check('signed-out visitors cannot read either', (await readStates(clients.anonymous)).length === 0 && (await readDocs(clients.anonymous)).length === 0)
+  const centerEditsDoc = await clients.ownerA.from('state_required_docs').update({ document_name: 'tampered' }).eq('id', doc1.data.id).select('id')
+  const docAfter = (await admin.from('state_required_docs').select('document_name').eq('id', doc1.data.id).single()).data
+  check('a center owner cannot change or delete a state document', !centerEditsDoc.data?.length && docAfter?.document_name === 'RLS Background check'
+    && !(await clients.ownerA.from('state_required_docs').delete().eq('id', doc1.data.id).select('id')).data?.length)
+
+  // Ticking
+  const items = client => client.from('staff_onboarding_items')
+  const tick = await items(clients.subA).insert({ staff_id: subStaff, task: 'profile' }).select('id').single()
+  check('a staff member can tick a profile task', !tick.error && !!tick.data?.id, errText(tick.error))
+  check('the same task cannot be ticked twice', !!(await items(clients.subA).insert({ staff_id: subStaff, task: 'profile' })).error)
+  check('a staff member can tick a state document', !(await items(clients.subA).insert({ staff_id: subStaff, doc_id: doc1.data.id })).error)
+  check('an unknown task is refused', !!(await items(clients.subA).insert({ staff_id: subStaff, task: 'bogus' })).error)
+  check('an item must be a task or a document, not both and not neither',
+    !!(await items(clients.subA).insert({ staff_id: subStaff, task: 'id', doc_id: doc1.data.id })).error && !!(await items(clients.subA).insert({ staff_id: subStaff })).error)
+  check('a staff member cannot tick items for someone else', !!(await items(clients.subA).insert({ staff_id: regularStaff, task: 'id' })).error)
+  const seen = async client => (await client.from('staff_onboarding_items').select('id').eq('staff_id', subStaff)).data ?? []
+  check('staff see their own ticks', (await seen(clients.subA)).length === 2)
+  check('other staff, center owners and visitors do not', (await seen(clients.regularA)).length === 0 && (await seen(clients.ownerA)).length === 0 && (await seen(clients.anonymous)).length === 0)
+  check('the super admin can see them', (await seen(superSb)).length === 2)
+  const stolen = await items(clients.regularA).delete().eq('id', tick.data.id).select('id')
+  check('another staff member cannot untick them', !stolen.data?.length && (await seen(clients.subA)).length === 2)
+  check('a staff member can untick their own', (await items(clients.subA).delete().eq('id', tick.data.id).select('id')).data?.length === 1)
+
+  // Removing a document or a state takes the ticks with it
+  check('deleting a document removes the ticks on it', !(await superSb.from('state_required_docs').delete().eq('id', doc1.data.id)).error
+    && (await admin.from('staff_onboarding_items').select('id').eq('staff_id', subStaff)).data?.length === 0)
+  await admin.from('onboarding_states').delete().eq('state_code', 'ZZ')
+  check('the test states are removed again', ((await admin.from('onboarding_states').select('id').eq('state_code', 'ZZ')).data ?? []).length === 0)
 }
 
 let crashed = null

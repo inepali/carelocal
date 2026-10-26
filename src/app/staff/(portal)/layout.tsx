@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { useIsRegularOnly, isSubstituteOnlyRoute, isRegularOnlyRoute } from '@/lib/hooks/useIsRegularOnly'
 import { getDomainKey } from '@/lib/domain-config'
+import { GettingStartedBanner } from '@/components/staff/GettingStarted'
 
 export default function StaffPortalLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -160,6 +161,7 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
           </div>
         </header>
         <div className="p-4 md:p-8 flex-1">
+          <GettingStartedBanner href="/staff/getting-started" pathname={pathname} />
           {children}
         </div>
       </main>

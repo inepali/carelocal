@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { Calendar, Clock, FileText, LogOut, User } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useIsRegularOnly, isSubstituteOnlyRoute } from '@/lib/hooks/useIsRegularOnly'
+import { GettingStartedBanner } from '@/components/staff/GettingStarted'
 
 export default function MobilePortalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -54,7 +55,12 @@ export default function MobilePortalLayout({ children }: { children: React.React
     <div className="flex-1 flex flex-col min-h-screen relative pb-16">
       {/* Main tab content */}
       <main className="flex-grow p-6 overflow-y-auto max-h-[calc(100vh-4rem)]">
-        {holdContent ? null : children}
+        {holdContent ? null : (
+          <>
+            <GettingStartedBanner href="/mobile/getting-started" pathname={pathname} />
+            {children}
+          </>
+        )}
       </main>
 
       {/* Bottom tab bar */}

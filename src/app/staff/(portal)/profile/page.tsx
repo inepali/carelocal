@@ -20,7 +20,8 @@ import { showAlert, showConfirm } from '@/lib/dialog'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-type TabId = 'personal' | 'academic' | 'experience' | 'references' | 'credentials' | 'availability' | 'reviews'
+const TAB_IDS = ['personal', 'academic', 'experience', 'references', 'credentials', 'availability', 'reviews'] as const
+type TabId = (typeof TAB_IDS)[number]
 
 const MONTHS = [
   'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'
@@ -134,6 +135,13 @@ export default function StaffProfilePage() {
   const [activeTab, setActiveTab]     = useState<TabId>('personal')
   const { isRegularOnly } = useIsRegularOnly()
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
+
+  // The Getting started checklist links straight to a tab: /staff/profile?tab=academic
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab')
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (tab && (TAB_IDS as readonly string[]).includes(tab)) setActiveTab(tab as TabId)
+  }, [])
 
   async function handleAvatarUpload(file: File) {
     if (!staffId) return
