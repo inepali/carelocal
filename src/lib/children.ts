@@ -1,6 +1,6 @@
 // Self-contained on purpose (type-only imports, no path aliases) so the access-rule tests can load it directly.
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Child, ChildAuditEntry, ChildDocumentStatus, ChildFile, ChildGuardian, ImmunizationStatus } from './child-types'
+import type { Child, ChildAuditEntry, ChildDocumentStatus, ChildFile, ChildGuardian } from './child-types'
 
 /**
  * Every read and write the Child Files screens make. Each function takes the CALLER's Supabase client, so the
@@ -159,7 +159,7 @@ export async function addChild(supabase: SupabaseClient, centerId: string, input
 
 export type ChildChanges = Partial<Pick<Child,
   'first_name' | 'last_name' | 'preferred_name' | 'date_of_birth' | 'classroom_id' | 'enrolled_on' | 'first_attended_on'
-  | 'immunization_status' | 'custody_restriction' | 'custody_note'>>
+  | 'custody_restriction' | 'custody_note'>>
 
 export async function updateChild(supabase: SupabaseClient, childId: string, changes: ChildChanges) {
   const { data, error } = await supabase.from('children').update(changes).eq('id', childId).select('*')
@@ -167,9 +167,6 @@ export async function updateChild(supabase: SupabaseClient, childId: string, cha
   if (!data?.length) return fail('Child not found or you do not have access to it.')
   return { success: true as const, child: data[0] as Child } as Ok<{ child: Child }>
 }
-
-export const setImmunizationStatus = (supabase: SupabaseClient, childId: string, status: ImmunizationStatus) =>
-  updateChild(supabase, childId, { immunization_status: status })
 
 /** Withdrawing starts the 1-year retention clock (10A NCAC 09 .2318) */
 export async function withdrawChild(supabase: SupabaseClient, childId: string, withdrawnOn: string) {

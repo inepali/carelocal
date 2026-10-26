@@ -4,6 +4,7 @@ import { createClient as createSessionClient } from '@/lib/supabase/server'
 import { Resend } from 'resend'
 import twilio from 'twilio'
 import webpush from 'web-push'
+import { notifyCenterGroupMe, shiftPostedText } from '@/lib/server/groupme'
 import { JWT } from 'google-auth-library'
 
 webpush.setVapidDetails(
@@ -106,6 +107,12 @@ export async function POST(req: Request) {
       if (process.env.NEXT_PUBLIC_APP_URL && process.env.NEXT_PUBLIC_APP_URL.includes('localhost')) {
         appUrl = domainKey === 'healthcare' ? 'http://localhost:3001' : domainKey === 'senior' ? 'http://localhost:3002' : 'http://localhost:3000'
       }
+
+      // GroupMe: one post to the center's group, if connected. Before the staff lookup, because the group can
+      // include people who have no CareLocal profile yet. Never throws.
+      await notifyCenterGroupMe(centerId, shiftPostedText({
+        centerName, shiftDate, startTime, endTime, role: staffTypeNeeded, url: `${appUrl}/staff/shifts`,
+      }))
 
       // 2. Fetch all active substitute staff connected to this center
       //    (regular employees are out of scope for shift notifications)

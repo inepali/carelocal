@@ -9,19 +9,11 @@ import { canOpenChildFiles, useCenterContext } from '../context'
 import { loadChildrenOverview, type ChildRequirement, type Classroom } from '@/lib/children'
 import { childRows, describeAge, summarizeChild } from '@/lib/child-compliance'
 import { seedNcChildRequirements } from '@/lib/child-template'
-import { IMMUNIZATION_STATUS_LABELS, type Child, type ChildDocumentStatus, type ImmunizationStatus } from '@/lib/child-types'
+import type { Child, ChildDocumentStatus } from '@/lib/child-types'
 import { formatDate } from '@/lib/compliance'
 import { showAlert } from '@/lib/dialog'
 import { AddChildDialog } from './_components/AddChildDialog'
 import { BTN, BTN_QUIET_SM, Pill } from './_components/ui'
-
-const IMMUNIZATION_STYLE: Record<ImmunizationStatus, string> = {
-  missing: 'bg-amber-50 text-amber-700 border-amber-200',
-  complete: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  in_progress: 'bg-sky-50 text-sky-700 border-sky-200',
-  medical_exemption: 'bg-slate-50 text-slate-700 border-slate-200',
-  religious_exemption: 'bg-slate-50 text-slate-700 border-slate-200',
-}
 
 type StatusFilter = 'enrolled' | 'withdrawn' | 'all'
 
@@ -140,7 +132,6 @@ export default function ChildrenPage() {
                   <th scope="col" className="px-4 py-4">Classroom</th>
                   <th scope="col" className="px-4 py-4">First day</th>
                   <th scope="col" className="px-4 py-4">Records</th>
-                  <th scope="col" className="px-4 py-4">Immunization</th>
                   <th scope="col" className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -162,7 +153,6 @@ export default function ChildrenPage() {
                         {summary.counts.pending_review > 0 && <Pill className="border-sky-200 bg-sky-50 text-sky-700">{summary.counts.pending_review} to review</Pill>}
                       </div>
                     </td>
-                    <td className="px-4 py-4"><Pill className={IMMUNIZATION_STYLE[child.immunization_status]}>{IMMUNIZATION_STATUS_LABELS[child.immunization_status]}</Pill></td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
                         <Link href={`/center/children/${child.id}`} className={BTN}>Files</Link>

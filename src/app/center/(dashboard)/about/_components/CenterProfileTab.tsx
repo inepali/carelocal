@@ -7,6 +7,7 @@ import { loadCenterPlan } from '@/lib/center-plan'
 import { Building2, Save, MapPin, ShieldCheck, Loader2, ExternalLink, Clock, Globe, ArrowRight } from 'lucide-react'
 import { getDomainKey, type DomainKey } from '@/lib/domain-config'
 import { showAlert } from '@/lib/dialog'
+import GroupMeCard from './GroupMeCard'
 
 export default function CenterProfileTab() {
   const supabase = createClient()
@@ -323,6 +324,8 @@ export default function CenterProfileTab() {
               </div>
             </form>
           </div>
+
+          <GroupMeCard />
         </div>
 
         {/* ── Right: Sidebar / Subscription ── */}

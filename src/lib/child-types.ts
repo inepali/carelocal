@@ -2,17 +2,6 @@
 
 export type ChildStatus = 'enrolled' | 'withdrawn'
 
-/** G.S. 130A-155: what the annual immunization counts report is built from */
-export type ImmunizationStatus = 'missing' | 'complete' | 'in_progress' | 'medical_exemption' | 'religious_exemption'
-
-export const IMMUNIZATION_STATUS_LABELS: Record<ImmunizationStatus, string> = {
-  missing: 'Not on file',
-  complete: 'Complete',
-  in_progress: 'Series in progress (physician certified)',
-  medical_exemption: 'Medical exemption',
-  religious_exemption: 'Religious exemption',
-}
-
 export interface Child {
   id: string
   center_id: string
@@ -27,7 +16,6 @@ export interface Child {
   first_attended_on: string | null
   /** Starts the 1-year retention clock (10A NCAC 09 .2318) */
   withdrawn_on: string | null
-  immunization_status: ImmunizationStatus
   custody_restriction: boolean
   custody_note: string | null
   source_tour_request_id: string | null

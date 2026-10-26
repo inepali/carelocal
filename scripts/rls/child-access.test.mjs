@@ -220,8 +220,6 @@ async function main() {
   const ruleMix1 = await admin.from('center_document_requirements').insert({ center_id: A, document_name: 'x', section: 'personnel', audience: 'child', document_category: 'other' })
   const ruleMix2 = await admin.from('center_document_requirements').insert({ center_id: A, document_name: 'x', section: 'child_health', audience: 'staff', document_category: 'other' })
   check('a child rule must sit in a child section, and a staff rule must not', !!ruleMix1.error && !!ruleMix2.error, `${errText(ruleMix1.error)} | ${errText(ruleMix2.error)}`)
-  const badImmunization = await o.from('children').update({ immunization_status: 'bogus' }).eq('id', childA.id).select('id')
-  check('only the five immunization statuses are accepted', !!badImmunization.error, errText(badImmunization.error) || 'it succeeded')
   const withdrawNoDate = await o.from('children').update({ status: 'withdrawn' }).eq('id', childA.id).select('id')
   check('withdrawing a child requires a withdrawn date', !!withdrawNoDate.error, errText(withdrawNoDate.error) || 'it succeeded')
 
@@ -364,8 +362,6 @@ async function main() {
   const auditAfter = (await ownerSb.from('child_audit_log').select('summary').eq('child_id', dataChild.id)).data ?? []
   check('the status change is in the audit trail by name, with no health details', auditAfter.some(a => /Immunization Record.*accepted/.test(a.summary ?? '')), JSON.stringify(auditAfter.map(a => a.summary)).slice(0, 200))
 
-  const classified = await kids.setImmunizationStatus(ownerSb, dataChild.id, 'complete')
-  check('the immunization status can be classified for the state report', classified.success && classified.child.immunization_status === 'complete')
   const withdrawn = await kids.withdrawChild(ownerSb, dataChild.id, daysAgo(0))
   check('withdrawing records the date that starts the 1-year retention clock', withdrawn.success && withdrawn.child.status === 'withdrawn' && withdrawn.child.withdrawn_on === daysAgo(0))
   const reenrolled = await kids.reenrollChild(ownerSb, dataChild.id, daysAgo(0))

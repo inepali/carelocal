@@ -6,16 +6,15 @@ import { useParams } from 'next/navigation'
 import { ArrowLeft, Baby, Loader2, Pencil, ShieldAlert, UserMinus, UserPlus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { canOpenChildFiles, useCenterContext } from '../../context'
-import { loadChildFile, reenrollChild, setImmunizationStatus } from '@/lib/children'
+import { loadChildFile, reenrollChild } from '@/lib/children'
 import { describeAge } from '@/lib/child-compliance'
-import { IMMUNIZATION_STATUS_LABELS, type ImmunizationStatus } from '@/lib/child-types'
 import { formatDate } from '@/lib/compliance'
 import { showAlert, showConfirm } from '@/lib/dialog'
 import { ChildRecords } from '../_components/ChildRecords'
 import { ContactsPanel } from '../_components/ContactsPanel'
 import { ActivityPanel } from '../_components/ActivityPanel'
 import { EditChildDialog, WithdrawDialog } from '../_components/EditChildDialogs'
-import { BTN, FLD, Pill, todayISO } from '../_components/ui'
+import { BTN, Pill, todayISO } from '../_components/ui'
 
 type Loaded = NonNullable<Awaited<ReturnType<typeof loadChildFile>>>
 type Tab = 'records' | 'contacts' | 'activity'
@@ -42,12 +41,6 @@ export default function ChildFilePage() {
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (allowed) load(); else setLoading(false) }, [allowed, load])
-
-  async function changeImmunization(value: ImmunizationStatus) {
-    const res = await setImmunizationStatus(createClient(), id, value)
-    if (!res.success) showAlert(res.error)
-    load()
-  }
 
   async function reenroll() {
     if (!data) return
@@ -112,14 +105,6 @@ export default function ChildFilePage() {
             ? <button onClick={reenroll} className={BTN}><UserPlus className="h-3.5 w-3.5" /> Re-enroll</button>
             : <button onClick={() => setWithdrawing(true)} className={BTN}><UserMinus className="h-3.5 w-3.5" /> Withdraw</button>}
         </div>
-      </div>
-
-      <div className="mb-6 flex max-w-md flex-col gap-1.5">
-        <label htmlFor="immunization-status" className="text-sm font-medium text-text-main">Immunization status (used for the state report)</label>
-        <select id="immunization-status" value={child.immunization_status} onChange={e => changeImmunization(e.target.value as ImmunizationStatus)} className={FLD}>
-          {(Object.keys(IMMUNIZATION_STATUS_LABELS) as ImmunizationStatus[]).map(s => <option key={s} value={s}>{IMMUNIZATION_STATUS_LABELS[s]}</option>)}
-        </select>
-        <p className="text-[11px] text-subtle">Upload the immunization record under Records, then choose its status. The child has 30 calendar days from the first day of attendance unless a physician certifies more time.</p>
       </div>
 
       <div className="mb-6 flex flex-wrap gap-2">
