@@ -10,7 +10,7 @@ import { canAccessDomain, wrongDomainMessage, WRONG_DOMAIN_ERROR, DISABLED_MESSA
 
 const LOGIN_CONTENT = {
   childcare: {
-    tagline: 'Fill an open shift in under 4 hours.',
+    tagline: 'Fill open shifts from your own staff pool.',
     desc: 'Post a shift, blast your staff pool by SMS, and get confirmation — all without picking up the phone.',
     checklist: [
       'Instant SMS blast to your entire staff pool',

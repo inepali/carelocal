@@ -126,7 +126,7 @@ const FAQS = [
   },
   {
     q: "Is CareLocal free for daycare teachers and substitutes?",
-    a: "Yes, it is free to join. Teacher, floater, and substitute accounts have no subscription: create a profile, upload certifications, and claim shifts from any mobile browser. A small platform maintenance fee, set by your metro area, may be added to your balance when you check in to a shift."
+    a: "Yes, 100% free. Teachers, floaters, and substitutes never pay anything: no subscription and no per-shift fees. Create a profile, upload certifications, and claim shifts from any mobile browser."
   },
   {
     q: "How does the 3-month free trial work?",
@@ -217,8 +217,8 @@ export default function ChildcareHomePage() {
         {/* ── Stats bar ── */}
         <div className="max-w-3xl mx-auto mt-20 grid grid-cols-3 gap-px bg-border rounded-2xl overflow-hidden shadow-sm">
           {[
-            { val: '< 4 hrs', label: 'Avg. shift fill time' },
-            { val: '75%+', label: 'Shift fill rate' },
+            { val: '~24 hrs', label: 'Avg. shift fill time' },
+            { val: '80%', label: 'Shift fill rate' },
             { val: '$0', label: 'Cost to staff' },
           ].map(({ val, label }) => (
             <div key={label} className="bg-white px-6 py-6 text-center">

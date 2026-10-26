@@ -72,7 +72,7 @@ export const DOMAIN_CONFIGS: Record<DomainKey, DomainConfig> = {
     themeClass: 'theme-childcare',
     appName: 'CareLocal',
     title: 'CareLocal | Childcare Staffing & Compliance Software',
-    description: 'Fill daycare shifts by text in minutes and keep staff files, training records and inspections current. 3-month free trial.',
+    description: 'Text open daycare shifts to your own staff pool and keep staff files, training records and inspections current. 3-month free trial.',
     staffTerm: 'Staffs',
     workAreaTerm: 'Classrooms',
     logoShort: 'CL',
@@ -88,8 +88,8 @@ export const DOMAIN_CONFIGS: Record<DomainKey, DomainConfig> = {
       footnote: '3-month free trial · No credit card required · Staff accounts free to join'
     },
     stats: [
-      { val: '< 4 hrs', label: 'Avg. shift fill time' },
-      { val: '75%+', label: 'Shift fill rate' },
+      { val: '~24 hrs', label: 'Avg. shift fill time' },
+      { val: '80%', label: 'Shift fill rate' },
       { val: '$0', label: 'Cost to staff' }
     ],
     howItWorks: [
@@ -159,7 +159,7 @@ export const DOMAIN_CONFIGS: Record<DomainKey, DomainConfig> = {
       },
       {
         q: 'Is CareLocal free for daycare teachers and substitutes?',
-        a: "Yes, it is free to join. Teacher, floater, and substitute accounts have no subscription: create a profile, upload certifications, and claim shifts from any mobile browser. A small platform maintenance fee, set by your metro area, may be added to your balance when you check in to a shift."
+        a: "Yes, 100% free. Teachers, floaters, and substitutes never pay anything: no subscription and no per-shift fees. Create a profile, upload certifications, and claim shifts from any mobile browser."
       },
       {
         q: 'How does the 3-month free trial work?',

@@ -9,22 +9,16 @@ import { sectionsFor, COMPLIANCE_STATE_STYLE, formatDate, type ComplianceState }
 import { loadCenterCompliance, countStates, type CenterCompliance } from '@/lib/compliance-data'
 import { RequestDocumentsDialog } from '@/components/center/RequestDocumentsDialog'
 import { showAlert } from '@/lib/dialog'
+import { canOpenChildFiles, useCenterContext } from '../context'
+import { ATTENTION, CELL } from './_components/cells'
+import { ChildComplianceGrid } from './_components/ChildComplianceGrid'
 
-const CELL: Record<ComplianceState, string> = {
-  current: 'bg-emerald-500',
-  due_soon: 'bg-amber-400',
-  overdue: 'bg-red-500',
-  pending_review: 'bg-sky-500',
-  rejected: 'bg-white ring-2 ring-inset ring-red-500',
-  missing: 'bg-slate-200',
-  not_applicable: 'bg-white ring-1 ring-inset ring-slate-300',
-}
-
-const ATTENTION: ComplianceState[] = ['overdue', 'due_soon', 'pending_review', 'rejected']
 const LEGEND: ComplianceState[] = ['current', 'due_soon', 'overdue', 'pending_review', 'rejected', 'missing', 'not_applicable']
 
 export default function CompliancePage() {
   const supabase = createClient()
+  const ctx = useCenterContext()
+  const showChildren = canOpenChildFiles(ctx)
   const [centerId, setCenterId] = useState<string | null>(null)
   const [data, setData] = useState<CenterCompliance | null>(null)
   const [loading, setLoading] = useState(true)
@@ -65,7 +59,7 @@ export default function CompliancePage() {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-extrabold text-heading mb-1">Compliance Overview</h1>
-          <p className="text-muted">Every employee&apos;s file at a glance. Select a square to open their record.</p>
+          <p className="text-muted">Every employee&apos;s file at a glance{showChildren ? ', with each child\u2019s record below' : ''}. Select a square to open their record.</p>
         </div>
         {counts && (
           <div className="flex flex-wrap gap-2">
@@ -77,6 +71,8 @@ export default function CompliancePage() {
           </div>
         )}
       </div>
+
+      {showChildren && <h2 className="mb-3 text-2xl font-extrabold text-heading">{ctx.staffTerm}</h2>}
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <select value={classFilter} onChange={e => setClassFilter(e.target.value as 'all' | EmploymentClass)} className="rounded-xl border border-border bg-white px-3 py-2 text-sm">
@@ -173,6 +169,8 @@ export default function CompliancePage() {
           </div>
         )}
       </section>
+
+      {showChildren && ctx.centerId && <ChildComplianceGrid centerId={ctx.centerId} />}
 
       {requestFor && centerId && (
         <RequestDocumentsDialog
