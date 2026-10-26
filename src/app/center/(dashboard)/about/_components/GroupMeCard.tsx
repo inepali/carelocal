@@ -1,9 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { AlertCircle, CheckCircle2, Loader2, MessageSquare, Plus, Send, Unplug } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Copy, Loader2, MessageSquare, Plus, Send, Unplug } from 'lucide-react'
 import {
-  cancelGroupMeConnect, connectGroupMeBotId, connectGroupMeGroup, disconnectGroupMe, getGroupMeStatus,
+  cancelGroupMeConnect, connectGroupMeBotId, connectGroupMeGroup, createCenterGroupMe, disconnectGroupMe, getGroupMeStatus,
   listGroupMeGroups, sendGroupMeTest, setGroupMeEnabled, startGroupMeConnect, type GroupMeStatus,
 } from '@/app/actions/groupme.actions'
 import { showAlert, showConfirm } from '@/lib/dialog'
@@ -65,6 +65,22 @@ export default function GroupMeCard() {
     const res = await run(startGroupMeConnect)
     if (!res.success) { showAlert(res.error); return }
     window.location.href = res.url
+  }
+
+  async function createForMe() {
+    const res = await run(createCenterGroupMe)
+    if (!res.success) { showAlert(res.error); load(); return }
+    setStatus(res.status)
+  }
+
+  async function copyInvite() {
+    if (!status?.shareUrl) return
+    try {
+      await navigator.clipboard.writeText(status.shareUrl)
+      showAlert('Invite link copied. Share it with your staff so they can join the group.')
+    } catch {
+      showAlert(`Copy this link and share it with your staff: ${status.shareUrl}`)
+    }
   }
 
   async function createBot() {
@@ -178,6 +194,17 @@ export default function GroupMeCard() {
                 <CheckCircle2 className="h-4 w-4 text-brand-600" /> Last posted {formatWhen(status.lastPostedAt)}
               </div>
             ) : null}
+            {status.shareUrl && (
+              <div className="space-y-2 rounded-xl bg-surface p-4">
+                <p className="text-xs text-muted">Staff join the group with this invite link. Share it in your onboarding or by text.</p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input readOnly value={status.shareUrl} aria-label="GroupMe invite link" onFocus={e => e.currentTarget.select()} className={`${FIELD} font-mono`} />
+                  <button type="button" onClick={copyInvite} className={`${BTN} shrink-0 border border-brand-600 text-brand-600 hover:bg-brand-50`}>
+                    <Copy className="h-4 w-4" /> Copy
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="flex flex-wrap gap-3">
               <button type="button" onClick={test} disabled={busy} className={`${BTN} border border-brand-600 text-brand-600 hover:bg-brand-50`}>
                 <Send className="h-4 w-4" /> Send test message
@@ -198,19 +225,27 @@ export default function GroupMeCard() {
           // ── Not connected ──
           <>
             <p className="text-sm text-muted">
-              Post every new shift to your staff&rsquo;s GroupMe group, alongside app and email alerts. CareLocal creates a bot named <strong className="text-text-main">{status.suggestedBotName}</strong> in the group you choose.
+              Post every new shift to your staff&rsquo;s GroupMe group, alongside app and email alerts.
+              {status.sharedAvailable
+                ? <> CareLocal can create the group and a bot named <strong className="text-text-main">{status.suggestedBotName}</strong> for you, with no GroupMe account needed. You then share an invite link with your staff.</>
+                : <> CareLocal creates a bot named <strong className="text-text-main">{status.suggestedBotName}</strong> in the group you choose.</>}
             </p>
             <div className="flex flex-wrap items-center gap-3">
+              {status.sharedAvailable && (
+                <button type="button" onClick={createForMe} disabled={busy} className={`${BTN} bg-brand-600 text-white hover:bg-brand-800`}>
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Create GroupMe group
+                </button>
+              )}
               {status.oauthAvailable && (
-                <button type="button" onClick={connect} disabled={busy} className={`${BTN} bg-brand-600 text-white hover:bg-brand-800`}>
-                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquare className="h-4 w-4" />} Connect GroupMe
+                <button type="button" onClick={connect} disabled={busy} className={status.sharedAvailable ? `${BTN} border border-border text-text-main hover:bg-surface` : `${BTN} bg-brand-600 text-white hover:bg-brand-800`}>
+                  {busy && !status.sharedAvailable ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquare className="h-4 w-4" />} {status.sharedAvailable ? 'Use my own GroupMe group' : 'Connect GroupMe'}
                 </button>
               )}
               <button type="button" onClick={() => setManual(m => !m)} className="text-sm font-semibold text-brand-600 hover:underline">
-                {status.oauthAvailable ? 'Or paste a Bot ID' : 'Paste a Bot ID'}
+                {status.oauthAvailable || status.sharedAvailable ? 'Or paste a Bot ID' : 'Paste a Bot ID'}
               </button>
             </div>
-            {(manual || !status.oauthAvailable) && (
+            {(manual || (!status.oauthAvailable && !status.sharedAvailable)) && (
               <div className="space-y-3 rounded-xl bg-surface p-4">
                 <ol className="list-decimal space-y-1 pl-5 text-xs text-muted">
                   <li>On a computer, sign in at <a href="https://dev.groupme.com/bots" target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">dev.groupme.com/bots</a> with the account that owns your staff group.</li>

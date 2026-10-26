@@ -57,6 +57,13 @@ export const INTEGRATIONS: Integration[] = [
     manageUrl: 'https://console.twilio.com',
   },
   {
+    id: 'groupme', name: 'GroupMe', category: 'Group messaging', stage: 'building',
+    description: 'Posts new shifts to each center’s GroupMe group. CareLocal can create the group and bot for a center under its own GroupMe account.',
+    env: ['GROUPME_ACCESS_TOKEN'],
+    optionalEnv: ['GROUPME_CLIENT_ID'],
+    manageUrl: 'https://dev.groupme.com',
+  },
+  {
     id: 'weather', name: 'Weather', category: 'Weather alerts', stage: 'planned',
     description: 'Closure and severe-weather notices for centers. Provider to be chosen.',
     env: [],

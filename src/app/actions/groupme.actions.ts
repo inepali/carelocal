@@ -5,7 +5,7 @@ import { randomBytes } from 'node:crypto'
 import { createClient } from '@/lib/supabase/server'
 import {
   GROUPME_STATE_COOKIE, GROUPME_TOKEN_COOKIE, GroupMeError,
-  botNameFor, createBot, createGroup, destroyBot, groupMeServerReady, isBotId, listGroups, postAsBot, serviceDb,
+  botNameFor, createBot, createGroup, destroyBot, groupMeServerReady, isBotId, listGroups, postAsBot, serviceDb, sharedToken,
   type GroupMeGroup,
 } from '@/lib/server/groupme'
 
@@ -20,6 +20,10 @@ export interface GroupMeStatus {
   lastError: string | null
   /** "Connect with GroupMe" is set up on this server (GROUPME_CLIENT_ID) */
   oauthAvailable: boolean
+  /** CareLocal can create the group and bot itself, under its own GroupMe account (GROUPME_ACCESS_TOKEN) */
+  sharedAvailable: boolean
+  /** Invite link for staff to join the group, when CareLocal created it */
+  shareUrl: string | null
   /** The director has just signed in to GroupMe and should pick a group */
   choosingGroup: boolean
   /** The bot name this center gets */
@@ -65,7 +69,7 @@ export async function getGroupMeStatus(): Promise<Result<{ status: GroupMeStatus
   }
   const { data: row } = await serviceDb()
     .from('center_groupme')
-    .select('group_name, bot_name, enabled, last_posted_at, last_error')
+    .select('group_name, bot_name, enabled, last_posted_at, last_error, share_url')
     .eq('center_id', me.centerId)
     .maybeSingle()
   return {
@@ -78,6 +82,8 @@ export async function getGroupMeStatus(): Promise<Result<{ status: GroupMeStatus
       lastPostedAt: row?.last_posted_at ?? null,
       lastError: row?.last_error ?? null,
       oauthAvailable: !!process.env.GROUPME_CLIENT_ID,
+      sharedAvailable: !!sharedToken(),
+      shareUrl: row?.share_url ?? null,
       choosingGroup: !!(await readToken()),
       suggestedBotName: botNameFor(me.centerName),
     },
@@ -141,6 +147,7 @@ export async function connectGroupMeGroup(input: { groupId: string } | { newGrou
 
     const { error } = await db.from('center_groupme').upsert({
       center_id: me.centerId, bot_id: botId, bot_name: botName, group_id: group.id, group_name: group.name,
+      share_url: group.shareUrl ?? null, carelocal_owned: false,
       enabled: true, connected_by: me.userId, connected_at: new Date().toISOString(), last_error: null, last_error_at: null,
     })
     if (error) {
@@ -159,6 +166,43 @@ export async function connectGroupMeGroup(input: { groupId: string } | { newGrou
   return statusAfter()
 }
 
+/**
+ * One click, no GroupMe account needed: CareLocal creates "<Center Name>" as a new group and
+ * "<Center Name>_Notification" as its bot, under CareLocal's own GroupMe account. The center then shares the
+ * invite link with its staff. Refuses when the center is already connected (disconnect first).
+ */
+export async function createCenterGroupMe(): Promise<Result<{ status: GroupMeStatus }>> {
+  const me = await requireCenterAdmin()
+  if (!me) return NOT_ALLOWED
+  const token = sharedToken()
+  if (!token) return { success: false, error: 'Creating a group for you is not set up on this server yet.' }
+
+  try {
+    const db = serviceDb()
+    const { data: existing } = await db.from('center_groupme').select('center_id').eq('center_id', me.centerId).maybeSingle()
+    if (existing) return { success: false, error: 'GroupMe is already connected. Disconnect it first to create a new group.' }
+
+    const group = await createGroup(token, me.centerName)
+    const botName = botNameFor(me.centerName)
+    const botId = await createBot(token, group.id, botName)
+
+    const { error } = await db.from('center_groupme').insert({
+      center_id: me.centerId, bot_id: botId, bot_name: botName, group_id: group.id, group_name: group.name,
+      share_url: group.shareUrl ?? null, carelocal_owned: true,
+      enabled: true, connected_by: me.userId,
+    })
+    if (error) {
+      // Two clicks at once, or a failed save: leave no stray bot behind
+      await destroyBot(token, botId)
+      return { success: false, error: 'Could not save the GroupMe connection.' }
+    }
+    await postAsBot(botId, `✅ CareLocal is connected. New shifts at ${me.centerName} will be posted here.`).catch(() => {})
+  } catch (err) {
+    return { success: false, error: friendly(err) }
+  }
+  return statusAfter()
+}
+
 /** Without GroupMe sign-in: the director made the bot on dev.groupme.com and pastes its Bot ID */
 export async function connectGroupMeBotId(rawBotId: string): Promise<Result<{ status: GroupMeStatus }>> {
   const me = await requireCenterAdmin()
@@ -173,6 +217,7 @@ export async function connectGroupMeBotId(rawBotId: string): Promise<Result<{ st
   }
   const { error } = await serviceDb().from('center_groupme').upsert({
     center_id: me.centerId, bot_id: botId, bot_name: null, group_id: null, group_name: null,
+    share_url: null, carelocal_owned: false,
     enabled: true, connected_by: me.userId, connected_at: new Date().toISOString(), last_error: null, last_error_at: null,
   })
   if (error) return { success: false, error: 'Could not save the GroupMe connection.' }
@@ -210,11 +255,18 @@ export async function setGroupMeEnabled(enabled: boolean): Promise<Result<{ stat
   return statusAfter()
 }
 
-/** Forgets the bot. The bot stays in the GroupMe group until someone removes it there (GroupMe needs its creator to delete it). */
+/**
+ * Forgets the bot. A bot CareLocal created is removed from GroupMe too; any other bot stays in the group until
+ * someone removes it there (GroupMe needs its creator to delete it). The group itself is never deleted.
+ */
 export async function disconnectGroupMe(): Promise<Result<{ status: GroupMeStatus }>> {
   const me = await requireCenterAdmin()
   if (!me) return NOT_ALLOWED
-  const { error } = await serviceDb().from('center_groupme').delete().eq('center_id', me.centerId)
+  const db = serviceDb()
+  const { data: row } = await db.from('center_groupme').select('bot_id, carelocal_owned').eq('center_id', me.centerId).maybeSingle()
+  const token = sharedToken()
+  if (row?.carelocal_owned && token) await destroyBot(token, row.bot_id)
+  const { error } = await db.from('center_groupme').delete().eq('center_id', me.centerId)
   if (error) return { success: false, error: 'Could not disconnect GroupMe.' }
   return statusAfter()
 }

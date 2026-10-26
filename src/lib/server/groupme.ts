@@ -46,7 +46,10 @@ async function call<T>(path: string, init: { method?: 'GET' | 'POST'; token?: st
   try { return (JSON.parse(text) as Envelope<T>).response ?? null } catch { return null }
 }
 
-export interface GroupMeGroup { id: string; name: string; members: number }
+export interface GroupMeGroup { id: string; name: string; members: number; shareUrl?: string }
+
+/** CareLocal's own GroupMe account, used to create a center's group and bot for them. Server-only. */
+export const sharedToken = () => process.env.GROUPME_ACCESS_TOKEN?.trim() || null
 
 /** Groups the signed-in GroupMe user belongs to, most recently active first */
 export async function listGroups(token: string): Promise<GroupMeGroup[]> {
@@ -55,9 +58,9 @@ export async function listGroups(token: string): Promise<GroupMeGroup[]> {
 }
 
 export async function createGroup(token: string, name: string): Promise<GroupMeGroup> {
-  const group = await call<{ id: string; name: string }>('/groups', { method: 'POST', token, body: { name: name.slice(0, 140), share: true } })
+  const group = await call<{ id: string; name: string; share_url?: string }>('/groups', { method: 'POST', token, body: { name: name.slice(0, 140), share: true } })
   if (!group?.id) throw new GroupMeError('GroupMe did not create the group.')
-  return { id: String(group.id), name: group.name, members: 1 }
+  return { id: String(group.id), name: group.name, members: 1, shareUrl: group.share_url?.startsWith('https://') ? group.share_url : undefined }
 }
 
 export async function createBot(token: string, groupId: string, name: string, avatarUrl?: string): Promise<string> {
@@ -99,11 +102,25 @@ const fmtTime = (hhmm: string) => {
   return `${((h + 11) % 12) + 1}:${String(m || 0).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`
 }
 
-/** The message for a newly posted shift. No staff names or notes: the group is outside CareLocal. */
-export function shiftPostedText(s: { centerName: string; shiftDate: string; startTime: string; endTime: string; role: string | null; url: string }) {
+/** "$20/hr", "$18.50/hr"; nothing when the shift has no rate */
+const fmtRate = (rate: number | string | null | undefined) => {
+  const n = Number(rate)
+  if (!Number.isFinite(n) || n <= 0) return ''
+  return `$${Number.isInteger(n) ? n : n.toFixed(2)}/hr`
+}
+
+/**
+ * The message for a newly posted shift. No staff names or notes: the group is outside CareLocal. `site` is the
+ * bare domain staff type in ("carelocal.co"), not a link.
+ */
+export function shiftPostedText(s: { centerName: string; shiftDate: string; startTime: string; endTime: string; role: string | null; hourlyRate?: number | string | null; site: string }) {
   const day = new Date(`${s.shiftDate}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
   const role = s.role && s.role !== 'any' ? ` · ${s.role.replace(/_/g, ' ')}` : ''
-  return `🟢 New shift at ${s.centerName}\n${day} · ${fmtTime(s.startTime)} – ${fmtTime(s.endTime)}${role}\nClaim it: ${s.url}`
+  const rate = fmtRate(s.hourlyRate)
+  // GroupMe turns anything that looks like an address into a link with a large preview card. A zero-width space
+  // after each dot keeps it as plain text that still reads, and is typed, as "carelocal.co".
+  const site = s.site.replace(/\./g, '.​')
+  return `🟢 New shift at ${s.centerName}\n${day} · ${fmtTime(s.startTime)} – ${fmtTime(s.endTime)}${role}${rate ? `\n💵 ${rate}` : ''}\nClaim at ${site}`
 }
 
 /**

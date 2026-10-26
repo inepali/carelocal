@@ -689,6 +689,19 @@ async function main() {
     && (await admin.from('staff_onboarding_items').select('id').eq('staff_id', subStaff)).data?.length === 0)
   await admin.from('onboarding_states').delete().eq('state_code', 'ZZ')
   check('the test states are removed again', ((await admin.from('onboarding_states').select('id').eq('state_code', 'ZZ')).data ?? []).length === 0)
+
+  // 17. GroupMe: the bot id lets anyone post into the group, so the table is for the server only ────────────
+  console.log('\n17. GroupMe connection is server-only')
+  const gm = await admin.from('center_groupme').insert({ center_id: A, bot_id: 'rlstestbot1234567890', share_url: 'https://groupme.com/join_group/1/rls' }).select('center_id').single()
+  check('the server can save a connection', !gm.error, errText(gm.error))
+  const readable = async client => { const r = await client.from('center_groupme').select('bot_id'); return !r.error && (r.data ?? []).length > 0 }
+  check('a center owner cannot read the bot id', !(await readable(clients.ownerA)))
+  check('staff and visitors cannot read it either', !(await readable(clients.subA)) && !(await readable(clients.anonymous)))
+  check('the super admin cannot read it from the browser either', !(await readable(superSb)))
+  check('a center owner cannot write a connection directly', !!(await clients.ownerA.from('center_groupme').insert({ center_id: B, bot_id: 'rlstestbot0987654321' })).error
+    && !!(await clients.ownerA.from('center_groupme').update({ enabled: false }).eq('center_id', A)).error)
+  check('an invite link must be https', !!(await admin.from('center_groupme').update({ share_url: 'http://example.com/x' }).eq('center_id', A)).error)
+  await admin.from('center_groupme').delete().eq('center_id', A)
 }
 
 let crashed = null

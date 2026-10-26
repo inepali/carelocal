@@ -71,7 +71,7 @@ export async function POST(req: Request) {
       const { data: shift } = typeof shiftId === 'string'
         ? await supabase
             .from('shifts')
-            .select('center_id, shift_date, start_time, end_time, staff_type_needed')
+            .select('center_id, shift_date, start_time, end_time, staff_type_needed, hourly_rate')
             .eq('id', shiftId)
             .maybeSingle()
         : { data: null }
@@ -110,8 +110,10 @@ export async function POST(req: Request) {
 
       // GroupMe: one post to the center's group, if connected. Before the staff lookup, because the group can
       // include people who have no CareLocal profile yet. Never throws.
+      // The post names the site to visit rather than a link, so it reads the same in dev and production
+      const siteName = domainKey === 'healthcare' ? 'carelocal.net' : domainKey === 'senior' ? 'carelocalsenior.com' : 'carelocal.co'
       await notifyCenterGroupMe(centerId, shiftPostedText({
-        centerName, shiftDate, startTime, endTime, role: staffTypeNeeded, url: `${appUrl}/staff/shifts`,
+        centerName, shiftDate, startTime, endTime, role: staffTypeNeeded, hourlyRate: shift.hourly_rate as number | null, site: siteName,
       }))
 
       // 2. Fetch all active substitute staff connected to this center
