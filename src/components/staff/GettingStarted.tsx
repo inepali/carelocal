@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, Check, Download, FolderOpen, ListChecks, Loader2, Upload, type LucideIcon } from 'lucide-react'
+import { ArrowRight, Bell, Check, Download, FolderOpen, ListChecks, Loader2, Smartphone, Upload, type LucideIcon } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { showAlert } from '@/lib/dialog'
 import { useIsRegularOnly } from '@/lib/hooks/useIsRegularOnly'
 import { formatDate } from '@/lib/compliance'
-import { docKey, loadOnboarding, progressOf, setOnboardingItem, tasksFor, type OnboardingData } from '@/lib/onboarding'
+import { GROUPME_TASK_KEY, docKey, loadOnboarding, progressOf, setOnboardingItem, tasksFor, type OnboardingData } from '@/lib/onboarding'
 
 /** The staff member ticks each item off by hand when they have done it; nothing is checked or enforced. */
 export function GettingStarted({ profileHref, documentsHref }: { profileHref: string; documentsHref: string }) {
@@ -73,11 +73,40 @@ export function GettingStarted({ profileHref, documentsHref }: { profileHref: st
               onToggle={() => toggle(task.key)}
               title={task.label}
               hint={task.hint}
-              action={{ label: 'Open', icon: FolderOpen, href: task.tab ? `${profileHref}?tab=${task.tab}` : documentsHref }}
+              actions={[{ label: 'Open', icon: FolderOpen, href: task.tab ? `${profileHref}?tab=${task.tab}` : documentsHref }]}
             />
           ))}
         </ul>
       </section>
+
+      {data.groupMeInvites.length > 0 && (
+        <section className="mb-8">
+          <h2 className="mb-3 text-lg font-bold text-heading">Shift alerts</h2>
+          <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+            <Row
+              completedAt={data.done.get(GROUPME_TASK_KEY)}
+              saving={saving === GROUPME_TASK_KEY}
+              onToggle={() => toggle(GROUPME_TASK_KEY)}
+              title={data.groupMeInvites.length === 1 ? `Join ${data.groupMeInvites[0].centerName} on GroupMe` : 'Join your centers on GroupMe'}
+              hint="New shifts are posted to your center's GroupMe group as soon as they open."
+              steps={[
+                'Download the free GroupMe app from the App Store or Google Play.',
+                data.groupMeInvites.length === 1 ? 'Tap Join below and join the group.' : 'Tap Join below for each center and join its group.',
+                'Make sure notifications are on: allow GroupMe notifications on your phone, and check the group is not muted in its settings.',
+              ]}
+              actions={[
+                { label: 'Get GroupMe', icon: Smartphone, href: 'https://groupme.com', external: true },
+                ...data.groupMeInvites.map(invite => ({
+                  label: data.groupMeInvites.length === 1 ? 'Join' : `Join ${invite.centerName}`,
+                  icon: Bell,
+                  href: invite.shareUrl,
+                  external: true,
+                })),
+              ]}
+            />
+          </ul>
+        </section>
+      )}
 
       <section>
         <h2 className="mb-3 text-lg font-bold text-heading">{data.stateCode ? `Documents for ${data.stateCode}` : 'State documents'}</h2>
@@ -101,7 +130,7 @@ export function GettingStarted({ profileHref, documentsHref }: { profileHref: st
                 badge={doc.is_required ? undefined : 'Optional'}
                 hint={doc.instructions}
                 link={doc.link_url}
-                action={{ label: 'Upload', icon: Upload, href: documentsHref }}
+                actions={[{ label: 'Upload', icon: Upload, href: documentsHref }]}
               />
             ))}
           </ul>
@@ -113,7 +142,7 @@ export function GettingStarted({ profileHref, documentsHref }: { profileHref: st
 
 const ROW_BUTTON = 'inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-1.5 text-sm font-semibold text-brand-600 hover:border-brand-600 hover:bg-brand-50'
 
-function Row({ completedAt, saving, onToggle, title, badge, hint, link, action }: {
+function Row({ completedAt, saving, onToggle, title, badge, hint, steps, link, actions }: {
   /** When it was ticked; undefined while not done */
   completedAt?: string
   saving: boolean
@@ -121,8 +150,11 @@ function Row({ completedAt, saving, onToggle, title, badge, hint, link, action }
   title: string
   badge?: string
   hint?: string | null
+  /** Numbered how-to under the hint */
+  steps?: string[]
   link?: string | null
-  action: { label: string; href: string; icon: LucideIcon }
+  /** `external` opens in a new tab (a GroupMe invite, an app download) */
+  actions: { label: string; href: string; icon: LucideIcon; external?: boolean }[]
 }) {
   const checked = !!completedAt
   return (
@@ -144,20 +176,31 @@ function Row({ completedAt, saving, onToggle, title, badge, hint, link, action }
           {badge && <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600 no-underline">{badge}</span>}
         </div>
         {hint && <p className="mt-0.5 text-sm text-muted">{hint}</p>}
+        {steps && (
+          <ol className="mt-1.5 list-decimal space-y-0.5 pl-5 text-sm text-muted">
+            {steps.map(step => <li key={step}>{step}</li>)}
+          </ol>
+        )}
         {completedAt && <p className="mt-0.5 text-xs text-muted sm:hidden">Completed {formatDate(completedAt)}</p>}
       </div>
       <div className="hidden w-36 shrink-0 pt-1.5 text-right text-xs text-muted sm:block">
         {completedAt ? <>Completed <span className="font-semibold text-text-main">{formatDate(completedAt)}</span></> : null}
       </div>
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
         {link && (
           <a href={link} target="_blank" rel="noopener noreferrer" className={ROW_BUTTON}>
             <Download className="h-3.5 w-3.5" /> Download
           </a>
         )}
-        <Link href={action.href} className={ROW_BUTTON}>
-          <action.icon className="h-3.5 w-3.5" /> {action.label}
-        </Link>
+        {actions.map(action => action.external ? (
+          <a key={action.href} href={action.href} target="_blank" rel="noopener noreferrer" className={ROW_BUTTON}>
+            <action.icon className="h-3.5 w-3.5" /> {action.label}
+          </a>
+        ) : (
+          <Link key={action.href} href={action.href} className={ROW_BUTTON}>
+            <action.icon className="h-3.5 w-3.5" /> {action.label}
+          </Link>
+        ))}
       </div>
     </li>
   )

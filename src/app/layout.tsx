@@ -47,8 +47,8 @@ export async function generateMetadata(): Promise<Metadata> {
     keywords: SEO_KEYWORDS[domainKey],
     category: 'business',
     manifest: '/manifest.json',
+    // The browser tab icon is app/favicon.ico (file convention)
     icons: {
-      icon: [{ url: '/icon.png', type: 'image/png' }],
       apple: [{ url: '/icon-192.png', sizes: '192x192', type: 'image/png' }],
     },
     formatDetection: { telephone: false },

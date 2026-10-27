@@ -1,8 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { getMyGroupMeInvites, type GroupMeInvite } from '@/app/actions/onboarding-groupme.actions'
 
 /**
  * The staff "Getting started" checklist: five profile tasks that live in the app, plus the documents the super admin
- * listed for the staff member's state. Staff tick items off by hand; nothing here is reviewed or enforced.
+ * listed for the staff member's state, plus joining their center's GroupMe group when the center has one. Staff tick
+ * items off by hand; nothing here is reviewed or enforced.
  */
 export const PROFILE_TASKS = [
   { key: 'profile', label: 'Complete your profile', hint: 'Name, phone, city and state, and the role you work in.', tab: 'personal' },
@@ -13,6 +15,9 @@ export const PROFILE_TASKS = [
 ] as const
 
 export type ProfileTaskKey = (typeof PROFILE_TASKS)[number]['key']
+
+/** Shift alerts: shown only when a center the staff member belongs to has a GroupMe invite link */
+export const GROUPME_TASK_KEY = 'groupme'
 
 export interface OnboardingDoc {
   id: string
@@ -28,6 +33,8 @@ export interface OnboardingData {
   /** True when the super admin has added this state for the staff member's vertical */
   stateListed: boolean
   docs: OnboardingDoc[]
+  /** GroupMe groups to join for shift alerts, one per center that has an invite link */
+  groupMeInvites: GroupMeInvite[]
   /** Ticked items and when each was ticked: 'profile' … 'availability' for tasks, `doc:<id>` for state documents */
   done: Map<string, string>
 }
@@ -56,11 +63,13 @@ export async function loadOnboarding(supabase: SupabaseClient): Promise<Onboardi
 
   const stateCode = stateOf(profile as never)
 
-  const [{ data: stateRow }, { data: items }] = await Promise.all([
+  const [{ data: stateRow }, { data: items }, groupMeInvites] = await Promise.all([
     stateCode
       ? supabase.from('onboarding_states').select('id').eq('state_code', stateCode).eq('domain_key', profile.domain_key).eq('status', 'active').maybeSingle()
       : Promise.resolve({ data: null }),
     supabase.from('staff_onboarding_items').select('task, doc_id, completed_at').eq('staff_id', profile.id),
+    // GroupMe is optional: a failure just hides the task
+    getMyGroupMeInvites().catch(() => [] as GroupMeInvite[]),
   ])
 
   let docs: OnboardingDoc[] = []
@@ -77,7 +86,7 @@ export async function loadOnboarding(supabase: SupabaseClient): Promise<Onboardi
   const done = new Map<string, string>()
   for (const item of items ?? []) done.set(item.task ?? docKey(item.doc_id), item.completed_at)
 
-  return { staffId: profile.id, stateCode, stateListed: !!stateRow, docs, done }
+  return { staffId: profile.id, stateCode, stateListed: !!stateRow, docs, groupMeInvites, done }
 }
 
 /** The tasks this staff member sees: regular employees have no availability to set */
@@ -86,7 +95,11 @@ export function tasksFor(includeAvailability: boolean) {
 }
 
 export function progressOf(data: OnboardingData, includeAvailability: boolean) {
-  const keys = [...tasksFor(includeAvailability).map(t => t.key as string), ...data.docs.map(d => docKey(d.id))]
+  const keys = [
+    ...tasksFor(includeAvailability).map(t => t.key as string),
+    ...(data.groupMeInvites.length ? [GROUPME_TASK_KEY] : []),
+    ...data.docs.map(d => docKey(d.id)),
+  ]
   return { done: keys.filter(k => data.done.has(k)).length, total: keys.length }
 }
 
