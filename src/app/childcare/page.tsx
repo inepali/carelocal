@@ -6,7 +6,8 @@ import { getDomainConfig } from '@/lib/domain-config'
 import { StructuredData } from '@/components/marketing/StructuredData'
 import {
   CheckCircle, Zap, FileText, Users, ArrowRight,
-  Star, MessageSquare, Clock, ShieldCheck, ChevronDown
+  Star, MessageSquare, Clock, ShieldCheck, ChevronDown,
+  Lock, Link2, Eye, Archive
 } from 'lucide-react'
 
 const seo = getDomainConfig('childcare')
@@ -65,6 +66,29 @@ const FEATURES = [
     icon: ShieldCheck,
     title: 'Always Inspection-Ready',
     desc: 'Due dates, renewals, training hours and inspection reports tracked for you. You stay in charge of every compliance call.',
+  },
+]
+
+const SECURITY = [
+  {
+    icon: Lock,
+    title: 'Private, encrypted storage',
+    desc: 'Staff documents are never on a public link. They live in private, encrypted storage.',
+  },
+  {
+    icon: Link2,
+    title: 'Links that expire',
+    desc: 'A document opens only through a secure link that expires within minutes.',
+  },
+  {
+    icon: Eye,
+    title: 'Confidential medical file',
+    desc: 'TB results and health questionnaires are visible only to the owner and designated admins, and every view is logged.',
+  },
+  {
+    icon: Archive,
+    title: 'You control what is shared',
+    desc: 'Staff share only the document they choose. Accepted documents stay in your records after an employee leaves.',
   },
 ]
 
@@ -151,6 +175,7 @@ export default function ChildcareHomePage() {
             <Link href="#how-it-works" className="hover:text-brand-600 transition-colors">How it works</Link>
             <Link href="#features" className="hover:text-brand-600 transition-colors">Features</Link>
             <Link href="#compliance" className="hover:text-brand-600 transition-colors">Compliance</Link>
+            <Link href="#security" className="hover:text-brand-600 transition-colors">Security</Link>
             <Link href="#pricing" className="hover:text-brand-600 transition-colors">Pricing</Link>
             <Link href="/jobs" className="hover:text-brand-600 transition-colors">Jobs</Link>
             <Link href="/contact" className="hover:text-brand-600 transition-colors">Contact</Link>
@@ -193,6 +218,11 @@ export default function ChildcareHomePage() {
             Shifts, staff documents, trainings, inspections and vendors — one login for your whole center.
           </p>
 
+          <div className="inline-flex items-center gap-2 bg-amber-400 text-heading rounded-full px-5 py-2 text-sm font-bold mb-6 shadow-sm">
+            <Star className="w-4 h-4 fill-heading" />
+            3-month free trial · No credit card required
+          </div>
+
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               href="/register"
@@ -210,7 +240,7 @@ export default function ChildcareHomePage() {
           </div>
 
           <p className="mt-5 text-sm text-muted">
-            3-month free trial · No credit card required · Staff accounts free to join
+            Full access for 3 months · Cancel anytime · Staff accounts free to join
           </p>
         </div>
 
@@ -303,6 +333,29 @@ export default function ChildcareHomePage() {
       {/* ── Compliance & operations ── */}
       <ComplianceSuite vertical="childcare" />
 
+      {/* ── Security & document privacy ── */}
+      <section id="security" className="py-20 px-6 bg-white border-t border-border">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-heading mb-3">Your staff documents stay private</h2>
+            <p className="text-muted text-lg max-w-xl mx-auto">
+              CPR cards, TB results and health forms are sensitive. We treat them that way.
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {SECURITY.map(({ icon: Icon, title, desc }) => (
+              <div key={title} className="bg-surface rounded-2xl p-6 border border-border">
+                <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center mb-4">
+                  <Icon className="w-5 h-5 text-brand-600" />
+                </div>
+                <h3 className="font-bold text-text-main mb-2">{title}</h3>
+                <p className="text-sm text-muted leading-relaxed">{desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── Pricing ── */}
       <section id="pricing" className="py-24 px-6">
         <div className="max-w-6xl mx-auto">
@@ -375,10 +428,16 @@ export default function ChildcareHomePage() {
             <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
             <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
           </div>
-          <blockquote className="text-xl text-text-main font-medium italic mb-4">
-            "We used to spend 45 minutes calling substitutes every morning. Now I post a shift and my phone buzzes with a confirmation before I finish setting up the classroom."
+          <blockquote className="text-lg text-text-main font-medium italic mb-6 space-y-4">
+            <p>
+              “Although CareLocal has not yet been released in Virginia, I had the opportunity to evaluate the platform, and I’m genuinely impressed with its potential to simplify child care center operations. It offers practical tools for managing child files, employee records, training, and inspections, but what stands out most is the substitute pool management and shift-posting feature, which can help directors fill staffing gaps faster and save valuable time.
+            </p>
+            <p>
+              CareLocal also offers an integrated job posting and hiring workflow that works seamlessly, making recruitment more organized and efficient. Even better, posting a job is completely free, which is a great advantage for child care centers looking to attract qualified staff without additional advertising costs. I believe CareLocal has tremendous potential to make center management easier and allow owners and directors to focus more on providing quality care and education for children.”
+            </p>
           </blockquote>
-          <p className="text-muted text-sm">— Center Director, Charlotte, NC</p>
+          <p className="text-text-main text-sm font-semibold">Madhu Bhandari</p>
+          <p className="text-muted text-sm">Owner, Kiddie Academy of Ashburn, VA</p>
         </div>
       </section>
 
