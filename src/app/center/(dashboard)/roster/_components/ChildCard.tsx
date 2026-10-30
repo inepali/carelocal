@@ -5,18 +5,25 @@ import { AlertTriangle, Baby, Camera, ClipboardList, Loader2, LogIn, LogOut, Mil
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { ageLabel, type RosterPerson, type RosterRoom } from '@/lib/roster-ratio'
 import { loadChildDayEvents, setToiletTrained, type RosterMove } from '@/lib/roster'
-import { addEntry, describeEntry, glanceChips, loadDay, newKey, showsBottle, voidEntry, type DailyDetails, type DailyEntry } from '@/lib/daily'
+import {
+  addEntry, describeEntry, endNaps, giveMedicine, glanceChips, loadChildStatus, loadDay, newKey, recordSleepChecks, showsBottle,
+  sleepChecksRequired, startNaps, voidEntry, type ChildStatus, type DailyDetails, type DailyEntry, type SleepStatus,
+} from '@/lib/daily'
 import { Face } from './PersonAvatar'
 import { ZONE_LABEL } from './SelectedPanel'
 import { EntryForm, VoidForm, type RoutineKind } from './DailyForms'
+import { MedicineForm, NapBanner, NapTimeForm, SleepCheckForm } from './NapMedForms'
+
+type AddKind = RoutineKind | 'nap' | 'wake' | 'sleep_check' | 'medicine'
 
 const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 
 /**
  * The child card in teacher view: a panel on the right (the whole screen on a phone). Who the child is, any
  * care alert, Check in / Check out, the day at a glance, quick add for the day's routine (meal, bottle,
- * diaper or bathroom, activity, note) and today's list, where an entry is removed with a reason, never
- * deleted. Naps, medicine and photos come in the next phases; moving rooms is done by dragging.
+ * diaper or bathroom, activity, note), naps with sleep checks (due on a timer, required for infants),
+ * medicine from the child's authorized list (hidden when there is none), and today's list, where an entry is
+ * removed with a reason, never deleted. Photos come next; moving rooms is done by dragging.
  */
 export function ChildCard({
   supabase,
@@ -49,7 +56,9 @@ export function ChildCard({
 }) {
   const [events, setEvents] = useState<{ action: string; at: string }[]>([])
   const [entries, setEntries] = useState<DailyEntry[]>([])
-  const [adding, setAdding] = useState<{ kind: RoutineKind; key: string } | null>(null)
+  const [adding, setAdding] = useState<{ kind: AddKind; key: string } | null>(null)
+  const [status, setStatus] = useState<ChildStatus | null>(null)
+  const [now, setNow] = useState(() => new Date())
   const [voiding, setVoiding] = useState<string | null>(null)
   const [working, setWorking] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
@@ -69,9 +78,19 @@ export function ChildCard({
   }, [supabase, centerId, person.person_id, day, refreshKey, person.zone])
 
   const reloadEntries = useCallback(async () => {
-    const res = await loadDay(supabase, centerId, person.person_id, day || undefined)
+    const [res, st] = await Promise.all([
+      loadDay(supabase, centerId, person.person_id, day || undefined),
+      loadChildStatus(supabase, centerId, person.person_id),
+    ])
     if (res.success) setEntries(res.entries)
+    if (st.success) setStatus(st.status)
   }, [supabase, centerId, person.person_id, day])
+
+  // The sleep-check timer
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(new Date()), 30_000)
+    return () => window.clearInterval(t)
+  }, [])
 
   // The board remounts the card for each child (key), so this only loads
   useEffect(() => {
@@ -102,18 +121,33 @@ export function ChildCard({
     return () => window.clearTimeout(t)
   }, [saved])
 
-  async function save(details: DailyDetails, at: string | null) {
-    if (!adding) return
+  /** Runs one save; on success shows the message, closes the form and reloads */
+  async function run(action: () => Promise<{ success: true } | { success: false; error: string }>, message: string) {
     setWorking(true)
     setFormError(null)
-    const res = await addEntry(supabase, centerId, person.person_id, adding.kind, details, { at, key: adding.key })   // same key on a retry
+    const res = await action()
     setWorking(false)
     if (!res.success) { setFormError(res.error); return }
-    const d = describeEntry({ kind: adding.kind, details })
-    setSaved(`Saved: ${d.title}${d.detail ? ` · ${d.detail}` : ''}`)
+    setSaved(message)
     setAdding(null)
+    setNow(new Date())
     reloadEntries()
   }
+
+  function save(details: DailyDetails, at: string | null) {
+    if (!adding) return
+    const kind = adding.kind as RoutineKind
+    const d = describeEntry({ kind, details })
+    run(() => addEntry(supabase, centerId, person.person_id, kind, details, { at, key: adding.key }),   // same key on a retry
+      `Saved: ${d.title}${d.detail ? ` · ${d.detail}` : ''}`)
+  }
+  const me = [person.person_id]
+  const napStart = (at: string | null) => adding && run(() => startNaps(supabase, centerId, me, { at, key: adding.key }), 'Nap started')
+  const napEnd = (at: string | null) => run(() => endNaps(supabase, centerId, me, at), 'Woke up')
+  const sleepCheck = (s: SleepStatus, note: string | null, at: string | null) => adding &&
+    run(() => recordSleepChecks(supabase, centerId, [{ child_id: person.person_id, status: s, ...(note ? { note } : {}) }], { at, key: adding.key }), 'Sleep check saved')
+  const medicine = (id: string, dose: string, note: string | null, at: string | null) => adding &&
+    run(() => giveMedicine(supabase, centerId, person.person_id, id, { dose, note, at, key: adding.key }), 'Medicine saved')
 
   async function remove(id: string, reason: string) {
     setWorking(true)
@@ -144,18 +178,24 @@ export function ChildCard({
     onChanged()
   }
 
-  const QUICK: { kind: RoutineKind; label: string; icon: typeof Moon }[] = [
+  const nap = status?.open_nap ?? null
+  const meds = status?.medications ?? []
+  const required = sleepChecksRequired(person.age_months)
+  const QUICK: { kind: AddKind; label: string; icon: typeof Moon }[] = [
+    ...(nap ? [] : [{ kind: 'nap' as const, label: 'Nap', icon: Moon }]),
     { kind: 'meal', label: 'Meal', icon: Utensils },
     ...(showsBottle(person.age_months) ? [{ kind: 'bottle' as const, label: 'Bottle', icon: Milk }] : []),
     mode === 'diaper' ? { kind: 'diaper', label: 'Diaper', icon: Baby } : { kind: 'bathroom', label: 'Bathroom', icon: Droplets },
     { kind: 'activity', label: 'Activity', icon: ClipboardList },
+    // Medicine only when a director has put the child's medicines on file
+    ...(meds.length ? [{ kind: 'medicine' as const, label: 'Medicine', icon: Pill }] : []),
     { kind: 'note', label: 'Note', icon: StickyNote },
   ]
   const COMING = [
-    { label: 'Nap', icon: Moon },
-    { label: 'Medicine', icon: Pill },
     { label: 'Photo', icon: Camera },
   ]
+  const open = (kind: AddKind) => { setVoiding(null); setFormError(null); setAdding({ kind, key: newKey() }) }
+  const cancel = () => { setAdding(null); setFormError(null) }
   const chips = glanceChips(entries)
   // Today's list: the routine entries plus check-in and check-out, newest first
   type Row = { id: string; at: string; entry?: DailyEntry; action?: string }
@@ -225,13 +265,25 @@ export function ChildCard({
           <h3 id="daily-h" className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">Add to today</h3>
           {saved && <p role="status" className="mb-2 rounded-lg bg-[#e2f2ea] px-3 py-2 text-sm font-semibold text-[#17603f]">{saved}</p>}
           {!onSite && <p className="mb-2 text-sm text-muted">Check {person.first_name} in to add to today.</p>}
+          {nap && onSite && !adding && (
+            <NapBanner nap={nap} minutes={status?.check_minutes ?? 15} required={required} now={now} busy={working}
+              onCheck={() => open('sleep_check')} onWake={() => open('wake')} />
+          )}
           {adding && onSite ? (
-            <EntryForm key={adding.key} kind={adding.kind} busy={working} error={formError} onSave={save}
-              onCancel={() => { setAdding(null); setFormError(null) }} />
+            adding.kind === 'nap' || adding.kind === 'wake' ? (
+              <NapTimeForm key={adding.key} mode={adding.kind === 'nap' ? 'start' : 'wake'} busy={working} error={formError}
+                onSave={adding.kind === 'nap' ? napStart : napEnd} onCancel={cancel} />
+            ) : adding.kind === 'sleep_check' ? (
+              <SleepCheckForm key={adding.key} required={required} busy={working} error={formError} onSave={sleepCheck} onCancel={cancel} />
+            ) : adding.kind === 'medicine' ? (
+              <MedicineForm key={adding.key} medications={meds} busy={working} error={formError} onSave={medicine} onCancel={cancel} />
+            ) : (
+              <EntryForm key={adding.key} kind={adding.kind} busy={working} error={formError} onSave={save} onCancel={cancel} />
+            )
           ) : (
             <div className="grid grid-cols-3 gap-2">
               {QUICK.map(({ kind, label, icon: Icon }) => (
-                <button key={kind} type="button" disabled={!onSite} onClick={() => { setVoiding(null); setFormError(null); setAdding({ kind, key: newKey() }) }}
+                <button key={kind} type="button" disabled={!onSite} onClick={() => open(kind)}
                   className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-white text-sm font-bold text-heading shadow-sm hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:hover:bg-white">
                   <Icon className="h-5 w-5 text-brand-600" /> {label}
                 </button>

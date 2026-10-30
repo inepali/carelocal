@@ -5,7 +5,7 @@
  *
  *   npm run test:daily
  */
-import { BOTTLE_OUNCES, describeEntry, glanceChips, mealForTime, showsBottle, timeToIso, nowHHMM } from '../../src/lib/daily.ts'
+import { BOTTLE_OUNCES, describeEntry, duration, glanceChips, mealForTime, nextCheck, showsBottle, sleepChecksRequired, timeToIso, nowHHMM } from '../../src/lib/daily.ts'
 
 let passed = 0
 const failures = []
@@ -56,6 +56,23 @@ const iso = timeToIso('13:05', base)
 check('a picked time becomes today at that time', new Date(iso).getHours() === 13 && new Date(iso).getMinutes() === 5 && new Date(iso).getDate() === 30)
 check('an empty or bad time means now (null)', timeToIso('', base) === null && timeToIso('1pm', base) === null)
 check('now as HH:MM', nowHHMM(new Date(2026, 9, 30, 7, 4)) === '07:04')
+
+console.log('naps, sleep checks, medicine')
+check('duration reads in hours and minutes', duration('2026-10-30T16:30:00Z', '2026-10-30T18:05:00Z') === '1 h 35 min'
+  && duration('2026-10-30T16:30:00Z', '2026-10-30T17:10:00Z') === '40 min' && duration('2026-10-30T16:30:00Z', '2026-10-30T18:30:00Z') === '2 h')
+const nap = { at: '2026-10-30T16:30:00Z', last_check_at: null }
+let nc = nextCheck(nap, 15, new Date('2026-10-30T16:39:00Z'))
+check('first check due 15 minutes after falling asleep', nc.minutesLeft === 6 && !nc.overdue, String(nc.minutesLeft))
+nc = nextCheck({ ...nap, last_check_at: '2026-10-30T16:45:00Z' }, 15, new Date('2026-10-30T17:00:30Z'))
+check('then 15 minutes after the last check; overdue when the time passes', nc.overdue, String(nc.minutesLeft))
+check('checks required for 12 months and under only', sleepChecksRequired(4) && sleepChecksRequired(12) && !sleepChecksRequired(13) && !sleepChecksRequired(null))
+check('an open nap reads "Sleeping since"', d('nap', {}).title === 'Nap' && describeEntry({ kind: 'nap', details: {}, at: nap.at, ends_at: null }).detail.startsWith('Sleeping since'))
+check('a finished nap shows its length', describeEntry({ kind: 'nap', details: {}, at: nap.at, ends_at: '2026-10-30T18:05:00Z' }).detail.endsWith('· 1 h 35 min'))
+check('sleep check status in words', d('sleep_check', { status: 'other' }).detail === 'Asleep (other position)')
+check('medicine shows name and dose', d('medicine', { name: 'Amoxicillin', dose: '5 ml' }).detail === 'Amoxicillin · 5 ml')
+const napChips = glanceChips([e('nap', {}, '2026-10-30T16:30:00Z'), { ...e('nap', {}, '2026-10-30T13:00:00Z'), ends_at: '2026-10-30T14:00:00Z' }, e('medicine', { name: 'X', dose: '1' }, 'z')])
+check('glance: naps in order, open nap as sleeping, medicine count',
+  napChips.length === 3 && napChips[0].startsWith('Nap ') && napChips[1].startsWith('Sleeping since') && napChips[2] === '1 medicine', napChips.join(' | '))
 
 console.log(`\n${passed} passed, ${failures.length} failed`)
 if (failures.length) process.exit(1)

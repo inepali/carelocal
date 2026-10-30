@@ -100,3 +100,21 @@ export interface ChildAuditEntry {
   /** Names and flags only, never health details */
   summary: string | null
 }
+
+/** A medicine an owner or admin authorized from the child's medical form (child_medications). Never deleted: stopped. */
+export interface ChildMedication {
+  id: string
+  center_id: string
+  child_id: string
+  name: string
+  dose: string
+  schedule: string | null
+  instructions: string | null
+  /** The date the parent signed the medication permission (10A NCAC 09 .0803) */
+  permission_signed_on: string
+  starts_on: string
+  ends_on: string | null
+  active: boolean
+  created_at: string
+  updated_at: string
+}

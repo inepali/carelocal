@@ -26,7 +26,12 @@ export interface DailyDetails {
   cream?: boolean
   text?: string
   note?: string
+  status?: SleepStatus
+  name?: string
+  dose?: string
 }
+
+export type SleepStatus = 'back' | 'other' | 'restless' | 'awake'
 
 /** One row of daily_day() */
 export interface DailyEntry {
@@ -81,6 +86,33 @@ export const BATHROOM_TYPES: { value: 'wet' | 'bm' | 'wet_bm'; label: string }[]
   { value: 'wet_bm', label: 'Both' },
 ]
 
+export const SLEEP_STATUSES: { value: SleepStatus; label: string }[] = [
+  { value: 'back', label: 'Asleep on back' },
+  { value: 'other', label: 'Asleep (other position)' },
+  { value: 'restless', label: 'Restless' },
+  { value: 'awake', label: 'Awake' },
+]
+
+/** NC requires in-person sleep checks at least every 15 minutes for infants 12 months and younger (.0606) */
+export const sleepChecksRequired = (ageMonths: number | null | undefined) => ageMonths != null && ageMonths <= 12
+
+/** When the next sleep check is due: the interval after the last check, or after falling asleep */
+export function nextCheck(nap: { at: string; last_check_at: string | null }, minutes: number, now: Date = new Date()) {
+  const from = new Date(nap.last_check_at ?? nap.at).getTime()
+  const due = from + minutes * 60_000
+  const left = Math.ceil((due - now.getTime()) / 60_000)
+  return { dueAt: new Date(due), minutesLeft: left, overdue: left <= 0 }
+}
+
+/** "1 h 35 min", "40 min" */
+export function duration(fromIso: string, toIso: string) {
+  const min = Math.max(0, Math.round((new Date(toIso).getTime() - new Date(fromIso).getTime()) / 60_000))
+  const h = Math.floor(min / 60)
+  return h ? `${h} h${min % 60 ? ` ${min % 60} min` : ''}` : `${min} min`
+}
+
+export const clockTime = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+
 /** 0.5 to 12 ounces in half ounces, for the bottle number pad */
 export const BOTTLE_OUNCES = Array.from({ length: 24 }, (_, i) => (i + 1) / 2)
 
@@ -106,9 +138,16 @@ export const KIND_LABEL: Record<DailyKind, string> = {
 }
 
 /** The words for one entry in today's list: "Lunch · Half", "Bottle · 4.5 oz formula", "Diaper · Wet + BM, cream" */
-export function describeEntry(e: Pick<DailyEntry, 'kind' | 'details'>): { title: string; detail: string } {
+export function describeEntry(e: Pick<DailyEntry, 'kind' | 'details'> & { at?: string; ends_at?: string | null }): { title: string; detail: string } {
   const d = e.details ?? {}
   switch (e.kind) {
+    case 'nap':
+      if (!e.at) return { title: 'Nap', detail: '' }
+      return { title: 'Nap', detail: e.ends_at ? `${clockTime(e.at)} – ${clockTime(e.ends_at)} · ${duration(e.at, e.ends_at)}` : `Sleeping since ${clockTime(e.at)}` }
+    case 'sleep_check':
+      return { title: 'Sleep check', detail: label(SLEEP_STATUSES, d.status) }
+    case 'medicine':
+      return { title: 'Medicine', detail: [d.name, d.dose].filter(Boolean).join(' · ') }
     case 'meal':
       return { title: label(MEALS, d.meal) || 'Meal', detail: d.amount === 'other' ? (d.other ?? 'Other') : label(AMOUNTS, d.amount) }
     case 'bottle':
@@ -126,9 +165,12 @@ export function describeEntry(e: Pick<DailyEntry, 'kind' | 'details'>): { title:
 }
 
 /** "Today at a glance" chips from the day's entries (removed entries left out) */
-export function glanceChips(entries: Pick<DailyEntry, 'kind' | 'details' | 'voided_at' | 'at'>[]): string[] {
+export function glanceChips(entries: (Pick<DailyEntry, 'kind' | 'details' | 'voided_at' | 'at'> & { ends_at?: string | null })[]): string[] {
   const live = entries.filter(e => !e.voided_at).sort((a, b) => a.at.localeCompare(b.at))
   const chips: string[] = []
+  for (const n of live.filter(e => e.kind === 'nap')) {
+    chips.push(n.ends_at ? `Nap ${clockTime(n.at)}–${clockTime(n.ends_at)}` : `Sleeping since ${clockTime(n.at)}`)
+  }
   for (const m of MEALS) {
     const last = live.filter(e => e.kind === 'meal' && e.details.meal === m.value).pop()
     if (last) chips.push(`${m.label}: ${last.details.amount === 'other' ? 'other' : label(AMOUNTS, last.details.amount).toLowerCase()}`)
@@ -142,6 +184,8 @@ export function glanceChips(entries: Pick<DailyEntry, 'kind' | 'details' | 'void
     const accidents = potty.filter(e => e.details.result === 'accident').length
     chips.push(`${potty.length} bathroom${accidents ? ` · ${accidents} ${accidents === 1 ? 'accident' : 'accidents'}` : ''}`)
   }
+  const meds = live.filter(e => e.kind === 'medicine').length
+  if (meds) chips.push(`${meds} ${meds === 1 ? 'medicine' : 'medicines'}`)
   const acts = live.filter(e => e.kind === 'activity').length
   if (acts) chips.push(`${acts} ${acts === 1 ? 'activity' : 'activities'}`)
   return chips
@@ -203,4 +247,83 @@ export function timeToIso(hhmm: string, base: Date = new Date()): string | null 
 /** Now as "HH:MM" for a time input */
 export function nowHHMM(d: Date = new Date()) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+// ─── Naps, sleep checks and medicine (phase C) ──────────────────────────────────────────────────────────────
+
+export interface Medication {
+  id: string
+  name: string
+  dose: string
+  schedule: string | null
+  instructions: string | null
+}
+
+export interface OpenNap {
+  id: string
+  at: string
+  last_check_at: string | null
+  last_status: SleepStatus | null
+}
+
+/** daily_child_status(): the card's nap state, the check interval, and the medicines allowed today */
+export interface ChildStatus {
+  check_minutes: number
+  open_nap: OpenNap | null
+  medications: Medication[]
+}
+
+export async function loadChildStatus(supabase: SupabaseClient, centerId: string, childId: string): Promise<{ success: true; status: ChildStatus } | Failure> {
+  const { data, error } = await supabase.rpc('daily_child_status', { p_center_id: centerId, p_child_id: childId })
+  if (error) return { success: false, error: friendlyDailyError(error) }
+  return { success: true, status: data as ChildStatus }
+}
+
+/** One row of daily_room_naps(): a child asleep now */
+export interface RoomNap {
+  child_id: string
+  nap_id: string
+  started_at: string
+  last_check_at: string | null
+  last_status: SleepStatus | null
+  check_minutes: number
+}
+
+export async function loadRoomNaps(supabase: SupabaseClient, centerId: string): Promise<{ success: true; naps: RoomNap[] } | Failure> {
+  const { data, error } = await supabase.rpc('daily_room_naps', { p_center_id: centerId })
+  if (error) return { success: false, error: friendlyDailyError(error) }
+  return { success: true, naps: (data ?? []) as RoomNap[] }
+}
+
+/** Start naps (one child or the room); children already asleep are skipped */
+export async function startNaps(supabase: SupabaseClient, centerId: string, childIds: string[], opts: { at?: string | null; key?: string } = {}): Promise<{ success: true; count: number } | Failure> {
+  const { data, error } = await supabase.rpc('daily_nap_start', { p_center_id: centerId, p_child_ids: childIds, p_at: opts.at ?? null, p_key: opts.key ?? newKey() })
+  if (error) return { success: false, error: friendlyDailyError(error) }
+  return { success: true, count: data as number }
+}
+
+/** Woke up (one child, or Everyone up); children already up are skipped */
+export async function endNaps(supabase: SupabaseClient, centerId: string, childIds: string[], at?: string | null): Promise<{ success: true; count: number } | Failure> {
+  const { data, error } = await supabase.rpc('daily_nap_end', { p_center_id: centerId, p_child_ids: childIds, p_at: at ?? null })
+  if (error) return { success: false, error: friendlyDailyError(error) }
+  return { success: true, count: data as number }
+}
+
+/** Sleep checks for one or more sleeping children */
+export async function recordSleepChecks(supabase: SupabaseClient, centerId: string, items: { child_id: string; status: SleepStatus; note?: string }[],
+  opts: { at?: string | null; key?: string } = {}): Promise<{ success: true; count: number } | Failure> {
+  const { data, error } = await supabase.rpc('daily_sleep_check', { p_center_id: centerId, p_items: items, p_at: opts.at ?? null, p_key: opts.key ?? newKey() })
+  if (error) return { success: false, error: friendlyDailyError(error) }
+  return { success: true, count: data as number }
+}
+
+/** Give a medicine from the child's authorized list; the dose defaults to the authorized one */
+export async function giveMedicine(supabase: SupabaseClient, centerId: string, childId: string, medicationId: string,
+  opts: { dose?: string | null; at?: string | null; note?: string | null; key?: string } = {}): Promise<{ success: true; id: string } | Failure> {
+  const { data, error } = await supabase.rpc('daily_medicine_give', {
+    p_center_id: centerId, p_child_id: childId, p_medication_id: medicationId, p_dose: opts.dose ?? null,
+    p_at: opts.at ?? null, p_note: opts.note ?? null, p_key: opts.key ?? newKey(),
+  })
+  if (error) return { success: false, error: friendlyDailyError(error) }
+  return { success: true, id: data as string }
 }

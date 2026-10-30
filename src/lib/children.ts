@@ -1,6 +1,6 @@
 // Self-contained on purpose (type-only imports, no path aliases) so the access-rule tests can load it directly.
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Child, ChildAuditEntry, ChildDocumentStatus, ChildFile, ChildGuardian } from './child-types'
+import type { Child, ChildAuditEntry, ChildDocumentStatus, ChildFile, ChildGuardian, ChildMedication } from './child-types'
 
 /**
  * Every read and write the Child Files screens make. Each function takes the CALLER's Supabase client, so the
@@ -304,4 +304,63 @@ export async function enrollFromTourRequest(
     is_emergency_contact: true,
     can_pick_up: false,
   }])
+}
+
+// ─── Medicines (from the child's medical form) ─────────────────────────────────────────────────────────────────
+
+export interface MedicationInput {
+  name: string
+  dose: string
+  schedule?: string | null
+  instructions?: string | null
+  permission_signed_on: string
+  starts_on: string
+  ends_on?: string | null
+}
+
+/** The child's authorized medicines, active first, and the doses given (newest first, up to 50) */
+export async function loadMedications(supabase: SupabaseClient, childId: string) {
+  const [meds, given] = await Promise.all([
+    supabase.from('child_medications').select('*').eq('child_id', childId).order('active', { ascending: false }).order('name'),
+    supabase.from('child_daily_entries').select('id, medication_id, at, details, voided_at, void_reason')
+      .eq('child_id', childId).eq('kind', 'medicine').order('at', { ascending: false }).limit(50),
+  ])
+  if (meds.error) return fail(meds.error)
+  return {
+    success: true as const,
+    medications: (meds.data ?? []) as ChildMedication[],
+    // Doses are readable when the live roster is on; otherwise the list is just empty
+    given: (given.data ?? []) as { id: string; medication_id: string | null; at: string; details: { dose?: string; note?: string }; voided_at: string | null; void_reason: string | null }[],
+  }
+}
+
+export async function saveMedication(supabase: SupabaseClient, centerId: string, childId: string, input: MedicationInput & { id?: string }) {
+  if (!input.name?.trim() || !input.dose?.trim()) return fail('Enter the medicine and the dose.')
+  if (!input.permission_signed_on) return fail('Enter the date the parent signed the permission.')
+  if (!input.starts_on) return fail('Enter the start date.')
+  if (input.ends_on && input.ends_on < input.starts_on) return fail('The end date is before the start date.')
+  const row = {
+    name: input.name.trim(),
+    dose: input.dose.trim(),
+    schedule: clean(input.schedule),
+    instructions: clean(input.instructions),
+    permission_signed_on: input.permission_signed_on,
+    starts_on: input.starts_on,
+    ends_on: input.ends_on || null,
+  }
+  const query = input.id
+    ? supabase.from('child_medications').update(row).eq('id', input.id).select('*')
+    : supabase.from('child_medications').insert({ ...row, center_id: centerId, child_id: childId }).select('*')
+  const { data, error } = await query
+  if (error) return fail(error)
+  if (!data?.length) return fail('Medicine not found or you do not have access to it.')
+  return { success: true as const, medication: data[0] as ChildMedication } as Ok<{ medication: ChildMedication }>
+}
+
+/** Stop (or restart) a medicine. Stopped medicines stay on file with the doses given. */
+export async function setMedicationActive(supabase: SupabaseClient, medicationId: string, active: boolean) {
+  const { data, error } = await supabase.from('child_medications').update({ active }).eq('id', medicationId).select('id')
+  if (error) return fail(error)
+  if (!data?.length) return fail('Medicine not found or you do not have access to it.')
+  return { success: true as const } as Ok<object>
 }

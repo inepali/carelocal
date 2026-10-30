@@ -13,13 +13,14 @@ import { showAlert, showConfirm } from '@/lib/dialog'
 import { ChildRecords } from '../_components/ChildRecords'
 import { ContactsPanel } from '../_components/ContactsPanel'
 import { ActivityPanel } from '../_components/ActivityPanel'
+import { MedicinesPanel } from '../_components/MedicinesPanel'
 import { EditChildDialog, WithdrawDialog } from '../_components/EditChildDialogs'
 import { BTN, Pill, todayISO } from '../_components/ui'
 import { ChildPhoto } from '../_components/ChildPhoto'
 import { getChildPhotoUrls } from '@/app/actions/child-photo.actions'
 
 type Loaded = NonNullable<Awaited<ReturnType<typeof loadChildFile>>>
-type Tab = 'records' | 'contacts' | 'activity'
+type Tab = 'records' | 'contacts' | 'medicines' | 'activity'
 
 /** One child's file: records with due dates and review, contacts and pick-up, and the audit trail. */
 export default function ChildFilePage() {
@@ -78,6 +79,7 @@ export default function ChildFilePage() {
   const TABS: { id: Tab; label: string; count?: number }[] = [
     { id: 'records', label: 'Records' },
     { id: 'contacts', label: 'Contacts & pick-up', count: guardians.length },
+    { id: 'medicines', label: 'Medicines' },
     { id: 'activity', label: 'Activity' },
   ]
 
@@ -126,6 +128,7 @@ export default function ChildFilePage() {
 
       {tab === 'records' && <ChildRecords child={child} requirements={requirements} records={records} files={files} userId={userId} onChanged={load} />}
       {tab === 'contacts' && <ContactsPanel child={child} guardians={guardians} onChanged={load} />}
+      {tab === 'medicines' && <MedicinesPanel child={child} />}
       {tab === 'activity' && <ActivityPanel audit={audit} userId={userId} />}
 
       {editing && <EditChildDialog child={child} classrooms={classrooms} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); load() }} />}
