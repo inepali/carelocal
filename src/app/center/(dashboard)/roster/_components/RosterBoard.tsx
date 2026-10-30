@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, Loader2, Radio, RefreshCw, Send, Users, X } from 'lucide-react'
+import { AlertTriangle, FileSpreadsheet, Loader2, Radio, RefreshCw, Send, Users, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { applyPresence, loadRoster, moveOnRoster, type PresenceRow, type RosterMove } from '@/lib/roster'
 import {
@@ -14,12 +14,15 @@ import { RoomStage } from './RoomStage'
 import { RoomTile, StatusPill } from './RoomTile'
 import { SelectedPanel, ZONE_LABEL } from './SelectedPanel'
 import { TransitionsLog } from './TransitionsLog'
+import { ChildCard } from './ChildCard'
+import { ExportDialog } from './ExportDialog'
 import { useRosterDrag, type RosterInteract } from './useRosterDrag'
 
 /** One soft tint per room, in the center's room order; a child wears their home room's tint */
 const TINTS = ['#f8dccb', '#d6e4fa', '#d9efd3', '#e7daf7', '#f8e6b0', '#cbedee', '#f6d5e5', '#e3e8ee']
 const PHOTO_REFRESH_MS = 50 * 60 * 1000
 const FOCUS_KEY = 'carelocal.roster.focus'
+const VIEW_KEY = 'carelocal.roster.view'
 
 type Live = 'connecting' | 'live' | 'offline'
 
@@ -43,6 +46,17 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
 }) {
   const teacher = mode === 'teacher'
   useWakeLock(teacher)
+  // Directors can look at the board the way a room teacher does; remembered in this browser
+  const [adminView, setAdminView] = useState<'admin' | 'teacher'>('admin')
+  useEffect(() => {
+    try { if (window.localStorage.getItem(VIEW_KEY) === 'teacher') setAdminView('teacher') } catch { /* storage blocked */ }
+  }, [])
+  function chooseView(v: 'admin' | 'teacher') {
+    setAdminView(v)
+    try { window.localStorage.setItem(VIEW_KEY, v) } catch { /* storage blocked */ }
+  }
+  /** Teacher view: a real teacher, or a director who switched to it */
+  const teacherView = teacher || adminView === 'teacher'
   const supabase = useMemo(() => createClient(), [])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -56,6 +70,7 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
   const [busy, setBusy] = useState(0)
   const [toast, setToast] = useState<string | null>(null)
   const [logKey, setLogKey] = useState(0)
+  const [exporting, setExporting] = useState(false)
   const dayRef = useRef('')
   const peopleRef = useRef<RosterPerson[]>([])
   useEffect(() => { peopleRef.current = people }, [people])
@@ -217,7 +232,9 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
   const floatersFree = waiting.filter(p => p.kind === 'staff')
   // A teacher with a home room stays on it: other rooms are drop targets only, and alerts are about their room
   const locked = teacher && !!homeRoomId && rooms.some(r => r.id === homeRoomId)
-  const alerts = rooms.filter(r => statuses[r.id].code === 'out' && (!locked || r.id === homeRoomId))
+  // Teacher view: alerts and the log are about the room on screen
+  const scopeRoom = locked ? homeRoomId : teacherView ? focusRoom.id : null
+  const alerts = rooms.filter(r => statuses[r.id].code === 'out' && (!scopeRoom || r.id === scopeRoom))
   const fs = statuses[focusRoom.id]
   const selected = people.find(p => p.person_id === selectedId) ?? null
 
@@ -243,10 +260,28 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-muted">{formatDay(day)}</p>
-          <h1 className="text-3xl font-bold tracking-tight text-heading">{teacher ? 'My room' : 'Live roster'}</h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-3xl font-bold tracking-tight text-heading">{teacher ? 'My room' : 'Live roster'}</h1>
+            {!teacher && (
+              <div role="radiogroup" aria-label="View" className="flex rounded-full bg-surface-2 p-1">
+                {(['admin', 'teacher'] as const).map(v => (
+                  <button key={v} type="button" role="radio" aria-checked={adminView === v} onClick={() => chooseView(v)}
+                    className={`min-h-9 rounded-full px-3.5 text-xs font-bold ${adminView === v ? 'bg-white text-heading shadow-sm' : 'text-muted hover:text-heading'}`}>
+                    {v === 'admin' ? 'Admin' : 'Teacher view'}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {busy > 0 && <span className="inline-flex items-center gap-1.5 text-xs font-bold text-muted"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</span>}
+          {!teacherView && (
+            <button type="button" onClick={() => setExporting(true)}
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border bg-white px-3 text-xs font-bold text-text-main hover:bg-surface">
+              <FileSpreadsheet className="h-3.5 w-3.5 text-brand-600" /> Export attendance
+            </button>
+          )}
           <LiveBadge live={live} onRetry={() => { reload(); reloadPhotos(); setLogKey(k => k + 1) }} />
         </div>
       </header>
@@ -258,7 +293,7 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
             ? <>Your room is <strong className="text-heading">{roomName[homeRoomId!]}</strong>. Drag children or yourself onto another room to move them there.</>
             : 'You have no home room, so pick the room you are working in.'}
         </div>
-      ) : (
+      ) : teacherView ? null : (
       <div className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3">
         <Stat label="Children checked in" value={totals.childrenIn} of={totals.childrenTotal} />
         <Stat label="Staff checked in" value={totals.staffIn} of={totals.staffTotal} />
@@ -343,9 +378,26 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
 
       </div>
 
-      <TransitionsLog supabase={supabase} centerId={centerId} today={day} refreshKey={logKey} people={people} roomName={roomName} onlyRoom={locked ? homeRoomId : null} />
+      <TransitionsLog supabase={supabase} centerId={centerId} today={day} refreshKey={logKey} people={people} roomName={roomName} onlyRoom={scopeRoom} />
 
-      {selected && (
+      {selected && teacherView && selected.kind === 'child' && (
+        <ChildCard
+          supabase={supabase}
+          centerId={centerId}
+          day={day}
+          person={selected}
+          rooms={rooms}
+          photo={photos[selected.person_id]}
+          tint={tintOf(selected)}
+          busy={busy > 0}
+          refreshKey={logKey}
+          onMove={move}
+          onChanged={() => { reload() }}
+          onClose={() => setSelectedId(null)}
+        />
+      )}
+
+      {selected && !(teacherView && selected.kind === 'child') && (
         <SelectedPanel
           person={selected}
           people={people}
@@ -374,6 +426,8 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
           />
         </div>
       )}
+
+      {exporting && <ExportDialog supabase={supabase} centerId={centerId} today={day} onClose={() => setExporting(false)} />}
 
       {toast && (
         <div role="status" className="fixed left-1/2 top-4 z-50 flex max-w-[92vw] -translate-x-1/2 items-center gap-3 rounded-2xl bg-[#7e1a14] px-4 py-3 text-sm font-semibold text-white shadow-2xl">
