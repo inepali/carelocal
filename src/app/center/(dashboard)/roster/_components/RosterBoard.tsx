@@ -200,10 +200,10 @@ export function RosterBoard({ centerId }: { centerId: string }) {
 
   const focusRoom = rooms.find(r => r.id === focus) ?? rooms[0]
   const others = rooms.filter(r => r.id !== focusRoom.id)
-  const rows = Math.ceil((others.length + 1) / 2)
+  const rows = Math.max(1, Math.ceil(others.length / 2))
   const slot = (i: number) => (i < rows ? { col: 1, row: i + 1 } : { col: 3, row: i - rows + 1 })
-  const noHomeRoom = people.filter(p => !p.home_area_id)
-  const floatersFree = noHomeRoom.filter(p => p.kind === 'staff' && p.zone === 'home')
+  // Floaters have no home room: when they are not checked in anywhere they wait in the Lobby
+  const floatersFree = people.filter(p => p.kind === 'staff' && !p.home_area_id && p.zone === 'home')
   const alerts = rooms.filter(r => statuses[r.id].code === 'out')
   const fs = statuses[focusRoom.id]
   const selected = people.find(p => p.person_id === selectedId) ?? null
@@ -226,7 +226,7 @@ export function RosterBoard({ centerId }: { centerId: string }) {
   }
 
   return (
-    <div className="mx-auto flex max-w-[1400px] flex-col gap-5">
+    <div className="flex w-full flex-col gap-5">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-muted">{formatDay(day)}</p>
@@ -289,8 +289,7 @@ export function RosterBoard({ centerId }: { centerId: string }) {
               Using 1:{fs.effectiveRatio} instead of 1:{focusRoom.ratio_children} because a younger child is here.
             </p>
           )}
-          <RoomStage room={focusRoom} status={fs} seats={peopleInRoom(focusRoom.id, people)} photos={photos} tintOf={tintOf} visitingFrom={visitingFrom} ix={ix} />
-          <p className="mb-3 text-xs text-muted">Drag a child or teacher into Classroom, Playground or Lobby to check them in or move them, onto Home to check them out, or onto another room to change rooms. Tap anyone for more.</p>
+          <RoomStage room={focusRoom} status={fs} seats={peopleInRoom(focusRoom.id, people)} floaters={floatersFree} photos={photos} tintOf={tintOf} visitingFrom={visitingFrom} ix={ix} />
           <Legend />
         </section>
 
@@ -312,37 +311,6 @@ export function RosterBoard({ centerId }: { centerId: string }) {
           )
         })}
 
-        <div
-          className="flex min-h-[150px] flex-col rounded-2xl border border-border bg-white p-2.5 lg:[grid-column:var(--c)] lg:[grid-row:var(--r)]"
-          style={{ ['--c' as string]: slot(others.length).col, ['--r' as string]: slot(others.length).row }}
-        >
-          <span className="text-[15px] font-bold leading-tight text-heading">Floaters</span>
-          <span className="mt-1 text-[11px] text-muted">No home room · drag into a room</span>
-          <ul className="mt-2 flex flex-col gap-1.5">
-            {noHomeRoom.map(p => {
-              const at = p.zone !== 'home' && p.work_area_id ? roomName[p.work_area_id] : null
-              return (
-                <li key={p.person_id}>
-                  <button
-                    type="button"
-                    onPointerDown={drag.bind(p).onPointerDown}
-                    onClick={() => select(p)}
-                    aria-pressed={selectedId === p.person_id}
-                    className={`flex w-full cursor-grab touch-none select-none items-center gap-2 rounded-lg p-0.5 text-left text-xs font-semibold text-heading hover:bg-surface ${selectedId === p.person_id ? 'ring-2 ring-[#2357d9]' : ''}`}
-                    style={{ opacity: ix.draggingId === p.person_id ? 0.35 : at ? 1 : 0.75 }}
-                  >
-                    <Face person={p} url={photos[p.person_id]} tint={tintOf(p)} size={28} border={p.kind === 'staff' ? '2px solid #16202a' : '1.5px solid rgba(22,32,42,0.3)'} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate">{p.first_name} {p.last_initial}.{p.kind === 'child' ? ' (child)' : ''}</span>
-                      <span className="block truncate font-normal text-muted">{at ? `In ${at}` : 'Not in a room'}</span>
-                    </span>
-                  </button>
-                </li>
-              )
-            })}
-            {noHomeRoom.length === 0 && <li className="text-xs text-muted">Teachers without a home room show here</li>}
-          </ul>
-        </div>
       </div>
 
       <TransitionsLog supabase={supabase} centerId={centerId} today={day} refreshKey={logKey} people={people} roomName={roomName} />

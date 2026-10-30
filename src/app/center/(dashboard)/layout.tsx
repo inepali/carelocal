@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, LayoutDashboard, Users, UserPlus, Info, Calendar, Tags, LifeBuoy, ClipboardCheck, Truck, Baby, Building2, UserCircle, Inbox, ShieldCheck, Briefcase, CalendarCheck, LayoutGrid } from 'lucide-react'
+import { LogOut, LayoutDashboard, Users, UserPlus, Info, Calendar, Tags, LifeBuoy, ClipboardCheck, Truck, Baby, Building2, UserCircle, Inbox, ShieldCheck, Briefcase, CalendarCheck, LayoutGrid, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { CenterContext, canOpenChildFiles, canOpenRoster } from './context'
@@ -11,6 +11,8 @@ import type { DomainKey } from '@/lib/domain-config'
 // Dev/demo tool: jumps the browser to another vertical's domain (it does not change the
 // center's vertical). Off unless NEXT_PUBLIC_SHOW_VERTICAL_SWITCHER=true.
 const SHOW_VERTICAL_SWITCHER = process.env.NEXT_PUBLIC_SHOW_VERTICAL_SWITCHER === 'true'
+
+const NAV_COLLAPSED_KEY = 'carelocal.center.navCollapsed'
 
 const VERTICALS: { key: DomainKey; label: string; Icon?: typeof Baby }[] = [
   { key: 'childcare', label: 'Child Care', Icon: Baby },
@@ -33,6 +35,15 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
   const [role, setRole] = useState<string | null>(null)
   const [childFilesEnabled, setChildFilesEnabled] = useState(false)
   const [rosterEnabled, setRosterEnabled] = useState(false)
+  // Narrow icon-only sidebar; remembered in this browser
+  const [collapsed, setCollapsed] = useState(false)
+
+  function toggleCollapsed() {
+    setCollapsed(c => {
+      try { window.localStorage.setItem(NAV_COLLAPSED_KEY, c ? '0' : '1') } catch { /* storage blocked */ }
+      return !c
+    })
+  }
 
   useEffect(() => {
     async function loadCenter() {
@@ -82,6 +93,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
       // Admins who are also employees can switch to their own staff portal
       const { data: ownProfile } = await supabase.from('staff_profiles').select('id').eq('user_id', user.id).maybeSingle()
       setHasStaffProfile(!!ownProfile)
+      try { setCollapsed(window.localStorage.getItem(NAV_COLLAPSED_KEY) === '1') } catch { /* storage blocked */ }
       setLoading(false)
     }
 
@@ -129,24 +141,26 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
     <CenterContext.Provider value={{ staffTerm, workAreaTerm, domainKey, centerId, role, childFilesEnabled, rosterEnabled }}>
       <div className="center-shell min-h-screen bg-surface flex font-sans">
       {/* ── Sidebar ── */}
-      <aside className="w-64 bg-brand-900 text-white flex flex-col fixed inset-y-0 z-10">
-        <div className="h-20 flex items-center px-6 border-b border-white/10 shrink-0">
+      <aside className={`${collapsed ? 'w-16' : 'w-64'} bg-brand-900 text-white flex flex-col fixed inset-y-0 z-10 transition-[width] duration-200`}>
+        <div className={`h-20 flex items-center border-b border-white/10 shrink-0 ${collapsed ? 'justify-center px-0' : 'px-6'}`}>
           <Link href="/center/dashboard" className="flex items-center gap-2">
             {domainKey === 'childcare' ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src="/logo.png" alt="CareLocal" width={64} height={64} className="h-16 w-16 rounded-xl object-contain bg-white" />
+              <img src="/logo.png" alt="CareLocal" width={64} height={64} className={`${collapsed ? 'h-10 w-10' : 'h-16 w-16'} rounded-xl object-contain bg-white`} />
             ) : (
               <div className="w-7 h-7 rounded-md bg-brand-600 flex items-center justify-center">
                 <span className="text-white font-bold text-xs">{domainKey === 'healthcare' ? 'CLH' : 'CLS'}</span>
               </div>
             )}
-            <span className="font-semibold text-lg tracking-tight truncate">
-              {domainKey === 'healthcare' ? 'CareLocal Health' : domainKey === 'senior' ? 'CareLocal Senior' : ''}
-            </span>
+            {!collapsed && (
+              <span className="font-semibold text-lg tracking-tight truncate">
+                {domainKey === 'healthcare' ? 'CareLocal Health' : domainKey === 'senior' ? 'CareLocal Senior' : ''}
+              </span>
+            )}
           </Link>
         </div>
 
-        {SHOW_VERTICAL_SWITCHER && (
+        {SHOW_VERTICAL_SWITCHER && !collapsed && (
           <div className="px-4 py-4 border-b border-white/10 shrink-0">
             <div className="text-[10px] text-brand-300 uppercase tracking-wider font-semibold mb-2">Switch vertical</div>
             <div className="grid grid-cols-3 gap-1 rounded-lg bg-black/10 p-1">
@@ -178,14 +192,16 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                  isActive 
-                    ? 'bg-brand-600 text-white font-medium' 
+                title={collapsed ? item.name : undefined}
+                aria-label={collapsed ? item.name : undefined}
+                className={`flex items-center gap-3 py-2.5 rounded-lg text-sm transition-colors ${collapsed ? 'justify-center px-0' : 'px-3'} ${
+                  isActive
+                    ? 'bg-brand-600 text-white font-medium'
                     : 'text-brand-100 hover:bg-white/5 hover:text-white'
                 }`}
               >
-                <item.icon className={`w-5 h-5 ${isActive ? 'text-brand-300' : 'text-brand-200'}`} />
-                {item.name}
+                <item.icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-brand-300' : 'text-brand-200'}`} />
+                {!collapsed && item.name}
               </Link>
             )
           })}
@@ -194,13 +210,24 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
       </aside>
 
       {/* ── Main Content ── */}
-      <main className="flex-1 ml-64 flex flex-col min-h-screen overflow-x-hidden">
+      <main className={`flex-1 ${collapsed ? 'ml-16' : 'ml-64'} min-w-0 flex flex-col min-h-screen overflow-x-hidden transition-[margin] duration-200`}>
         <header className="h-20 glass border-b border-border flex items-center justify-between gap-4 px-8 sticky top-0 z-10">
-          <div className="min-w-0">
-            <div className="text-xs text-muted uppercase tracking-wider font-semibold">
-              {domainKey === 'healthcare' ? 'Facility' : domainKey === 'senior' ? 'Care Organization' : 'Center'}
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              onClick={toggleCollapsed}
+              aria-label={collapsed ? 'Expand the menu' : 'Collapse the menu'}
+              title={collapsed ? 'Expand the menu' : 'Collapse the menu'}
+              className="shrink-0 rounded-lg p-2 text-muted transition-colors hover:bg-brand-50 hover:text-brand-600"
+            >
+              {collapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+            </button>
+            <div className="min-w-0">
+              <div className="text-xs text-muted uppercase tracking-wider font-semibold">
+                {domainKey === 'healthcare' ? 'Facility' : domainKey === 'senior' ? 'Care Organization' : 'Center'}
+              </div>
+              <div className="truncate text-lg font-bold text-heading">{centerName}</div>
             </div>
-            <div className="truncate text-lg font-bold text-heading">{centerName}</div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {hasStaffProfile && (
@@ -221,7 +248,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
             </button>
           </div>
         </header>
-        <div className="p-8 flex-1">
+        <div className={`${pathname === '/center/roster' ? 'p-4' : 'p-8'} flex-1`}>
           {children}
         </div>
       </main>

@@ -21,6 +21,7 @@ export function RoomStage({
   room,
   status,
   seats,
+  floaters,
   photos,
   tintOf,
   visitingFrom,
@@ -29,6 +30,8 @@ export function RoomStage({
   room: RosterRoom
   status: RoomStatus
   seats: Seats
+  /** Teachers with no home room who are not checked in anywhere: they wait in the Lobby, available to any room */
+  floaters: RosterPerson[]
   photos: Record<string, string>
   tintOf: (p: RosterPerson) => string
   visitingFrom: (p: RosterPerson) => string | null
@@ -71,9 +74,9 @@ export function RoomStage({
   const play = status.groups.playground
   const lobby = status.groups.lobby
 
-  const column = (people: RosterPerson[], side: 'left' | 'right', top: string, bottom: string, width: string, dashed: boolean, empty?: string) => (
+  const column = (people: RosterPerson[], side: 'left' | 'right', top: string, bottom: string, width: string, dashed: boolean | ((p: RosterPerson) => boolean), empty?: string) => (
     <div className="absolute flex flex-wrap content-start justify-center gap-1.5 overflow-y-auto" style={{ [side]: 8, width, top, bottom }}>
-      {people.map(p => <Chip key={p.person_id} person={p} url={photos[p.person_id]} tint={tintOf(p)} size={chipSize} dashed={dashed} ix={ix} />)}
+      {people.map(p => <Chip key={p.person_id} person={p} url={photos[p.person_id]} tint={tintOf(p)} size={chipSize} dashed={typeof dashed === 'function' ? dashed(p) : dashed} ix={ix} />)}
       {empty && people.length === 0 && <span className="text-center text-xs font-semibold opacity-80">{empty}</span>}
     </div>
   )
@@ -81,7 +84,7 @@ export function RoomStage({
   const odd = (xs: RosterPerson[]) => xs.filter((_, i) => i % 2 === 1)
 
   return (
-    <div className="relative mx-auto my-5 aspect-[10/9] w-full max-w-[780px] overflow-hidden rounded-[20px] border border-border">
+    <div className="relative mx-auto my-5 aspect-[10/9] w-full overflow-hidden lg:aspect-[16/10] rounded-[20px] border border-border">
       {/* Home: checked out or not arrived. Dropping here checks out. */}
       <div
         data-drop={keys.home}
@@ -92,8 +95,8 @@ export function RoomStage({
           <span className="inline-flex items-center gap-2 text-sm font-bold"><Home className="h-[18px] w-[18px]" />Home · checked out or absent</span>
           <span className="text-xs font-bold">{plural(homeKids, 'child', 'children')}</span>
         </div>
-        {column(even(seats.home), 'left', '52px', '8px', 'calc(16% - 10px)', true, 'Everyone is here')}
-        {column(odd(seats.home), 'right', '52px', '8px', 'calc(16% - 10px)', true)}
+        {column(even(seats.home), 'left', '52px', '8px', 'calc(18% - 10px)', true, 'Everyone is here')}
+        {column(odd(seats.home), 'right', '52px', '8px', 'calc(18% - 10px)', true)}
       </div>
 
       {/* Playground */}
@@ -102,7 +105,7 @@ export function RoomStage({
         className="absolute bottom-0 left-0 h-1/2 w-1/2 border-r-2 border-t-[3px] border-r-[rgba(22,32,42,0.25)] border-t-[#a86b00] text-[#5c3b00] transition-colors"
         style={{ background: isOver(keys.playground) ? '#f1d27f' : '#f8e2a8', boxShadow: zoneShadow(keys.playground) }}
       >
-        {column(seats.playground, 'left', '12px', '64px', 'calc(32% - 10px)', false, 'Nobody outside')}
+        {column(seats.playground, 'left', '12px', '64px', 'calc(22% - 10px)', false, 'Nobody outside')}
         <div className="absolute inset-x-3 bottom-2.5 flex flex-col items-start gap-1">
           <span className="inline-flex items-center gap-1.5 text-sm font-bold"><Sun className="h-[18px] w-[18px]" />Playground</span>
           <span className="inline-flex flex-wrap items-center gap-1.5 text-xs font-bold">
@@ -118,7 +121,7 @@ export function RoomStage({
         className="absolute bottom-0 right-0 h-1/2 w-1/2 border-t-[3px] border-t-[#2c5c9a] text-[#1d3f6e] transition-colors"
         style={{ background: isOver(keys.lobby) ? '#b3cdee' : '#cfe0f5', boxShadow: zoneShadow(keys.lobby) }}
       >
-        {column(seats.lobby, 'right', '12px', '64px', 'calc(32% - 10px)', false, 'Pickups, drop-offs')}
+        {column([...seats.lobby, ...floaters], 'right', '12px', '64px', 'calc(22% - 10px)', p => floaters.includes(p), 'Pickups, drop-offs')}
         <div className="absolute inset-x-3 bottom-2.5 flex flex-col items-end gap-1">
           <span className="inline-flex items-center gap-1.5 text-sm font-bold"><DoorOpen className="h-[18px] w-[18px]" />Lobby</span>
           <span className="inline-flex flex-wrap items-center justify-end gap-1.5 text-xs font-bold">
@@ -131,7 +134,7 @@ export function RoomStage({
       {/* Classroom circle */}
       <div
         data-drop={keys.classroom}
-        className="absolute left-[16%] top-1/2 z-[2] aspect-square w-[68%] -translate-y-1/2 rounded-full transition-colors"
+        className="absolute left-1/2 top-1/2 z-[2] aspect-square h-[76%] -translate-x-1/2 -translate-y-1/2 rounded-full lg:h-[88%] transition-colors"
         style={{
           background: isOver(keys.classroom) ? '#a8d9ba' : '#bfe3cc',
           border: isOver(keys.classroom) ? '4px dashed #14532d' : '4px solid #1e7a47',
