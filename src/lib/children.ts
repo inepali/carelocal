@@ -178,7 +178,7 @@ export async function addChild(supabase: SupabaseClient, centerId: string, input
 
 export type ChildChanges = Partial<Pick<Child,
   'first_name' | 'last_name' | 'preferred_name' | 'date_of_birth' | 'classroom_id' | 'enrolled_on' | 'first_attended_on'
-  | 'custody_restriction' | 'custody_note'>>
+  | 'custody_restriction' | 'custody_note' | 'care_alert' | 'toilet_trained' | 'daily_photos_allowed'>>
 
 export async function updateChild(supabase: SupabaseClient, childId: string, changes: ChildChanges) {
   const { data, error } = await supabase.from('children').update(changes).eq('id', childId).select('*')

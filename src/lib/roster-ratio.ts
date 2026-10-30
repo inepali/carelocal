@@ -41,6 +41,12 @@ export interface RosterPerson {
   work_area_id: string | null
   zone: RosterZone
   updated_at: string | null
+  /** Children only: the red line on the child card */
+  care_alert?: string | null
+  /** Children only: which care entry the card offers */
+  diaper_or_bathroom?: 'diaper' | 'bathroom' | null
+  /** Children only: family consent for activity photos */
+  daily_photos_allowed?: boolean | null
 }
 
 export type StatusCode = 'ok' | 'warn' | 'out' | 'empty'

@@ -20,6 +20,12 @@ export interface Child {
   custody_note: string | null
   /** Headshot in the child bucket (child/<center>/<child>/photo/...), null = initials */
   photo_key?: string | null
+  /** One line teachers see in red on the roster card (allergy, care note); 200 characters */
+  care_alert?: string | null
+  /** null = by age (diapers under 3 years); the room teacher can switch it on the roster */
+  toilet_trained?: boolean | null
+  /** Parents agreed to photos in the daily report */
+  daily_photos_allowed?: boolean
   source_tour_request_id: string | null
   created_by: string | null
   created_at: string

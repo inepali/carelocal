@@ -122,3 +122,21 @@ export async function loadRosterEvents(supabase: SupabaseClient, centerId: strin
   if (error) return { success: false, error: friendlyRosterError(error) }
   return { success: true, events: (data ?? []) as RosterEvent[] }
 }
+
+// ─── Child card ──────────────────────────────────────────────────────────────
+
+/** The room teacher (or a director) marks a child toilet trained (true), in diapers (false) or by age (null) */
+export async function setToiletTrained(supabase: SupabaseClient, centerId: string, childId: string, value: boolean | null): Promise<{ success: true; mode: 'diaper' | 'bathroom' } | Failure> {
+  const { data, error } = await supabase.rpc('daily_set_toilet_trained', { p_center_id: centerId, p_child_id: childId, p_value: value })
+  if (error) return { success: false, error: friendlyRosterError(error) }
+  return { success: true, mode: data as 'diaper' | 'bathroom' }
+}
+
+/** One child's check-ins and check-outs for a day, oldest first, for "Today at a glance" */
+export async function loadChildDayEvents(supabase: SupabaseClient, centerId: string, childId: string, day: string): Promise<{ success: true; events: Pick<RosterEvent, 'action' | 'at'>[] } | Failure> {
+  const { data, error } = await supabase.from('roster_events').select('action, at')
+    .eq('center_id', centerId).eq('service_date', day).eq('child_id', childId)
+    .in('action', ['check_in', 'check_out']).order('at')
+  if (error) return { success: false, error: friendlyRosterError(error) }
+  return { success: true, events: (data ?? []) as Pick<RosterEvent, 'action' | 'at'>[] }
+}
