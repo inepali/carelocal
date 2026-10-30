@@ -216,14 +216,15 @@ export function ChildCard({
         <section aria-labelledby="daily-h">
           <h3 id="daily-h" className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">Add to today</h3>
           {saved && <p role="status" className="mb-2 rounded-lg bg-[#e2f2ea] px-3 py-2 text-sm font-semibold text-[#17603f]">{saved}</p>}
-          {adding ? (
+          {!onSite && <p className="mb-2 text-sm text-muted">Check {person.first_name} in to add to today.</p>}
+          {adding && onSite ? (
             <EntryForm key={adding.key} kind={adding.kind} busy={working} error={formError} onSave={save}
               onCancel={() => { setAdding(null); setFormError(null) }} />
           ) : (
             <div className="grid grid-cols-3 gap-2">
               {QUICK.map(({ kind, label, icon: Icon }) => (
-                <button key={kind} type="button" onClick={() => { setVoiding(null); setFormError(null); setAdding({ kind, key: newKey() }) }}
-                  className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-white text-sm font-bold text-heading shadow-sm hover:bg-surface">
+                <button key={kind} type="button" disabled={!onSite} onClick={() => { setVoiding(null); setFormError(null); setAdding({ kind, key: newKey() }) }}
+                  className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-white text-sm font-bold text-heading shadow-sm hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:hover:bg-white">
                   <Icon className="h-5 w-5 text-brand-600" /> {label}
                 </button>
               ))}
