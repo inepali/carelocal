@@ -1,19 +1,22 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { AlertTriangle, Baby, Camera, ClipboardList, Loader2, LogIn, LogOut, Moon, Pill, StickyNote, Droplets, Utensils, X } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { AlertTriangle, Baby, Camera, ClipboardList, Loader2, LogIn, LogOut, Milk, Moon, Pill, StickyNote, Droplets, Utensils, X } from 'lucide-react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { ageLabel, type RosterPerson, type RosterRoom } from '@/lib/roster-ratio'
 import { loadChildDayEvents, setToiletTrained, type RosterMove } from '@/lib/roster'
+import { addEntry, describeEntry, glanceChips, loadDay, newKey, showsBottle, voidEntry, type DailyDetails, type DailyEntry } from '@/lib/daily'
 import { Face } from './PersonAvatar'
 import { ZONE_LABEL } from './SelectedPanel'
+import { EntryForm, VoidForm, type RoutineKind } from './DailyForms'
 
 const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 
 /**
  * The child card in teacher view: a panel on the right (the whole screen on a phone). Who the child is, any
- * care alert, Check in / Check out, the day at a glance and the diaper/toilet switch. The daily activities
- * (nap, meals, medicine, photos...) fill the card in the next phases; moving rooms is done by dragging.
+ * care alert, Check in / Check out, the day at a glance, quick add for the day's routine (meal, bottle,
+ * diaper or bathroom, activity, note) and today's list, where an entry is removed with a reason, never
+ * deleted. Naps, medicine and photos come in the next phases; moving rooms is done by dragging.
  */
 export function ChildCard({
   supabase,
@@ -45,6 +48,12 @@ export function ChildCard({
   onClose: () => void
 }) {
   const [events, setEvents] = useState<{ action: string; at: string }[]>([])
+  const [entries, setEntries] = useState<DailyEntry[]>([])
+  const [adding, setAdding] = useState<{ kind: RoutineKind; key: string } | null>(null)
+  const [voiding, setVoiding] = useState<string | null>(null)
+  const [working, setWorking] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [saved, setSaved] = useState<string | null>(null)
   const [mode, setMode] = useState<'diaper' | 'bathroom'>(person.diaper_or_bathroom ?? 'diaper')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -58,6 +67,57 @@ export function ChildCard({
     })
     return () => { cancelled = true }
   }, [supabase, centerId, person.person_id, day, refreshKey, person.zone])
+
+  const reloadEntries = useCallback(async () => {
+    const res = await loadDay(supabase, centerId, person.person_id, day || undefined)
+    if (res.success) setEntries(res.entries)
+  }, [supabase, centerId, person.person_id, day])
+
+  // The board remounts the card for each child (key), so this only loads
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    reloadEntries()
+  }, [reloadEntries])
+
+  // Another tablet logs something for this child: the list follows
+  useEffect(() => {
+    let t: number | undefined
+    const soon = () => { window.clearTimeout(t); t = window.setTimeout(reloadEntries, 300) }
+    const channel = supabase
+      .channel(`daily:${person.person_id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'child_daily_entries', filter: `child_id=eq.${person.person_id}` }, soon)
+      .subscribe()
+    return () => { window.clearTimeout(t); supabase.removeChannel(channel) }
+  }, [supabase, person.person_id, reloadEntries])
+
+  useEffect(() => {
+    if (!saved) return
+    const t = window.setTimeout(() => setSaved(null), 3000)
+    return () => window.clearTimeout(t)
+  }, [saved])
+
+  async function save(details: DailyDetails, at: string | null) {
+    if (!adding) return
+    setWorking(true)
+    setFormError(null)
+    const res = await addEntry(supabase, centerId, person.person_id, adding.kind, details, { at, key: adding.key })   // same key on a retry
+    setWorking(false)
+    if (!res.success) { setFormError(res.error); return }
+    const d = describeEntry({ kind: adding.kind, details })
+    setSaved(`Saved: ${d.title}${d.detail ? ` · ${d.detail}` : ''}`)
+    setAdding(null)
+    reloadEntries()
+  }
+
+  async function remove(id: string, reason: string) {
+    setWorking(true)
+    setFormError(null)
+    const res = await voidEntry(supabase, id, reason)
+    setWorking(false)
+    if (!res.success) { setFormError(res.error); return }
+    setVoiding(null)
+    reloadEntries()
+  }
 
   const roomOf = (id: string | null) => rooms.find(r => r.id === id) ?? null
   const current = roomOf(person.work_area_id)
@@ -78,15 +138,25 @@ export function ChildCard({
     onChanged()
   }
 
+  const QUICK: { kind: RoutineKind; label: string; icon: typeof Moon }[] = [
+    { kind: 'meal', label: 'Meal', icon: Utensils },
+    ...(showsBottle(person.age_months) ? [{ kind: 'bottle' as const, label: 'Bottle', icon: Milk }] : []),
+    mode === 'diaper' ? { kind: 'diaper', label: 'Diaper', icon: Baby } : { kind: 'bathroom', label: 'Bathroom', icon: Droplets },
+    { kind: 'activity', label: 'Activity', icon: ClipboardList },
+    { kind: 'note', label: 'Note', icon: StickyNote },
+  ]
   const COMING = [
     { label: 'Nap', icon: Moon },
-    { label: 'Meal', icon: Utensils },
-    { label: mode === 'diaper' ? 'Diaper' : 'Bathroom', icon: mode === 'diaper' ? Baby : Droplets },
     { label: 'Medicine', icon: Pill },
     { label: 'Photo', icon: Camera },
-    { label: 'Activity', icon: ClipboardList },
-    { label: 'Note', icon: StickyNote },
   ]
+  const chips = glanceChips(entries)
+  // Today's list: the routine entries plus check-in and check-out, newest first
+  type Row = { id: string; at: string; entry?: DailyEntry; action?: string }
+  const rows: Row[] = [
+    ...entries.map(e => ({ id: e.id, at: e.at, entry: e })),
+    ...events.map((e, i) => ({ id: `ev-${i}`, at: e.at, action: e.action })),
+  ].sort((a, b) => b.at.localeCompare(a.at))
 
   return (
     <aside
@@ -137,7 +207,74 @@ export function ChildCard({
             <Chip>{firstIn ? `In ${clock(firstIn.at)}` : 'Not in yet'}</Chip>
             {lastOut && <Chip>Out {clock(lastOut.at)}</Chip>}
             {events.filter(e => e.action === 'check_in').length > 1 && <Chip>{events.filter(e => e.action === 'check_in').length} check-ins</Chip>}
+            {chips.map(c => <Chip key={c}>{c}</Chip>)}
           </div>
+        </section>
+
+        <section aria-labelledby="daily-h">
+          <h3 id="daily-h" className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">Add to today</h3>
+          {saved && <p role="status" className="mb-2 rounded-lg bg-[#e2f2ea] px-3 py-2 text-sm font-semibold text-[#17603f]">{saved}</p>}
+          {adding ? (
+            <EntryForm key={adding.key} kind={adding.kind} busy={working} error={formError} onSave={save}
+              onCancel={() => { setAdding(null); setFormError(null) }} />
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              {QUICK.map(({ kind, label, icon: Icon }) => (
+                <button key={kind} type="button" onClick={() => { setVoiding(null); setFormError(null); setAdding({ kind, key: newKey() }) }}
+                  className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-white text-sm font-bold text-heading shadow-sm hover:bg-surface">
+                  <Icon className="h-5 w-5 text-brand-600" /> {label}
+                </button>
+              ))}
+              {COMING.map(({ label, icon: Icon }) => (
+                <span key={label} title="Coming soon" className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border text-xs font-semibold text-subtle">
+                  <Icon className="h-5 w-5" /> {label} <span className="text-[10px] font-normal">Soon</span>
+                </span>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section aria-labelledby="list-h">
+          <h3 id="list-h" className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">Today</h3>
+          {rows.length === 0 ? (
+            <p className="text-sm text-muted">Nothing recorded yet today.</p>
+          ) : (
+            <ol className="flex flex-col divide-y divide-border rounded-xl border border-border">
+              {rows.map(r => {
+                if (!r.entry) {
+                  return (
+                    <li key={r.id} className="flex items-center gap-3 px-3 py-2 text-sm">
+                      <span className="w-16 shrink-0 text-xs font-semibold text-muted">{clock(r.at)}</span>
+                      <span className="font-semibold text-text-main">{r.action === 'check_in' ? 'Checked in' : 'Checked out'}</span>
+                    </li>
+                  )
+                }
+                const e = r.entry
+                const d = describeEntry(e)
+                const gone = !!e.voided_at
+                return (
+                  <li key={r.id} className="px-3 py-2 text-sm">
+                    <div className="flex items-start gap-3">
+                      <span className="w-16 shrink-0 pt-0.5 text-xs font-semibold text-muted">{clock(e.at)}</span>
+                      <div className={`min-w-0 flex-1 ${gone ? 'text-subtle line-through' : ''}`}>
+                        <p><span className="font-bold text-heading">{d.title}</span>{d.detail && <span className="text-text-main"> · {d.detail}</span>}</p>
+                        {e.details.note && <p className="text-xs text-muted">{e.details.note}</p>}
+                        <p className="text-[11px] text-subtle">{e.batch_id ? 'Class · ' : ''}{e.recorded_by ?? ''}</p>
+                      </div>
+                      {e.can_void && voiding !== e.id && (
+                        <button type="button" onClick={() => { setAdding(null); setFormError(null); setVoiding(e.id) }}
+                          className="min-h-9 shrink-0 rounded-lg px-2 text-xs font-bold text-[#a3221b] hover:bg-[#fce4e2]">Remove</button>
+                      )}
+                    </div>
+                    {gone && <p className="ml-[76px] text-[11px] text-subtle">Removed{e.voided_by ? ` by ${e.voided_by}` : ''}: {e.void_reason}</p>}
+                    {voiding === e.id && (
+                      <VoidForm busy={working} error={formError} onConfirm={reason => remove(e.id, reason)} onCancel={() => { setVoiding(null); setFormError(null) }} />
+                    )}
+                  </li>
+                )
+              })}
+            </ol>
+          )}
         </section>
 
         <section aria-labelledby="care-h">
@@ -154,17 +291,6 @@ export function ChildCard({
           {error && <p className="mt-1 text-xs font-semibold text-[#a3221b]">{error}</p>}
         </section>
 
-        <section aria-labelledby="daily-h">
-          <h3 id="daily-h" className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">Daily activities</h3>
-          <div className="grid grid-cols-3 gap-2">
-            {COMING.map(({ label, icon: Icon }) => (
-              <span key={label} className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border text-xs font-semibold text-subtle">
-                <Icon className="h-5 w-5" /> {label}
-              </span>
-            ))}
-          </div>
-          <p className="mt-2 text-xs text-muted">Logging naps, meals, diapers, medicine and photos arrives in the next update.</p>
-        </section>
       </div>
     </aside>
   )

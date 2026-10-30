@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, FileSpreadsheet, Loader2, Radio, RefreshCw, Send, Users, X } from 'lucide-react'
+import { AlertTriangle, BookOpen, ClipboardList, FileSpreadsheet, Utensils, Loader2, Radio, RefreshCw, Send, Users, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { applyPresence, loadRoster, moveOnRoster, type PresenceRow, type RosterMove } from '@/lib/roster'
 import {
@@ -15,6 +15,7 @@ import { RoomTile, StatusPill } from './RoomTile'
 import { SelectedPanel, ZONE_LABEL } from './SelectedPanel'
 import { TransitionsLog } from './TransitionsLog'
 import { ChildCard } from './ChildCard'
+import { ClassEntryDialog } from './ClassEntryDialog'
 import { ExportDialog } from './ExportDialog'
 import { useRosterDrag, type RosterInteract } from './useRosterDrag'
 
@@ -71,6 +72,7 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
   const [toast, setToast] = useState<string | null>(null)
   const [logKey, setLogKey] = useState(0)
   const [exporting, setExporting] = useState(false)
+  const [classAction, setClassAction] = useState<'meal' | 'activity' | null>(null)
   const dayRef = useRef('')
   const peopleRef = useRef<RosterPerson[]>([])
   useEffect(() => { peopleRef.current = people }, [people])
@@ -237,6 +239,10 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
   const alerts = rooms.filter(r => statuses[r.id].code === 'out' && (!scopeRoom || r.id === scopeRoom))
   const fs = statuses[focusRoom.id]
   const selected = people.find(p => p.person_id === selectedId) ?? null
+  // Children checked in to the room on screen (Classroom, Playground or Lobby), for class actions
+  const presentKids = people
+    .filter(p => p.kind === 'child' && p.zone !== 'home' && p.work_area_id === focusRoom.id)
+    .sort((a, b) => a.first_name.localeCompare(b.first_name))
 
   // What dropping the dragged (or selected) person on a tile would do
   const mover = drag.dragging?.person ?? selected
@@ -346,6 +352,21 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
               Using 1:{fs.effectiveRatio} instead of 1:{focusRoom.ratio_children} because a younger child is here.
             </p>
           )}
+          {teacherView && (
+            <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-surface/50 p-2.5">
+              <span className="mr-auto inline-flex items-center gap-2 px-1 text-sm text-muted">
+                <BookOpen className="h-4 w-4 text-brand-600" /> <span><span className="font-bold text-heading">Today&apos;s plan</span> · Lesson plan coming soon</span>
+              </span>
+              <button type="button" onClick={() => setClassAction('meal')}
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-white px-3 text-sm font-bold text-heading hover:bg-surface">
+                <Utensils className="h-4 w-4 text-brand-600" /> Meal served
+              </button>
+              <button type="button" onClick={() => setClassAction('activity')}
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-white px-3 text-sm font-bold text-heading hover:bg-surface">
+                <ClipboardList className="h-4 w-4 text-brand-600" /> Activity with class
+              </button>
+            </div>
+          )}
           <RoomStage room={focusRoom} status={fs} seats={peopleInRoom(focusRoom.id, people)} waiting={waiting} photos={photos} tintOf={tintOf} visitingFrom={visitingFrom} ix={ix} />
           <Legend />
           <details className="mt-3 text-xs text-muted">
@@ -382,6 +403,7 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
 
       {selected && teacherView && selected.kind === 'child' && (
         <ChildCard
+          key={selected.person_id}
           supabase={supabase}
           centerId={centerId}
           day={day}
@@ -425,6 +447,20 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
             border={drag.dragging.person.kind === 'staff' ? '3px solid #16202a' : '3px solid #ffffff'}
           />
         </div>
+      )}
+
+      {classAction && (
+        <ClassEntryDialog
+          supabase={supabase}
+          centerId={centerId}
+          room={focusRoom}
+          kind={classAction}
+          children={presentKids}
+          photos={photos}
+          tintOf={tintOf}
+          onClose={() => setClassAction(null)}
+          onDone={msg => { setClassAction(null); setToast(msg); setLogKey(k => k + 1) }}
+        />
       )}
 
       {exporting && <ExportDialog supabase={supabase} centerId={centerId} today={day} onClose={() => setExporting(false)} />}

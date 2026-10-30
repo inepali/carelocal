@@ -14,7 +14,8 @@
     "check:audience": "node scripts/check-audience.mjs",
     "test:rls": "node --experimental-strip-types --no-warnings scripts/rls/child-access.test.mjs",
     "test:rls:roster": "node --no-warnings scripts/rls/roster-access.test.mjs",
-    "test:roster": "node --experimental-strip-types --no-warnings scripts/roster/ratio.test.mjs"
+    "test:roster": "node --experimental-strip-types --no-warnings scripts/roster/ratio.test.mjs",
+    "test:daily": "node --experimental-strip-types --no-warnings scripts/roster/daily.test.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1030.0",
