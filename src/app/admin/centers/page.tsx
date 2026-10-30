@@ -23,7 +23,7 @@ import Link from 'next/link'
 import { exportCenterRequirementsAsTemplate } from '@/app/actions/requirement-templates.actions'
 import { setCenterEnabled } from '@/app/actions/account-status.actions'
 import { setCenterJobLimit, setCenterJobsEnabled } from '@/app/actions/jobs.actions'
-import { setCenterChildFilesEnabled } from '@/app/actions/child-files-admin.actions'
+import { setCenterChildFilesEnabled, setCenterRosterEnabled } from '@/app/actions/child-files-admin.actions'
 import { purgeCenter } from '@/app/actions/data-cleanup.actions'
 import { PurgeDialog } from '@/components/admin/PurgeDialog'
 import { showAlert, showConfirm, showPrompt } from '@/lib/dialog'
@@ -153,6 +153,19 @@ export default function AdminCentersPage() {
     const res = await setCenterChildFilesEnabled(center.id, enabling)
     if (!res.success) { showAlert(res.error); return }
     setCenters(prev => prev.map(c => c.id === center.id ? { ...c, child_files_enabled: enabling } : c))
+  }
+
+  const toggleRoster = async (center: { id: string; name: string; roster_enabled?: boolean }) => {
+    const enabling = !center.roster_enabled
+    if (!await showConfirm(
+      enabling
+        ? `Turn on the live roster for ${center.name}? Its owner, administrators and regular teachers will see where every child and teacher is, and can check children in and out.`
+        : `Turn off the live roster for ${center.name}? The roster page closes for everyone at the center. Today's check-ins and the history are kept.`,
+      { title: 'Live roster pilot', confirmLabel: enabling ? 'Turn on' : 'Turn off', tone: 'default' },
+    )) return
+    const res = await setCenterRosterEnabled(center.id, enabling)
+    if (!res.success) { showAlert(res.error); return }
+    setCenters(prev => prev.map(c => c.id === center.id ? { ...c, roster_enabled: enabling } : c))
   }
 
   const exportChecklist = async (center: { id: string; name: string }) => {
@@ -294,6 +307,15 @@ export default function AdminCentersPage() {
                              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${center.child_files_enabled ? 'text-teal-700 border-teal-200 bg-teal-50 hover:bg-teal-100' : 'text-slate-400 border-slate-200 hover:text-teal-700 hover:border-teal-200'}`}
                            >
                              <span className={`w-1.5 h-1.5 rounded-full ${center.child_files_enabled ? 'bg-teal-500' : 'bg-slate-300'}`} /> Children
+                           </button>
+                         )}
+                         {(center.domain_key ?? 'childcare') === 'childcare' && (
+                           <button
+                             onClick={() => toggleRoster(center)}
+                             title={center.roster_enabled ? 'Live roster is on. Click to turn off.' : center.child_files_enabled ? 'Live roster is off. Click to turn on.' : 'Live roster needs Child Files on first.'}
+                             className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${center.roster_enabled ? 'text-sky-700 border-sky-200 bg-sky-50 hover:bg-sky-100' : 'text-slate-400 border-slate-200 hover:text-sky-700 hover:border-sky-200'}`}
+                           >
+                             <span className={`w-1.5 h-1.5 rounded-full ${center.roster_enabled ? 'bg-sky-500' : 'bg-slate-300'}`} /> Roster
                            </button>
                          )}
                          <button
