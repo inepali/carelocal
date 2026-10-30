@@ -33,7 +33,16 @@ type Live = 'connecting' | 'live' | 'offline'
  * Moves (drag and drop, the selected panel, "Send floater") go through roster_apply(). The board moves the
  * person at once and puts them back, with a message, if the database refuses.
  */
-export function RosterBoard({ centerId }: { centerId: string }) {
+export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewerName }: {
+  centerId: string
+  /** 'teacher': the regular teacher's view (staff portal, phone app, room tablet) */
+  mode?: 'admin' | 'teacher'
+  /** Teacher view: the room it opens on and stays with; null for a floater, who picks a room */
+  homeRoomId?: string | null
+  viewerName?: string
+}) {
+  const teacher = mode === 'teacher'
+  useWakeLock(teacher)
   const supabase = useMemo(() => createClient(), [])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -58,13 +67,14 @@ export function RosterBoard({ centerId }: { centerId: string }) {
     setDay(res.day); dayRef.current = res.day
     setRooms(res.rooms); setPeople(res.people); peopleRef.current = res.people
     setFocus(cur => {
+      if (teacher && homeRoomId && res.rooms.some(r => r.id === homeRoomId)) return homeRoomId
       if (cur && res.rooms.some(r => r.id === cur)) return cur
       let saved: string | null = null
       try { saved = window.localStorage.getItem(`${FOCUS_KEY}.${centerId}`) } catch { /* storage blocked */ }
       return res.rooms.find(r => r.id === saved)?.id ?? res.rooms[0]?.id ?? null
     })
     setLoading(false)
-  }, [supabase, centerId])
+  }, [supabase, centerId, teacher, homeRoomId])
 
   const reloadPhotos = useCallback(async () => {
     const res = await getRosterPhotoUrls(centerId)
@@ -205,7 +215,9 @@ export function RosterBoard({ centerId }: { centerId: string }) {
   // No home room and not checked in (floaters, children who still need a home room): they wait in the Lobby
   const waiting = waitingForRoom(people)
   const floatersFree = waiting.filter(p => p.kind === 'staff')
-  const alerts = rooms.filter(r => statuses[r.id].code === 'out')
+  // A teacher with a home room stays on it: other rooms are drop targets only, and alerts are about their room
+  const locked = teacher && !!homeRoomId && rooms.some(r => r.id === homeRoomId)
+  const alerts = rooms.filter(r => statuses[r.id].code === 'out' && (!locked || r.id === homeRoomId))
   const fs = statuses[focusRoom.id]
   const selected = people.find(p => p.person_id === selectedId) ?? null
 
@@ -231,7 +243,7 @@ export function RosterBoard({ centerId }: { centerId: string }) {
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-muted">{formatDay(day)}</p>
-          <h1 className="text-3xl font-bold tracking-tight text-heading">Live roster</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-heading">{teacher ? 'My room' : 'Live roster'}</h1>
         </div>
         <div className="flex items-center gap-2">
           {busy > 0 && <span className="inline-flex items-center gap-1.5 text-xs font-bold text-muted"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</span>}
@@ -239,12 +251,21 @@ export function RosterBoard({ centerId }: { centerId: string }) {
         </div>
       </header>
 
+      {teacher ? (
+        <div className="rounded-2xl border border-border bg-white px-4 py-3.5 text-sm text-text-main">
+          {viewerName ? <>Signed in as <strong className="text-heading">{viewerName}</strong>. </> : null}
+          {locked
+            ? <>Your room is <strong className="text-heading">{roomName[homeRoomId!]}</strong>. Drag children or yourself onto another room to move them there.</>
+            : 'You have no home room, so pick the room you are working in.'}
+        </div>
+      ) : (
       <div className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3">
         <Stat label="Children checked in" value={totals.childrenIn} of={totals.childrenTotal} />
         <Stat label="Staff checked in" value={totals.staffIn} of={totals.staffTotal} />
         <Stat label="Rooms in ratio" value={totals.roomsInRatio} of={totals.roomsTotal} />
         <Stat label="Open spots today" value={totals.openSpots} />
       </div>
+      )}
 
       {alerts.map(r => {
         const s = statuses[r.id]
@@ -312,7 +333,7 @@ export function RosterBoard({ centerId }: { centerId: string }) {
               present={people.filter(p => p.work_area_id === r.id && p.zone !== 'home')}
               photos={photos}
               tintOf={tintOf}
-              onOpen={() => openRoom(r.id)}
+              onOpen={locked ? undefined : () => openRoom(r.id)}
               ix={ix}
               preview={tilePreview(r)}
               style={{ ['--c' as string]: s.col, ['--r' as string]: s.row }}
@@ -322,7 +343,7 @@ export function RosterBoard({ centerId }: { centerId: string }) {
 
       </div>
 
-      <TransitionsLog supabase={supabase} centerId={centerId} today={day} refreshKey={logKey} people={people} roomName={roomName} />
+      <TransitionsLog supabase={supabase} centerId={centerId} today={day} refreshKey={logKey} people={people} roomName={roomName} onlyRoom={locked ? homeRoomId : null} />
 
       {selected && (
         <SelectedPanel
@@ -421,4 +442,26 @@ function LiveBadge({ live, onRetry }: { live: Live; onRetry: () => void }) {
       <RefreshCw className="h-3.5 w-3.5" /> Reconnecting… tap to refresh
     </button>
   )
+}
+
+/** Keeps a room tablet's screen on while the teacher view is open (where the browser supports it) */
+function useWakeLock(enabled: boolean) {
+  useEffect(() => {
+    if (!enabled || typeof navigator === 'undefined' || !('wakeLock' in navigator)) return
+    type Sentinel = { release: () => Promise<void> }
+    const nav = navigator as Navigator & { wakeLock: { request: (t: 'screen') => Promise<Sentinel> } }
+    let lock: Sentinel | null = null
+    let stopped = false
+    const take = async () => {
+      if (stopped || document.visibilityState !== 'visible') return
+      try { lock = await nav.wakeLock.request('screen') } catch { /* battery saver or not allowed: the screen may sleep */ }
+    }
+    take()
+    document.addEventListener('visibilitychange', take)                // the lock is dropped when the tab hides
+    return () => {
+      stopped = true
+      document.removeEventListener('visibilitychange', take)
+      lock?.release().catch(() => {})
+    }
+  }, [enabled])
 }

@@ -1,17 +1,22 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Calendar, Clock, FileText, LogOut, User } from 'lucide-react'
+import { Calendar, Clock, FileText, LayoutGrid, LogOut, User } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useIsRegularOnly, isSubstituteOnlyRoute } from '@/lib/hooks/useIsRegularOnly'
 import { GettingStartedBanner } from '@/components/staff/GettingStarted'
+import { teacherRosterEnabled } from '@/components/roster/TeacherRoster'
 
 export default function MobilePortalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const { isRegularOnly, loading: classLoading } = useIsRegularOnly()
+  const [rosterOn, setRosterOn] = useState(false)
+  useEffect(() => {
+    if (!classLoading && isRegularOnly) teacherRosterEnabled().then(setRosterOn)
+  }, [classLoading, isRegularOnly])
 
   // Regular employees don't use the shift marketplace — keep them off those pages
   const blockedRoute = isRegularOnly && isSubstituteOnlyRoute(pathname)
@@ -20,6 +25,7 @@ export default function MobilePortalLayout({ children }: { children: React.React
   }, [classLoading, blockedRoute, router])
 
   const tabs = [
+    ...(isRegularOnly && rosterOn ? [{ label: 'My Room', icon: LayoutGrid, href: '/mobile/roster' }] : []),
     {
       label: 'Shifts',
       icon: Calendar,

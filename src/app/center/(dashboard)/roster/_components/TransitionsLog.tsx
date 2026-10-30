@@ -25,6 +25,7 @@ export function TransitionsLog({
   refreshKey,
   people,
   roomName,
+  onlyRoom = null,
 }: {
   supabase: SupabaseClient
   centerId: string
@@ -34,6 +35,8 @@ export function TransitionsLog({
   refreshKey: number
   people: RosterPerson[]
   roomName: Record<string, string>
+  /** Only moves into or out of this room (the teacher view) */
+  onlyRoom?: string | null
 }) {
   const [picked, setPicked] = useState<string | null>(null)        // null = follow today
   const day = picked ?? today
@@ -47,11 +50,14 @@ export function TransitionsLog({
     let cancelled = false
     loadRosterEvents(supabase, centerId, day).then(res => {
       if (cancelled) return
-      if (res.success) { setEvents(res.events); setError(null) } else setError(res.error)
+      if (res.success) {
+        setEvents(onlyRoom ? res.events.filter(e => e.from_area_id === onlyRoom || e.to_area_id === onlyRoom) : res.events)
+        setError(null)
+      } else setError(res.error)
       setLoading(false)
     })
     return () => { cancelled = true }
-  }, [supabase, centerId, day, reloadToken])
+  }, [supabase, centerId, day, reloadToken, onlyRoom])
 
   const nameOf = useMemo(() => {
     const m = new Map(people.map(p => [p.person_id, `${p.first_name} ${p.last_initial}.`]))

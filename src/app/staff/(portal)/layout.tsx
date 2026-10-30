@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, Calendar, FileText, UserCircle, Globe, Search, CreditCard, Building, LayoutDashboard, Inbox, Briefcase, ClipboardList } from 'lucide-react'
+import { LogOut, Calendar, FileText, UserCircle, Globe, Search, CreditCard, Building, LayoutDashboard, Inbox, Briefcase, ClipboardList, LayoutGrid } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { useIsRegularOnly, isSubstituteOnlyRoute, isRegularOnlyRoute } from '@/lib/hooks/useIsRegularOnly'
 import { getDomainKey } from '@/lib/domain-config'
 import { GettingStartedBanner } from '@/components/staff/GettingStarted'
+import { teacherRosterEnabled } from '@/components/roster/TeacherRoster'
 
 export default function StaffPortalLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -19,6 +20,10 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
   const [loading, setLoading] = useState(true)
   const [isChildcare, setIsChildcare] = useState(true)
   const { isRegularOnly, loading: classLoading } = useIsRegularOnly()
+  const [rosterOn, setRosterOn] = useState(false)
+  useEffect(() => {
+    if (!classLoading && isRegularOnly) teacherRosterEnabled().then(setRosterOn)
+  }, [classLoading, isRegularOnly])
 
   // Regular employees get a single-center portal without the shift marketplace;
   // substitutes keep the multi-center portal
@@ -64,6 +69,7 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
 
   const NAVIGATION = [
     { name: 'My Center', href: '/staff/center', icon: Building },
+    { name: 'My Room', href: '/staff/roster', icon: LayoutGrid },
     { name: 'My Centers', href: '/staff/centers', icon: Globe },
     { name: 'Available Shifts', href: '/staff/shifts', icon: Search },
     { name: 'My Shifts', href: '/staff/my-shifts', icon: Calendar },
@@ -74,6 +80,7 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
     { name: 'My Profile', href: '/staff/profile', icon: UserCircle },
     { name: 'My Account', href: '/staff/account', icon: CreditCard },
   ].filter(item => isRegularOnly ? !isSubstituteOnlyRoute(item.href) : !isRegularOnlyRoute(item.href))
+   .filter(item => item.href !== '/staff/roster' || rosterOn)
 
   if (loading || classLoading || blockedRoute) {
      return <div className="min-h-screen bg-surface flex items-center justify-center">Loading...</div>

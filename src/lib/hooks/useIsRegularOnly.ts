@@ -15,7 +15,7 @@ export const SUBSTITUTE_ONLY_ROUTES = [
 ]
 
 /** Portal routes only regular employees use (their single center) */
-export const REGULAR_ONLY_ROUTES = ['/staff/center']
+export const REGULAR_ONLY_ROUTES = ['/staff/center', '/staff/roster', '/mobile/roster']
 
 function matchesRoute(routes: string[], pathname: string) {
   return routes.some(route => pathname === route || pathname.startsWith(`${route}/`))

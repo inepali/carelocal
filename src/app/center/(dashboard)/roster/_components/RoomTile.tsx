@@ -36,23 +36,24 @@ export function RoomTile({
   present: RosterPerson[]
   photos: Record<string, string>
   tintOf: (p: RosterPerson) => string
-  onOpen: () => void
+  /** Bring this room to the center; omit to make the tile a drop target only (teacher view) */
+  onOpen?: () => void
   ix: RosterInteract
   /** What a drop (or the selected person moving here) would do, or null */
   preview: { code: StatusCode; text: string } | null
   style?: React.CSSProperties
 }) {
+  const Tag = onOpen ? 'button' : 'div'
   const key = dropKey(room.id, 'classroom')
   const over = ix.over === key
   const border = over ? 'border-2 border-dashed border-[#2357d9]' : status.code === 'out' ? 'border-2 border-[#d14b3f]' : 'border border-border'
   return (
-    <button
-      type="button"
+    <Tag
+      {...(onOpen ? { type: 'button' as const, onClick: onOpen } : { role: 'group' })}
       data-drop={key}
-      onClick={onOpen}
       style={style}
-      aria-label={`${room.name}: ${status.childrenIn} children, ${status.teachersIn} teachers, ${status.label}. Open room.`}
-      className={`flex min-h-[150px] w-full flex-col rounded-2xl p-2.5 text-left shadow-sm transition hover:shadow-md focus-visible:outline-3 focus-visible:outline-brand-600 lg:[grid-column:var(--c)] lg:[grid-row:var(--r)] ${over ? 'bg-[#eef3ff]' : 'bg-white'} ${border}`}
+      aria-label={`${room.name}: ${status.childrenIn} children, ${status.teachersIn} teachers, ${status.label}.${onOpen ? ' Open room.' : ''}`}
+      className={`flex min-h-[150px] w-full flex-col rounded-2xl p-2.5 text-left shadow-sm transition ${onOpen ? 'hover:shadow-md' : ''} focus-visible:outline-3 focus-visible:outline-brand-600 lg:[grid-column:var(--c)] lg:[grid-row:var(--r)] ${over ? 'bg-[#eef3ff]' : 'bg-white'} ${border}`}
     >
       <span className="flex flex-col items-start gap-1.5">
         <span className="text-[15px] font-bold leading-tight text-heading">{room.name}</span>
@@ -70,7 +71,7 @@ export function RoomTile({
       </span>
       {status.visiting > 0 && <span className="mt-2 block text-xs font-semibold text-[#8a4a00]">{status.visiting} visiting</span>}
       {preview && <span className={`mt-2 block rounded-lg px-2 py-1 text-xs font-bold ${STATUS_PILL[preview.code]}`}>{preview.text}</span>}
-      <span className="mt-auto flex items-center gap-1 pt-2.5 text-xs font-bold text-brand-600">Open room <ChevronRight className="h-3.5 w-3.5" /></span>
-    </button>
+      {onOpen && <span className="mt-auto flex items-center gap-1 pt-2.5 text-xs font-bold text-brand-600">Open room <ChevronRight className="h-3.5 w-3.5" /></span>}
+    </Tag>
   )
 }
