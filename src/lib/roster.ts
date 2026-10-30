@@ -69,3 +69,56 @@ export function applyPresence(people: RosterPerson[], row: PresenceRow, day: str
   next[i] = { ...people[i], work_area_id: row.work_area_id, zone: row.zone, updated_at: row.updated_at }
   return next
 }
+
+// ─── Writing ─────────────────────────────────────────────────────────────────
+
+export interface RosterMove { work_area_id: string | null; zone: RosterPerson['zone'] }
+
+/**
+ * Put one child or teacher in a room and zone, or send them home (check out), through roster_apply().
+ * `clientKey` is a fresh id per tap: if the request is retried, the database applies it once.
+ */
+export async function moveOnRoster(
+  supabase: SupabaseClient,
+  centerId: string,
+  person: Pick<RosterPerson, 'kind' | 'person_id'>,
+  to: RosterMove,
+  clientKey: string,
+): Promise<{ success: true; row: PresenceRow | null } | Failure> {
+  const { data, error } = await supabase.rpc('roster_apply', {
+    p_center_id: centerId,
+    p_child_id: person.kind === 'child' ? person.person_id : null,
+    p_staff_id: person.kind === 'staff' ? person.person_id : null,
+    p_area_id: to.work_area_id,
+    p_zone: to.zone,
+    p_client_key: clientKey,
+  })
+  if (error) return { success: false, error: friendlyRosterError(error) }
+  const row = data as PresenceRow | null
+  return { success: true, row: row && row.service_date ? row : null }
+}
+
+// ─── The day's log ───────────────────────────────────────────────────────────
+
+export interface RosterEvent {
+  id: number
+  at: string
+  action: 'check_in' | 'check_out' | 'move_room' | 'move_zone'
+  child_id: string | null
+  staff_id: string | null
+  from_area_id: string | null
+  to_area_id: string | null
+  from_zone: RosterPerson['zone']
+  to_zone: RosterPerson['zone']
+}
+
+/** Every check-in, check-out and move on one day, newest first */
+export async function loadRosterEvents(supabase: SupabaseClient, centerId: string, day: string, limit = 500): Promise<{ success: true; events: RosterEvent[] } | Failure> {
+  const { data, error } = await supabase.from('roster_events')
+    .select('id, at, action, child_id, staff_id, from_area_id, to_area_id, from_zone, to_zone')
+    .eq('center_id', centerId).eq('service_date', day)
+    .order('at', { ascending: false }).order('id', { ascending: false })
+    .limit(limit)
+  if (error) return { success: false, error: friendlyRosterError(error) }
+  return { success: true, events: (data ?? []) as RosterEvent[] }
+}

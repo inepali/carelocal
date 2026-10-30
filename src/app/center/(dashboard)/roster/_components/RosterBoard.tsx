@@ -1,13 +1,20 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, Loader2, Radio, RefreshCw, Users } from 'lucide-react'
+import { AlertTriangle, Loader2, Radio, RefreshCw, Send, Users, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { applyPresence, loadRoster, type PresenceRow } from '@/lib/roster'
-import { allRoomStatuses, centerTotals, peopleInRoom, type RosterPerson, type RosterRoom } from '@/lib/roster-ratio'
+import { applyPresence, loadRoster, moveOnRoster, type PresenceRow, type RosterMove } from '@/lib/roster'
+import {
+  allRoomStatuses, centerTotals, ON_SITE_ZONES, peopleInRoom, roomStatus, simulateMove,
+  type RosterPerson, type RosterRoom, type StatusCode,
+} from '@/lib/roster-ratio'
 import { getRosterPhotoUrls } from '@/app/actions/roster.actions'
+import { Face } from './PersonAvatar'
 import { RoomStage } from './RoomStage'
 import { RoomTile, StatusPill } from './RoomTile'
+import { SelectedPanel, ZONE_LABEL } from './SelectedPanel'
+import { TransitionsLog } from './TransitionsLog'
+import { useRosterDrag, type RosterInteract } from './useRosterDrag'
 
 /** One soft tint per room, in the center's room order; a child wears their home room's tint */
 const TINTS = ['#f8dccb', '#d6e4fa', '#d9efd3', '#e7daf7', '#f8e6b0', '#cbedee', '#f6d5e5', '#e3e8ee']
@@ -17,10 +24,14 @@ const FOCUS_KEY = 'carelocal.roster.focus'
 type Live = 'connecting' | 'live' | 'offline'
 
 /**
- * The Live Roster for owners and administrators (phase 2: read-only).
+ * The Live Roster for owners and administrators.
+ *
  * Loads rooms and today's presence once, then follows roster_presence through Supabase Realtime: a change for
  * someone already on the board is applied in place; anything else (a new person, a new day, a reconnect)
  * reloads the snapshot.
+ *
+ * Moves (drag and drop, the selected panel, "Send floater") go through roster_apply(). The board moves the
+ * person at once and puts them back, with a message, if the database refuses.
  */
 export function RosterBoard({ centerId }: { centerId: string }) {
   const supabase = useMemo(() => createClient(), [])
@@ -32,6 +43,10 @@ export function RosterBoard({ centerId }: { centerId: string }) {
   const [photos, setPhotos] = useState<Record<string, string>>({})
   const [live, setLive] = useState<Live>('connecting')
   const [focus, setFocus] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [busy, setBusy] = useState(0)
+  const [toast, setToast] = useState<string | null>(null)
+  const [logKey, setLogKey] = useState(0)
   const dayRef = useRef('')
   const peopleRef = useRef<RosterPerson[]>([])
   useEffect(() => { peopleRef.current = people }, [people])
@@ -41,7 +56,7 @@ export function RosterBoard({ centerId }: { centerId: string }) {
     if (!res.success) { setError(res.error); setLoading(false); return }
     setError(null)
     setDay(res.day); dayRef.current = res.day
-    setRooms(res.rooms); setPeople(res.people)
+    setRooms(res.rooms); setPeople(res.people); peopleRef.current = res.people
     setFocus(cur => {
       if (cur && res.rooms.some(r => r.id === cur)) return cur
       let saved: string | null = null
@@ -68,29 +83,83 @@ export function RosterBoard({ centerId }: { centerId: string }) {
   // Realtime: follow every presence change for this center
   useEffect(() => {
     let reloadTimer: number | undefined
+    let logTimer: number | undefined
     const reloadSoon = () => { window.clearTimeout(reloadTimer); reloadTimer = window.setTimeout(() => { reload(); reloadPhotos() }, 400) }
+    const logSoon = () => { window.clearTimeout(logTimer); logTimer = window.setTimeout(() => setLogKey(k => k + 1), 600) }
 
     const channel = supabase
       .channel(`roster:${centerId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'roster_presence', filter: `center_id=eq.${centerId}` }, payload => {
+        logSoon()
         const row = payload.new as PresenceRow | undefined
         if (!row || !('zone' in row)) { reloadSoon(); return }
         const next = applyPresence(peopleRef.current, row, dayRef.current)
         if (next) { peopleRef.current = next; setPeople(next) } else reloadSoon()
       })
       .subscribe(status => {
-        if (status === 'SUBSCRIBED') { setLive('live'); reloadSoon() }   // catch anything missed while connecting
+        if (status === 'SUBSCRIBED') { setLive('live'); reloadSoon(); logSoon() }   // catch anything missed while connecting
         else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') setLive('offline')
       })
 
-    const onVisible = () => { if (document.visibilityState === 'visible') reloadSoon() }
+    const onVisible = () => { if (document.visibilityState === 'visible') { reloadSoon(); logSoon() } }
     document.addEventListener('visibilitychange', onVisible)
     return () => {
       window.clearTimeout(reloadTimer)
+      window.clearTimeout(logTimer)
       document.removeEventListener('visibilitychange', onVisible)
       supabase.removeChannel(channel)
     }
   }, [supabase, centerId, reload, reloadPhotos])
+
+  // Messages fade on their own
+  useEffect(() => {
+    if (!toast) return
+    const t = window.setTimeout(() => setToast(null), 6000)
+    return () => window.clearTimeout(t)
+  }, [toast])
+
+  /** Move one person: show it at once, then let the database confirm or refuse */
+  const move = useCallback(async (person: RosterPerson, to: RosterMove) => {
+    const cur = peopleRef.current.find(p => p.person_id === person.person_id)
+    if (!cur) return
+    if (to.zone !== 'home' && !to.work_area_id) return
+    const area = to.zone === 'home' ? (to.work_area_id ?? cur.work_area_id) : to.work_area_id
+    if (cur.zone === to.zone && cur.work_area_id === area) return               // already there
+    if (cur.zone === 'home' && to.zone === 'home') return                       // already out
+
+    const optimistic = simulateMove(peopleRef.current, person.person_id, to)
+    peopleRef.current = optimistic
+    setPeople(optimistic)
+    setBusy(n => n + 1)
+    const res = await moveOnRoster(supabase, centerId, person, to, crypto.randomUUID())
+    setBusy(n => n - 1)
+    if (!res.success) {
+      setToast(`${person.first_name} ${person.last_initial}. was not moved: ${res.error}`)
+      reload()
+      return
+    }
+    if (res.row) {
+      const next = applyPresence(peopleRef.current, res.row, dayRef.current)
+      if (next) { peopleRef.current = next; setPeople(next) }
+    }
+    setLogKey(k => k + 1)
+  }, [supabase, centerId, reload])
+
+  const drag = useRosterDrag((person, target) => { move(person, target) })
+
+  const select = useCallback((p: RosterPerson) => {
+    if (!drag.clickAllowed()) return
+    setSelectedId(cur => (cur === p.person_id ? null : p.person_id))
+  }, [drag])
+
+  const ix: RosterInteract = {
+    bind: drag.bind,
+    select,
+    selectedId,
+    draggingId: drag.dragging?.person.person_id ?? null,
+    over: drag.over,
+    isDragging: !!drag.dragging,
+  }
 
   const statuses = useMemo(() => allRoomStatuses(rooms, people), [rooms, people])
   const totals = useMemo(() => centerTotals(rooms, people, statuses), [rooms, people, statuses])
@@ -101,6 +170,7 @@ export function RosterBoard({ centerId }: { centerId: string }) {
     p.kind === 'child' && p.home_area_id && p.work_area_id && p.home_area_id !== p.work_area_id ? roomName[p.home_area_id] ?? 'another room' : null, [roomName])
 
   function openRoom(id: string) {
+    if (!drag.clickAllowed()) return
     setFocus(id)
     try { window.localStorage.setItem(`${FOCUS_KEY}.${centerId}`, id) } catch { /* storage blocked */ }
   }
@@ -132,17 +202,26 @@ export function RosterBoard({ centerId }: { centerId: string }) {
   const others = rooms.filter(r => r.id !== focusRoom.id)
   const rows = Math.ceil((others.length + 1) / 2)
   const slot = (i: number) => (i < rows ? { col: 1, row: i + 1 } : { col: 3, row: i - rows + 1 })
-  const floaters = people.filter(p => p.kind === 'staff' && !p.work_area_id && !p.home_area_id)
-  const floatersIn = floaters.filter(p => p.zone !== 'home')
+  const noHomeRoom = people.filter(p => !p.home_area_id)
+  const floatersFree = noHomeRoom.filter(p => p.kind === 'staff' && p.zone === 'home')
   const alerts = rooms.filter(r => statuses[r.id].code === 'out')
   const fs = statuses[focusRoom.id]
+  const selected = people.find(p => p.person_id === selectedId) ?? null
+
+  // What dropping the dragged (or selected) person on a tile would do
+  const mover = drag.dragging?.person ?? selected
+  const tilePreview = (r: RosterRoom): { code: StatusCode; text: string } | null => {
+    if (!mover || (mover.work_area_id === r.id && mover.zone === 'classroom')) return null
+    const s = roomStatus(r, simulateMove(people, mover.person_id, { work_area_id: r.id, zone: 'classroom' }), rooms)
+    return { code: s.code, text: `${drag.dragging ? 'Drop' : 'If moved'}: ${s.label}${s.effectiveRatio ? ` · 1:${s.effectiveRatio}` : ''}` }
+  }
 
   const describeAlert = (r: RosterRoom) => {
     const s = statuses[r.id]
     if (s.label === 'Over capacity') return `${r.name} is over capacity: ${s.childrenIn} children, capacity ${r.capacity}.`
-    const parts = (['classroom', 'playground', 'lobby'] as const)
+    const parts = ON_SITE_ZONES
       .filter(z => s.groups[z].short > 0)
-      .map(z => `${z} (${s.groups[z].children} children) needs ${s.groups[z].short} more teacher${s.groups[z].short > 1 ? 's' : ''}`)
+      .map(z => `${ZONE_LABEL[z].toLowerCase()} (${s.groups[z].children} children) needs ${s.groups[z].short} more teacher${s.groups[z].short > 1 ? 's' : ''}`)
     return `${r.name} is out of ratio at 1:${s.effectiveRatio}: ${parts.join(' and ')}.`
   }
 
@@ -153,7 +232,10 @@ export function RosterBoard({ centerId }: { centerId: string }) {
           <p className="text-xs font-bold uppercase tracking-wider text-muted">{formatDay(day)}</p>
           <h1 className="text-3xl font-bold tracking-tight text-heading">Live roster</h1>
         </div>
-        <LiveBadge live={live} onRetry={() => { reload(); reloadPhotos() }} />
+        <div className="flex items-center gap-2">
+          {busy > 0 && <span className="inline-flex items-center gap-1.5 text-xs font-bold text-muted"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</span>}
+          <LiveBadge live={live} onRetry={() => { reload(); reloadPhotos(); setLogKey(k => k + 1) }} />
+        </div>
       </header>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3">
@@ -163,13 +245,23 @@ export function RosterBoard({ centerId }: { centerId: string }) {
         <Stat label="Open spots today" value={totals.openSpots} />
       </div>
 
-      {alerts.map(r => (
-        <div key={r.id} role="alert" className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#f2b8b3] bg-[#fce4e2] px-4 py-3 text-[#7e1a14]">
-          <AlertTriangle className="h-5 w-5 shrink-0" />
-          <span className="flex-1 basis-64 text-sm font-semibold">{describeAlert(r)}</span>
-          {floatersIn.length > 0 && <span className="text-xs font-bold">{floatersIn.length} floater{floatersIn.length > 1 ? 's' : ''} available</span>}
-        </div>
-      ))}
+      {alerts.map(r => {
+        const s = statuses[r.id]
+        const shortZone = ON_SITE_ZONES.find(z => s.groups[z].short > 0)
+        const floater = shortZone ? floatersFree[0] : undefined
+        return (
+          <div key={r.id} role="alert" className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#f2b8b3] bg-[#fce4e2] px-4 py-3 text-[#7e1a14]">
+            <AlertTriangle className="h-5 w-5 shrink-0" />
+            <span className="flex-1 basis-64 text-sm font-semibold">{describeAlert(r)}</span>
+            {floater && shortZone && (
+              <button type="button" onClick={() => move(floater, { work_area_id: r.id, zone: shortZone })}
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-[#a3221b] px-4 text-[13px] font-bold text-white hover:bg-[#7e1a14]">
+                <Send className="h-4 w-4" /> Send {floater.first_name} {floater.last_initial}.
+              </button>
+            )}
+          </div>
+        )
+      })}
 
       <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-[minmax(0,0.5fr)_minmax(0,3.1fr)_minmax(0,0.5fr)]">
         <section
@@ -197,7 +289,8 @@ export function RosterBoard({ centerId }: { centerId: string }) {
               Using 1:{fs.effectiveRatio} instead of 1:{focusRoom.ratio_children} because a younger child is here.
             </p>
           )}
-          <RoomStage room={focusRoom} status={fs} seats={peopleInRoom(focusRoom.id, people)} photos={photos} tintOf={tintOf} visitingFrom={visitingFrom} />
+          <RoomStage room={focusRoom} status={fs} seats={peopleInRoom(focusRoom.id, people)} photos={photos} tintOf={tintOf} visitingFrom={visitingFrom} ix={ix} />
+          <p className="mb-3 text-xs text-muted">Drag a child or teacher into Classroom, Playground or Lobby to check them in or move them, onto Home to check them out, or onto another room to change rooms. Tap anyone for more.</p>
           <Legend />
         </section>
 
@@ -212,6 +305,8 @@ export function RosterBoard({ centerId }: { centerId: string }) {
               photos={photos}
               tintOf={tintOf}
               onOpen={() => openRoom(r.id)}
+              ix={ix}
+              preview={tilePreview(r)}
               style={{ ['--c' as string]: s.col, ['--r' as string]: s.row }}
             />
           )
@@ -221,24 +316,73 @@ export function RosterBoard({ centerId }: { centerId: string }) {
           className="flex min-h-[150px] flex-col rounded-2xl border border-border bg-white p-2.5 lg:[grid-column:var(--c)] lg:[grid-row:var(--r)]"
           style={{ ['--c' as string]: slot(others.length).col, ['--r' as string]: slot(others.length).row }}
         >
-          <span className="text-[15px] font-bold leading-tight text-heading">Floaters and office</span>
-          <span className="mt-1 text-[11px] text-muted">{floatersIn.length} in</span>
+          <span className="text-[15px] font-bold leading-tight text-heading">Floaters</span>
+          <span className="mt-1 text-[11px] text-muted">No home room · drag into a room</span>
           <ul className="mt-2 flex flex-col gap-1.5">
-            {floaters.map(p => (
-              <li key={p.person_id} className={`flex items-center gap-2 text-xs font-semibold text-heading ${p.zone === 'home' ? 'opacity-60' : ''}`}>
-                <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border-2 border-[#16202a] bg-[#dce3ea] text-[10px]">
-                  {photos[p.person_id]
-                    // eslint-disable-next-line @next/next/no-img-element -- short-lived signed URL
-                    ? <img src={photos[p.person_id]} alt="" className="h-full w-full object-cover" />
-                    : `${p.first_name[0] ?? ''}${p.last_initial}`}
-                </span>
-                <span className="truncate">{p.first_name} {p.last_initial}.</span>
-              </li>
-            ))}
-            {floaters.length === 0 && <li className="text-xs text-muted">Teachers without a home room show here</li>}
+            {noHomeRoom.map(p => {
+              const at = p.zone !== 'home' && p.work_area_id ? roomName[p.work_area_id] : null
+              return (
+                <li key={p.person_id}>
+                  <button
+                    type="button"
+                    onPointerDown={drag.bind(p).onPointerDown}
+                    onClick={() => select(p)}
+                    aria-pressed={selectedId === p.person_id}
+                    className={`flex w-full cursor-grab touch-none select-none items-center gap-2 rounded-lg p-0.5 text-left text-xs font-semibold text-heading hover:bg-surface ${selectedId === p.person_id ? 'ring-2 ring-[#2357d9]' : ''}`}
+                    style={{ opacity: ix.draggingId === p.person_id ? 0.35 : at ? 1 : 0.75 }}
+                  >
+                    <Face person={p} url={photos[p.person_id]} tint={tintOf(p)} size={28} border={p.kind === 'staff' ? '2px solid #16202a' : '1.5px solid rgba(22,32,42,0.3)'} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate">{p.first_name} {p.last_initial}.{p.kind === 'child' ? ' (child)' : ''}</span>
+                      <span className="block truncate font-normal text-muted">{at ? `In ${at}` : 'Not in a room'}</span>
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+            {noHomeRoom.length === 0 && <li className="text-xs text-muted">Teachers without a home room show here</li>}
           </ul>
         </div>
       </div>
+
+      <TransitionsLog supabase={supabase} centerId={centerId} today={day} refreshKey={logKey} people={people} roomName={roomName} />
+
+      {selected && (
+        <SelectedPanel
+          person={selected}
+          people={people}
+          rooms={rooms}
+          photo={photos[selected.person_id]}
+          tint={tintOf(selected)}
+          busy={busy > 0}
+          onMove={move}
+          onClose={() => setSelectedId(null)}
+        />
+      )}
+
+      {drag.dragging && (
+        <div
+          ref={drag.ghostRef}
+          aria-hidden="true"
+          className="pointer-events-none fixed left-0 top-0 z-50 rounded-full shadow-2xl"
+          style={{ transform: `translate(${drag.dragging.x}px, ${drag.dragging.y}px) translate(-50%, -50%)` }}
+        >
+          <Face
+            person={drag.dragging.person}
+            url={photos[drag.dragging.person.person_id]}
+            tint={tintOf(drag.dragging.person)}
+            size={60}
+            border={drag.dragging.person.kind === 'staff' ? '3px solid #16202a' : '3px solid #ffffff'}
+          />
+        </div>
+      )}
+
+      {toast && (
+        <div role="status" className="fixed left-1/2 top-4 z-50 flex max-w-[92vw] -translate-x-1/2 items-center gap-3 rounded-2xl bg-[#7e1a14] px-4 py-3 text-sm font-semibold text-white shadow-2xl">
+          <span>{toast}</span>
+          <button type="button" onClick={() => setToast(null)} aria-label="Dismiss" className="rounded-full p-1 hover:bg-white/15"><X className="h-4 w-4" /></button>
+        </div>
+      )}
     </div>
   )
 }

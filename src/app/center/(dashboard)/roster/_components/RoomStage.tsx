@@ -2,17 +2,20 @@
 
 import { Home, DoorOpen, Sun } from 'lucide-react'
 import type { RosterPerson, RosterRoom, RoomStatus } from '@/lib/roster-ratio'
-import { PersonAvatar } from './PersonAvatar'
+import { Chip, PersonAvatar } from './PersonAvatar'
 import { StatusPill } from './RoomTile'
+import { dropKey, type RosterInteract } from './useRosterDrag'
 
 type Seats = { home: RosterPerson[]; classroom: RosterPerson[]; playground: RosterPerson[]; lobby: RosterPerson[] }
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
+const DROP_RING = 'inset 0 0 0 4px rgba(35,87,217,0.55)'
 
 /**
  * The selected room, as in the approved mockup: the green Classroom circle sits on top of a rectangle whose
  * top half is Home (checked out or not arrived) and whose bottom half is split into Playground and Lobby.
- * Up to 12 children sit in one ring; more go into two rings. Read-only in phase 2.
+ * Each of the four is a drop target: Home checks out, the others check in or move. Up to 12 children sit in
+ * one ring; more go into two rings.
  */
 export function RoomStage({
   room,
@@ -21,6 +24,7 @@ export function RoomStage({
   photos,
   tintOf,
   visitingFrom,
+  ix,
 }: {
   room: RosterRoom
   status: RoomStatus
@@ -28,6 +32,7 @@ export function RoomStage({
   photos: Record<string, string>
   tintOf: (p: RosterPerson) => string
   visitingFrom: (p: RosterPerson) => string | null
+  ix: RosterInteract
 }) {
   const kids = seats.classroom.filter(p => p.kind === 'child')
   const teachers = seats.classroom.filter(p => p.kind === 'staff')
@@ -53,30 +58,22 @@ export function RoomStage({
     return { left: `${50 + off * Math.cos(ang)}%`, top: `${50 + off * Math.sin(ang)}%` }
   }
 
+  const keys = {
+    home: dropKey(room.id, 'home'),
+    classroom: dropKey(room.id, 'classroom'),
+    playground: dropKey(room.id, 'playground'),
+    lobby: dropKey(room.id, 'lobby'),
+  }
+  const isOver = (k: string) => ix.over === k
+  const zoneShadow = (k: string) => (ix.isDragging ? (isOver(k) ? DROP_RING : 'inset 0 0 0 2px rgba(35,87,217,0.25)') : undefined)
+
   const homeKids = seats.home.filter(p => p.kind === 'child').length
   const play = status.groups.playground
   const lobby = status.groups.lobby
 
-  const chipColumn = (people: RosterPerson[], side: 'left' | 'right', top: string, bottom: string, width: string, dashed: boolean, empty?: string) => (
+  const column = (people: RosterPerson[], side: 'left' | 'right', top: string, bottom: string, width: string, dashed: boolean, empty?: string) => (
     <div className="absolute flex flex-wrap content-start justify-center gap-1.5 overflow-y-auto" style={{ [side]: 8, width, top, bottom }}>
-      {people.map(p => (
-        <div key={p.person_id} className="relative flex w-[52px] flex-col items-center gap-0.5" title={`${p.first_name} ${p.last_initial}.`}>
-          <span
-            className="flex items-center justify-center overflow-hidden rounded-full text-[10px] font-bold text-heading"
-            style={{
-              width: chipSize, height: chipSize,
-              background: p.kind === 'staff' ? '#dce3ea' : tintOf(p),
-              border: `2px ${dashed ? 'dashed' : 'solid'} ${p.kind === 'staff' ? '#16202a' : dashed ? '#7e1a14' : '#ffffff'}`,
-            }}
-          >
-            {photos[p.person_id]
-              // eslint-disable-next-line @next/next/no-img-element -- short-lived signed URL
-              ? <img src={photos[p.person_id]} alt="" className="h-full w-full object-cover" draggable={false} />
-              : `${p.first_name[0] ?? ''}${p.last_initial}`.toUpperCase()}
-          </span>
-          <span className="max-w-[52px] truncate text-[10px] font-semibold text-heading">{p.first_name} {p.last_initial}.</span>
-        </div>
-      ))}
+      {people.map(p => <Chip key={p.person_id} person={p} url={photos[p.person_id]} tint={tintOf(p)} size={chipSize} dashed={dashed} ix={ix} />)}
       {empty && people.length === 0 && <span className="text-center text-xs font-semibold opacity-80">{empty}</span>}
     </div>
   )
@@ -85,19 +82,27 @@ export function RoomStage({
 
   return (
     <div className="relative mx-auto my-5 aspect-[10/9] w-full max-w-[780px] overflow-hidden rounded-[20px] border border-border">
-      {/* Home: checked out or not arrived */}
-      <div className="absolute inset-x-0 top-0 h-1/2 border-b-[3px] border-[#b42318] bg-[#f3c6c1] text-[#7e1a14]">
+      {/* Home: checked out or not arrived. Dropping here checks out. */}
+      <div
+        data-drop={keys.home}
+        className="absolute inset-x-0 top-0 h-1/2 border-b-[3px] border-[#b42318] text-[#7e1a14] transition-colors"
+        style={{ background: isOver(keys.home) ? '#edb0a9' : '#f3c6c1', boxShadow: zoneShadow(keys.home) }}
+      >
         <div className="absolute inset-x-3.5 top-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
           <span className="inline-flex items-center gap-2 text-sm font-bold"><Home className="h-[18px] w-[18px]" />Home · checked out or absent</span>
           <span className="text-xs font-bold">{plural(homeKids, 'child', 'children')}</span>
         </div>
-        {chipColumn(even(seats.home), 'left', '52px', '8px', 'calc(16% - 10px)', true, 'Everyone is here')}
-        {chipColumn(odd(seats.home), 'right', '52px', '8px', 'calc(16% - 10px)', true)}
+        {column(even(seats.home), 'left', '52px', '8px', 'calc(16% - 10px)', true, 'Everyone is here')}
+        {column(odd(seats.home), 'right', '52px', '8px', 'calc(16% - 10px)', true)}
       </div>
 
       {/* Playground */}
-      <div className="absolute bottom-0 left-0 h-1/2 w-1/2 border-r-2 border-t-[3px] border-r-[rgba(22,32,42,0.25)] border-t-[#a86b00] bg-[#f8e2a8] text-[#5c3b00]">
-        {chipColumn(seats.playground, 'left', '12px', '64px', 'calc(32% - 10px)', false, 'Nobody outside')}
+      <div
+        data-drop={keys.playground}
+        className="absolute bottom-0 left-0 h-1/2 w-1/2 border-r-2 border-t-[3px] border-r-[rgba(22,32,42,0.25)] border-t-[#a86b00] text-[#5c3b00] transition-colors"
+        style={{ background: isOver(keys.playground) ? '#f1d27f' : '#f8e2a8', boxShadow: zoneShadow(keys.playground) }}
+      >
+        {column(seats.playground, 'left', '12px', '64px', 'calc(32% - 10px)', false, 'Nobody outside')}
         <div className="absolute inset-x-3 bottom-2.5 flex flex-col items-start gap-1">
           <span className="inline-flex items-center gap-1.5 text-sm font-bold"><Sun className="h-[18px] w-[18px]" />Playground</span>
           <span className="inline-flex flex-wrap items-center gap-1.5 text-xs font-bold">
@@ -108,8 +113,12 @@ export function RoomStage({
       </div>
 
       {/* Lobby */}
-      <div className="absolute bottom-0 right-0 h-1/2 w-1/2 border-t-[3px] border-t-[#2c5c9a] bg-[#cfe0f5] text-[#1d3f6e]">
-        {chipColumn(seats.lobby, 'right', '12px', '64px', 'calc(32% - 10px)', false, 'Pickups, drop-offs')}
+      <div
+        data-drop={keys.lobby}
+        className="absolute bottom-0 right-0 h-1/2 w-1/2 border-t-[3px] border-t-[#2c5c9a] text-[#1d3f6e] transition-colors"
+        style={{ background: isOver(keys.lobby) ? '#b3cdee' : '#cfe0f5', boxShadow: zoneShadow(keys.lobby) }}
+      >
+        {column(seats.lobby, 'right', '12px', '64px', 'calc(32% - 10px)', false, 'Pickups, drop-offs')}
         <div className="absolute inset-x-3 bottom-2.5 flex flex-col items-end gap-1">
           <span className="inline-flex items-center gap-1.5 text-sm font-bold"><DoorOpen className="h-[18px] w-[18px]" />Lobby</span>
           <span className="inline-flex flex-wrap items-center justify-end gap-1.5 text-xs font-bold">
@@ -121,20 +130,26 @@ export function RoomStage({
 
       {/* Classroom circle */}
       <div
-        className="absolute left-[16%] top-1/2 z-[2] aspect-square w-[68%] -translate-y-1/2 rounded-full border-4 border-[#1e7a47] bg-[#bfe3cc] shadow-[0_6px_20px_rgba(22,32,42,0.22)]"
+        data-drop={keys.classroom}
+        className="absolute left-[16%] top-1/2 z-[2] aspect-square w-[68%] -translate-y-1/2 rounded-full transition-colors"
+        style={{
+          background: isOver(keys.classroom) ? '#a8d9ba' : '#bfe3cc',
+          border: isOver(keys.classroom) ? '4px dashed #14532d' : '4px solid #1e7a47',
+          boxShadow: '0 6px 20px rgba(22,32,42,0.22)',
+        }}
         role="group"
         aria-label={`${room.name} classroom: ${plural(status.groups.classroom.children, 'child', 'children')}, ${plural(status.groups.classroom.teachers, 'teacher', 'teachers')}`}
       >
-        <span className="absolute left-1/2 top-0 z-[3] -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-[#1e7a47] px-3 py-1 text-xs font-bold text-white">
+        <span className="pointer-events-none absolute left-1/2 top-0 z-[3] -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-[#1e7a47] px-3 py-1 text-xs font-bold text-white">
           Classroom · {plural(status.groups.classroom.children, 'child', 'children')} · {plural(status.groups.classroom.teachers, 'teacher', 'teachers')}
         </span>
         {teachers.length === 0 && n > 0 && (
-          <div className="absolute left-1/2 top-1/2 flex h-[120px] w-[120px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-dashed border-[#d14b3f] p-3 text-center text-xs font-bold text-[#a3221b]">
+          <div className="pointer-events-none absolute left-1/2 top-1/2 flex h-[120px] w-[120px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-dashed border-[#d14b3f] p-3 text-center text-xs font-bold text-[#a3221b]">
             No teacher checked in
           </div>
         )}
         {teachers.map((t, i) => (
-          <PersonAvatar key={t.person_id} person={t} url={photos[t.person_id]} tint="#dce3ea" size={teacherSize} label={twoRings ? 'none' : 'below'} style={teacherSpot(i)} />
+          <PersonAvatar key={t.person_id} person={t} url={photos[t.person_id]} tint="#dce3ea" size={teacherSize} label={twoRings ? 'none' : 'below'} style={teacherSpot(i)} ix={ix} />
         ))}
         {kids.map((k, i) => (
           <PersonAvatar
@@ -147,6 +162,7 @@ export function RoomStage({
             label={n <= 12 ? 'below' : 'none'}
             float={i}
             style={kidSpot(i)}
+            ix={ix}
           />
         ))}
       </div>

@@ -3,6 +3,7 @@
 import { ChevronRight } from 'lucide-react'
 import type { RosterPerson, RosterRoom, RoomStatus, StatusCode } from '@/lib/roster-ratio'
 import { MiniAvatar } from './PersonAvatar'
+import { dropKey, type RosterInteract } from './useRosterDrag'
 
 export const STATUS_PILL: Record<StatusCode, string> = {
   ok: 'bg-[#e2f2ea] text-[#17603f]',
@@ -15,7 +16,10 @@ export function StatusPill({ code, label, className = '' }: { code: StatusCode; 
   return <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold ${STATUS_PILL[code]} ${className}`}>{label}</span>
 }
 
-/** A room beside the selected one: status, counts and who is in it. Tapping it brings it to the center. */
+/**
+ * A room beside the selected one: status, counts and who is in it. Tapping it brings it to the center;
+ * dropping a person on it moves them into its classroom (and checks them in if they were not in yet).
+ */
 export function RoomTile({
   room,
   status,
@@ -23,6 +27,8 @@ export function RoomTile({
   photos,
   tintOf,
   onOpen,
+  ix,
+  preview,
   style,
 }: {
   room: RosterRoom
@@ -31,16 +37,22 @@ export function RoomTile({
   photos: Record<string, string>
   tintOf: (p: RosterPerson) => string
   onOpen: () => void
+  ix: RosterInteract
+  /** What a drop (or the selected person moving here) would do, or null */
+  preview: { code: StatusCode; text: string } | null
   style?: React.CSSProperties
 }) {
-  const border = status.code === 'out' ? 'border-2 border-[#d14b3f]' : 'border border-border'
+  const key = dropKey(room.id, 'classroom')
+  const over = ix.over === key
+  const border = over ? 'border-2 border-dashed border-[#2357d9]' : status.code === 'out' ? 'border-2 border-[#d14b3f]' : 'border border-border'
   return (
     <button
       type="button"
+      data-drop={key}
       onClick={onOpen}
       style={style}
       aria-label={`${room.name}: ${status.childrenIn} children, ${status.teachersIn} teachers, ${status.label}. Open room.`}
-      className={`flex min-h-[150px] w-full flex-col rounded-2xl bg-white p-2.5 text-left shadow-sm transition hover:shadow-md focus-visible:outline-3 focus-visible:outline-brand-600 lg:[grid-column:var(--c)] lg:[grid-row:var(--r)] ${border}`}
+      className={`flex min-h-[150px] w-full flex-col rounded-2xl p-2.5 text-left shadow-sm transition hover:shadow-md focus-visible:outline-3 focus-visible:outline-brand-600 lg:[grid-column:var(--c)] lg:[grid-row:var(--r)] ${over ? 'bg-[#eef3ff]' : 'bg-white'} ${border}`}
     >
       <span className="flex flex-col items-start gap-1.5">
         <span className="text-[15px] font-bold leading-tight text-heading">{room.name}</span>
@@ -53,12 +65,11 @@ export function RoomTile({
         <span><strong className="text-xl text-heading">{status.childrenIn}</strong>{room.capacity != null ? `/${room.capacity}` : ''} kids</span>
         <span><strong className="text-xl text-heading">{status.teachersIn}</strong> {status.teachersIn === 1 ? 'Tchr' : 'Tchrs'}</span>
       </span>
-      <span aria-hidden="true" className="mt-2.5 grid grid-cols-[repeat(4,minmax(0,24px))] gap-[5px]">
-        {present.map(p => (
-          <MiniAvatar key={p.person_id} person={p} url={photos[p.person_id]} tint={tintOf(p)} />
-        ))}
+      <span className="mt-2.5 grid grid-cols-[repeat(4,minmax(0,24px))] gap-[5px]">
+        {present.map(p => <MiniAvatar key={p.person_id} person={p} url={photos[p.person_id]} tint={tintOf(p)} ix={ix} />)}
       </span>
       {status.visiting > 0 && <span className="mt-2 block text-xs font-semibold text-[#8a4a00]">{status.visiting} visiting</span>}
+      {preview && <span className={`mt-2 block rounded-lg px-2 py-1 text-xs font-bold ${STATUS_PILL[preview.code]}`}>{preview.text}</span>}
       <span className="mt-auto flex items-center gap-1 pt-2.5 text-xs font-bold text-brand-600">Open room <ChevronRight className="h-3.5 w-3.5" /></span>
     </button>
   )
