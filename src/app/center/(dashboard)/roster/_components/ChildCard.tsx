@@ -201,6 +201,7 @@ export function ChildCard({
       </div>
 
       <div className="flex flex-col gap-5 p-4">
+        {onSite && (
         <section aria-labelledby="glance-h">
           <h3 id="glance-h" className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">Today at a glance</h3>
           <div className="flex flex-wrap gap-2">
@@ -210,6 +211,7 @@ export function ChildCard({
             {chips.map(c => <Chip key={c}>{c}</Chip>)}
           </div>
         </section>
+        )}
 
         <section aria-labelledby="daily-h">
           <h3 id="daily-h" className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">Add to today</h3>
@@ -259,14 +261,15 @@ export function ChildCard({
                       <div className={`min-w-0 flex-1 ${gone ? 'text-subtle line-through' : ''}`}>
                         <p><span className="font-bold text-heading">{d.title}</span>{d.detail && <span className="text-text-main"> · {d.detail}</span>}</p>
                         {e.details.note && <p className="text-xs text-muted">{e.details.note}</p>}
-                        <p className="text-[11px] text-subtle">{e.batch_id ? 'Class · ' : ''}{e.recorded_by ?? ''}</p>
+                        {/* Who recorded it is left off until teachers sign in to the roster on their own */}
+                        {e.batch_id && <p className="text-[11px] text-subtle">Whole class</p>}
                       </div>
                       {e.can_void && voiding !== e.id && (
                         <button type="button" onClick={() => { setAdding(null); setFormError(null); setVoiding(e.id) }}
                           className="min-h-9 shrink-0 rounded-lg px-2 text-xs font-bold text-[#a3221b] hover:bg-[#fce4e2]">Remove</button>
                       )}
                     </div>
-                    {gone && <p className="ml-[76px] text-[11px] text-subtle">Removed{e.voided_by ? ` by ${e.voided_by}` : ''}: {e.void_reason}</p>}
+                    {gone && <p className="ml-[76px] text-[11px] text-subtle">Removed: {e.void_reason}</p>}
                     {voiding === e.id && (
                       <VoidForm busy={working} error={formError} onConfirm={reason => remove(e.id, reason)} onCancel={() => { setVoiding(null); setFormError(null) }} />
                     )}
