@@ -102,6 +102,10 @@ export function Chip({ person, url, tint, size, dashed, ix }: { person: RosterPe
   const isStaff = person.kind === 'staff'
   const selected = ix?.selectedId === person.person_id
   const describe = describePerson(person)
+  // A checked-out teacher stands out from checked-out children: a little bigger, with an extra solid ring
+  const outTeacher = isStaff && dashed
+  const faceSize = outTeacher ? Math.min(size + 6, 42) : size
+  const rings = [outTeacher ? '0 0 0 2px #ffffff, 0 0 0 4px #16202a' : '', selected ? (outTeacher ? '0 0 0 7px #2357d9' : SELECTED_RING) : ''].filter(Boolean).join(', ')
   return (
     <button
       type="button"
@@ -113,8 +117,8 @@ export function Chip({ person, url, tint, size, dashed, ix }: { person: RosterPe
       className="relative flex w-[52px] cursor-grab touch-none select-none flex-col items-center gap-0.5 border-0 bg-transparent p-0 focus-visible:outline-3 focus-visible:outline-brand-600"
       style={{ opacity: ix?.draggingId === person.person_id ? 0.35 : 1 }}
     >
-      <span className="rounded-full" style={{ boxShadow: selected ? SELECTED_RING : undefined }}>
-        <Face person={person} url={url} tint={tint} size={size} border={`2px ${dashed ? 'dashed' : 'solid'} ${isStaff ? '#16202a' : dashed ? '#7e1a14' : '#ffffff'}`} />
+      <span className="rounded-full" style={{ boxShadow: rings || undefined }}>
+        <Face person={person} url={url} tint={tint} size={faceSize} border={`2px ${dashed ? 'dashed' : 'solid'} ${isStaff ? '#16202a' : dashed ? '#7e1a14' : '#ffffff'}`} />
       </span>
       <span className="max-w-[52px] truncate text-[10px] font-semibold text-heading">{person.first_name} {person.last_initial}.</span>
     </button>
