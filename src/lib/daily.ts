@@ -51,6 +51,8 @@ export interface DailyEntry {
   voided_at: string | null
   voided_by: string | null
   void_reason: string | null
+  /** Photos: false while waiting for an owner or admin to approve it; null for other kinds */
+  approved?: boolean | null
 }
 
 export const MEALS: { value: MealName; label: string }[] = [
@@ -194,7 +196,8 @@ export function glanceChips(entries: (Pick<DailyEntry, 'kind' | 'details' | 'voi
   if (meds) chips.push(`${meds} ${meds === 1 ? 'medicine' : 'medicines'}`)
   const acts = live.filter(e => e.kind === 'activity').length
   if (acts) chips.push(`${acts} ${acts === 1 ? 'activity' : 'activities'}`)
-  const photos = live.filter(e => e.kind === 'photo').length
+  // Only approved photos go with the child's daily activities
+  const photos = live.filter(e => e.kind === 'photo' && (e as { approved?: boolean | null }).approved !== false).length
   if (photos) chips.push(`${photos} ${photos === 1 ? 'photo' : 'photos'}`)
   return chips
 }
@@ -334,4 +337,24 @@ export async function giveMedicine(supabase: SupabaseClient, centerId: string, c
   })
   if (error) return { success: false, error: friendlyDailyError(error) }
   return { success: true, id: data as string }
+}
+
+// ─── Photo review (owners and admins) ─────────────────────────────────────────────────────────────────────
+
+/** One row of daily_photos_for_review(): a photo and the children it is on */
+export interface PhotoForReview {
+  photo_key: string
+  caption: string | null
+  is_class: boolean
+  room_name: string | null
+  taken_at: string
+  taken_by: string | null
+  approved_at: string | null
+  children: { id: string; name: string; marketing_ok: boolean }[]
+}
+
+export async function loadPhotosForReview(supabase: SupabaseClient, centerId: string, waiting = true, days = 14): Promise<{ success: true; photos: PhotoForReview[] } | Failure> {
+  const { data, error } = await supabase.rpc('daily_photos_for_review', { p_center_id: centerId, p_waiting: waiting, p_days: days })
+  if (error) return { success: false, error: friendlyDailyError(error) }
+  return { success: true, photos: (data ?? []) as PhotoForReview[] }
 }

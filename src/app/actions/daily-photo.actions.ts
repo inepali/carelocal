@@ -147,3 +147,27 @@ export async function getDailyPhotoUrls(centerId: string, keys: string[]): Promi
     return fail('Could not load photos.')
   }
 }
+
+/**
+ * Owners and admins: approve a photo, or delete it (from every child it is on). The database decides who may;
+ * a deleted photo's file is removed once no entry still shows it.
+ */
+export async function reviewDailyPhoto(centerId: string, photoKey: string, approve: boolean, reason?: string): Promise<{ success: true; count: number } | Fail> {
+  try {
+    if (!photoKey.startsWith(`child/${centerId}/`) || photoKey.includes('..')) return fail('That photo is not in this center.')
+    const { supabase, signedIn } = await caller()
+    if (!signedIn) return fail('Please sign in again.')
+    const { data, error } = await supabase.rpc('daily_photo_review', { p_center_id: centerId, p_photo_key: photoKey, p_approve: approve, p_reason: reason ?? null })
+    if (error) return fail(friendlyDailyError(error))
+    const bucket = process.env.R2_CHILD_BUCKET
+    if (!approve && bucket && (data as number) > 0) {
+      const { count } = await supabase.from('child_daily_entries').select('id', { count: 'exact', head: true })
+        .eq('center_id', centerId).eq('details->>photo_key', photoKey).is('voided_at', null)
+      if (!count) await r2.send(new DeleteObjectCommand({ Bucket: bucket, Key: photoKey })).catch(() => {})
+    }
+    return { success: true, count: data as number }
+  } catch (error) {
+    console.error('[daily-photo] review failed:', error)
+    return fail('Could not save the review.')
+  }
+}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
 import { AlertTriangle, BookOpen, Camera, ClipboardList, FileSpreadsheet, Moon, Sun, Utensils, Loader2, Radio, RefreshCw, Send, Users, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { applyPresence, loadRoster, moveOnRoster, type PresenceRow, type RosterMove } from '@/lib/roster'
@@ -18,7 +19,7 @@ import { ChildCard } from './ChildCard'
 import { ClassEntryDialog } from './ClassEntryDialog'
 import { RoomNapDialog, type RoomNapMode } from './RoomNapDialog'
 import { ClassPhotoDialog } from './DailyPhoto'
-import { clockTime, loadRoomNaps, nextCheck, sleepChecksRequired, type RoomNap } from '@/lib/daily'
+import { clockTime, loadPhotosForReview, loadRoomNaps, nextCheck, sleepChecksRequired, type RoomNap } from '@/lib/daily'
 import { ExportDialog } from './ExportDialog'
 import { useRosterDrag, type RosterInteract } from './useRosterDrag'
 
@@ -78,6 +79,7 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
   const [classAction, setClassAction] = useState<'meal' | 'activity' | null>(null)
   const [napAction, setNapAction] = useState<RoomNapMode | null>(null)
   const [classPhoto, setClassPhoto] = useState(false)
+  const [toReview, setToReview] = useState(0)
   const [roomNaps, setRoomNaps] = useState<RoomNap[]>([])
   const [clock, setClock] = useState(() => new Date())
   const dayRef = useRef('')
@@ -163,6 +165,14 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
     const tick = window.setInterval(() => setClock(new Date()), 30_000)
     return () => { window.clearTimeout(t); window.clearInterval(tick); supabase.removeChannel(channel) }
   }, [supabase, centerId, teacherView, reloadNaps])
+
+  // Owners and admins: how many photos wait for review (refreshed when a toast says something changed)
+  useEffect(() => {
+    if (teacher) return
+    let cancelled = false
+    loadPhotosForReview(supabase, centerId).then(res => { if (!cancelled && res.success) setToReview(res.photos.length) })
+    return () => { cancelled = true }
+  }, [supabase, centerId, teacher, toast])
 
   // Messages fade on their own
   useEffect(() => {
@@ -315,6 +325,12 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
         </div>
         <div className="flex items-center gap-2">
           {busy > 0 && <span className="inline-flex items-center gap-1.5 text-xs font-bold text-muted"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</span>}
+          {!teacher && (
+            <Link href="/center/roster/photos"
+              className={`inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-bold hover:bg-surface ${toReview ? 'border-[#e8a33d] bg-[#fff0d1] text-[#7a4b00]' : 'border-border bg-white text-text-main'}`}>
+              <Camera className="h-3.5 w-3.5 text-brand-600" /> Photo review{toReview ? ` (${toReview})` : ''}
+            </Link>
+          )}
           {!teacherView && (
             <button type="button" onClick={() => setExporting(true)}
               className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border bg-white px-3 text-xs font-bold text-text-main hover:bg-surface">

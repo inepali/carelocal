@@ -330,6 +330,9 @@ export function ChildCard({
                       <div className={`min-w-0 flex-1 ${gone ? 'text-subtle line-through' : ''}`}>
                         <p><span className="font-bold text-heading">{d.title}</span>{d.detail && <span className="text-text-main"> · {d.detail}</span>}</p>
                         {e.details.note && <p className="text-xs text-muted">{e.details.note}</p>}
+                        {e.kind === 'photo' && e.approved === false && !gone && (
+                          <p className="mt-0.5 inline-block rounded-full bg-[#fff0d1] px-2 text-[11px] font-bold text-[#7a4b00]">Waiting for approval</p>
+                        )}
                         {e.kind === 'photo' && e.details.photo_key && photoUrls[e.details.photo_key] && !gone && (
                           <button type="button" onClick={() => setViewing({ url: photoUrls[e.details.photo_key!], caption: e.details.caption })}
                             className="mt-1 block overflow-hidden rounded-lg border border-border" aria-label="Open photo">
