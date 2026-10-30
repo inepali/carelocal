@@ -24,8 +24,8 @@ export interface Child {
   care_alert?: string | null
   /** null = by age (diapers under 3 years); the room teacher can switch it on the roster */
   toilet_trained?: boolean | null
-  /** Parents agreed to photos in the daily report */
-  daily_photos_allowed?: boolean
+  /** Parents allow the child's photos for marketing and social media (daily photos never need it) */
+  marketing_photos_allowed?: boolean
   source_tour_request_id: string | null
   created_by: string | null
   created_at: string

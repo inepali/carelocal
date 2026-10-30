@@ -29,6 +29,10 @@ export interface DailyDetails {
   status?: SleepStatus
   name?: string
   dose?: string
+  photo_key?: string
+  caption?: string
+  /** A class photo (tagged to the room) */
+  class?: boolean
 }
 
 export type SleepStatus = 'back' | 'other' | 'restless' | 'awake'
@@ -148,6 +152,8 @@ export function describeEntry(e: Pick<DailyEntry, 'kind' | 'details'> & { at?: s
       return { title: 'Sleep check', detail: label(SLEEP_STATUSES, d.status) }
     case 'medicine':
       return { title: 'Medicine', detail: [d.name, d.dose].filter(Boolean).join(' · ') }
+    case 'photo':
+      return { title: d.class ? 'Class photo' : 'Photo', detail: d.caption ?? '' }
     case 'meal':
       return { title: label(MEALS, d.meal) || 'Meal', detail: d.amount === 'other' ? (d.other ?? 'Other') : label(AMOUNTS, d.amount) }
     case 'bottle':
@@ -188,6 +194,8 @@ export function glanceChips(entries: (Pick<DailyEntry, 'kind' | 'details' | 'voi
   if (meds) chips.push(`${meds} ${meds === 1 ? 'medicine' : 'medicines'}`)
   const acts = live.filter(e => e.kind === 'activity').length
   if (acts) chips.push(`${acts} ${acts === 1 ? 'activity' : 'activities'}`)
+  const photos = live.filter(e => e.kind === 'photo').length
+  if (photos) chips.push(`${photos} ${photos === 1 ? 'photo' : 'photos'}`)
   return chips
 }
 

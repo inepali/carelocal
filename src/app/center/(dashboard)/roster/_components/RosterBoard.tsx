@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, BookOpen, ClipboardList, FileSpreadsheet, Moon, Sun, Utensils, Loader2, Radio, RefreshCw, Send, Users, X } from 'lucide-react'
+import { AlertTriangle, BookOpen, Camera, ClipboardList, FileSpreadsheet, Moon, Sun, Utensils, Loader2, Radio, RefreshCw, Send, Users, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { applyPresence, loadRoster, moveOnRoster, type PresenceRow, type RosterMove } from '@/lib/roster'
 import {
@@ -17,6 +17,7 @@ import { TransitionsLog } from './TransitionsLog'
 import { ChildCard } from './ChildCard'
 import { ClassEntryDialog } from './ClassEntryDialog'
 import { RoomNapDialog, type RoomNapMode } from './RoomNapDialog'
+import { ClassPhotoDialog } from './DailyPhoto'
 import { clockTime, loadRoomNaps, nextCheck, sleepChecksRequired, type RoomNap } from '@/lib/daily'
 import { ExportDialog } from './ExportDialog'
 import { useRosterDrag, type RosterInteract } from './useRosterDrag'
@@ -76,6 +77,7 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
   const [exporting, setExporting] = useState(false)
   const [classAction, setClassAction] = useState<'meal' | 'activity' | null>(null)
   const [napAction, setNapAction] = useState<RoomNapMode | null>(null)
+  const [classPhoto, setClassPhoto] = useState(false)
   const [roomNaps, setRoomNaps] = useState<RoomNap[]>([])
   const [clock, setClock] = useState(() => new Date())
   const dayRef = useRef('')
@@ -396,6 +398,10 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
                 className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-white px-3 text-sm font-bold text-heading hover:bg-surface">
                 <ClipboardList className="h-4 w-4 text-brand-600" /> Activity with class
               </button>
+              <button type="button" onClick={() => setClassPhoto(true)}
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-white px-3 text-sm font-bold text-heading hover:bg-surface">
+                <Camera className="h-4 w-4 text-brand-600" /> Class photo
+              </button>
               <div className="flex w-full flex-wrap items-center gap-2 border-t border-border pt-2">
                 <span className={`mr-auto inline-flex items-center gap-2 px-1 text-sm ${nextDue?.overdue ? 'font-bold text-[#7a4b00]' : 'text-muted'}`} role="status">
                   <Moon className="h-4 w-4 text-[#3b5bab]" />
@@ -501,6 +507,18 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
             border={drag.dragging.person.kind === 'staff' ? '3px solid #16202a' : '3px solid #ffffff'}
           />
         </div>
+      )}
+
+      {classPhoto && (
+        <ClassPhotoDialog
+          centerId={centerId}
+          room={focusRoom}
+          children={presentKids}
+          photos={photos}
+          tintOf={tintOf}
+          onClose={() => setClassPhoto(false)}
+          onDone={msg => { setClassPhoto(false); setToast(msg) }}
+        />
       )}
 
       {napAction && (

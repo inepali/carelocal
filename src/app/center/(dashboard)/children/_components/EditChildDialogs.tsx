@@ -23,7 +23,7 @@ export function EditChildDialog({ child, classrooms, onClose, onSaved }: {
     custody_restriction: child.custody_restriction, custody_note: child.custody_note ?? '',
     care_alert: child.care_alert ?? '',
     toilet: (child.toilet_trained == null ? 'auto' : child.toilet_trained ? 'yes' : 'no') as 'auto' | 'yes' | 'no',
-    daily_photos_allowed: child.daily_photos_allowed ?? false,
+    marketing_photos_allowed: child.marketing_photos_allowed ?? false,
   })
   const [saving, setSaving] = useState(false)
   const set = <K extends keyof typeof f>(key: K, value: (typeof f)[K]) => setF(prev => ({ ...prev, [key]: value }))
@@ -38,7 +38,7 @@ export function EditChildDialog({ child, classrooms, onClose, onSaved }: {
       custody_restriction: f.custody_restriction, custody_note: f.custody_restriction ? f.custody_note.trim() : null,
       care_alert: f.care_alert.trim() || null,
       toilet_trained: f.toilet === 'auto' ? null : f.toilet === 'yes',
-      daily_photos_allowed: f.daily_photos_allowed,
+      marketing_photos_allowed: f.marketing_photos_allowed,
     })
     setSaving(false)
     if (!res.success) { showAlert(res.error); return }
@@ -82,8 +82,8 @@ export function EditChildDialog({ child, classrooms, onClose, onSaved }: {
               </select>
             </div>
             <label className="flex cursor-pointer items-start gap-2.5 self-end pb-2 text-sm font-semibold text-text-main">
-              <input type="checkbox" checked={f.daily_photos_allowed} onChange={e => set('daily_photos_allowed', e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-brand-600" />
-              <span>Parents allow daily photos<span className="block text-xs font-normal text-muted">Teachers can add photos to the daily report.</span></span>
+              <input type="checkbox" checked={f.marketing_photos_allowed} onChange={e => set('marketing_photos_allowed', e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-brand-600" />
+              <span>Parents allow photos for marketing and social media<span className="block text-xs font-normal text-muted">Daily photos for parents never need this. Without it, staff see “Not for marketing”.</span></span>
             </label>
           </div>
         </div>

@@ -46,7 +46,8 @@ export interface RosterPerson {
   /** Children only: which care entry the card offers */
   diaper_or_bathroom?: 'diaper' | 'bathroom' | null
   /** Children only: family consent for activity photos */
-  daily_photos_allowed?: boolean | null
+  /** Parents allow photos for marketing and social media (daily photos never need it) */
+  marketing_photos_allowed?: boolean | null
 }
 
 export type StatusCode = 'ok' | 'warn' | 'out' | 'empty'

@@ -74,5 +74,9 @@ const napChips = glanceChips([e('nap', {}, '2026-10-30T16:30:00Z'), { ...e('nap'
 check('glance: naps in order, open nap as sleeping, medicine count',
   napChips.length === 3 && napChips[0].startsWith('Nap ') && napChips[1].startsWith('Sleeping since') && napChips[2] === '1 medicine', napChips.join(' | '))
 
+console.log('photos')
+check('a photo shows its caption; a class photo says so', d('photo', { photo_key: 'k', caption: 'Tower' }).detail === 'Tower' && d('photo', { photo_key: 'k', class: true }).title === 'Class photo')
+check('glance counts photos', glanceChips([e('photo', { photo_key: 'a' }, 'a'), e('photo', { photo_key: 'b' }, 'b')]).includes('2 photos'))
+
 console.log(`\n${passed} passed, ${failures.length} failed`)
 if (failures.length) process.exit(1)

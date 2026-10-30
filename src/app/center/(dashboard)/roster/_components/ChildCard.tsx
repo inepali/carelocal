@@ -13,8 +13,10 @@ import { Face } from './PersonAvatar'
 import { ZONE_LABEL } from './SelectedPanel'
 import { EntryForm, VoidForm, type RoutineKind } from './DailyForms'
 import { MedicineForm, NapBanner, NapTimeForm, SleepCheckForm } from './NapMedForms'
+import { PhotoForm, PhotoViewer } from './DailyPhoto'
+import { getDailyPhotoUrls } from '@/app/actions/daily-photo.actions'
 
-type AddKind = RoutineKind | 'nap' | 'wake' | 'sleep_check' | 'medicine'
+type AddKind = RoutineKind | 'nap' | 'wake' | 'sleep_check' | 'medicine' | 'photo'
 
 const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 
@@ -58,6 +60,8 @@ export function ChildCard({
   const [entries, setEntries] = useState<DailyEntry[]>([])
   const [adding, setAdding] = useState<{ kind: AddKind; key: string } | null>(null)
   const [status, setStatus] = useState<ChildStatus | null>(null)
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({})
+  const [viewing, setViewing] = useState<{ url: string; caption?: string } | null>(null)
   const [now, setNow] = useState(() => new Date())
   const [voiding, setVoiding] = useState<string | null>(null)
   const [working, setWorking] = useState(false)
@@ -82,7 +86,15 @@ export function ChildCard({
       loadDay(supabase, centerId, person.person_id, day || undefined),
       loadChildStatus(supabase, centerId, person.person_id),
     ])
-    if (res.success) setEntries(res.entries)
+    if (res.success) {
+      setEntries(res.entries)
+      // Signed links for today's photos (the server only signs keys the caller can read)
+      const keys = res.entries.map(e => e.details.photo_key).filter((k): k is string => !!k)
+      if (keys.length) {
+        const urls = await getDailyPhotoUrls(centerId, keys)
+        if (urls.success) setPhotoUrls(urls.urls)
+      }
+    }
     if (st.success) setStatus(st.status)
   }, [supabase, centerId, person.person_id, day])
 
@@ -110,10 +122,10 @@ export function ChildCard({
   }, [supabase, person.person_id, reloadEntries])
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { if (viewing) setViewing(null); else onClose() } }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [onClose, viewing])
 
   useEffect(() => {
     if (!saved) return
@@ -190,9 +202,7 @@ export function ChildCard({
     // Medicine only when a director has put the child's medicines on file
     ...(meds.length ? [{ kind: 'medicine' as const, label: 'Medicine', icon: Pill }] : []),
     { kind: 'note', label: 'Note', icon: StickyNote },
-  ]
-  const COMING = [
-    { label: 'Photo', icon: Camera },
+    { kind: 'photo', label: 'Photo', icon: Camera },
   ]
   const open = (kind: AddKind) => { setVoiding(null); setFormError(null); setAdding({ kind, key: newKey() }) }
   const cancel = () => { setAdding(null); setFormError(null) }
@@ -275,6 +285,9 @@ export function ChildCard({
                 onSave={adding.kind === 'nap' ? napStart : napEnd} onCancel={cancel} />
             ) : adding.kind === 'sleep_check' ? (
               <SleepCheckForm key={adding.key} required={required} busy={working} error={formError} onSave={sleepCheck} onCancel={cancel} />
+            ) : adding.kind === 'photo' ? (
+              <PhotoForm key={adding.key} centerId={centerId} person={person} onCancel={cancel}
+                onSaved={() => { setAdding(null); setSaved('Photo saved'); reloadEntries() }} />
             ) : adding.kind === 'medicine' ? (
               <MedicineForm key={adding.key} medications={meds} busy={working} error={formError} onSave={medicine} onCancel={cancel} />
             ) : (
@@ -287,11 +300,6 @@ export function ChildCard({
                   className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-white text-sm font-bold text-heading shadow-sm hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:hover:bg-white">
                   <Icon className="h-5 w-5 text-brand-600" /> {label}
                 </button>
-              ))}
-              {COMING.map(({ label, icon: Icon }) => (
-                <span key={label} title="Coming soon" className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border text-xs font-semibold text-subtle">
-                  <Icon className="h-5 w-5" /> {label} <span className="text-[10px] font-normal">Soon</span>
-                </span>
               ))}
             </div>
           )}
@@ -322,8 +330,15 @@ export function ChildCard({
                       <div className={`min-w-0 flex-1 ${gone ? 'text-subtle line-through' : ''}`}>
                         <p><span className="font-bold text-heading">{d.title}</span>{d.detail && <span className="text-text-main"> · {d.detail}</span>}</p>
                         {e.details.note && <p className="text-xs text-muted">{e.details.note}</p>}
+                        {e.kind === 'photo' && e.details.photo_key && photoUrls[e.details.photo_key] && !gone && (
+                          <button type="button" onClick={() => setViewing({ url: photoUrls[e.details.photo_key!], caption: e.details.caption })}
+                            className="mt-1 block overflow-hidden rounded-lg border border-border" aria-label="Open photo">
+                            {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed URL */}
+                            <img src={photoUrls[e.details.photo_key]} alt={e.details.caption ?? 'Photo'} className="h-24 w-32 object-cover" />
+                          </button>
+                        )}
                         {/* Who recorded it is left off until teachers sign in to the roster on their own */}
-                        {e.batch_id && <p className="text-[11px] text-subtle">Whole class</p>}
+                        {e.batch_id && ['meal', 'activity', 'note'].includes(e.kind) && <p className="text-[11px] text-subtle">Whole class</p>}
                       </div>
                       {e.can_void && voiding !== e.id && (
                         <button type="button" onClick={() => { setAdding(null); setFormError(null); setVoiding(e.id) }}
@@ -357,6 +372,7 @@ export function ChildCard({
 
       </div>
     </aside>
+    {viewing && <PhotoViewer url={viewing.url} caption={viewing.caption} onClose={() => setViewing(null)} />}
     </>
   )
 }
