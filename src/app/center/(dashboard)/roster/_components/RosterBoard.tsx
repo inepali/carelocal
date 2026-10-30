@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, Loader2, Radio, RefreshCw, Send, Users, X } from 'lucide-react'
+import { AlertTriangle, FileSpreadsheet, Loader2, Radio, RefreshCw, Send, Users, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { applyPresence, loadRoster, moveOnRoster, type PresenceRow, type RosterMove } from '@/lib/roster'
 import {
@@ -14,6 +14,7 @@ import { RoomStage } from './RoomStage'
 import { RoomTile, StatusPill } from './RoomTile'
 import { SelectedPanel, ZONE_LABEL } from './SelectedPanel'
 import { TransitionsLog } from './TransitionsLog'
+import { ExportDialog } from './ExportDialog'
 import { useRosterDrag, type RosterInteract } from './useRosterDrag'
 
 /** One soft tint per room, in the center's room order; a child wears their home room's tint */
@@ -56,6 +57,7 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
   const [busy, setBusy] = useState(0)
   const [toast, setToast] = useState<string | null>(null)
   const [logKey, setLogKey] = useState(0)
+  const [exporting, setExporting] = useState(false)
   const dayRef = useRef('')
   const peopleRef = useRef<RosterPerson[]>([])
   useEffect(() => { peopleRef.current = people }, [people])
@@ -247,6 +249,12 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
         </div>
         <div className="flex items-center gap-2">
           {busy > 0 && <span className="inline-flex items-center gap-1.5 text-xs font-bold text-muted"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</span>}
+          {!teacher && (
+            <button type="button" onClick={() => setExporting(true)}
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border bg-white px-3 text-xs font-bold text-text-main hover:bg-surface">
+              <FileSpreadsheet className="h-3.5 w-3.5 text-brand-600" /> Export attendance
+            </button>
+          )}
           <LiveBadge live={live} onRetry={() => { reload(); reloadPhotos(); setLogKey(k => k + 1) }} />
         </div>
       </header>
@@ -374,6 +382,8 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
           />
         </div>
       )}
+
+      {exporting && <ExportDialog supabase={supabase} centerId={centerId} today={day} onClose={() => setExporting(false)} />}
 
       {toast && (
         <div role="status" className="fixed left-1/2 top-4 z-50 flex max-w-[92vw] -translate-x-1/2 items-center gap-3 rounded-2xl bg-[#7e1a14] px-4 py-3 text-sm font-semibold text-white shadow-2xl">

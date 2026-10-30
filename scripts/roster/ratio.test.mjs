@@ -148,5 +148,19 @@ console.log('Ratio engine')
   check('no room covers 40 months: no suggestion', suggestHomeRoom(40, ROOMS) === null)
 }
 
+// 17. Attendance export (CSV)
+{
+  const ex = await import('../../src/lib/roster-export.ts')
+  check('hours on site read as h:mm', ex.hoursMinutes(485) === '8:05' && ex.hoursMinutes(0) === '0:00' && ex.hoursMinutes(null) === '')
+  check('commas and quotes are quoted for spreadsheets', ex.csvCell('Lee, "JJ"') === '"Lee, ""JJ"""')
+  check('a name that looks like a formula cannot run in Excel', ex.csvCell('=HYPERLINK("x")').startsWith(`"'=`) && ex.csvCell('+1') === "'+1" && ex.csvCell('-3') === "'-3")
+  const csv = ex.attendanceCsv([{ service_date: '2026-10-30', kind: 'child', person_id: 'k', first_name: 'Ava', last_name: 'Lee', role: 'Child', home_room: 'Infants',
+    status: 'Present', first_in: '07:30 AM', last_out: '03:30 PM', minutes_on_site: 480, rooms: 'Infants, Toddlers', moves: 5 }])
+  check('the attendance sheet starts with a BOM and a header, rows end with CRLF',
+    csv.startsWith('\uFEFFDate,First name,') && csv.includes('\r\n2026-10-30,Ava,Lee,Child,Infants,Present,07:30 AM,03:30 PM,8:00,"Infants, Toddlers",5\r\n'), JSON.stringify(csv.slice(0, 160)))
+  check('file names name the day or the range', ex.exportFileName('attendance', '2026-10-30', '2026-10-30') === 'attendance_2026-10-30.csv'
+    && ex.exportFileName('moves', '2026-10-01', '2026-10-30') === 'moves_2026-10-01_to_2026-10-30.csv')
+}
+
 console.log(`\n${passed} passed, ${failures.length} failed`)
 if (failures.length) { for (const f of failures) console.log(`  ✗ ${f}`); process.exit(1) }
