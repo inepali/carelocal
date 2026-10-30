@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, LayoutDashboard, Users, UserPlus, Info, Calendar, Tags, LifeBuoy, ClipboardCheck, Truck, Baby, Building2, UserCircle, Inbox, ShieldCheck, Briefcase, CalendarCheck } from 'lucide-react'
+import { LogOut, LayoutDashboard, Users, UserPlus, Info, Calendar, Tags, LifeBuoy, ClipboardCheck, Truck, Baby, Building2, UserCircle, Inbox, ShieldCheck, Briefcase, CalendarCheck, LayoutGrid } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
-import { CenterContext, canOpenChildFiles } from './context'
+import { CenterContext, canOpenChildFiles, canOpenRoster } from './context'
 import type { DomainKey } from '@/lib/domain-config'
 
 // Dev/demo tool: jumps the browser to another vertical's domain (it does not change the
@@ -32,6 +32,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
   const [centerId, setCenterId] = useState<string | null>(null)
   const [role, setRole] = useState<string | null>(null)
   const [childFilesEnabled, setChildFilesEnabled] = useState(false)
+  const [rosterEnabled, setRosterEnabled] = useState(false)
 
   useEffect(() => {
     async function loadCenter() {
@@ -49,7 +50,8 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
             work_area_term,
             domain_key,
             jobs_enabled,
-            child_files_enabled
+            child_files_enabled,
+            roster_enabled
           )
         `)
         .eq('user_id', user.id)
@@ -73,6 +75,8 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
         setJobsEnabled(!!data.centers.jobs_enabled)
         // @ts-ignore
         setChildFilesEnabled(!!data.centers.child_files_enabled)
+        // @ts-ignore
+        setRosterEnabled(!!data.centers.roster_enabled)
       }
 
       // Admins who are also employees can switch to their own staff portal
@@ -104,6 +108,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
     { name: 'Dashboard', href: '/center/dashboard', icon: LayoutDashboard },
     { name: 'Shifts', href: '/center/shifts', icon: Calendar },
     { name: staffTerm, href: '/center/team_member', icon: Users },
+    ...(canOpenRoster({ domainKey, role, childFilesEnabled, rosterEnabled }) ? [{ name: 'Live roster', href: '/center/roster', icon: LayoutGrid }] : []),
     ...(canOpenChildFiles({ domainKey, role, childFilesEnabled }) ? [{ name: 'Children', href: '/center/children', icon: Baby }] : []),
     ...(jobsEnabled ? [{ name: 'Jobs', href: '/center/jobs', icon: Briefcase }] : []),
     { name: 'Requests', href: '/center/requests', icon: Inbox },
@@ -121,7 +126,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <CenterContext.Provider value={{ staffTerm, workAreaTerm, domainKey, centerId, role, childFilesEnabled }}>
+    <CenterContext.Provider value={{ staffTerm, workAreaTerm, domainKey, centerId, role, childFilesEnabled, rosterEnabled }}>
       <div className="center-shell min-h-screen bg-surface flex font-sans">
       {/* ── Sidebar ── */}
       <aside className="w-64 bg-brand-900 text-white flex flex-col fixed inset-y-0 z-10">

@@ -11,6 +11,8 @@ type CenterContextType = {
   role: string | null;
   /** Child Files is switched on for this center (a super admin turns it on) */
   childFilesEnabled: boolean;
+  /** Live Roster is switched on for this center (a super admin turns it on) */
+  rosterEnabled: boolean;
 }
 
 export const CenterContext = createContext<CenterContextType>({
@@ -20,6 +22,7 @@ export const CenterContext = createContext<CenterContextType>({
   centerId: null,
   role: null,
   childFilesEnabled: false,
+  rosterEnabled: false,
 })
 
 export const useCenterContext = () => useContext(CenterContext)
@@ -30,3 +33,7 @@ export const canManageReceipts = (ctx: Pick<CenterContextType, 'role'>) => ctx.r
 /** Only the owner and administrators may open child records (the database enforces the same rule) */
 export const canOpenChildFiles = (ctx: Pick<CenterContextType, 'domainKey' | 'role' | 'childFilesEnabled'>) =>
   ctx.domainKey === 'childcare' && ctx.childFilesEnabled && (ctx.role === 'owner' || ctx.role === 'admin')
+
+/** The Live Roster needs Child Files and its own switch; owners and administrators open it here (teachers get their own view) */
+export const canOpenRoster = (ctx: Pick<CenterContextType, 'domainKey' | 'role' | 'childFilesEnabled' | 'rosterEnabled'>) =>
+  canOpenChildFiles(ctx) && ctx.rosterEnabled
