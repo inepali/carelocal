@@ -170,13 +170,26 @@ export function centerTotals(rooms: RosterRoom[], people: RosterPerson[], status
   }
 }
 
-/** Who sits where on the board for one room: the room's own home band plus each on-site zone */
+/**
+ * Who sits where on the board for one room: the room's own home band plus each on-site zone.
+ * Someone with no home room never sits in a Home band (not even of the room they last left): while they are
+ * not checked in they wait in the Lobby of whichever room is open (see waitingForRoom).
+ */
 export function peopleInRoom(roomId: string, people: RosterPerson[]) {
-  const mine = people.filter(p => p.work_area_id === roomId || (p.zone === 'home' && !p.work_area_id && p.home_area_id === roomId))
+  const mine = people.filter(p => p.zone === 'home'
+    ? !!p.home_area_id && (p.work_area_id ?? p.home_area_id) === roomId
+    : p.work_area_id === roomId)
   const by = (zone: RosterZone) => mine
     .filter(p => p.zone === zone)
     .sort((a, b) => (a.kind === b.kind ? a.first_name.localeCompare(b.first_name) : a.kind === 'staff' ? -1 : 1))
   return { home: by('home'), classroom: by('classroom'), playground: by('playground'), lobby: by('lobby') }
+}
+
+/** Not checked in and no home room: floaters, and children who still need a home room */
+export function waitingForRoom(people: RosterPerson[]) {
+  return people
+    .filter(p => p.zone === 'home' && !p.home_area_id)
+    .sort((a, b) => (a.kind === b.kind ? a.first_name.localeCompare(b.first_name) : a.kind === 'staff' ? -1 : 1))
 }
 
 /** "4 y 2 mo" / "14 mo" */

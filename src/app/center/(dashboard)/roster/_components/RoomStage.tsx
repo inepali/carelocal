@@ -21,7 +21,7 @@ export function RoomStage({
   room,
   status,
   seats,
-  floaters,
+  waiting,
   photos,
   tintOf,
   visitingFrom,
@@ -30,8 +30,8 @@ export function RoomStage({
   room: RosterRoom
   status: RoomStatus
   seats: Seats
-  /** Teachers with no home room who are not checked in anywhere: they wait in the Lobby, available to any room */
-  floaters: RosterPerson[]
+  /** Not checked in and no home room (floaters, children who need a home room): shown waiting in the Lobby */
+  waiting: RosterPerson[]
   photos: Record<string, string>
   tintOf: (p: RosterPerson) => string
   visitingFrom: (p: RosterPerson) => string | null
@@ -73,6 +73,10 @@ export function RoomStage({
   const homeKids = seats.home.filter(p => p.kind === 'child').length
   const play = status.groups.playground
   const lobby = status.groups.lobby
+  const waitingStaff = waiting.filter(p => p.kind === 'staff').length
+  const waitingKids = waiting.length - waitingStaff
+  const waitingLabel = [waitingStaff ? plural(waitingStaff, 'floater', 'floaters') : '', waitingKids ? `${plural(waitingKids, 'child', 'children')} with no home room` : '']
+    .filter(Boolean).join(', ')
 
   const column = (people: RosterPerson[], side: 'left' | 'right', top: string, bottom: string, width: string, dashed: boolean | ((p: RosterPerson) => boolean), empty?: string) => (
     <div className="absolute flex flex-wrap content-start justify-center gap-1.5 overflow-y-auto" style={{ [side]: 8, width, top, bottom }}>
@@ -95,8 +99,8 @@ export function RoomStage({
           <span className="inline-flex items-center gap-2 text-sm font-bold"><Home className="h-[18px] w-[18px]" />Home · checked out or absent</span>
           <span className="text-xs font-bold">{plural(homeKids, 'child', 'children')}</span>
         </div>
-        {column(even(seats.home), 'left', '52px', '8px', 'calc(18% - 10px)', true, 'Everyone is here')}
-        {column(odd(seats.home), 'right', '52px', '8px', 'calc(18% - 10px)', true)}
+        {column(even(seats.home), 'left', '52px', '8px', 'calc(16% - 10px)', true, 'Everyone is here')}
+        {column(odd(seats.home), 'right', '52px', '8px', 'calc(16% - 10px)', true)}
       </div>
 
       {/* Playground */}
@@ -121,13 +125,14 @@ export function RoomStage({
         className="absolute bottom-0 right-0 h-1/2 w-1/2 border-t-[3px] border-t-[#2c5c9a] text-[#1d3f6e] transition-colors"
         style={{ background: isOver(keys.lobby) ? '#b3cdee' : '#cfe0f5', boxShadow: zoneShadow(keys.lobby) }}
       >
-        {column([...seats.lobby, ...floaters], 'right', '12px', '64px', 'calc(22% - 10px)', p => floaters.includes(p), 'Pickups, drop-offs')}
+        {column([...seats.lobby, ...waiting], 'right', '12px', waitingLabel ? '84px' : '64px', 'calc(22% - 10px)', p => waiting.includes(p), 'Pickups, drop-offs')}
         <div className="absolute inset-x-3 bottom-2.5 flex flex-col items-end gap-1">
           <span className="inline-flex items-center gap-1.5 text-sm font-bold"><DoorOpen className="h-[18px] w-[18px]" />Lobby</span>
           <span className="inline-flex flex-wrap items-center justify-end gap-1.5 text-xs font-bold">
             {plural(lobby.children, 'child', 'children')} · {plural(lobby.teachers, 'teacher', 'teachers')}
             <StatusPill code={lobby.code} label={lobby.label} />
           </span>
+          {waitingLabel && <span className="text-[11px] font-semibold opacity-90">Waiting (not checked in): {waitingLabel}</span>}
         </div>
       </div>
 

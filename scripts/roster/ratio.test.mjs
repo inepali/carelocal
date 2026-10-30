@@ -5,7 +5,7 @@
  *
  *   npm run test:roster
  */
-import { allRoomStatuses, centerTotals, childAgeRatio, peopleInRoom, roomStatus, simulateMove } from '../../src/lib/roster-ratio.ts'
+import { allRoomStatuses, centerTotals, childAgeRatio, peopleInRoom, roomStatus, simulateMove, waitingForRoom } from '../../src/lib/roster-ratio.ts'
 
 let passed = 0
 const failures = []
@@ -122,6 +122,21 @@ console.log('Ratio engine')
   const seats = peopleInRoom('inf', [...out, notSeen])
   check('the home band lists checked-out and not-yet-arrived children of the room', seats.home.length === 2 && seats.classroom.length === 5, `${seats.home.length} home, ${seats.classroom.length} in`)
   check('teachers are listed before children', seats.classroom[0].kind === 'staff')
+}
+
+// 15. Waiting in the Lobby: no home room and not checked in
+{
+  const floaterOut = { ...tchr('inf', 'home', null) }            // checked out of Infants, no home room
+  const floaterNew = tchr(null, 'home', null)                    // not seen today
+  const floaterIn = tchr('tod', 'classroom', null)               // working in Toddlers
+  const kidNoRoom = kid(null, 'home', 30, null)                   // enrolled, no home room yet
+  const people = [floaterOut, floaterNew, floaterIn, kidNoRoom, kid('inf', 'home', 4)]
+  const w = waitingForRoom(people)
+  check('waiting lists floaters and children with no home room who are not checked in', w.length === 3 && w.includes(kidNoRoom) && !w.includes(floaterIn), `${w.length}`)
+  check('waiting lists teachers first', w[0].kind === 'staff' && w.at(-1).kind === 'child')
+  const seats = peopleInRoom('inf', people)
+  check('a checked-out floater does not also sit in the Home band of the room they left', !seats.home.includes(floaterOut) && seats.home.length === 1, `${seats.home.length}`)
+  check('a floater working in a room still sits in that room', peopleInRoom('tod', people).classroom.includes(floaterIn))
 }
 
 console.log(`\n${passed} passed, ${failures.length} failed`)

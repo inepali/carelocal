@@ -5,7 +5,7 @@ import { AlertTriangle, Loader2, Radio, RefreshCw, Send, Users, X } from 'lucide
 import { createClient } from '@/lib/supabase/client'
 import { applyPresence, loadRoster, moveOnRoster, type PresenceRow, type RosterMove } from '@/lib/roster'
 import {
-  allRoomStatuses, centerTotals, ON_SITE_ZONES, peopleInRoom, roomStatus, simulateMove,
+  allRoomStatuses, centerTotals, ON_SITE_ZONES, peopleInRoom, roomStatus, simulateMove, waitingForRoom,
   type RosterPerson, type RosterRoom, type StatusCode,
 } from '@/lib/roster-ratio'
 import { getRosterPhotoUrls } from '@/app/actions/roster.actions'
@@ -202,8 +202,9 @@ export function RosterBoard({ centerId }: { centerId: string }) {
   const others = rooms.filter(r => r.id !== focusRoom.id)
   const rows = Math.max(1, Math.ceil(others.length / 2))
   const slot = (i: number) => (i < rows ? { col: 1, row: i + 1 } : { col: 3, row: i - rows + 1 })
-  // Floaters have no home room: when they are not checked in anywhere they wait in the Lobby
-  const floatersFree = people.filter(p => p.kind === 'staff' && !p.home_area_id && p.zone === 'home')
+  // No home room and not checked in (floaters, children who still need a home room): they wait in the Lobby
+  const waiting = waitingForRoom(people)
+  const floatersFree = waiting.filter(p => p.kind === 'staff')
   const alerts = rooms.filter(r => statuses[r.id].code === 'out')
   const fs = statuses[focusRoom.id]
   const selected = people.find(p => p.person_id === selectedId) ?? null
@@ -289,8 +290,16 @@ export function RosterBoard({ centerId }: { centerId: string }) {
               Using 1:{fs.effectiveRatio} instead of 1:{focusRoom.ratio_children} because a younger child is here.
             </p>
           )}
-          <RoomStage room={focusRoom} status={fs} seats={peopleInRoom(focusRoom.id, people)} floaters={floatersFree} photos={photos} tintOf={tintOf} visitingFrom={visitingFrom} ix={ix} />
+          <RoomStage room={focusRoom} status={fs} seats={peopleInRoom(focusRoom.id, people)} waiting={waiting} photos={photos} tintOf={tintOf} visitingFrom={visitingFrom} ix={ix} />
           <Legend />
+          <details className="mt-3 text-xs text-muted">
+            <summary className="cursor-pointer font-semibold text-brand-600">How to move people</summary>
+            <p className="mt-1.5 leading-relaxed">
+              Drag a child or teacher into Classroom, Playground or Lobby to check them in or move them, onto Home to check them out,
+              or onto another room to change rooms. Floaters and children with no home room wait in the Lobby with a dashed outline
+              until you drag them in. Tap anyone for the same moves as buttons.
+            </p>
+          </details>
         </section>
 
         {others.map((r, i) => {
