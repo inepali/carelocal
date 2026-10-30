@@ -5,11 +5,12 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Baby, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { enrollFromTourRequest, type Classroom } from '@/lib/children'
+import { enrollFromTourRequest, loadClassrooms, type Classroom } from '@/lib/children'
 import type { Child } from '@/lib/child-types'
 import type { CenterTourRequest } from '@/lib/tours'
 import { showAlert } from '@/lib/dialog'
 import { BTN, BTN_PRIMARY, BTN_QUIET, FLD, LBL, Modal, todayISO } from './ui'
+import { HomeRoomField, suggestedRoomFor } from './HomeRoomField'
 
 /**
  * On a tour request: enroll a child the family listed. The parent who asked becomes the first contact (and
@@ -23,15 +24,20 @@ export function EnrollFromTour({ request }: { request: CenterTourRequest }) {
   const [picking, setPicking] = useState<number | null>(null)
   const [f, setF] = useState({ date_of_birth: '', classroom_id: '', enrolled_on: todayISO(), first_attended_on: '' })
   const [saving, setSaving] = useState(false)
+  const [roomPicked, setRoomPicked] = useState(false)
+  const today = todayISO()
+  const ageDay = f.first_attended_on || (f.enrolled_on > today ? f.enrolled_on : today)
+  const withSuggestion = (prev: typeof f, dob: string) =>
+    ({ ...prev, date_of_birth: dob, classroom_id: roomPicked ? prev.classroom_id : suggestedRoomFor(dob, ageDay, classrooms)?.id ?? prev.classroom_id })
 
   useEffect(() => {
     const supabase = createClient()
     Promise.all([
       supabase.from('children').select('*').eq('source_tour_request_id', request.id),
-      supabase.from('work_areas').select('id, name').eq('center_id', request.center_id).eq('is_active', true).order('sort_order').order('name'),
+      loadClassrooms(supabase, request.center_id),
     ]).then(([kids, rooms]) => {
       setExisting((kids.data ?? []) as Child[])
-      setClassrooms((rooms.data ?? []) as Classroom[])
+      setClassrooms(rooms)
     })
   }, [request.id, request.center_id])
 
@@ -41,7 +47,8 @@ export function EnrollFromTour({ request }: { request: CenterTourRequest }) {
   const alreadyEnrolled = (name: string) => existing.some(c => c.first_name.toLowerCase() === name.trim().split(/\s+/)[0].toLowerCase())
 
   function startEnrolling(index: number) {
-    setF(prev => ({ ...prev, date_of_birth: request.children[index]?.dob ?? '' }))
+    setRoomPicked(false)
+    setF(prev => withSuggestion({ ...prev, classroom_id: '' }, request.children[index]?.dob ?? ''))
     setPicking(index)
   }
 
@@ -81,13 +88,10 @@ export function EnrollFromTour({ request }: { request: CenterTourRequest }) {
           <div className="space-y-4">
             <p className="text-sm text-muted">{request.first_name} {request.last_name} becomes the first contact. They are not authorized for pick-up until you do that on the child&apos;s file.</p>
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="sm:col-span-2"><label className={LBL}>Date of birth *</label><input type="date" value={f.date_of_birth} onChange={e => setF({ ...f, date_of_birth: e.target.value })} className={FLD} />
+              <div className="sm:col-span-2"><label className={LBL}>Date of birth *</label><input type="date" value={f.date_of_birth} onChange={e => setF(withSuggestion(f, e.target.value))} className={FLD} />
                 {!request.children[picking].dob && <p className="mt-1 text-[11px] text-subtle">The request did not include a birth date.</p>}</div>
-              <div><label className={LBL}>Classroom</label>
-                <select value={f.classroom_id} onChange={e => setF({ ...f, classroom_id: e.target.value })} className={FLD}>
-                  <option value="">Not assigned</option>
-                  {classrooms.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select></div>
+              <HomeRoomField classrooms={classrooms} dob={f.date_of_birth} onDay={ageDay} value={f.classroom_id}
+                onChange={id => { setRoomPicked(true); setF({ ...f, classroom_id: id }) }} />
               <div><label className={LBL}>Enrolled on</label><input type="date" value={f.enrolled_on} onChange={e => setF({ ...f, enrolled_on: e.target.value })} className={FLD} /></div>
               <div className="sm:col-span-2"><label className={LBL}>First day of attendance</label><input type="date" value={f.first_attended_on} onChange={e => setF({ ...f, first_attended_on: e.target.value })} className={FLD} /></div>
             </div>

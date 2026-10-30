@@ -13,6 +13,8 @@ import type { Child, ChildDocumentStatus } from '@/lib/child-types'
 import { formatDate } from '@/lib/compliance'
 import { showAlert } from '@/lib/dialog'
 import { AddChildDialog } from './_components/AddChildDialog'
+import { ChildThumb } from './_components/ChildPhoto'
+import { getChildPhotoUrls } from '@/app/actions/child-photo.actions'
 import { BTN, BTN_QUIET_SM, Pill } from './_components/ui'
 
 type StatusFilter = 'enrolled' | 'withdrawn' | 'all'
@@ -31,6 +33,7 @@ export default function ChildrenPage() {
   const [classroom, setClassroom] = useState('')
   const [adding, setAdding] = useState(false)
   const [seeding, setSeeding] = useState(false)
+  const [photos, setPhotos] = useState<Record<string, string>>({})
   const allowed = canOpenChildFiles(ctx)
 
   const load = useCallback(async () => {
@@ -38,6 +41,7 @@ export default function ChildrenPage() {
     const res = await loadChildrenOverview(createClient(), ctx.centerId)
     if (res.success) {
       setChildren(res.children); setRequirements(res.requirements); setRecords(res.records); setClassrooms(res.classrooms)
+      if (res.children.some(c => c.photo_key)) getChildPhotoUrls(ctx.centerId).then(p => { if (p.success) setPhotos(p.urls) })
     } else {
       showAlert(res.error)
     }
@@ -139,9 +143,14 @@ export default function ChildrenPage() {
                 {rows.map(({ child, summary }) => (
                   <tr key={child.id} className="align-top hover:bg-surface">
                     <td className="px-6 py-4">
-                      <Link href={`/center/children/${child.id}`} className="font-semibold text-text-main hover:text-brand-600 hover:underline">{child.first_name} {child.last_name}</Link>
-                      <div className="text-xs text-muted">{describeAge(child.date_of_birth)}{child.preferred_name ? ` · goes by ${child.preferred_name}` : ''}{child.status === 'withdrawn' ? ' · withdrawn' : ''}</div>
-                      {child.custody_restriction && <div className="mt-0.5 text-xs font-semibold text-amber-700">Custody restriction on file</div>}
+                      <div className="flex items-start gap-3">
+                        <ChildThumb url={photos[child.id]} initials={`${child.first_name[0] ?? ''}${child.last_name[0] ?? ''}`} />
+                        <div>
+                          <Link href={`/center/children/${child.id}`} className="font-semibold text-text-main hover:text-brand-600 hover:underline">{child.first_name} {child.last_name}</Link>
+                          <div className="text-xs text-muted">{describeAge(child.date_of_birth)}{child.preferred_name ? ` · goes by ${child.preferred_name}` : ''}{child.status === 'withdrawn' ? ' · withdrawn' : ''}</div>
+                          {child.custody_restriction && <div className="mt-0.5 text-xs font-semibold text-amber-700">Custody restriction on file</div>}
+                        </div>
+                      </div>
                     </td>
                     <td className="px-4 py-4">{roomName(child.classroom_id)}</td>
                     <td className="whitespace-nowrap px-4 py-4">{formatDate(child.first_attended_on ?? child.enrolled_on)}</td>

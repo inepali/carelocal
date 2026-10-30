@@ -227,7 +227,7 @@ export default function ManageDataTab() {
         {/* Content Area */}
         <div className="flex-1 bg-white rounded-3xl border border-border overflow-hidden shadow-sm">
           {activeGroup === WORK_AREAS_TAB ? (
-            scope && <WorkAreasPanel centerId={scope.centerId} workAreaTerm={workAreaTerm} />
+            scope && <WorkAreasPanel centerId={scope.centerId} workAreaTerm={workAreaTerm} showRoster={scope.domainKey === 'childcare'} />
           ) : (
           <>
           <div className="p-6 border-b border-border bg-surface/50 flex items-center justify-between">

@@ -18,6 +18,8 @@ export interface Child {
   withdrawn_on: string | null
   custody_restriction: boolean
   custody_note: string | null
+  /** Headshot in the child bucket (child/<center>/<child>/photo/...), null = initials */
+  photo_key?: string | null
   source_tour_request_id: string | null
   created_by: string | null
   created_at: string

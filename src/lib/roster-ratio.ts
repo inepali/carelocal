@@ -192,6 +192,22 @@ export function waitingForRoom(people: RosterPerson[]) {
     .sort((a, b) => (a.kind === b.kind ? a.first_name.localeCompare(b.first_name) : a.kind === 'staff' ? -1 : 1))
 }
 
+/** Whole months between a birth date and a day (YYYY-MM-DD), the same count the database uses */
+export function ageInMonths(dob: string, on: string): number | null {
+  const [by, bm, bd] = dob.split('-').map(Number)
+  const [oy, om, od] = on.split('-').map(Number)
+  if (!by || !bm || !bd || !oy || !om || !od) return null
+  let m = (oy - by) * 12 + (om - bm)
+  if (od < bd) m -= 1
+  return m < 0 ? null : m
+}
+
+/** The room whose age range covers a child of this age (the first in the center's order), or null */
+export function suggestHomeRoom<R extends { id: string; min_age_months?: number | null; max_age_months?: number | null }>(ageMonths: number | null, rooms: R[]): R | null {
+  if (ageMonths == null) return null
+  return rooms.find(r => r.min_age_months != null && r.max_age_months != null && ageMonths >= r.min_age_months && ageMonths < r.max_age_months) ?? null
+}
+
 /** "4 y 2 mo" / "14 mo" */
 export function ageLabel(months: number | null) {
   if (months == null) return ''

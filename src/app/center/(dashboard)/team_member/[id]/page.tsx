@@ -95,6 +95,9 @@ export default function StaffReviewPage() {
   const [openRequests, setOpenRequests] = useState<DocumentRequest[]>([])
   const [requestFor, setRequestFor] = useState<{ requirementId?: string } | null>(null)
   const [savingClass, setSavingClass] = useState(false)
+  // Live roster: the regular teacher's own room (their view opens there; they wait at its Home when not checked in)
+  const [homeRoom, setHomeRoom] = useState('')
+  const [rooms, setRooms] = useState<{ id: string; name: string }[]>([])
   
 
   useEffect(() => { loadData() }, [staffId])
@@ -129,7 +132,7 @@ export default function StaffReviewPage() {
       // 2. Employment class at this center + requirements that apply to it
       const { data: membership } = await supabase
         .from('center_staff')
-        .select('status, employment_class, employment_start_date, requested_employment_class')
+        .select('status, employment_class, employment_start_date, requested_employment_class, home_work_area_id')
         .eq('center_id', admin.center_id)
         .eq('staff_id', staffId)
         .maybeSingle()
@@ -139,6 +142,10 @@ export default function StaffReviewPage() {
       setRequestedClass((membership?.requested_employment_class as EmploymentClass | null) ?? staffProfile.requested_employment_class ?? null)
       setApproveClass((membership?.requested_employment_class as EmploymentClass | null) ?? memberClass)
       setStartDate(membership?.employment_start_date ?? '')
+      setHomeRoom((membership as { home_work_area_id?: string | null } | null)?.home_work_area_id ?? '')
+      const { data: roomRows } = await supabase.from('work_areas').select('id, name')
+        .eq('center_id', admin.center_id).eq('is_active', true).order('sort_order').order('name')
+      setRooms((roomRows ?? []) as { id: string; name: string }[])
 
       const { data: reqs } = await supabase
         .from('center_document_requirements')
@@ -298,6 +305,20 @@ export default function StaffReviewPage() {
     else loadData()
   }
 
+  async function handleChangeHomeRoom(next: string) {
+    if (!centerId || next === homeRoom) return
+    const previous = homeRoom
+    setHomeRoom(next)
+    const { data, error } = await supabase.from('center_staff').update({ home_work_area_id: next || null })
+      .eq('center_id', centerId).eq('staff_id', staffId).select('home_work_area_id').maybeSingle()
+    // The database keeps the old room when the change is not allowed, so trust what it saved
+    const saved = (data as { home_work_area_id?: string | null } | null)?.home_work_area_id ?? ''
+    if (error || saved !== next) {
+      setHomeRoom(error ? previous : saved)
+      showAlert(error ? 'Failed to update the home room: ' + error.message : 'Only the center owner or an administrator can change the home room.')
+    }
+  }
+
   async function handleChangeStartDate(next: string) {
     if (!centerId || !next || next === startDate) return
     const previous = startDate
@@ -391,6 +412,19 @@ export default function StaffReviewPage() {
                   className="bg-transparent text-brand-600 font-black focus:outline-none"
                 />
               </label>
+              {employmentClass === 'regular' && rooms.length > 0 && (
+                <label className="inline-flex items-center gap-2 bg-white px-3 py-1 rounded-lg text-xs font-bold text-muted border border-brand-100" title="Their room on the live roster. Floaters have none.">
+                  Home room
+                  <select
+                    value={homeRoom}
+                    onChange={(e) => handleChangeHomeRoom(e.target.value)}
+                    className="bg-transparent text-brand-600 font-black focus:outline-none"
+                  >
+                    <option value="">None (floater)</option>
+                    {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                  </select>
+                </label>
+              )}
               {targetCenterRole === 'owner' ? (
                 <span className="inline-flex items-center gap-1.5 bg-brand-900 text-white px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest">
                   <ShieldCheck className="w-3.5 h-3.5" /> Owner

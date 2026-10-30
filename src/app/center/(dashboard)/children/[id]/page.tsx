@@ -15,6 +15,8 @@ import { ContactsPanel } from '../_components/ContactsPanel'
 import { ActivityPanel } from '../_components/ActivityPanel'
 import { EditChildDialog, WithdrawDialog } from '../_components/EditChildDialogs'
 import { BTN, Pill, todayISO } from '../_components/ui'
+import { ChildPhoto } from '../_components/ChildPhoto'
+import { getChildPhotoUrls } from '@/app/actions/child-photo.actions'
 
 type Loaded = NonNullable<Awaited<ReturnType<typeof loadChildFile>>>
 type Tab = 'records' | 'contacts' | 'activity'
@@ -30,6 +32,7 @@ export default function ChildFilePage() {
   const [tab, setTab] = useState<Tab>('records')
   const [editing, setEditing] = useState(false)
   const [withdrawing, setWithdrawing] = useState(false)
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     const supabase = createClient()
@@ -37,6 +40,12 @@ export default function ChildFilePage() {
     setUserId(user?.id ?? null)
     setData(file)
     setLoading(false)
+    if (file?.child.photo_key) {
+      const photos = await getChildPhotoUrls(file.child.center_id, [file.child.id])
+      setPhotoUrl(photos.success ? photos.urls[file.child.id] ?? null : null)
+    } else {
+      setPhotoUrl(null)
+    }
   }, [id])
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -84,7 +93,7 @@ export default function ChildFilePage() {
       )}
 
       <div className="mb-6 flex flex-col gap-5 rounded-2xl border border-border bg-white p-6 shadow-sm md:flex-row md:items-center">
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-xl font-black text-brand-600">{child.first_name[0]}{child.last_name[0]}</div>
+        <ChildPhoto childId={child.id} initials={`${child.first_name[0] ?? ''}${child.last_name[0] ?? ''}`} url={photoUrl} onChanged={load} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-extrabold text-heading">{child.first_name} {child.last_name}</h1>

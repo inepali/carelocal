@@ -36,7 +36,16 @@ export interface ChildRequirement {
   template_key: string | null
 }
 
-export interface Classroom { id: string; name: string }
+export interface Classroom {
+  id: string
+  name: string
+  capacity?: number | null
+  ratio_children?: number | null
+  min_age_months?: number | null
+  max_age_months?: number | null
+  /** Enrolled children whose home room this is */
+  enrolled?: number
+}
 
 const REQUIREMENT_COLUMNS = 'id, center_id, document_name, section, notes, is_required, is_conditional, due_within_days, renewal_type, renewal_months, sort_order, template_key'
 
@@ -47,10 +56,20 @@ async function childRequirements(supabase: SupabaseClient, centerId: string) {
   return { rows: (data ?? []) as ChildRequirement[], error }
 }
 
-async function classrooms(supabase: SupabaseClient, centerId: string) {
-  const { data } = await supabase.from('work_areas').select('id, name').eq('center_id', centerId).eq('is_active', true).order('sort_order').order('name')
-  return (data ?? []) as Classroom[]
+/** Active classrooms in the center's order, with their age range, capacity and how many children call each home */
+export async function loadClassrooms(supabase: SupabaseClient, centerId: string) {
+  const [rooms, kids] = await Promise.all([
+    supabase.from('work_areas').select('id, name, capacity, ratio_children, min_age_months, max_age_months')
+      .eq('center_id', centerId).eq('is_active', true).order('sort_order').order('name'),
+    supabase.from('children').select('classroom_id').eq('center_id', centerId).eq('status', 'enrolled'),
+  ])
+  const enrolled = new Map<string, number>()
+  for (const k of (kids.data ?? []) as { classroom_id: string | null }[]) {
+    if (k.classroom_id) enrolled.set(k.classroom_id, (enrolled.get(k.classroom_id) ?? 0) + 1)
+  }
+  return ((rooms.data ?? []) as Classroom[]).map(r => ({ ...r, enrolled: enrolled.get(r.id) ?? 0 }))
 }
+const classrooms = loadClassrooms
 
 // ─── Reading ─────────────────────────────────────────────────────────────────
 

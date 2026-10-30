@@ -3,18 +3,39 @@
 import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { WorkArea } from '@/lib/types'
-import { Plus, Edit2, Trash2, Save, X, Loader2, Home, Users, ChevronUp, ChevronDown } from 'lucide-react'
+import { Plus, Edit2, Trash2, Save, X, Loader2, Home, Users, ChevronUp, ChevronDown, Scale, LayoutGrid } from 'lucide-react'
 import { showConfirm } from '@/lib/dialog'
 
-type FormState = { name: string; ageGroup: string; capacity: string }
-const EMPTY_FORM: FormState = { name: '', ageGroup: '', capacity: '' }
+type FormState = { name: string; ageGroup: string; capacity: string; ratio: string; minAge: string; maxAge: string; onRoster: boolean }
+const EMPTY_FORM: FormState = { name: '', ageGroup: '', capacity: '', ratio: '', minAge: '', maxAge: '', onRoster: true }
+
+/** "14 mo" / "2 y" / "2 y 6 mo" */
+export function monthsLabel(m: number) {
+  if (m < 24) return `${m} mo`
+  const y = Math.floor(m / 12), r = m % 12
+  return r ? `${y} y ${r} mo` : `${y} y`
+}
+
+const int = (s: string) => (s.trim() === '' ? null : parseInt(s, 10))
+
+/** A plain-language problem with the roster fields, or null */
+function rosterProblem(f: FormState): string | null {
+  const ratio = int(f.ratio), min = int(f.minAge), max = int(f.maxAge)
+  if (ratio != null && (Number.isNaN(ratio) || ratio < 1 || ratio > 50)) return 'Children per teacher must be between 1 and 50.'
+  if ((min == null) !== (max == null)) return 'Give both ages, or leave both empty.'
+  if (min != null && max != null) {
+    if (Number.isNaN(min) || Number.isNaN(max) || min < 0) return 'Ages must be whole months, 0 or more.'
+    if (max <= min) return 'The oldest age must be more than the youngest.'
+  }
+  return null
+}
 
 /**
  * Center-specific work areas (Classrooms / Care Areas …) managed inside Manage Data.
  * Stored in work_areas (not center_lookups) because shifts reference them by id
  * and they carry age group / capacity.
  */
-export function WorkAreasPanel({ centerId, workAreaTerm }: { centerId: string; workAreaTerm: string }) {
+export function WorkAreasPanel({ centerId, workAreaTerm, showRoster = false }: { centerId: string; workAreaTerm: string; showRoster?: boolean }) {
   const supabase = createClient()
   const [workAreas, setWorkAreas] = useState<WorkArea[]>([])
   const [loading, setLoading] = useState(true)
@@ -42,7 +63,11 @@ export function WorkAreasPanel({ centerId, workAreaTerm }: { centerId: string; w
   function startEdit(area: WorkArea | null) {
     setError('')
     setEditing(area ? area.id : 'new')
-    setForm(area ? { name: area.name, ageGroup: area.age_group || '', capacity: area.capacity?.toString() || '' } : EMPTY_FORM)
+    setForm(area ? {
+      name: area.name, ageGroup: area.age_group || '', capacity: area.capacity?.toString() || '',
+      ratio: area.ratio_children?.toString() ?? '', minAge: area.min_age_months?.toString() ?? '', maxAge: area.max_age_months?.toString() ?? '',
+      onRoster: area.on_roster ?? true,
+    } : EMPTY_FORM)
   }
 
   function cancelEdit() {
@@ -52,11 +77,20 @@ export function WorkAreasPanel({ centerId, workAreaTerm }: { centerId: string; w
 
   async function handleSave() {
     if (!form.name.trim()) return
+    const problem = showRoster ? rosterProblem(form) : null
+    if (problem) { setError(problem); return }
     setSaving(true)
+    setError('')
     const payload = {
       name: form.name.trim(),
       age_group: form.ageGroup.trim() || null,
       capacity: form.capacity ? parseInt(form.capacity, 10) : null,
+      ...(showRoster ? {
+        ratio_children: int(form.ratio),
+        min_age_months: int(form.minAge),
+        max_age_months: int(form.maxAge),
+        on_roster: form.onRoster,
+      } : {}),
     }
     const { error } = editing === 'new'
       ? await supabase.from('work_areas').insert({ ...payload, center_id: centerId, is_active: true, sort_order: (workAreas[workAreas.length - 1]?.sort_order ?? -1) + 1 })
@@ -97,8 +131,46 @@ export function WorkAreasPanel({ centerId, workAreaTerm }: { centerId: string; w
     else loadData()
   }
 
+  const FIELD = 'w-full px-4 py-2.5 rounded-xl border border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-600/30'
+  const minA = int(form.minAge), maxA = int(form.maxAge)
+  const rosterFields = showRoster && (
+    <div className="w-full rounded-xl border border-brand-200 bg-white/70 p-3">
+      <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-brand-700"><LayoutGrid className="h-3.5 w-3.5" /> Live roster</p>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1.6fr_auto] sm:items-end">
+        <label className="block text-xs font-semibold text-muted">
+          Teacher : child ratio
+          <span className="mt-1 flex items-center gap-2 text-sm font-bold text-text-main">
+            1 :
+            <input type="number" min={1} max={50} inputMode="numeric" placeholder="e.g. 4" value={form.ratio}
+              onChange={e => setForm({ ...form, ratio: e.target.value })} className={FIELD} aria-label="Children per teacher" />
+          </span>
+        </label>
+        <div className="text-xs font-semibold text-muted">
+          Ages, in months
+          <span className="mt-1 flex items-center gap-2">
+            <input type="number" min={0} inputMode="numeric" placeholder="From" value={form.minAge}
+              onChange={e => setForm({ ...form, minAge: e.target.value })} className={FIELD} aria-label="Youngest age in months" />
+            <span className="text-sm font-bold text-text-main">to</span>
+            <input type="number" min={1} inputMode="numeric" placeholder="Up to" value={form.maxAge}
+              onChange={e => setForm({ ...form, maxAge: e.target.value })} className={FIELD} aria-label="Oldest age in months (not included)" />
+          </span>
+        </div>
+        <label className="flex min-h-11 items-center gap-2 text-sm font-semibold text-text-main">
+          <input type="checkbox" checked={form.onRoster} onChange={e => setForm({ ...form, onRoster: e.target.checked })} className="h-4 w-4 accent-brand-600" />
+          Show on live roster
+        </label>
+      </div>
+      <p className="mt-2 text-xs text-subtle">
+        {minA != null && maxA != null && maxA > minA
+          ? `Children from ${monthsLabel(minA)} up to (not including) ${monthsLabel(maxA)}. Use your state's ratio for this age group.`
+          : 'Example: Infants 0 to 12, Toddlers 12 to 24, Twos 24 to 36. The ratio is the most children one teacher may have.'}
+      </p>
+    </div>
+  )
+
   const formFields = (
-    <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-[2fr_1.5fr_1fr] gap-3">
+    <div className="flex-1 w-full flex flex-col gap-3">
+    <div className="w-full grid grid-cols-1 sm:grid-cols-[2fr_1.5fr_1fr] gap-3">
       <input
         type="text"
         autoFocus
@@ -122,6 +194,8 @@ export function WorkAreasPanel({ centerId, workAreaTerm }: { centerId: string; w
         onChange={e => setForm({ ...form, capacity: e.target.value })}
         className="w-full px-4 py-2.5 rounded-xl border border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-600/30"
       />
+    </div>
+    {rosterFields}
     </div>
   )
 
@@ -192,9 +266,16 @@ export function WorkAreasPanel({ centerId, workAreaTerm }: { centerId: string; w
                       <div className={`w-3 h-3 rounded-full shrink-0 ${area.is_active ? 'bg-[#16a34a]' : 'bg-slate-300'}`} />
                       <div>
                         <div className={`font-bold ${area.is_active ? 'text-text-main' : 'text-subtle'}`}>{area.name}</div>
-                        <div className="text-xs text-subtle mt-0.5 flex items-center gap-3">
+                        <div className="text-xs text-subtle mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1">
                           <span>{area.age_group || 'Any age'}</span>
                           <span className="flex items-center gap-1"><Users className="w-3 h-3" /> Capacity {area.capacity ?? '—'}</span>
+                          {showRoster && (
+                            <>
+                              <span className="flex items-center gap-1"><Scale className="w-3 h-3" /> {area.ratio_children ? `1:${area.ratio_children}` : 'No ratio'}</span>
+                              {area.min_age_months != null && area.max_age_months != null && <span>{monthsLabel(area.min_age_months)} – {monthsLabel(area.max_age_months)}</span>}
+                              {area.on_roster === false && <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-muted">Not on roster</span>}
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>

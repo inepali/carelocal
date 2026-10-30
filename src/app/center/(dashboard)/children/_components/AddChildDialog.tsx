@@ -8,6 +8,7 @@ import type { Classroom } from '@/lib/children'
 import type { Child } from '@/lib/child-types'
 import { showAlert } from '@/lib/dialog'
 import { BTN_PRIMARY, BTN_QUIET, FLD, LBL, Modal, todayISO } from './ui'
+import { HomeRoomField, suggestedRoomFor } from './HomeRoomField'
 
 /**
  * Enroll a child with the parent as the first contact. Pick-up is NOT authorized unless the box is ticked:
@@ -24,7 +25,18 @@ export function AddChildDialog({ centerId, classrooms, onClose, onCreated }: {
     parent: '', relationship: 'Parent', phone: '', email: '', can_pick_up: false,
   })
   const [saving, setSaving] = useState(false)
+  const [roomPicked, setRoomPicked] = useState(false)       // once someone picks a room, the date of birth stops changing it
   const set = <K extends keyof typeof f>(key: K, value: (typeof f)[K]) => setF(prev => ({ ...prev, [key]: value }))
+  const today = todayISO()
+  const ageDay = f.first_attended_on || (f.enrolled_on > today ? f.enrolled_on : today)
+
+  function setDob(dob: string) {
+    setF(prev => {
+      const next = { ...prev, date_of_birth: dob }
+      if (!roomPicked) next.classroom_id = suggestedRoomFor(dob, ageDay, classrooms)?.id ?? prev.classroom_id
+      return next
+    })
+  }
 
   async function save() {
     setSaving(true)
@@ -55,14 +67,9 @@ export function AddChildDialog({ centerId, classrooms, onClose, onCreated }: {
           <div><label className={LBL}>First name *</label><input autoFocus value={f.first_name} onChange={e => set('first_name', e.target.value)} className={FLD} maxLength={80} /></div>
           <div><label className={LBL}>Last name *</label><input value={f.last_name} onChange={e => set('last_name', e.target.value)} className={FLD} maxLength={80} /></div>
           <div><label className={LBL}>Name the child is called</label><input value={f.preferred_name} onChange={e => set('preferred_name', e.target.value)} className={FLD} maxLength={80} placeholder="If different" /></div>
-          <div><label className={LBL}>Date of birth *</label><input type="date" value={f.date_of_birth} onChange={e => set('date_of_birth', e.target.value)} className={FLD} /></div>
-          <div>
-            <label className={LBL}>Classroom</label>
-            <select value={f.classroom_id} onChange={e => set('classroom_id', e.target.value)} className={FLD}>
-              <option value="">Not assigned</option>
-              {classrooms.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
+          <div><label className={LBL}>Date of birth *</label><input type="date" value={f.date_of_birth} onChange={e => setDob(e.target.value)} className={FLD} /></div>
+          <HomeRoomField classrooms={classrooms} dob={f.date_of_birth} onDay={ageDay} value={f.classroom_id}
+            onChange={id => { setRoomPicked(true); set('classroom_id', id) }} />
           <div><label className={LBL}>Enrolled on</label><input type="date" value={f.enrolled_on} onChange={e => set('enrolled_on', e.target.value)} className={FLD} /></div>
           <div className="sm:col-span-2">
             <label className={LBL}>First day of attendance</label>

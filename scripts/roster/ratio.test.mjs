@@ -5,7 +5,7 @@
  *
  *   npm run test:roster
  */
-import { allRoomStatuses, centerTotals, childAgeRatio, peopleInRoom, roomStatus, simulateMove, waitingForRoom } from '../../src/lib/roster-ratio.ts'
+import { allRoomStatuses, centerTotals, childAgeRatio, peopleInRoom, roomStatus, simulateMove, waitingForRoom, ageInMonths, suggestHomeRoom } from '../../src/lib/roster-ratio.ts'
 
 let passed = 0
 const failures = []
@@ -137,6 +137,15 @@ console.log('Ratio engine')
   const seats = peopleInRoom('inf', people)
   check('a checked-out floater does not also sit in the Home band of the room they left', !seats.home.includes(floaterOut) && seats.home.length === 1, `${seats.home.length}`)
   check('a floater working in a room still sits in that room', peopleInRoom('tod', people).classroom.includes(floaterIn))
+}
+
+// 16. Age and home room suggestion
+{
+  check('age in months matches the database (birthday not reached this month)', ageInMonths('2025-06-15', '2026-10-14') === 15 && ageInMonths('2025-06-15', '2026-10-15') === 16)
+  check('a future birth date has no age', ageInMonths('2027-01-01', '2026-10-30') === null)
+  check('an 11-month-old is suggested Infants', suggestHomeRoom(11, ROOMS)?.id === 'inf')
+  check('a 12-month-old is suggested Toddlers (ranges include the start, not the end)', suggestHomeRoom(12, ROOMS)?.id === 'tod')
+  check('no room covers 40 months: no suggestion', suggestHomeRoom(40, ROOMS) === null)
 }
 
 console.log(`\n${passed} passed, ${failures.length} failed`)

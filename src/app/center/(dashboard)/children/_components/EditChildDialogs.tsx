@@ -8,6 +8,7 @@ import type { Classroom } from '@/lib/children'
 import type { Child } from '@/lib/child-types'
 import { showAlert } from '@/lib/dialog'
 import { BTN_PRIMARY, BTN_QUIET, FLD, LBL, Modal, todayISO } from './ui'
+import { HomeRoomField } from './HomeRoomField'
 
 /** Names, dates, classroom and the custody flag */
 export function EditChildDialog({ child, classrooms, onClose, onSaved }: {
@@ -51,13 +52,8 @@ export function EditChildDialog({ child, classrooms, onClose, onSaved }: {
           <div><label className={LBL}>Last name *</label><input value={f.last_name} onChange={e => set('last_name', e.target.value)} className={FLD} maxLength={80} /></div>
           <div><label className={LBL}>Name the child is called</label><input value={f.preferred_name} onChange={e => set('preferred_name', e.target.value)} className={FLD} maxLength={80} /></div>
           <div><label className={LBL}>Date of birth *</label><input type="date" value={f.date_of_birth} onChange={e => set('date_of_birth', e.target.value)} className={FLD} /></div>
-          <div>
-            <label className={LBL}>Classroom</label>
-            <select value={f.classroom_id} onChange={e => set('classroom_id', e.target.value)} className={FLD}>
-              <option value="">Not assigned</option>
-              {classrooms.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
+          <HomeRoomField classrooms={classrooms} dob={f.date_of_birth} onDay={todayISO()} value={f.classroom_id}
+            onChange={id => set('classroom_id', id)} currentRoomId={child.classroom_id} />
           <div><label className={LBL}>Enrolled on</label><input type="date" value={f.enrolled_on} onChange={e => set('enrolled_on', e.target.value)} className={FLD} /></div>
           <div className="sm:col-span-2"><label className={LBL}>First day of attendance</label><input type="date" value={f.first_attended_on} onChange={e => set('first_attended_on', e.target.value)} className={FLD} /></div>
         </div>
