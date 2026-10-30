@@ -91,6 +91,12 @@ export function ChildCard({
   }, [supabase, person.person_id, reloadEntries])
 
   useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  useEffect(() => {
     if (!saved) return
     const t = window.setTimeout(() => setSaved(null), 3000)
     return () => window.clearTimeout(t)
@@ -159,9 +165,11 @@ export function ChildCard({
   ].sort((a, b) => b.at.localeCompare(a.at))
 
   return (
+    <>
+    {/* Tapping anywhere outside the card closes it, like the X */}
+    <div aria-hidden="true" onClick={onClose} className="fixed inset-0 z-30 bg-brand-900/20" />
     <aside
       aria-label={`${person.first_name} ${person.last_initial}.`}
-      onKeyDown={e => { if (e.key === 'Escape') onClose() }}
       className="fixed inset-0 z-40 flex flex-col overflow-y-auto bg-white shadow-2xl sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[420px] sm:border-l sm:border-border"
     >
       <div className="sticky top-0 z-[1] border-b border-border bg-white p-4">
@@ -297,6 +305,7 @@ export function ChildCard({
 
       </div>
     </aside>
+    </>
   )
 }
 
