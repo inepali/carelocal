@@ -455,6 +455,7 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
           )}
           {/* Children with no home room still wait in the Lobby; teachers with no home room are parked below */}
           <RoomStage room={focusRoom} status={fs} seats={peopleInRoom(focusRoom.id, people)} waiting={waiting.filter(p => p.kind === 'child')} photos={photos} tintOf={tintOf} visitingFrom={visitingFrom} ix={ix} />
+          <Legend />
         </section>
 
         {others.map((r, i) => {
@@ -492,8 +493,6 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
           </div>
         </section>
       )}
-
-      <Legend />
 
       <TransitionsLog supabase={supabase} centerId={centerId} today={day} refreshKey={logKey} people={people} roomName={roomName} onlyRoom={scopeRoom} />
 
@@ -637,7 +636,7 @@ function Metric({ label, value }: { label: string; value: string }) {
 function Legend() {
   const item = (swatch: React.ReactNode, text: string) => <span className="inline-flex items-center gap-2">{swatch}{text}</span>
   return (
-    <div className="flex flex-wrap gap-x-4 gap-y-2 px-1 text-xs font-semibold text-text-main">
+    <div className="flex flex-wrap gap-x-4 gap-y-2 border-t border-border pt-4 text-xs font-semibold text-text-main">
       {item(<span className="h-4 w-4 rounded border-[3px] border-[#b42318] bg-[#f3c6c1]" />, 'Home')}
       {item(<span className="h-4 w-4 rounded-full border-[3px] border-[#1e7a47] bg-[#bfe3cc]" />, 'Classroom')}
       {item(<span className="h-4 w-4 rounded border-[3px] border-[#a86b00] bg-[#f8e2a8]" />, 'Playground')}
