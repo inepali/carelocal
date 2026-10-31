@@ -14,13 +14,14 @@ import { ChildRecords } from '../_components/ChildRecords'
 import { ContactsPanel } from '../_components/ContactsPanel'
 import { ActivityPanel } from '../_components/ActivityPanel'
 import { MedicinesPanel } from '../_components/MedicinesPanel'
+import { ReportsPanel } from '../_components/ReportsPanel'
 import { EditChildDialog, WithdrawDialog } from '../_components/EditChildDialogs'
 import { BTN, Pill, todayISO } from '../_components/ui'
 import { ChildPhoto } from '../_components/ChildPhoto'
 import { getChildPhotoUrls } from '@/app/actions/child-photo.actions'
 
 type Loaded = NonNullable<Awaited<ReturnType<typeof loadChildFile>>>
-type Tab = 'records' | 'contacts' | 'medicines' | 'activity'
+type Tab = 'records' | 'contacts' | 'medicines' | 'reports' | 'activity'
 
 /** One child's file: records with due dates and review, contacts and pick-up, and the audit trail. */
 export default function ChildFilePage() {
@@ -80,6 +81,7 @@ export default function ChildFilePage() {
     { id: 'records', label: 'Records' },
     { id: 'contacts', label: 'Contacts & pick-up', count: guardians.length },
     { id: 'medicines', label: 'Medicines' },
+    ...(ctx.rosterEnabled ? [{ id: 'reports' as const, label: 'Daily reports' }] : []),
     { id: 'activity', label: 'Activity' },
   ]
 
@@ -129,6 +131,7 @@ export default function ChildFilePage() {
       {tab === 'records' && <ChildRecords child={child} requirements={requirements} records={records} files={files} userId={userId} onChanged={load} />}
       {tab === 'contacts' && <ContactsPanel child={child} guardians={guardians} onChanged={load} />}
       {tab === 'medicines' && <MedicinesPanel child={child} />}
+      {tab === 'reports' && <ReportsPanel child={child} guardians={guardians} />}
       {tab === 'activity' && <ActivityPanel audit={audit} userId={userId} />}
 
       {editing && <EditChildDialog child={child} classrooms={classrooms} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); load() }} />}

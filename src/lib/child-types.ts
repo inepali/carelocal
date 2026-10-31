@@ -44,6 +44,8 @@ export interface ChildGuardian {
   is_emergency_contact: boolean
   /** A child is released only to someone explicitly authorized (10A NCAC 09 .0801(c)) */
   can_pick_up: boolean
+  /** Gets the parent daily report email (needs an email address) */
+  daily_report?: boolean
   created_at: string
   updated_at: string
 }

@@ -32,6 +32,7 @@ export function ContactsPanel({ child, guardians, onChanged }: { child: Child; g
     const res = await saveGuardian(createClient(), child.center_id, child.id, {
       id: editing.id, name: editing.name, relationship: editing.relationship, phone: editing.phone, email: editing.email,
       is_primary: !!editing.is_primary, is_emergency_contact: !!editing.is_emergency_contact, can_pick_up: !!editing.can_pick_up,
+      daily_report: !!editing.daily_report,
     })
     setSaving(false)
     if (!res.success) { showAlert(res.error); return }
@@ -61,7 +62,7 @@ export function ContactsPanel({ child, guardians, onChanged }: { child: Child; g
       <section className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
         <div className="flex items-center justify-between gap-3 border-b border-border bg-surface px-6 py-4">
           <h2 className="text-lg font-bold text-text-main">Contacts</h2>
-          <button onClick={() => setEditing({ name: '', relationship: '', phone: '', email: '', is_primary: guardians.length === 0, is_emergency_contact: false, can_pick_up: false })} className={BTN}><Plus className="h-3.5 w-3.5" /> Add contact</button>
+          <button onClick={() => setEditing({ name: '', relationship: '', phone: '', email: '', is_primary: guardians.length === 0, is_emergency_contact: false, can_pick_up: false, daily_report: guardians.length === 0 })} className={BTN}><Plus className="h-3.5 w-3.5" /> Add contact</button>
         </div>
         {guardians.length === 0 ? <div className="px-6 py-8 text-sm text-muted">No contacts yet. Add a parent or guardian.</div> : (
           <div className="overflow-x-auto">
@@ -84,6 +85,7 @@ export function ContactsPanel({ child, guardians, onChanged }: { child: Child; g
                         {g.is_primary && <Pill className="border-brand-100 bg-brand-50 text-brand-600">Primary</Pill>}
                         {g.is_emergency_contact && <Pill className="border-amber-200 bg-amber-50 text-amber-700">Emergency</Pill>}
                         {g.can_pick_up ? <Pill className="border-emerald-200 bg-emerald-50 text-emerald-700">Authorized pick-up</Pill> : <Pill className="border-border bg-surface text-muted">Not authorized</Pill>}
+                        {g.daily_report && g.email && <Pill className="border-sky-200 bg-sky-50 text-sky-700">Daily report</Pill>}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -116,6 +118,7 @@ export function ContactsPanel({ child, guardians, onChanged }: { child: Child; g
             </div>
             <div className="space-y-2.5 rounded-2xl border border-border bg-surface p-4 text-sm">
               <label className="flex cursor-pointer items-center gap-2.5 text-text-main"><input type="checkbox" checked={!!editing.is_primary} onChange={e => set('is_primary', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-600" /> Primary contact</label>
+              <label className="flex cursor-pointer items-start gap-2.5 text-text-main"><input type="checkbox" checked={!!editing.daily_report && !!editing.email?.trim()} disabled={!editing.email?.trim()} onChange={e => set('daily_report', e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-600" /> <span>Gets the daily report email<span className="block text-xs font-normal text-muted">{editing.email?.trim() ? `A summary of ${child.first_name}’s day after pick-up.` : 'Add an email address first.'}</span></span></label>
               <label className="flex cursor-pointer items-center gap-2.5 text-text-main"><input type="checkbox" checked={!!editing.is_emergency_contact} onChange={e => set('is_emergency_contact', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-600" /> Emergency contact</label>
               <label className="flex cursor-pointer items-start gap-2.5 font-semibold text-text-main"><input type="checkbox" checked={!!editing.can_pick_up} onChange={e => set('can_pick_up', e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-600" /> <span>Authorized to pick up {child.first_name}<span className="block text-xs font-normal text-muted">Only if the signed application lists this person. You will be asked to confirm.</span></span></label>
             </div>

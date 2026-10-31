@@ -15,7 +15,8 @@
     "test:rls": "node --experimental-strip-types --no-warnings scripts/rls/child-access.test.mjs",
     "test:rls:roster": "node --no-warnings scripts/rls/roster-access.test.mjs",
     "test:roster": "node --experimental-strip-types --no-warnings scripts/roster/ratio.test.mjs",
-    "test:daily": "node --experimental-strip-types --no-warnings scripts/roster/daily.test.mjs"
+    "test:daily": "node --experimental-strip-types --no-warnings scripts/roster/daily.test.mjs",
+    "test:report": "node --experimental-strip-types --no-warnings --import ./scripts/roster/ts-resolve.mjs scripts/roster/report.test.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1030.0",

@@ -358,3 +358,46 @@ export async function loadPhotosForReview(supabase: SupabaseClient, centerId: st
   if (error) return { success: false, error: friendlyDailyError(error) }
   return { success: true, photos: (data ?? []) as PhotoForReview[] }
 }
+
+// ─── Parent daily report (owners and admins) ──────────────────────────────────────────────────────────────
+
+export interface ReportSettings {
+  enabled: boolean
+  /** "14:00" */
+  early_pickup_before: string
+  reply_to: string | null
+}
+
+/** Read (no changes passed) or change the center's report settings */
+export async function reportSettings(supabase: SupabaseClient, centerId: string, change: { enabled?: boolean; early_pickup_before?: string } = {}): Promise<{ success: true; settings: ReportSettings } | Failure> {
+  const { data, error } = await supabase.rpc('daily_report_settings', {
+    p_center_id: centerId, p_enabled: change.enabled ?? null, p_early_pickup_before: change.early_pickup_before ?? null,
+  })
+  if (error) return { success: false, error: friendlyDailyError(error) }
+  return { success: true, settings: data as ReportSettings }
+}
+
+export interface ReportQueueRow {
+  id: string
+  service_date: string
+  status: 'queued' | 'sending' | 'sent' | 'failed' | 'cancelled' | 'skipped'
+  send_after: string
+  attempts: number
+  recipients: string[]
+  sent_at: string | null
+  last_error: string | null
+}
+
+export async function loadReportHistory(supabase: SupabaseClient, childId: string): Promise<{ success: true; rows: ReportQueueRow[] } | Failure> {
+  const { data, error } = await supabase.from('daily_report_queue')
+    .select('id, service_date, status, send_after, attempts, recipients, sent_at, last_error')
+    .eq('child_id', childId).order('service_date', { ascending: false }).limit(30)
+  if (error) return { success: false, error: friendlyDailyError(error) }
+  return { success: true, rows: (data ?? []) as ReportQueueRow[] }
+}
+
+export async function resendReport(supabase: SupabaseClient, centerId: string, childId: string, day: string): Promise<{ success: true } | Failure> {
+  const { error } = await supabase.rpc('daily_report_resend', { p_center_id: centerId, p_child_id: childId, p_day: day })
+  if (error) return { success: false, error: friendlyDailyError(error) }
+  return { success: true }
+}

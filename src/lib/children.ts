@@ -136,6 +136,8 @@ export interface GuardianInput {
   is_emergency_contact?: boolean
   /** Defaults to false: a child is released only to someone explicitly authorized */
   can_pick_up?: boolean
+  /** Gets the parent daily report email */
+  daily_report?: boolean
 }
 
 const clean = (value: string | null | undefined) => (value ?? '').trim() || null
@@ -170,6 +172,8 @@ export async function addChild(supabase: SupabaseClient, centerId: string, input
       is_primary: g.is_primary ?? i === 0,
       is_emergency_contact: g.is_emergency_contact ?? false,
       can_pick_up: g.can_pick_up ?? false,
+      // The primary contact gets the daily report by default (needs an email)
+      daily_report: !!clean(g.email) && (g.daily_report ?? (g.is_primary ?? i === 0)),
     })))
     if (guardianError) return { ...fail(guardianError), child }   // the child exists; only the contacts failed
   }
@@ -215,6 +219,7 @@ export async function saveGuardian(supabase: SupabaseClient, centerId: string, c
     is_primary: input.is_primary ?? false,
     is_emergency_contact: input.is_emergency_contact ?? false,
     can_pick_up: input.can_pick_up ?? false,
+    daily_report: !!input.daily_report && !!clean(input.email),
   }
   const query = input.id
     ? supabase.from('child_guardians').update(row).eq('id', input.id).select('*')

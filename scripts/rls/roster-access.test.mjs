@@ -126,8 +126,9 @@ async function main() {
   console.log(`Live Roster access-rule tests  ·  project ${REF} (development)  ·  run ${RUN}\n`)
   await sweepStale()
 
-  const A = await makeCenter('a', { child_files_enabled: true, roster_enabled: true })
-  const B = await makeCenter('b', { child_files_enabled: true, roster_enabled: true })
+  // No early pick-up gate here (20261217): teachers check children out at any time of day in these tests
+  const A = await makeCenter('a', { child_files_enabled: true, roster_enabled: true, early_pickup_before: '00:00' })
+  const B = await makeCenter('b', { child_files_enabled: true, roster_enabled: true, early_pickup_before: '00:00' })
   const OFF = await makeCenter('off', { child_files_enabled: true })                 // roster switched off
   const people = {}
   for (const label of ['ownerA', 'adminA', 'staffAdminA', 'regularA', 'subA', 'outsider', 'ownerB']) people[label] = await makeUser(label)

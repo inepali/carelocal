@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, BookOpen, Camera, ClipboardList, FileSpreadsheet, Moon, Sun, Utensils, Loader2, Radio, RefreshCw, Send, Users, X } from 'lucide-react'
+import { AlertTriangle, BookOpen, Camera, ClipboardList, FileSpreadsheet, Mail, Moon, Sun, Utensils, Loader2, Radio, RefreshCw, Send, Users, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { applyPresence, loadRoster, moveOnRoster, type PresenceRow, type RosterMove } from '@/lib/roster'
 import {
@@ -19,8 +19,9 @@ import { ChildCard } from './ChildCard'
 import { ClassEntryDialog } from './ClassEntryDialog'
 import { RoomNapDialog, type RoomNapMode } from './RoomNapDialog'
 import { ClassPhotoDialog } from './DailyPhoto'
-import { clockTime, loadPhotosForReview, loadRoomNaps, nextCheck, sleepChecksRequired, type RoomNap } from '@/lib/daily'
+import { clockTime, loadPhotosForReview, loadRoomNaps, reportSettings, nextCheck, sleepChecksRequired, type RoomNap } from '@/lib/daily'
 import { ExportDialog } from './ExportDialog'
+import { ReportSettingsDialog } from './ReportSettingsDialog'
 import { useRosterDrag, type RosterInteract } from './useRosterDrag'
 
 /** One soft tint per room, in the center's room order; a child wears their home room's tint */
@@ -80,6 +81,8 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
   const [napAction, setNapAction] = useState<RoomNapMode | null>(null)
   const [classPhoto, setClassPhoto] = useState(false)
   const [toReview, setToReview] = useState(0)
+  const [reportsOn, setReportsOn] = useState<boolean | null>(null)
+  const [reportDialog, setReportDialog] = useState(false)
   const [roomNaps, setRoomNaps] = useState<RoomNap[]>([])
   const [clock, setClock] = useState(() => new Date())
   const dayRef = useRef('')
@@ -171,6 +174,7 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
     if (teacher) return
     let cancelled = false
     loadPhotosForReview(supabase, centerId).then(res => { if (!cancelled && res.success) setToReview(res.photos.length) })
+    reportSettings(supabase, centerId).then(res => { if (!cancelled && res.success) setReportsOn(res.settings.enabled) })
     return () => { cancelled = true }
   }, [supabase, centerId, teacher, toast])
 
@@ -330,6 +334,12 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
               className={`inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-bold hover:bg-surface ${toReview ? 'border-[#e8a33d] bg-[#fff0d1] text-[#7a4b00]' : 'border-border bg-white text-text-main'}`}>
               <Camera className="h-3.5 w-3.5 text-brand-600" /> Photo review{toReview ? ` (${toReview})` : ''}
             </Link>
+          )}
+          {!teacher && reportsOn != null && (
+            <button type="button" onClick={() => setReportDialog(true)}
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border bg-white px-3 text-xs font-bold text-text-main hover:bg-surface">
+              <Mail className="h-3.5 w-3.5 text-brand-600" /> Parent reports: {reportsOn ? 'On' : 'Off'}
+            </button>
           )}
           {!teacherView && (
             <button type="button" onClick={() => setExporting(true)}
@@ -564,6 +574,11 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
           onClose={() => setClassAction(null)}
           onDone={msg => { setClassAction(null); setToast(msg); setLogKey(k => k + 1) }}
         />
+      )}
+
+      {reportDialog && (
+        <ReportSettingsDialog supabase={supabase} centerId={centerId} onClose={() => setReportDialog(false)}
+          onSaved={st => { setReportDialog(false); setReportsOn(st.enabled); setToast(st.enabled ? 'Parent daily reports are on.' : 'Parent daily reports are off.') }} />
       )}
 
       {exporting && <ExportDialog supabase={supabase} centerId={centerId} today={day} onClose={() => setExporting(false)} />}
