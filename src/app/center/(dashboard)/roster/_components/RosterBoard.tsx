@@ -10,7 +10,7 @@ import {
   type RosterPerson, type RosterRoom, type StatusCode,
 } from '@/lib/roster-ratio'
 import { getRosterPhotoUrls } from '@/app/actions/roster.actions'
-import { Face } from './PersonAvatar'
+import { Chip, Face } from './PersonAvatar'
 import { RoomStage } from './RoomStage'
 import { RoomTile, StatusPill } from './RoomTile'
 import { SelectedPanel, ZONE_LABEL } from './SelectedPanel'
@@ -453,16 +453,8 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
               </div>
             </div>
           )}
-          <RoomStage room={focusRoom} status={fs} seats={peopleInRoom(focusRoom.id, people)} waiting={waiting} photos={photos} tintOf={tintOf} visitingFrom={visitingFrom} ix={ix} />
-          <Legend />
-          <details className="mt-3 text-xs text-muted">
-            <summary className="cursor-pointer font-semibold text-brand-600">How to move people</summary>
-            <p className="mt-1.5 leading-relaxed">
-              Drag a child or teacher into Classroom, Playground or Lobby to check them in or move them, onto Home to check them out,
-              or onto another room to change rooms. Floaters and children with no home room wait in the Lobby with a dashed outline
-              until you drag them in. Tap anyone for the same moves as buttons.
-            </p>
-          </details>
+          {/* Children with no home room still wait in the Lobby; teachers with no home room are parked below */}
+          <RoomStage room={focusRoom} status={fs} seats={peopleInRoom(focusRoom.id, people)} waiting={waiting.filter(p => p.kind === 'child')} photos={photos} tintOf={tintOf} visitingFrom={visitingFrom} ix={ix} />
         </section>
 
         {others.map((r, i) => {
@@ -484,6 +476,24 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
         })}
 
       </div>
+
+      {floatersFree.length > 0 && (
+        <section aria-labelledby="parked-h" className="rounded-3xl border border-dashed border-[#9aa6b2] bg-white px-4 py-3 sm:px-6">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+            <div className="mr-2">
+              <h2 id="parked-h" className="text-sm font-bold text-heading">Parked teachers</h2>
+              <p className="text-xs text-muted">No home room, not checked in. Drag into a room to check in.</p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {floatersFree.map(p => (
+                <Chip key={p.person_id} person={p} url={photos[p.person_id]} tint="#dce3ea" size={36} dashed ix={ix} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      <Legend />
 
       <TransitionsLog supabase={supabase} centerId={centerId} today={day} refreshKey={logKey} people={people} roomName={roomName} onlyRoom={scopeRoom} />
 
@@ -627,7 +637,7 @@ function Metric({ label, value }: { label: string; value: string }) {
 function Legend() {
   const item = (swatch: React.ReactNode, text: string) => <span className="inline-flex items-center gap-2">{swatch}{text}</span>
   return (
-    <div className="flex flex-wrap gap-x-4 gap-y-2 border-t border-border pt-4 text-xs font-semibold text-text-main">
+    <div className="flex flex-wrap gap-x-4 gap-y-2 px-1 text-xs font-semibold text-text-main">
       {item(<span className="h-4 w-4 rounded border-[3px] border-[#b42318] bg-[#f3c6c1]" />, 'Home')}
       {item(<span className="h-4 w-4 rounded-full border-[3px] border-[#1e7a47] bg-[#bfe3cc]" />, 'Classroom')}
       {item(<span className="h-4 w-4 rounded border-[3px] border-[#a86b00] bg-[#f8e2a8]" />, 'Playground')}
