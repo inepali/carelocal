@@ -401,7 +401,7 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
             <StatusPill code={fs.code} label={fs.label} className="!px-3.5 !py-1.5 !text-sm" />
           </div>
           <div className="mt-4 flex flex-wrap gap-2.5">
-            <Metric label="Children in" value={focusRoom.capacity != null ? `${fs.childrenIn} / ${focusRoom.capacity}` : `${fs.childrenIn}`} />
+            <Metric label="Children in" value={`${fs.childrenIn} / ${people.filter(p => p.kind === 'child' && p.home_area_id === focusRoom.id).length} enrolled`} />
             <Metric label="Teachers in" value={`${fs.teachersIn}`} />
             <Metric label="Teachers required" value={`${fs.needed}`} />
             <Metric label="Ratio" value={fs.effectiveRatio ? `1 : ${fs.effectiveRatio}` : '—'} />
@@ -466,6 +466,7 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
               room={r}
               status={statuses[r.id]}
               present={people.filter(p => p.work_area_id === r.id && p.zone !== 'home')}
+              enrolled={people.filter(p => p.kind === 'child' && p.home_area_id === r.id).length}
               photos={photos}
               tintOf={tintOf}
               onOpen={locked ? undefined : () => openRoom(r.id)}
