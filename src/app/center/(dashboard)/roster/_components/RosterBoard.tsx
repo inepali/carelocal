@@ -272,6 +272,9 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
   // No home room and not checked in (floaters, children who still need a home room): they wait in the Lobby
   const waiting = waitingForRoom(people)
   const floatersFree = waiting.filter(p => p.kind === 'staff')
+  // Substitutes waiting for a room (their shift has none) wait in the Lobby; regular teachers with no home room are parked
+  const waitingInLobby = waiting.filter(p => p.kind === 'child' || p.employment === 'substitute')
+  const parked = floatersFree.filter(p => p.employment !== 'substitute')
   // A teacher with a home room stays on it: other rooms are drop targets only, and alerts are about their room
   const locked = teacher && !!homeRoomId && rooms.some(r => r.id === homeRoomId)
   // Teacher view: alerts and the log are about the room on screen
@@ -453,8 +456,8 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
               </div>
             </div>
           )}
-          {/* Children with no home room still wait in the Lobby; teachers with no home room are parked below */}
-          <RoomStage room={focusRoom} status={fs} seats={peopleInRoom(focusRoom.id, people)} waiting={waiting.filter(p => p.kind === 'child')} photos={photos} tintOf={tintOf} visitingFrom={visitingFrom} ix={ix} />
+          {/* Children with no home room and substitutes waiting for a room wait in the Lobby; teachers with no home room are parked below */}
+          <RoomStage room={focusRoom} status={fs} seats={peopleInRoom(focusRoom.id, people)} waiting={waitingInLobby} photos={photos} tintOf={tintOf} visitingFrom={visitingFrom} ix={ix} />
           <Legend />
         </section>
 
@@ -480,15 +483,15 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
 
       </div>
 
-      {floatersFree.length > 0 && (
+      {parked.length > 0 && (
         <section aria-labelledby="parked-h" className="rounded-3xl border border-dashed border-[#9aa6b2] bg-white px-4 py-3 sm:px-6">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
             <div className="mr-2">
               <h2 id="parked-h" className="text-sm font-bold text-heading">Parked teachers</h2>
-              <p className="text-xs text-muted">Teachers with no home room, and substitutes whose shift has no room. Drag into a room.</p>
+              <p className="text-xs text-muted">No home room, not checked in. Drag into a room to check in.</p>
             </div>
             <div className="flex flex-wrap gap-3">
-              {floatersFree.map(p => (
+              {parked.map(p => (
                 <Chip key={p.person_id} person={p} url={photos[p.person_id]} tint="#dce3ea" size={36} dashed ix={ix} />
               ))}
             </div>

@@ -30,7 +30,7 @@ export function RoomStage({
   room: RosterRoom
   status: RoomStatus
   seats: Seats
-  /** Not checked in and no home room (floaters, children who need a home room): shown waiting in the Lobby */
+  /** Waiting for a room: substitutes whose shift has no room, and children who need a home room. Shown in the Lobby */
   waiting: RosterPerson[]
   photos: Record<string, string>
   tintOf: (p: RosterPerson) => string
@@ -75,7 +75,7 @@ export function RoomStage({
   const lobby = status.groups.lobby
   const waitingStaff = waiting.filter(p => p.kind === 'staff').length
   const waitingKids = waiting.length - waitingStaff
-  const waitingLabel = [waitingStaff ? plural(waitingStaff, 'floater', 'floaters') : '', waitingKids ? `${plural(waitingKids, 'child', 'children')} with no home room` : '']
+  const waitingLabel = [waitingStaff ? plural(waitingStaff, 'substitute', 'substitutes') : '', waitingKids ? `${plural(waitingKids, 'child', 'children')} with no home room` : '']
     .filter(Boolean).join(', ')
 
   const column = (people: RosterPerson[], side: 'left' | 'right', top: string, bottom: string, width: string, dashed: boolean | ((p: RosterPerson) => boolean), empty?: string) => (

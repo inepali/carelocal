@@ -1,7 +1,7 @@
 -- ============================================================
 -- Substitutes check in to the Lobby. Checking in to a confirmed shift now places the person in the Lobby of the
 -- shift's room (on site, not counted in the classroom ratio) instead of the classroom; an admin moves them in.
--- A shift with no room puts them on today's roster with no room, so the board shows them waiting for one.
+-- A shift with no room puts them on today's roster with no room; the board shows them waiting in the Lobby.
 -- Checking out still sends them home. Never blocks the time clock.
 -- Rollback: supabase/rollbacks/20261219000000_substitutes_to_lobby.down.sql
 -- ============================================================
