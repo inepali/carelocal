@@ -25,6 +25,7 @@ export function RoomTile({
   status,
   present,
   enrolled,
+  assigned,
   photos,
   tintOf,
   onOpen,
@@ -37,6 +38,8 @@ export function RoomTile({
   present: RosterPerson[]
   /** Children enrolled with this as their home room */
   enrolled: number
+  /** Regular teachers with this as their home room */
+  assigned: number
   photos: Record<string, string>
   tintOf: (p: RosterPerson) => string
   /** Bring this room to the center; omit to make the tile a drop target only (teacher view) */
@@ -55,7 +58,7 @@ export function RoomTile({
       {...(onOpen ? { type: 'button' as const, onClick: onOpen } : { role: 'group' })}
       data-drop={key}
       style={style}
-      aria-label={`${room.name}: ${status.childrenIn} of ${enrolled} children in, ${status.teachersIn} teachers, ${status.label}.${onOpen ? ' Open room.' : ''}`}
+      aria-label={`${room.name}: ${status.childrenIn} of ${enrolled} children in, ${status.teachersIn} of ${assigned} teachers in, ${status.label}.${onOpen ? ' Open room.' : ''}`}
       className={`flex min-h-[150px] w-full flex-col rounded-2xl p-2.5 text-left shadow-sm transition ${onOpen ? 'hover:shadow-md' : ''} focus-visible:outline-3 focus-visible:outline-brand-600 lg:[grid-column:var(--c)] lg:[grid-row:var(--r)] ${over ? 'bg-[#eef3ff]' : 'bg-white'} ${border}`}
     >
       <span className="flex flex-col items-start gap-1.5">
@@ -67,7 +70,7 @@ export function RoomTile({
       </span>
       <span className="mt-2 flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 text-xs text-text-main">
         <span><strong className="text-xl text-heading">{status.childrenIn}</strong>/{enrolled} kids</span>
-        <span><strong className="text-xl text-heading">{status.teachersIn}</strong> {status.teachersIn === 1 ? 'Tchr' : 'Tchrs'}</span>
+        <span><strong className="text-xl text-heading">{status.teachersIn}</strong>/{assigned} {assigned === 1 ? 'Tchr' : 'Tchrs'}</span>
       </span>
       <span className="mt-2.5 grid grid-cols-[repeat(4,minmax(0,24px))] gap-[5px]">
         {present.map(p => <MiniAvatar key={p.person_id} person={p} url={photos[p.person_id]} tint={tintOf(p)} ix={ix} />)}

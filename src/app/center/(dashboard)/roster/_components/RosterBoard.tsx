@@ -402,7 +402,7 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
           </div>
           <div className="mt-4 flex flex-wrap gap-2.5">
             <Metric label="Children in" value={`${fs.childrenIn} / ${people.filter(p => p.kind === 'child' && p.home_area_id === focusRoom.id).length} enrolled`} />
-            <Metric label="Teachers in" value={`${fs.teachersIn}`} />
+            <Metric label="Teachers in" value={`${fs.teachersIn} / ${people.filter(p => p.kind === 'staff' && p.employment === 'regular' && p.home_area_id === focusRoom.id).length} assigned`} />
             <Metric label="Teachers required" value={`${fs.needed}`} />
             <Metric label="Ratio" value={fs.effectiveRatio ? `1 : ${fs.effectiveRatio}` : '—'} />
           </div>
@@ -467,6 +467,7 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
               status={statuses[r.id]}
               present={people.filter(p => p.work_area_id === r.id && p.zone !== 'home')}
               enrolled={people.filter(p => p.kind === 'child' && p.home_area_id === r.id).length}
+              assigned={people.filter(p => p.kind === 'staff' && p.employment === 'regular' && p.home_area_id === r.id).length}
               photos={photos}
               tintOf={tintOf}
               onOpen={locked ? undefined : () => openRoom(r.id)}
@@ -484,7 +485,7 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
           <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
             <div className="mr-2">
               <h2 id="parked-h" className="text-sm font-bold text-heading">Parked teachers</h2>
-              <p className="text-xs text-muted">No home room, not checked in. Drag into a room to check in.</p>
+              <p className="text-xs text-muted">Teachers with no home room, and substitutes whose shift has no room. Drag into a room.</p>
             </div>
             <div className="flex flex-wrap gap-3">
               {floatersFree.map(p => (
