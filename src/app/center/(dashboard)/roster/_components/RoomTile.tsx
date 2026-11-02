@@ -31,6 +31,8 @@ export function RoomTile({
   onOpen,
   ix,
   preview,
+  themeUrl,
+  themeEditor,
   style,
 }: {
   room: RosterRoom
@@ -47,19 +49,25 @@ export function RoomTile({
   ix: RosterInteract
   /** What a drop (or the selected person moving here) would do, or null */
   preview: { code: StatusCode; text: string } | null
+  /** The room's background picture, shown softly behind the card */
+  themeUrl?: string | null
+  /** Admin's pencil for the picture; sits in the card's top corner, outside the tile's own button */
+  themeEditor?: React.ReactNode
   style?: React.CSSProperties
 }) {
   const Tag = onOpen ? 'button' : 'div'
   const key = dropKey(room.id, 'classroom')
   const over = ix.over === key
   const border = over ? 'border-2 border-dashed border-[#2357d9]' : status.code === 'out' ? 'border-2 border-[#d14b3f]' : 'border border-border'
+  const fill = over ? '#eef3ff' : '#ffffff'
   return (
+    <div className="relative flex lg:[grid-column:var(--c)] lg:[grid-row:var(--r)]" style={style}>
     <Tag
       {...(onOpen ? { type: 'button' as const, onClick: onOpen } : { role: 'group' })}
       data-drop={key}
-      style={style}
+      style={themeUrl ? { backgroundImage: `linear-gradient(${fill}d9, ${fill}d9), url("${themeUrl}")`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
       aria-label={`${room.name}: ${status.childrenIn} of ${enrolled} children in, ${status.teachersIn} of ${assigned} teachers in, ${status.label}.${onOpen ? ' Open room.' : ''}`}
-      className={`flex min-h-[150px] w-full flex-col rounded-2xl p-2.5 text-left shadow-sm transition ${onOpen ? 'hover:shadow-md' : ''} focus-visible:outline-3 focus-visible:outline-brand-600 lg:[grid-column:var(--c)] lg:[grid-row:var(--r)] ${over ? 'bg-[#eef3ff]' : 'bg-white'} ${border}`}
+      className={`flex min-h-[150px] w-full flex-col rounded-2xl p-2.5 text-left shadow-sm transition ${onOpen ? 'hover:shadow-md' : ''} focus-visible:outline-3 focus-visible:outline-brand-600 ${over ? 'bg-[#eef3ff]' : 'bg-white'} ${border}`}
     >
       <span className="flex flex-col items-start gap-1.5">
         <span className="text-[15px] font-bold leading-tight text-heading">{room.name}</span>
@@ -79,5 +87,7 @@ export function RoomTile({
       {preview && <span className={`mt-2 block rounded-lg px-2 py-1 text-xs font-bold ${STATUS_PILL[preview.code]}`}>{preview.text}</span>}
       {onOpen && <span className="mt-auto flex items-center gap-1 pt-2.5 text-xs font-bold text-brand-600">Open room <ChevronRight className="h-3.5 w-3.5" /></span>}
     </Tag>
+    {themeEditor && <div className="absolute right-2 top-2 z-[2]">{themeEditor}</div>}
+    </div>
   )
 }

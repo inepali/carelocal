@@ -25,6 +25,9 @@ export function RoomStage({
   photos,
   tintOf,
   visitingFrom,
+  themeUrl,
+  circleUrl,
+  circleEditor,
   ix,
 }: {
   room: RosterRoom
@@ -35,8 +38,16 @@ export function RoomStage({
   photos: Record<string, string>
   tintOf: (p: RosterPerson) => string
   visitingFrom: (p: RosterPerson) => string | null
+  /** The room's background picture (set by an admin); the zones and the circle become translucent over it */
+  themeUrl?: string | null
+  /** The Classroom circle's own picture; without one the circle shows the room picture through its green */
+  circleUrl?: string | null
+  /** Admin's pencil for the circle picture, shown at the bottom of the circle */
+  circleEditor?: React.ReactNode
   ix: RosterInteract
 }) {
+  /** A zone color, see-through enough to show the room picture behind it */
+  const tone = (color: string) => (themeUrl ? `color-mix(in srgb, ${color} 58%, transparent)` : color)
   const kids = seats.classroom.filter(p => p.kind === 'child')
   const teachers = seats.classroom.filter(p => p.kind === 'staff')
   const n = kids.length
@@ -88,12 +99,13 @@ export function RoomStage({
   const odd = (xs: RosterPerson[]) => xs.filter((_, i) => i % 2 === 1)
 
   return (
-    <div className="relative mx-auto my-5 aspect-[10/9] w-full overflow-hidden lg:aspect-[16/10] rounded-[20px] border border-border">
+    <div className="relative mx-auto my-5 aspect-[10/9] w-full overflow-hidden lg:aspect-[16/10] rounded-[20px] border border-border bg-cover bg-center"
+      style={themeUrl ? { backgroundImage: `url("${themeUrl}")` } : undefined}>
       {/* Home: checked out or not arrived. Dropping here checks out. */}
       <div
         data-drop={keys.home}
         className="absolute inset-x-0 top-0 h-1/2 border-b-[3px] border-[#b42318] text-[#7e1a14] transition-colors"
-        style={{ background: isOver(keys.home) ? '#edb0a9' : '#f3c6c1', boxShadow: zoneShadow(keys.home) }}
+        style={{ background: tone(isOver(keys.home) ? '#edb0a9' : '#f3c6c1'), boxShadow: zoneShadow(keys.home) }}
       >
         <div className="absolute inset-x-3.5 top-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
           <span className="inline-flex items-center gap-2 text-sm font-bold"><Home className="h-[18px] w-[18px]" />Home · checked out or absent</span>
@@ -107,7 +119,7 @@ export function RoomStage({
       <div
         data-drop={keys.playground}
         className="absolute bottom-0 left-0 h-1/2 w-1/2 border-r-2 border-t-[3px] border-r-[rgba(22,32,42,0.25)] border-t-[#a86b00] text-[#5c3b00] transition-colors"
-        style={{ background: isOver(keys.playground) ? '#f1d27f' : '#f8e2a8', boxShadow: zoneShadow(keys.playground) }}
+        style={{ background: tone(isOver(keys.playground) ? '#f1d27f' : '#f8e2a8'), boxShadow: zoneShadow(keys.playground) }}
       >
         {column(seats.playground, 'left', '12px', '64px', 'calc(22% - 10px)', false, 'Nobody outside')}
         <div className="absolute inset-x-3 bottom-2.5 flex flex-col items-start gap-1">
@@ -123,7 +135,7 @@ export function RoomStage({
       <div
         data-drop={keys.lobby}
         className="absolute bottom-0 right-0 h-1/2 w-1/2 border-t-[3px] border-t-[#2c5c9a] text-[#1d3f6e] transition-colors"
-        style={{ background: isOver(keys.lobby) ? '#b3cdee' : '#cfe0f5', boxShadow: zoneShadow(keys.lobby) }}
+        style={{ background: tone(isOver(keys.lobby) ? '#b3cdee' : '#cfe0f5'), boxShadow: zoneShadow(keys.lobby) }}
       >
         {column([...seats.lobby, ...waiting], 'right', '12px', waitingLabel ? '84px' : '64px', 'calc(22% - 10px)', p => waiting.includes(p), 'Pickups, drop-offs')}
         <div className="absolute inset-x-3 bottom-2.5 flex flex-col items-end gap-1">
@@ -141,7 +153,9 @@ export function RoomStage({
         data-drop={keys.classroom}
         className="absolute left-1/2 top-1/2 z-[2] aspect-square h-[76%] -translate-x-1/2 -translate-y-1/2 rounded-full lg:h-[88%] transition-colors"
         style={{
-          background: isOver(keys.classroom) ? '#a8d9ba' : '#bfe3cc',
+          background: circleUrl
+            ? `linear-gradient(${isOver(keys.classroom) ? 'rgba(168,217,186,0.6)' : 'rgba(191,227,204,0.4)'}, ${isOver(keys.classroom) ? 'rgba(168,217,186,0.6)' : 'rgba(191,227,204,0.4)'}), url("${circleUrl}") center / cover`
+            : tone(isOver(keys.classroom) ? '#a8d9ba' : '#bfe3cc'),
           border: isOver(keys.classroom) ? '4px dashed #14532d' : '4px solid #1e7a47',
           boxShadow: '0 6px 20px rgba(22,32,42,0.22)',
         }}
@@ -151,6 +165,7 @@ export function RoomStage({
         <span className="pointer-events-none absolute left-1/2 top-0 z-[3] -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-[#1e7a47] px-3 py-1 text-xs font-bold text-white">
           Classroom · {plural(status.groups.classroom.children, 'child', 'children')} · {plural(status.groups.classroom.teachers, 'teacher', 'teachers')}
         </span>
+        {circleEditor && <div className="absolute bottom-[3%] left-1/2 z-[4] -translate-x-1/2">{circleEditor}</div>}
         {teachers.length === 0 && n > 0 && (
           <div className="pointer-events-none absolute left-1/2 top-1/2 flex h-[120px] w-[120px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-dashed border-[#d14b3f] p-3 text-center text-xs font-bold text-[#a3221b]">
             No teacher checked in

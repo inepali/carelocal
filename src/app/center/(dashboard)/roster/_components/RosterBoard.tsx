@@ -10,6 +10,8 @@ import {
   type RosterPerson, type RosterRoom, type StatusCode,
 } from '@/lib/roster-ratio'
 import { getRosterPhotoUrls } from '@/app/actions/roster.actions'
+import { getRoomThemeUrls } from '@/app/actions/room-theme.actions'
+import { RoomThemeButton } from './RoomThemeButton'
 import { Chip, Face } from './PersonAvatar'
 import { RoomStage } from './RoomStage'
 import { RoomTile, StatusPill } from './RoomTile'
@@ -70,6 +72,8 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
   const [rooms, setRooms] = useState<RosterRoom[]>([])
   const [people, setPeople] = useState<RosterPerson[]>([])
   const [photos, setPhotos] = useState<Record<string, string>>({})
+  const [themes, setThemes] = useState<Record<string, string>>({})
+  const [circleThemes, setCircleThemes] = useState<Record<string, string>>({})
   const [live, setLive] = useState<Live>('connecting')
   const [focus, setFocus] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -109,20 +113,27 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
     if (res.success) setPhotos(res.urls)
   }, [centerId])
 
+  /** Room background pictures, set by an admin; refreshed with the headshots so the signed links never expire */
+  const reloadThemes = useCallback(async () => {
+    const res = await getRoomThemeUrls(centerId)
+    if (res.success) { setThemes(res.room); setCircleThemes(res.circle) }
+  }, [centerId])
+
   // First load, photos, and a photo refresh before the signed links expire
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     reload()
     reloadPhotos()
-    const t = window.setInterval(reloadPhotos, PHOTO_REFRESH_MS)
+    reloadThemes()
+    const t = window.setInterval(() => { reloadPhotos(); reloadThemes() }, PHOTO_REFRESH_MS)
     return () => window.clearInterval(t)
-  }, [reload, reloadPhotos])
+  }, [reload, reloadPhotos, reloadThemes])
 
   // Realtime: follow every presence change for this center
   useEffect(() => {
     let reloadTimer: number | undefined
     let logTimer: number | undefined
-    const reloadSoon = () => { window.clearTimeout(reloadTimer); reloadTimer = window.setTimeout(() => { reload(); reloadPhotos() }, 400) }
+    const reloadSoon = () => { window.clearTimeout(reloadTimer); reloadTimer = window.setTimeout(() => { reload(); reloadPhotos(); reloadThemes() }, 400) }
     const logSoon = () => { window.clearTimeout(logTimer); logTimer = window.setTimeout(() => setLogKey(k => k + 1), 600) }
 
     const channel = supabase
@@ -147,7 +158,7 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
       document.removeEventListener('visibilitychange', onVisible)
       supabase.removeChannel(channel)
     }
-  }, [supabase, centerId, reload, reloadPhotos])
+  }, [supabase, centerId, reload, reloadPhotos, reloadThemes])
 
   // Teacher view: who is napping, kept current by Realtime and a 30-second tick for due sleep checks
   const reloadNaps = useCallback(async () => {
@@ -275,6 +286,8 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
   const parked = floatersFree.filter(p => p.employment !== 'substitute')
   // A teacher with a home room stays on it: other rooms are drop targets only, and alerts are about their room
   const locked = teacher && !!homeRoomId && rooms.some(r => r.id === homeRoomId)
+  // Only owners and administrators (the Admin view, not a teacher's) change a room's background picture
+  const canTheme = !teacherView
   // Teacher view: alerts and the log are about the room on screen
   const scopeRoom = locked ? homeRoomId : teacherView ? focusRoom.id : null
   const alerts = rooms.filter(r => statuses[r.id].code === 'out' && (!scopeRoom || r.id === scopeRoom))
@@ -391,7 +404,10 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
               <p className="text-xs font-bold uppercase tracking-wider text-muted">
                 {focusRoom.min_age_months != null && focusRoom.max_age_months != null ? `${ageRange(focusRoom)} · ` : ''}1:{fs.effectiveRatio ?? '—'}
               </p>
-              <h2 className="mt-1 text-[28px] !font-bold leading-tight tracking-tight text-heading">{focusRoom.name}</h2>
+              <div className="mt-1 flex items-center gap-2">
+                <h2 className="text-[28px] !font-bold leading-tight tracking-tight text-heading">{focusRoom.name}</h2>
+                {canTheme && <RoomThemeButton areaId={focusRoom.id} roomName={focusRoom.name} hasImage={!!themes[focusRoom.id]} onChanged={reloadThemes} />}
+              </div>
             </div>
             <div className="order-last flex w-full flex-wrap items-stretch justify-center gap-1.5 md:order-none md:w-auto md:flex-1">
               <Metric label="Children in" value={`${fs.childrenIn}/${people.filter(p => p.kind === 'child' && p.home_area_id === focusRoom.id).length}`} hint="enrolled" />
@@ -407,7 +423,8 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
             </p>
           )}
           {/* Children with no home room and substitutes waiting for a room wait in the Lobby; teachers with no home room are parked below */}
-          <RoomStage room={focusRoom} status={fs} seats={peopleInRoom(focusRoom.id, people)} waiting={waitingInLobby} photos={photos} tintOf={tintOf} visitingFrom={visitingFrom} ix={ix} />
+          <RoomStage room={focusRoom} status={fs} seats={peopleInRoom(focusRoom.id, people)} waiting={waitingInLobby} photos={photos} tintOf={tintOf} visitingFrom={visitingFrom} themeUrl={themes[focusRoom.id]} circleUrl={circleThemes[focusRoom.id]}
+            circleEditor={canTheme ? <RoomThemeButton areaId={focusRoom.id} slot="circle" roomName={focusRoom.name} hasImage={!!circleThemes[focusRoom.id]} onChanged={reloadThemes} /> : undefined} ix={ix} />
           <Legend />
         </section>
 
@@ -426,6 +443,8 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
               onOpen={locked ? undefined : () => openRoom(r.id)}
               ix={ix}
               preview={tilePreview(r)}
+              themeUrl={themes[r.id]}
+              themeEditor={canTheme ? <RoomThemeButton areaId={r.id} roomName={r.name} hasImage={!!themes[r.id]} onChanged={reloadThemes} /> : undefined}
               style={{ ['--c' as string]: s.col, ['--r' as string]: s.row }}
             />
           )
