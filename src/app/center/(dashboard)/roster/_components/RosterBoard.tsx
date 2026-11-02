@@ -394,20 +394,21 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
           className="col-span-2 min-w-0 rounded-3xl border border-border bg-white px-4 pb-6 pt-5 sm:px-7 lg:[grid-column:2] lg:[grid-row:1/span_var(--rows)]"
           style={{ ['--rows' as string]: rows }}
         >
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
+          {/* Header: room on the left, the numbers in the middle, status on the right (numbers wrap below on narrow screens) */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+            <div className="min-w-0">
               <p className="text-xs font-bold uppercase tracking-wider text-muted">
                 {focusRoom.min_age_months != null && focusRoom.max_age_months != null ? `${ageRange(focusRoom)} · ` : ''}1:{fs.effectiveRatio ?? '—'}
               </p>
-              <h2 className="mt-1 text-[28px] font-bold tracking-tight text-heading">{focusRoom.name}</h2>
+              <h2 className="mt-1 text-[28px] font-bold leading-tight tracking-tight text-heading">{focusRoom.name}</h2>
             </div>
-            <StatusPill code={fs.code} label={fs.label} className="!px-3.5 !py-1.5 !text-sm" />
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2.5">
-            <Metric label="Children in" value={`${fs.childrenIn} / ${people.filter(p => p.kind === 'child' && p.home_area_id === focusRoom.id).length} enrolled`} />
-            <Metric label="Teachers in" value={`${fs.teachersIn} / ${people.filter(p => p.kind === 'staff' && p.employment === 'regular' && p.home_area_id === focusRoom.id).length} assigned`} />
-            <Metric label="Teachers required" value={`${fs.needed}`} />
-            <Metric label="Ratio" value={fs.effectiveRatio ? `1 : ${fs.effectiveRatio}` : '—'} />
+            <div className="order-last flex w-full flex-wrap items-stretch justify-center gap-1.5 md:order-none md:w-auto md:flex-1">
+              <Metric label="Children in" value={`${fs.childrenIn}/${people.filter(p => p.kind === 'child' && p.home_area_id === focusRoom.id).length}`} hint="enrolled" />
+              <Metric label="Teachers in" value={`${fs.teachersIn}/${people.filter(p => p.kind === 'staff' && p.employment === 'regular' && p.home_area_id === focusRoom.id).length}`} hint="assigned" />
+              <Metric label="Required" value={`${fs.needed}`} />
+              <Metric label="Ratio" value={fs.effectiveRatio ? `1:${fs.effectiveRatio}` : '—'} />
+            </div>
+            <StatusPill code={fs.code} label={fs.label} className="ml-auto !px-3.5 !py-1.5 !text-sm md:ml-0" />
           </div>
           {fs.effectiveRatio != null && focusRoom.ratio_children != null && fs.effectiveRatio < focusRoom.ratio_children && (
             <p className="mt-3 rounded-lg bg-[#fff0d1] px-3 py-2 text-sm text-[#7a4b00]">
@@ -629,11 +630,12 @@ function Stat({ label, value, of }: { label: string; value: number; of?: number 
   )
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+/** A small number in the room card header: "Children in 0/5 enrolled" */
+function Metric({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="flex-1 basis-[120px] rounded-xl bg-surface px-3.5 py-2.5">
-      <p className="text-xs font-semibold text-muted">{label}</p>
-      <p className="mt-0.5 text-xl font-bold text-heading">{value}</p>
+    <div className="min-w-[78px] rounded-lg bg-surface px-2.5 py-1 text-center">
+      <p className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-wide text-muted">{label}</p>
+      <p className="whitespace-nowrap text-base font-bold leading-tight text-heading">{value}{hint && <span className="ml-1 text-[11px] font-semibold text-muted">{hint}</span>}</p>
     </div>
   )
 }
