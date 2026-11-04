@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { WorkArea } from '@/lib/types'
-import { Plus, Edit2, Trash2, Save, X, Loader2, Home, Users, ChevronUp, ChevronDown, Scale, LayoutGrid } from 'lucide-react'
+import { CenterProgram, WorkArea } from '@/lib/types'
+import { Plus, Edit2, Trash2, Save, X, Loader2, Home, Users, ChevronUp, ChevronDown, Scale, LayoutGrid, BookOpen } from 'lucide-react'
 import { showConfirm } from '@/lib/dialog'
 
-type FormState = { name: string; ageGroup: string; capacity: string; ratio: string; minAge: string; maxAge: string; onRoster: boolean }
-const EMPTY_FORM: FormState = { name: '', ageGroup: '', capacity: '', ratio: '', minAge: '', maxAge: '', onRoster: true }
+type FormState = { name: string; ageGroup: string; capacity: string; programId: string; ratio: string; minAge: string; maxAge: string; onRoster: boolean }
+const EMPTY_FORM: FormState = { name: '', ageGroup: '', capacity: '', programId: '', ratio: '', minAge: '', maxAge: '', onRoster: true }
 
 /** "14 mo" / "2 y" / "2 y 6 mo" */
 export function monthsLabel(m: number) {
@@ -38,6 +38,8 @@ function rosterProblem(f: FormState): string | null {
 export function WorkAreasPanel({ centerId, workAreaTerm, showRoster = false }: { centerId: string; workAreaTerm: string; showRoster?: boolean }) {
   const supabase = createClient()
   const [workAreas, setWorkAreas] = useState<WorkArea[]>([])
+  // About → Programs; each class picks the program it belongs to
+  const [programs, setPrograms] = useState<Pick<CenterProgram, 'id' | 'name' | 'is_active'>[]>([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<string | null>(null) // 'new' or a work area id
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
@@ -46,14 +48,23 @@ export function WorkAreasPanel({ centerId, workAreaTerm, showRoster = false }: {
   const term = workAreaTerm.toLowerCase()
 
   const loadData = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('work_areas')
-      .select('*')
-      .eq('center_id', centerId)
-      .order('sort_order', { ascending: true })
-      .order('name', { ascending: true })
+    const [{ data, error }, { data: programRows }] = await Promise.all([
+      supabase
+        .from('work_areas')
+        .select('*')
+        .eq('center_id', centerId)
+        .order('sort_order', { ascending: true })
+        .order('name', { ascending: true }),
+      supabase
+        .from('center_programs')
+        .select('id, name, is_active')
+        .eq('center_id', centerId)
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true }),
+    ])
     if (error) setError(error.message)
     setWorkAreas(data || [])
+    setPrograms(programRows || [])
     setLoading(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [centerId])
@@ -64,7 +75,7 @@ export function WorkAreasPanel({ centerId, workAreaTerm, showRoster = false }: {
     setError('')
     setEditing(area ? area.id : 'new')
     setForm(area ? {
-      name: area.name, ageGroup: area.age_group || '', capacity: area.capacity?.toString() || '',
+      name: area.name, ageGroup: area.age_group || '', capacity: area.capacity?.toString() || '', programId: area.program_id ?? '',
       ratio: area.ratio_children?.toString() ?? '', minAge: area.min_age_months?.toString() ?? '', maxAge: area.max_age_months?.toString() ?? '',
       onRoster: area.on_roster ?? true,
     } : EMPTY_FORM)
@@ -85,6 +96,7 @@ export function WorkAreasPanel({ centerId, workAreaTerm, showRoster = false }: {
       name: form.name.trim(),
       age_group: form.ageGroup.trim() || null,
       capacity: form.capacity ? parseInt(form.capacity, 10) : null,
+      program_id: form.programId || null,
       ...(showRoster ? {
         ratio_children: int(form.ratio),
         min_age_months: int(form.minAge),
@@ -131,6 +143,7 @@ export function WorkAreasPanel({ centerId, workAreaTerm, showRoster = false }: {
     else loadData()
   }
 
+  const programName = new Map(programs.map(p => [p.id, p.name]))
   const FIELD = 'w-full px-4 py-2.5 rounded-xl border border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-600/30'
   const minA = int(form.minAge), maxA = int(form.maxAge)
   const rosterFields = showRoster && (
@@ -195,6 +208,22 @@ export function WorkAreasPanel({ centerId, workAreaTerm, showRoster = false }: {
         className="w-full px-4 py-2.5 rounded-xl border border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-600/30"
       />
     </div>
+    {programs.length > 0 && (
+      <label className="flex flex-col gap-1 text-xs font-semibold text-muted sm:flex-row sm:items-center sm:gap-3">
+        <span className="flex items-center gap-1.5 shrink-0"><BookOpen className="h-3.5 w-3.5" /> Program</span>
+        <select
+          value={form.programId}
+          onChange={e => setForm({ ...form, programId: e.target.value })}
+          className={`${FIELD} bg-white text-sm font-medium text-text-main sm:max-w-sm`}
+          aria-label="Program"
+        >
+          <option value="">No program</option>
+          {programs.filter(p => p.is_active || p.id === form.programId).map(p => (
+            <option key={p.id} value={p.id}>{p.name}{p.is_active ? '' : ' (inactive)'}</option>
+          ))}
+        </select>
+      </label>
+    )}
     {rosterFields}
     </div>
   )
@@ -268,6 +297,9 @@ export function WorkAreasPanel({ centerId, workAreaTerm, showRoster = false }: {
                         <div className={`font-bold ${area.is_active ? 'text-text-main' : 'text-subtle'}`}>{area.name}</div>
                         <div className="text-xs text-subtle mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1">
                           <span>{area.age_group || 'Any age'}</span>
+                          {area.program_id && programName.get(area.program_id) && (
+                            <span className="flex items-center gap-1 font-semibold text-brand-700"><BookOpen className="w-3 h-3" /> {programName.get(area.program_id)}</span>
+                          )}
                           <span className="flex items-center gap-1"><Users className="w-3 h-3" /> Capacity {area.capacity ?? '—'}</span>
                           {showRoster && (
                             <>

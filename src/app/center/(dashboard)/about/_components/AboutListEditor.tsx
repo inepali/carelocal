@@ -30,6 +30,8 @@ type AboutListEditorProps<T extends AboutRow> = {
   fields: AboutField[]
   defaults?: Record<string, unknown>
   layout?: 'grid' | 'list'
+  /** Extra buttons beside "Add …" (e.g. Lesson Plan on Programs) */
+  headerAction?: ReactNode
   renderItem: (item: T) => ReactNode
 }
 
@@ -44,6 +46,7 @@ export default function AboutListEditor<T extends AboutRow>({
   fields,
   defaults = {},
   layout = 'grid',
+  headerAction,
   renderItem,
 }: AboutListEditorProps<T>) {
   const supabase = createClient()
@@ -183,12 +186,15 @@ export default function AboutListEditor<T extends AboutRow>({
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <p className="text-muted">{description}</p>
-        <button
-          onClick={() => openModal()}
-          className="inline-flex items-center justify-center gap-2 bg-amber-400 text-heading font-bold px-6 py-3 rounded-xl hover:bg-amber-500 shadow-sm transition-all active:scale-95 shrink-0"
-        >
-          <Plus className="w-5 h-5" /> Add {itemLabel}
-        </button>
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
+          {headerAction}
+          <button
+            onClick={() => openModal()}
+            className="inline-flex items-center justify-center gap-2 bg-amber-400 text-heading font-bold px-6 py-3 rounded-xl hover:bg-amber-500 shadow-sm transition-all active:scale-95 shrink-0"
+          >
+            <Plus className="w-5 h-5" /> Add {itemLabel}
+          </button>
+        </div>
       </div>
 
       {items.length === 0 ? (

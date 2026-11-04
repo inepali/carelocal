@@ -270,6 +270,8 @@ export interface WorkArea {
   max_age_months?: number | null
   /** Live roster: shown on the board (off for kitchens, offices and similar) */
   on_roster?: boolean
+  /** The program this class belongs to (About → Programs); null = none yet */
+  program_id?: string | null
 }
 
 export interface CenterProgram {

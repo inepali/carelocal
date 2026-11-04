@@ -130,7 +130,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
     // Receipts has no menu item of its own: it opens from a vendor's receipts link
     { name: 'Vendors', href: '/center/vendors', icon: Truck, also: ['/center/receipts'] },
     { name: 'Support', href: '/center/support', icon: LifeBuoy },
-    { name: 'About', href: '/center/about', icon: Info },
+    { name: 'About', href: '/center/about', icon: Info, also: ['/center/lesson-plans'] },
   ]
 
   if (loading) {
