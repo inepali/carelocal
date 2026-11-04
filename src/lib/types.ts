@@ -288,6 +288,39 @@ export interface CenterProgram {
   created_at: string
 }
 
+/** Lesson plans: Learning Area → Subject → Goal, per center (e.g. NC Foundations) */
+export interface LessonLearningArea {
+  id: string
+  center_id: string
+  code: string | null
+  name: string
+  description: string | null
+  is_active: boolean
+  sort_order: number
+}
+
+export interface LessonSubject {
+  id: string
+  center_id: string
+  learning_area_id: string
+  name: string
+  description: string | null
+  is_active: boolean
+  sort_order: number
+}
+
+export interface LessonGoal {
+  id: string
+  center_id: string
+  subject_id: string
+  code: string | null
+  /** The goal statement */
+  name: string
+  description: string | null
+  is_active: boolean
+  sort_order: number
+}
+
 export interface CenterTeamMember {
   id: string
   center_id: string

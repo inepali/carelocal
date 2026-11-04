@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { CenterProgram, WorkArea } from '@/lib/types'
-import { ArrowLeft, BookOpen, Home, Loader2, NotebookPen, AlertTriangle, Target } from 'lucide-react'
+import { ArrowLeft, BookOpen, Home, Loader2, NotebookPen, AlertTriangle } from 'lucide-react'
 import { useCenterContext } from '../context'
+import CurriculumPanel from './_components/CurriculumPanel'
 
 type ProgramRow = Pick<CenterProgram, 'id' | 'name' | 'age_range' | 'is_active'>
 type ClassRow = Pick<WorkArea, 'id' | 'name' | 'program_id' | 'is_active'>
@@ -13,7 +14,7 @@ type ClassRow = Pick<WorkArea, 'id' | 'name' | 'program_id' | 'is_active'>
 /**
  * Lesson Plan setup for center admins.
  *  - Programs and their classes: a class's program is set in About → Manage Data → Classrooms.
- *  - Learning areas, subjects and goals: managed here (coming next).
+ *  - Learning areas, subjects and goals: managed here (CurriculumPanel).
  */
 export default function LessonPlansPage() {
   const supabase = createClient()
@@ -113,11 +114,7 @@ export default function LessonPlansPage() {
             )}
           </section>
 
-          <section className="bg-white border border-dashed border-brand-200 rounded-3xl p-10 text-center">
-            <Target className="w-12 h-12 text-border mx-auto mb-3" />
-            <h2 className="text-xl font-bold text-heading mb-1">Learning areas, subjects &amp; goals</h2>
-            <p className="text-muted max-w-md mx-auto">Coming next: manage the learning areas, subjects and goals that lesson plans are built from.</p>
-          </section>
+          {centerId && <CurriculumPanel centerId={centerId} />}
         </div>
       )}
     </div>
