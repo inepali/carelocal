@@ -299,12 +299,6 @@ export default function ChildcareHomePage() {
             >
               Log in
             </Link>
-            <Link
-              href="/register"
-              className="text-sm font-semibold bg-brand-600 text-white px-4 py-2 rounded-lg hover:bg-brand-800 transition-colors shadow-sm"
-            >
-              Get started free
-            </Link>
           </div>
         </div>
       </nav>
