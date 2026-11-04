@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, Calendar, FileText, UserCircle, Globe, Search, CreditCard, Building, LayoutDashboard, Inbox, Briefcase, ClipboardList, LayoutGrid } from 'lucide-react'
+import { LogOut, Calendar, FileText, UserCircle, Globe, Search, CreditCard, Building, LayoutDashboard, Inbox, Briefcase, ClipboardList, LayoutGrid, NotebookPen } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { useIsRegularOnly, isSubstituteOnlyRoute, isRegularOnlyRoute } from '@/lib/hooks/useIsRegularOnly'
@@ -70,6 +70,7 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
   const NAVIGATION = [
     { name: 'My Center', href: '/staff/center', icon: Building },
     { name: 'My Room', href: '/staff/roster', icon: LayoutGrid },
+    { name: 'Lesson Plans', href: '/staff/lesson-plans', icon: NotebookPen },
     { name: 'My Centers', href: '/staff/centers', icon: Globe },
     { name: 'Available Shifts', href: '/staff/shifts', icon: Search },
     { name: 'My Shifts', href: '/staff/my-shifts', icon: Calendar },
@@ -81,6 +82,7 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
     { name: 'My Account', href: '/staff/account', icon: CreditCard },
   ].filter(item => isRegularOnly ? !isSubstituteOnlyRoute(item.href) : !isRegularOnlyRoute(item.href))
    .filter(item => item.href !== '/staff/roster' || rosterOn)
+   .filter(item => item.href !== '/staff/lesson-plans' || isChildcare)
 
   if (loading || classLoading || blockedRoute) {
      return <div className="min-h-screen bg-surface flex items-center justify-center">Loading...</div>

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { CenterProgram, WorkArea } from '@/lib/types'
-import { ArrowLeft, BookOpen, Home, Loader2, NotebookPen, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, BookOpen, Home, Loader2, Target, AlertTriangle, CalendarDays } from 'lucide-react'
 import { useCenterContext } from '../context'
 import CurriculumPanel from './_components/CurriculumPanel'
 
@@ -12,7 +12,7 @@ type ProgramRow = Pick<CenterProgram, 'id' | 'name' | 'age_range' | 'is_active'>
 type ClassRow = Pick<WorkArea, 'id' | 'name' | 'program_id' | 'is_active'>
 
 /**
- * Lesson Plan setup for center admins.
+ * Manage Subjects & Goals (lesson plan setup) for center admins.
  *  - Programs and their classes: a class's program is set in About → Manage Data → Classrooms.
  *  - Learning areas, subjects and goals: managed here (CurriculumPanel).
  */
@@ -53,9 +53,9 @@ export default function LessonPlansPage() {
       </Link>
       <div className="mb-8">
         <h1 className="text-3xl font-extrabold text-heading mb-2 flex items-center gap-3">
-          <NotebookPen className="w-8 h-8 text-brand-600" /> Lesson Plan
+          <Target className="w-8 h-8 text-brand-600" /> Subjects &amp; Goals
         </h1>
-        <p className="text-muted">Set up the learning areas, subjects and goals your teachers plan from, and see which {term} each program covers.</p>
+        <p className="text-muted">Set up the learning areas, subjects and goals your teachers build weekly lesson plans from, and see which {term} each program covers.</p>
       </div>
 
       {error && <div className="mb-6 px-4 py-3 rounded-xl text-sm border bg-red-50 text-red-700 border-red-200">{error}</div>}
@@ -88,7 +88,7 @@ export default function LessonPlansPage() {
                         <div className={`font-bold ${p.is_active ? 'text-text-main' : 'text-subtle'}`}>{p.name}</div>
                         <div className="text-xs text-subtle">{p.age_range || 'Any age'}{p.is_active ? '' : ' · Inactive'}</div>
                       </div>
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-1 flex-wrap gap-1.5">
                         {mine.length === 0 ? (
                           <span className="text-xs font-semibold text-subtle">No {term} yet</span>
                         ) : mine.map(c => (
@@ -97,6 +97,11 @@ export default function LessonPlansPage() {
                           </span>
                         ))}
                       </div>
+                      {mine.length > 0 && (
+                        <Link href={`/center/lesson-plans/weekly?program=${p.id}`} className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-600 hover:underline shrink-0">
+                          <CalendarDays className="w-3.5 h-3.5" /> Weekly Lesson Plan
+                        </Link>
+                      )}
                     </li>
                   )
                 })}

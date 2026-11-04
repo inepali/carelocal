@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { CenterProgram, CenterTeamMember, CenterAboutItem, WorkArea } from '@/lib/types'
-import { Building2, BookOpen, Users, ListPlus, Clock, Mail, CreditCard, Database, ExternalLink, FileText, Globe, Home, NotebookPen } from 'lucide-react'
+import { Building2, BookOpen, Users, ListPlus, Clock, Mail, CreditCard, Database, ExternalLink, FileText, Globe, Home, Target, CalendarDays } from 'lucide-react'
 import CenterProfileTab from './_components/CenterProfileTab'
 import AboutListEditor from './_components/AboutListEditor'
 import SubscriptionTab from './_components/SubscriptionTab'
@@ -156,14 +156,14 @@ export default function CenterAboutPage() {
               emptyTitle="No programs yet"
               emptyText="Add the programs your center offers so families and staff know what you provide."
               defaults={{ is_active: true }}
-              headerAction={
+              headerAction={ctx.domainKey === 'childcare' && (
                 <Link
                   href="/center/lesson-plans"
                   className="inline-flex items-center justify-center gap-2 bg-white text-heading font-bold px-6 py-3 rounded-xl border border-border hover:border-brand-600 hover:text-brand-600 shadow-sm transition-all"
                 >
-                  <NotebookPen className="w-5 h-5" /> Lesson Plan
+                  <Target className="w-5 h-5" /> Manage Subjects &amp; Goals
                 </Link>
-              }
+              )}
               fields={[
                 { key: 'name', label: 'Program Name', placeholder: 'e.g. Pre-K Readiness', required: true },
                 { key: 'age_range', label: 'Age Range', placeholder: 'e.g. 3–5 years', half: true },
@@ -208,6 +208,14 @@ export default function CenterAboutPage() {
                       </div>
                     )
                   })()}
+                  {ctx.domainKey === 'childcare' && (
+                    <Link
+                      href={`/center/lesson-plans/weekly?program=${program.id}`}
+                      className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 text-white text-sm font-bold hover:bg-brand-800 transition-colors"
+                    >
+                      <CalendarDays className="w-4 h-4" /> Weekly Lesson Plan
+                    </Link>
+                  )}
                   {normalizeWebUrl(program.more_info_url) && (
                     <a
                       href={normalizeWebUrl(program.more_info_url)!}
