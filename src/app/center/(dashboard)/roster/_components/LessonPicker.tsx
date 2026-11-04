@@ -12,29 +12,35 @@ const FIELD = 'min-h-11 w-full rounded-xl border border-border bg-white px-3 tex
 export function useTodayPlanItems(centerId: string, roomId: string | null | undefined) {
   const [items, setItems] = useState<TodayPlanItem[]>([])
   const [loading, setLoading] = useState(!!roomId)
+  const [error, setError] = useState<string | null>(null)
   useEffect(() => {
-    if (!roomId) { setItems([]); setLoading(false); return }
+    if (!roomId) { setItems([]); setLoading(false); setError(null); return }
     let ignore = false
     setLoading(true)
     loadTodayPlanItems(createClient(), centerId, roomId).then(res => {
       if (ignore) return
-      setItems(res.success ? res.items : [])   // no plan is not an error for the teacher; the free-text path still works
+      // No approved plan is an empty list, not an error; a real failure (e.g. migration not applied) is shown
+      setItems(res.success ? res.items : [])
+      setError(res.success ? null : res.error)
+      if (!res.success) console.error('[lesson-plan] daily_plan_items failed:', res.error)
       setLoading(false)
     })
     return () => { ignore = true }
   }, [centerId, roomId])
-  return { items, loading }
+  return { items, loading, error }
 }
 
 /** Tap one of today's lesson activities; "Something else" (null) keeps the free-text path */
-export function LessonChoices({ items, loading, value, onChange, otherLabel = 'Something else' }: {
+export function LessonChoices({ items, loading, error, value, onChange, otherLabel = 'Something else' }: {
   items: TodayPlanItem[]
   loading: boolean
+  error?: string | null
   value: string | null
   onChange: (id: string | null) => void
   otherLabel?: string
 }) {
   if (loading) return <p className="flex items-center gap-2 text-xs text-muted"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking today&apos;s lesson plan…</p>
+  if (error) return <p className="rounded-lg bg-[#fce4e2] px-3 py-2 text-xs font-semibold text-[#a3221b]">Today&apos;s lesson plan could not load: {error}</p>
   if (items.length === 0) return null
   return (
     <div>

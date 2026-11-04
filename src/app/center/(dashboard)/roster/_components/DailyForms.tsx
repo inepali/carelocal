@@ -124,7 +124,7 @@ export function EntryForm({ kind, busy, error, onSave, onCancel, centerId, roomI
 
       {kind === 'activity' && (
         <>
-          <LessonChoices items={plan.items} loading={plan.loading} value={planItemId} onChange={setPlanItemId} />
+          <LessonChoices items={plan.items} loading={plan.loading} error={plan.error} value={planItemId} onChange={setPlanItemId} />
           {planItem ? (
             <input value={note} onChange={e => setNote(e.target.value)} maxLength={200} className={FIELD} placeholder="Note (optional), e.g. counted to ten on her own" />
           ) : (

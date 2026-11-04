@@ -133,7 +133,7 @@ export function ClassEntryDialog({ supabase, centerId, room, kind, children, pho
             </>
           ) : (
             <>
-              <LessonChoices items={plan.items} loading={plan.loading} value={planItemId} onChange={setPlanItemId} />
+              <LessonChoices items={plan.items} loading={plan.loading} error={plan.error} value={planItemId} onChange={setPlanItemId} />
               {item ? (
                 <>
                   {item.description && <p className="whitespace-pre-line rounded-xl bg-surface px-3 py-2 text-xs text-text-main">{item.description}</p>}
