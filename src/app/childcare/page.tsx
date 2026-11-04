@@ -7,7 +7,8 @@ import { StructuredData } from '@/components/marketing/StructuredData'
 import {
   CheckCircle, Zap, FileText, Users, ArrowRight,
   Star, MessageSquare, Clock, ShieldCheck, ChevronDown,
-  Lock, Link2, Eye, Archive
+  Lock, Link2, Eye, Archive,
+  LayoutGrid, NotebookPen, Moon, Mail, Camera, Briefcase, GraduationCap, Heart, Baby
 } from 'lucide-react'
 
 const seo = getDomainConfig('childcare')
@@ -43,6 +44,94 @@ const HOW_IT_WORKS = [
     title: 'Blast fill via SMS',
     desc: 'CareLocal instantly texts your eligible staff pool. The first to claim it gets the shift.',
     icon: MessageSquare,
+  },
+]
+
+/** One day at a center, start to finish: each feature with the moment it earns its keep */
+const A_DAY = [
+  {
+    time: '6:40 am',
+    icon: Zap,
+    area: 'Staffing',
+    title: 'A teacher calls out. The shift fills by text.',
+    desc: 'Post the open shift in 30 seconds. Your own substitutes get a text, and the first eligible one claims it before doors open.',
+    early: false,
+  },
+  {
+    time: '7:00 am',
+    icon: LayoutGrid,
+    area: 'Classroom',
+    title: 'Children check in. Ratios stay green.',
+    desc: 'The Live Roster shows every room, who is in, and the teacher-to-child ratio as children arrive and move between rooms.',
+    early: true,
+  },
+  {
+    time: '9:30 am',
+    icon: NotebookPen,
+    area: 'Classroom',
+    title: "Today's lesson, logged in two taps.",
+    desc: "Pick the activity from this week's approved lesson plan, tick the children who took part, and add a photo.",
+    early: true,
+  },
+  {
+    time: '12:30 pm',
+    icon: Moon,
+    area: 'Classroom',
+    title: 'Nap time, with sleep checks that remind you.',
+    desc: 'Start nap for the room at once. Infant sleep checks come due on a timer, and the button turns orange when one is due.',
+    early: true,
+  },
+  {
+    time: '6:00 pm',
+    icon: Mail,
+    area: 'Families',
+    title: 'Every family gets the day.',
+    desc: 'Meals, naps, diapers, activities and approved photos go out in one daily report, with no extra parent app to set up.',
+    early: true,
+  },
+  {
+    time: 'Friday',
+    icon: CheckCircle,
+    area: 'Planning',
+    title: "Next week's plan, approved.",
+    desc: 'Teachers build next week from NC Foundations goals and submit it. The director approves it or asks for changes.',
+    early: true,
+  },
+]
+
+/** What each person at the center gets (early = in early access, turned on per center) */
+const BY_ROLE = [
+  {
+    role: 'Directors',
+    icon: ShieldCheck,
+    items: [
+      { text: 'SMS shift fill from your own substitute pool', early: false },
+      { text: 'Staff files, trainings and policy sign-off on NC checklists', early: false },
+      { text: 'Inspections, vendors and expenses in one place', early: false },
+      { text: 'Free job postings with one-click apply', early: false },
+      { text: 'Live ratios for every room', early: true },
+      { text: 'Lesson plan review and approval', early: true },
+    ],
+  },
+  {
+    role: 'Teachers',
+    icon: GraduationCap,
+    items: [
+      { text: 'Free account and one document library for every center', early: false },
+      { text: 'Claim open shifts from a text', early: false },
+      { text: 'Check-in, meals, naps and photos on the Live Roster', early: true },
+      { text: 'Weekly lesson plans from NC Foundations goals', early: true },
+      { text: 'Class feedback on how each activity went', early: true },
+    ],
+  },
+  {
+    role: 'Families',
+    icon: Heart,
+    items: [
+      { text: 'A daily report by email at the end of each day', early: true },
+      { text: 'Only photos the director has reviewed', early: true },
+      { text: "What their child learned, from the class's lesson plan", early: true },
+    ],
   },
 ]
 
@@ -89,6 +178,16 @@ const SECURITY = [
     icon: Archive,
     title: 'You control what is shared',
     desc: 'Staff share only the document they choose. Accepted documents stay in your records after an employee leaves.',
+  },
+  {
+    icon: Baby,
+    title: 'Child files for directors only',
+    desc: "Children's records, medicine and incidents open only for the owner and admins. Teachers see just what the roster needs.",
+  },
+  {
+    icon: Camera,
+    title: 'Photos reviewed before families see them',
+    desc: 'Every daily photo waits for a director to approve it, and marketing consent is kept separate from daily photos.',
   },
 ]
 
@@ -149,6 +248,18 @@ const FAQS = [
     a: "Documents live in private, encrypted storage — never on a public link — and open only through links that expire within minutes. Medical records such as TB results and health questionnaires are kept in a confidential file that only the owner and designated admins can open, and every view is logged. Accepted documents stay in your records even after an employee leaves."
   },
   {
+    q: "Can CareLocal track teacher-to-child ratios?",
+    a: "Yes. The Live Roster (in early access) shows every room with its children and teachers as they check in, check out and move between rooms, and compares each room against the ratio you set for its age group. A younger child in the room tightens the ratio automatically."
+  },
+  {
+    q: "Does CareLocal include lesson plans for North Carolina?",
+    a: "Yes, in early access. Load the North Carolina Foundations for Early Learning and Development (5 learning areas, 19 subjects, 54 goals) in one click, or build your own. Teachers write a weekly plan for their class, link each activity to goals, and submit it; the director approves it before it applies. During the day, teachers log the activity for the children who took part."
+  },
+  {
+    q: "Do parents get a daily report?",
+    a: "Yes, in early access. At the end of each day, families who opt in get an email with their child's meals, naps, diapers or bathroom, activities and photos. Photos go out only after a director approves them."
+  },
+  {
     q: "Is CareLocal free for daycare teachers and substitutes?",
     a: "Yes, 100% free. Teachers, floaters, and substitutes never pay anything: no subscription and no per-shift fees. Create a profile, upload certifications, and claim shifts from any mobile browser."
   },
@@ -173,6 +284,7 @@ export default function ChildcareHomePage() {
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-muted">
             <ProductsMenu />
             <Link href="#how-it-works" className="hover:text-brand-600 transition-colors">How it works</Link>
+            <Link href="#a-day" className="hover:text-brand-600 transition-colors">Classroom</Link>
             <Link href="#features" className="hover:text-brand-600 transition-colors">Features</Link>
             <Link href="#compliance" className="hover:text-brand-600 transition-colors">Compliance</Link>
             <Link href="#security" className="hover:text-brand-600 transition-colors">Security</Link>
@@ -210,12 +322,12 @@ export default function ChildcareHomePage() {
           </div>
 
           <h1 className="text-5xl md:text-6xl font-extrabold text-heading leading-tight tracking-tight mb-6">
-            The all-in-one platform for{' '}
-            <span className="gradient-text">childcare staffing and compliance</span>
+            Fill a shift in minutes.{' '}
+            <span className="gradient-text">Then run your whole center from one login.</span>
           </h1>
 
           <p className="text-xl text-text-muted max-w-2xl mx-auto mb-10 leading-relaxed">
-            Shifts, staff documents, trainings, inspections and vendors — one login for your whole center.
+            Substitutes, staff files, live ratios, daily reports and lesson plans, built for North Carolina child care centers.
           </p>
 
           <div className="inline-flex items-center gap-2 bg-amber-400 text-heading rounded-full px-5 py-2 text-sm font-bold mb-6 shadow-sm">
@@ -286,11 +398,78 @@ export default function ChildcareHomePage() {
         </div>
       </section>
 
+      {/* ── A day at your center ── */}
+      <section id="a-day" className="py-24 px-6 bg-white border-t border-border">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-14">
+            <p className="text-sm font-bold uppercase tracking-widest text-brand-600 mb-3">After the shift is filled</p>
+            <h2 className="text-4xl font-bold text-heading mb-4">A day at your center, on CareLocal</h2>
+            <p className="text-muted text-lg max-w-2xl mx-auto">
+              The same login that fills your shifts runs the classroom, from the first check-in to the parents&apos; daily report.
+            </p>
+          </div>
+          <ol className="relative border-l-2 border-brand-100 ml-3 md:ml-0 md:border-l-0 md:grid md:grid-cols-2 md:gap-x-10 md:gap-y-8">
+            {A_DAY.map(({ time, icon: Icon, area, title, desc, early }) => (
+              <li key={time} className="relative pl-8 pb-8 md:pb-0 md:pl-0">
+                <span className="absolute -left-[13px] top-1 flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 ring-4 ring-white md:hidden">
+                  <Icon className="h-3.5 w-3.5 text-white" />
+                </span>
+                <div className="md:flex md:gap-4 md:rounded-2xl md:border md:border-border md:bg-surface md:p-6 h-full">
+                  <div className="hidden md:flex shrink-0 w-11 h-11 rounded-xl bg-brand-600 items-center justify-center">
+                    <Icon className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className="text-sm font-extrabold text-brand-600">{time}</span>
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-subtle">{area}</span>
+                      {early && <EarlyAccess />}
+                    </div>
+                    <h3 className="font-bold text-text-main mb-1">{title}</h3>
+                    <p className="text-sm text-muted leading-relaxed">{desc}</p>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <p className="text-center text-sm text-muted mt-10">
+            <EarlyAccess /> <span className="ml-1">Classroom tools are in early access and turned on per center. Included free during your trial: just ask.</span>
+          </p>
+        </div>
+      </section>
+
+      {/* ── Built for everyone at the center ── */}
+      <section id="roles" className="py-24 px-6 bg-surface border-t border-border">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-14">
+            <h2 className="text-4xl font-bold text-heading mb-4">Built for everyone at your center</h2>
+            <p className="text-muted text-lg max-w-xl mx-auto">Directors run it, teachers use it all day, and families see the results.</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {BY_ROLE.map(({ role, icon: Icon, items }) => (
+              <div key={role} className="bg-white rounded-2xl p-6 border border-border">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center"><Icon className="w-5 h-5 text-brand-600" /></div>
+                  <h3 className="text-xl font-bold text-heading">For {role.toLowerCase()}</h3>
+                </div>
+                <ul className="space-y-3">
+                  {items.map(({ text, early }) => (
+                    <li key={text} className="flex items-start gap-2.5 text-sm text-text-main">
+                      <CheckCircle className="w-4 h-4 mt-0.5 shrink-0 text-brand-600" />
+                      <span>{text}{early && <> <EarlyAccess /></>}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── Features ── */}
       <section id="features" className="py-24 px-6 bg-brand-900">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-white mb-4">Everything your center needs</h2>
+            <h2 className="text-4xl font-bold text-white mb-4">The staffing tools that started it</h2>
             <p className="text-brand-300 text-lg max-w-xl mx-auto">
               Built specifically for childcare — not adapted from a generic scheduling tool.
             </p>
@@ -337,12 +516,12 @@ export default function ChildcareHomePage() {
       <section id="security" className="py-20 px-6 bg-white border-t border-border">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-heading mb-3">Your staff documents stay private</h2>
+            <h2 className="text-3xl font-bold text-heading mb-3">Staff and children&apos;s records stay private</h2>
             <p className="text-muted text-lg max-w-xl mx-auto">
-              CPR cards, TB results and health forms are sensitive. We treat them that way.
+              CPR cards, TB results, child files and daily photos are sensitive. We treat them that way.
             </p>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {SECURITY.map(({ icon: Icon, title, desc }) => (
               <div key={title} className="bg-surface rounded-2xl p-6 border border-border">
                 <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center mb-4">
@@ -410,7 +589,7 @@ export default function ChildcareHomePage() {
             ))}
           </div>
           <p className="text-center text-sm text-muted mt-8">
-            All plans include a 3-month free trial and the full compliance toolkit — staff file checklists, policy sign-off, document requests, inspections and vendors. Annual billing saves 2 months.
+            All plans include a 3-month free trial and the full compliance toolkit — staff file checklists, policy sign-off, document requests, inspections and vendors. Classroom tools (Live Roster, daily reports and lesson plans) are in early access and free during your trial. Annual billing saves 2 months.
             <Link href="/contact" className="text-brand-600 font-medium ml-1 hover:underline">
               Need Enterprise? Contact us →
             </Link>
@@ -506,5 +685,14 @@ export default function ChildcareHomePage() {
         </div>
       </footer>
     </div>
+  )
+}
+
+/** Marks a feature that is turned on per center while it is in early access */
+function EarlyAccess() {
+  return (
+    <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wider text-amber-800">
+      Early access
+    </span>
   )
 }
