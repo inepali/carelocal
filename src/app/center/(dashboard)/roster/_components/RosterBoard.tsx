@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, Camera, FileSpreadsheet, Mail, Loader2, Radio, RefreshCw, Send, Users, X } from 'lucide-react'
+import { AlertTriangle, BookOpen, Camera, ClipboardList, FileSpreadsheet, Mail, Moon, Sun, Utensils, Loader2, Radio, RefreshCw, Send, Users, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { applyPresence, loadRoster, moveOnRoster, type PresenceRow, type RosterMove } from '@/lib/roster'
 import {
@@ -21,7 +21,8 @@ import { ChildCard } from './ChildCard'
 import { ClassEntryDialog } from './ClassEntryDialog'
 import { RoomNapDialog, type RoomNapMode } from './RoomNapDialog'
 import { ClassPhotoDialog } from './DailyPhoto'
-import { loadPhotosForReview, loadRoomNaps, reportSettings, type RoomNap } from '@/lib/daily'
+import { useTodayPlanItems } from './LessonPicker'
+import { clockTime, loadPhotosForReview, loadRoomNaps, reportSettings, nextCheck, sleepChecksRequired, type RoomNap } from '@/lib/daily'
 import { ExportDialog } from './ExportDialog'
 import { ReportSettingsDialog } from './ReportSettingsDialog'
 import { useRosterDrag, type RosterInteract } from './useRosterDrag'
@@ -88,6 +89,7 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
   const [reportsOn, setReportsOn] = useState<boolean | null>(null)
   const [reportDialog, setReportDialog] = useState(false)
   const [roomNaps, setRoomNaps] = useState<RoomNap[]>([])
+  const [clock, setClock] = useState(() => new Date())
   const dayRef = useRef('')
   const peopleRef = useRef<RosterPerson[]>([])
   useEffect(() => { peopleRef.current = people }, [people])
@@ -175,7 +177,8 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
       .channel(`naps:${centerId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'child_daily_entries', filter: `center_id=eq.${centerId}` }, soon)
       .subscribe()
-    return () => { window.clearTimeout(t); supabase.removeChannel(channel) }
+    const tick = window.setInterval(() => setClock(new Date()), 30_000)
+    return () => { window.clearTimeout(t); window.clearInterval(tick); supabase.removeChannel(channel) }
   }, [supabase, centerId, teacherView, reloadNaps])
 
   // Owners and admins: how many photos wait for review (refreshed when a toast says something changed)
@@ -297,6 +300,13 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
   const presentKids = people
     .filter(p => p.kind === 'child' && p.zone !== 'home' && p.work_area_id === focusRoom.id)
     .sort((a, b) => a.first_name.localeCompare(b.first_name))
+  // Napping here, and the next required sleep check (infants 12 months and under)
+  const presentIds = new Set(presentKids.map(k => k.person_id))
+  const napsHere = roomNaps.filter(n => presentIds.has(n.child_id))
+  const nextDue = napsHere
+    .filter(n => sleepChecksRequired(people.find(p => p.person_id === n.child_id)?.age_months))
+    .map(n => nextCheck({ at: n.started_at, last_check_at: n.last_check_at }, n.check_minutes, clock))
+    .sort((a, b) => a.dueAt.getTime() - b.dueAt.getTime())[0]
 
   // What dropping the dragged (or selected) person on a tile would do
   const mover = drag.dragging?.person ?? selected
@@ -421,6 +431,46 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
             <p className="mt-3 rounded-lg bg-[#fff0d1] px-3 py-2 text-sm text-[#7a4b00]">
               Using 1:{fs.effectiveRatio} instead of 1:{focusRoom.ratio_children} because a younger child is here.
             </p>
+          )}
+          {teacherView && (
+            <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-surface/50 p-2.5">
+              <TodayPlanSummary centerId={centerId} roomId={focusRoom.id} />
+              <button type="button" onClick={() => setClassAction('meal')}
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-white px-3 text-sm font-bold text-heading hover:bg-surface">
+                <Utensils className="h-4 w-4 text-brand-600" /> Meal served
+              </button>
+              <button type="button" onClick={() => setClassAction('activity')}
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-white px-3 text-sm font-bold text-heading hover:bg-surface">
+                <ClipboardList className="h-4 w-4 text-brand-600" /> Activity with class
+              </button>
+              <button type="button" onClick={() => setClassPhoto(true)}
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-white px-3 text-sm font-bold text-heading hover:bg-surface">
+                <Camera className="h-4 w-4 text-brand-600" /> Class photo
+              </button>
+              <div className="flex w-full flex-wrap items-center gap-2 border-t border-border pt-2">
+                <span className={`mr-auto inline-flex items-center gap-2 px-1 text-sm ${nextDue?.overdue ? 'font-bold text-[#7a4b00]' : 'text-muted'}`} role="status">
+                  <Moon className="h-4 w-4 text-[#3b5bab]" />
+                  {napsHere.length === 0 ? 'No one napping'
+                    : `${napsHere.length} napping${nextDue ? (nextDue.overdue ? ' · sleep check due now' : ` · next check ${clockTime(nextDue.dueAt.toISOString())}`) : ''}`}
+                </span>
+                <button type="button" onClick={() => setNapAction('start')}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-white px-3 text-sm font-bold text-heading hover:bg-surface">
+                  <Moon className="h-4 w-4 text-[#3b5bab]" /> Nap time
+                </button>
+                {napsHere.length > 0 && (
+                  <>
+                    <button type="button" onClick={() => setNapAction('check')}
+                      className={`inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-bold ${nextDue?.overdue ? 'bg-[#b56a00] text-white' : 'border border-border bg-white text-heading hover:bg-surface'}`}>
+                      Sleep check
+                    </button>
+                    <button type="button" onClick={() => setNapAction('wake')}
+                      className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-white px-3 text-sm font-bold text-heading hover:bg-surface">
+                      <Sun className="h-4 w-4 text-[#b56a00]" /> Everyone up
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
           )}
           {/* Children with no home room and substitutes waiting for a room wait in the Lobby; teachers with no home room are parked below */}
           <RoomStage room={focusRoom} status={fs} seats={peopleInRoom(focusRoom.id, people)} waiting={waitingInLobby} photos={photos} tintOf={tintOf} visitingFrom={visitingFrom} themeUrl={themes[focusRoom.id]} circleUrl={circleThemes[focusRoom.id]}
@@ -656,4 +706,23 @@ function useWakeLock(enabled: boolean) {
       lock?.release().catch(() => {})
     }
   }, [enabled])
+}
+
+/** The room bar's first line: today's approved lesson plan for this room, at a glance */
+function TodayPlanSummary({ centerId, roomId }: { centerId: string; roomId: string }) {
+  const { items, loading, error } = useTodayPlanItems(centerId, roomId)
+  const logged = items.filter(i => i.children > 0).length
+  return (
+    <span className="mr-auto inline-flex items-center gap-2 px-1 text-sm text-muted">
+      <BookOpen className="h-4 w-4 text-brand-600" />
+      <span>
+        <span className="font-bold text-heading">Today&apos;s plan</span>
+        {' · '}
+        {loading ? 'Loading…'
+          : error ? 'Could not load the lesson plan'
+          : items.length === 0 ? 'No approved lesson plan for today'
+          : `${items.length} ${items.length === 1 ? 'activity' : 'activities'}${items[0]?.theme ? ` · ${items[0].theme}` : ''}${logged ? ` · ${logged} logged` : ''}`}
+      </span>
+    </span>
+  )
 }
