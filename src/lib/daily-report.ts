@@ -64,7 +64,7 @@ export function reportSections(data: ReportData): { title: string; lines: string
     ? withNote(`${t(e.at)} · Diaper: ${label(DIAPER_RESULTS, e.details.result)}${e.details.cream ? ', cream' : ''}`, e.details)
     : withNote(`${t(e.at)} · Bathroom: ${label(BATHROOM_RESULTS, e.details.result)}${e.details.type ? ` (${label(BATHROOM_TYPES, e.details.type).toLowerCase()})` : ''}`, e.details)))
   add('Medicine', of('medicine').map(e => withNote(`${t(e.at)} · ${[e.details.name, e.details.dose].filter(Boolean).join(', ')}`, e.details)))
-  add('Activities', of('activity').map(e => `${t(e.at)} · ${e.details.text ?? ''}`))
+  add('Activities', of('activity').map(e => `${t(e.at)} · ${e.details.text ?? ''}${e.details.lesson && e.details.note ? ` (${e.details.note})` : ''}`))
   add('Notes from the classroom', of('note').map(e => e.details.text ?? ''))
   return sections
 }

@@ -1,19 +1,21 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Loader2, X } from 'lucide-react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { RosterPerson, RosterRoom } from '@/lib/roster-ratio'
-import { addClassEntry, AMOUNTS, MEALS, mealForTime, newKey, type MealAmount, type MealName } from '@/lib/daily'
+import { addClassEntry, AMOUNTS, logPlanActivity, MEALS, mealForTime, newKey, saveLessonFeedback, type LessonRating, type MealAmount, type MealName } from '@/lib/daily'
 import { Face } from './PersonAvatar'
 import { Choices, FIELD } from './DailyForms'
+import { LessonChoices, LessonFeedbackFields, useTodayPlanItems } from './LessonPicker'
 
 const QUICK_AMOUNTS = AMOUNTS.filter(a => a.value !== 'other')
 
 /**
  * Class actions: one entry per child present in the room right now (Classroom, Playground or Lobby).
  *  - Meal served: pick the meal, then one tap per child for how much they ate. Children left blank are skipped.
- *  - Activity with class: type it once; everyone ticked gets it.
+ *  - Activity with class: pick one of today's lesson plan activities (approved plans only) or type one; everyone
+ *    ticked (who took part) gets it. For a lesson activity the teacher can also leave class-level feedback.
  * Saved all at once; a retried Save is a no-op (one key per dialog).
  */
 export function ClassEntryDialog({ supabase, centerId, room, kind, children, photos, tintOf, onClose, onDone }: {
@@ -35,6 +37,21 @@ export function ClassEntryDialog({ supabase, centerId, room, kind, children, pho
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Lesson plan: today's approved activities for this room
+  const plan = useTodayPlanItems(centerId, kind === 'activity' ? room.id : null)
+  const [planItemId, setPlanItemId] = useState<string | null>(null)
+  const [lessonNote, setLessonNote] = useState('')
+  const [rating, setRating] = useState<LessonRating | null>(null)
+  const [feedback, setFeedback] = useState('')
+  const item = plan.items.find(i => i.id === planItemId) ?? null
+  // Show the teacher's earlier feedback for the activity they pick
+  useEffect(() => {
+    setRating(item?.my_rating ?? null)
+    setFeedback(item?.my_note ?? '')
+  }, [item?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  const feedbackChanged = !!item && (rating !== (item.my_rating ?? null) || feedback.trim() !== (item.my_note ?? ''))
+  const lessonKids = children.filter(c => picked.has(c.person_id))
+
   const items = useMemo(() => kind === 'meal'
     ? children.filter(c => amounts[c.person_id]).map(c => ({ child_id: c.person_id, details: { meal, amount: amounts[c.person_id] } }))
     : text.trim() ? children.filter(c => picked.has(c.person_id)).map(c => ({ child_id: c.person_id, details: { text: text.trim() } })) : [],
@@ -43,6 +60,23 @@ export function ClassEntryDialog({ supabase, centerId, room, kind, children, pho
   async function save() {
     setBusy(true)
     setError(null)
+    if (kind === 'activity' && item) {
+      let count = 0
+      if (lessonKids.length > 0) {
+        const res = await logPlanActivity(supabase, centerId, item.id, lessonKids.map(c => c.person_id), { note: lessonNote.trim() || null, key })
+        if (!res.success) { setBusy(false); setError(res.error); return }
+        count = res.count
+      }
+      if (feedbackChanged) {
+        const fb = await saveLessonFeedback(supabase, item.id, rating, feedback.trim() || null)
+        if (!fb.success) { setBusy(false); setError(count ? `Saved for ${count}, but the feedback didn't save: ${fb.error}` : fb.error); return }
+      }
+      setBusy(false)
+      onDone(count
+        ? `${item.title} saved for ${count} ${count === 1 ? 'child' : 'children'}${feedbackChanged ? ', with your feedback' : ''}.`
+        : 'Feedback saved.')
+      return
+    }
     const res = await addClassEntry(supabase, centerId, kind, items, { key })
     setBusy(false)
     if (!res.success) { setError(res.error); return }
@@ -99,10 +133,23 @@ export function ClassEntryDialog({ supabase, centerId, room, kind, children, pho
             </>
           ) : (
             <>
-              <div>
-                <input value={text} onChange={e => setText(e.target.value)} maxLength={200} className={FIELD} placeholder="For example: circle time, counting songs" autoFocus />
-                <p className="mt-1 text-xs text-muted">Picking from the weekly lesson plan is coming soon.</p>
-              </div>
+              <LessonChoices items={plan.items} loading={plan.loading} value={planItemId} onChange={setPlanItemId} />
+              {item ? (
+                <>
+                  {item.description && <p className="whitespace-pre-line rounded-xl bg-surface px-3 py-2 text-xs text-text-main">{item.description}</p>}
+                  <input value={lessonNote} onChange={e => setLessonNote(e.target.value)} maxLength={200} className={FIELD}
+                    placeholder="Note for each child's day (optional), e.g. sorted leaves by color" />
+                </>
+              ) : (
+                <div>
+                  <input value={text} onChange={e => setText(e.target.value)} maxLength={200} className={FIELD}
+                    placeholder="For example: circle time, counting songs" autoFocus={!plan.loading && plan.items.length === 0} />
+                  {!plan.loading && plan.items.length === 0 && (
+                    <p className="mt-1 text-xs text-muted">No approved lesson plan for {room.name} today, so type the activity.</p>
+                  )}
+                </div>
+              )}
+              <p className="text-xs font-bold uppercase tracking-wider text-muted">{item ? `Who took part (${lessonKids.length})` : 'Children'}</p>
               <ul className="flex flex-col gap-1.5">
                 {children.map(c => (
                   <li key={c.person_id}>
@@ -115,6 +162,7 @@ export function ClassEntryDialog({ supabase, centerId, room, kind, children, pho
                   </li>
                 ))}
               </ul>
+              {item && <LessonFeedbackFields rating={rating} note={feedback} onRating={setRating} onNote={setFeedback} />}
             </>
           )}
           {error && <p role="alert" className="rounded-lg bg-[#fce4e2] px-3 py-2 text-sm font-semibold text-[#a3221b]">{error}</p>}
@@ -122,9 +170,9 @@ export function ClassEntryDialog({ supabase, centerId, room, kind, children, pho
 
         <div className="grid grid-cols-2 gap-2 border-t border-border px-5 py-4">
           <button type="button" onClick={onClose} className="min-h-12 rounded-xl border border-border text-sm font-bold text-text-main hover:bg-surface">Cancel</button>
-          <button type="button" disabled={busy || items.length === 0} onClick={save}
+          <button type="button" disabled={busy || (item ? lessonKids.length === 0 && !feedbackChanged : items.length === 0)} onClick={save}
             className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand-600 text-sm font-bold text-white hover:bg-brand-800 disabled:opacity-50">
-            {busy && <Loader2 className="h-4 w-4 animate-spin" />} Save for {items.length}
+            {busy && <Loader2 className="h-4 w-4 animate-spin" />} {item && lessonKids.length === 0 ? 'Save feedback' : `Save for ${item ? lessonKids.length : items.length}`}
           </button>
         </div>
       </div>

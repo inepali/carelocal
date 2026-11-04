@@ -7,6 +7,7 @@ import { getDailyPhotoUploadUrl, saveDailyPhoto, type PhotoTarget } from '@/app/
 import { newKey } from '@/lib/daily'
 import { Face } from './PersonAvatar'
 import { FIELD } from './DailyForms'
+import { LessonSelect, useTodayPlanItems } from './LessonPicker'
 
 const SIDE_PX = 1280
 
@@ -27,14 +28,14 @@ async function shrink(file: File): Promise<Blob | null> {
 }
 
 /** Shrink, upload to the private bucket, then save on the day. The same key retried saves once. */
-async function uploadDailyPhoto(centerId: string, target: PhotoTarget, file: File, opts: { caption?: string; childIds?: string[]; key: string }) {
+async function uploadDailyPhoto(centerId: string, target: PhotoTarget, file: File, opts: { caption?: string; childIds?: string[]; key: string; planItemId?: string | null }) {
   const blob = await shrink(file)
   if (!blob) return { success: false as const, error: 'This photo could not be read. Try taking it again, or choose a JPG or PNG.' }
   const link = await getDailyPhotoUploadUrl(centerId, target, blob.size)
   if (!link.success) return link
   const put = await fetch(link.uploadUrl, { method: 'PUT', body: blob, headers: { 'Content-Type': 'image/jpeg' } }).catch(() => null)
   if (!put?.ok) return { success: false as const, error: 'The upload did not finish. Check the connection and try again.' }
-  return saveDailyPhoto({ centerId, fileKey: link.fileKey, target, childIds: opts.childIds, caption: opts.caption, key: opts.key })
+  return saveDailyPhoto({ centerId, fileKey: link.fileKey, target, childIds: opts.childIds, caption: opts.caption, key: opts.key, planItemId: opts.planItemId ?? null })
 }
 
 /** The camera / photo picker with a preview */
@@ -88,12 +89,15 @@ export function PhotoForm({ centerId, person, onSaved, onCancel }: {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [key] = useState(newKey)
+  // Optional: the lesson activity this photo shows (today's approved plan for the room the child is in)
+  const plan = useTodayPlanItems(centerId, person.work_area_id)
+  const [planItemId, setPlanItemId] = useState<string | null>(null)
 
   async function save() {
     if (!file) return
     setBusy(true)
     setError(null)
-    const res = await uploadDailyPhoto(centerId, { childId: person.person_id }, file, { caption: caption.trim() || undefined, key })
+    const res = await uploadDailyPhoto(centerId, { childId: person.person_id }, file, { caption: caption.trim() || undefined, key, planItemId })
     setBusy(false)
     if (!res.success) { setError(res.error); return }
     onSaved()
@@ -104,6 +108,7 @@ export function PhotoForm({ centerId, person, onSaved, onCancel }: {
       <p className="text-base font-bold text-heading">Photo</p>
       <PhotoPicker file={file} onFile={setFile} />
       <input value={caption} onChange={e => setCaption(e.target.value)} maxLength={200} className={FIELD} placeholder="Caption (optional)" />
+      <LessonSelect items={plan.items} value={planItemId} onChange={setPlanItemId} />
       {person.marketing_photos_allowed === false && <NoMarketing />}
       {error && <p role="alert" className="rounded-lg bg-[#fce4e2] px-3 py-2 text-sm font-semibold text-[#a3221b]">{error}</p>}
       <div className="grid grid-cols-2 gap-2">
@@ -133,6 +138,8 @@ export function ClassPhotoDialog({ centerId, room, children, photos, tintOf, onC
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [key] = useState(newKey)
+  const plan = useTodayPlanItems(centerId, room.id)
+  const [planItemId, setPlanItemId] = useState<string | null>(null)
   const tagged = children.filter(c => picked.has(c.person_id))
   const noMarketing = tagged.filter(c => c.marketing_photos_allowed === false).map(c => `${c.first_name} ${c.last_initial}.`)
 
@@ -140,7 +147,7 @@ export function ClassPhotoDialog({ centerId, room, children, photos, tintOf, onC
     if (!file || tagged.length === 0) return
     setBusy(true)
     setError(null)
-    const res = await uploadDailyPhoto(centerId, { roomId: room.id }, file, { caption: caption.trim() || undefined, childIds: tagged.map(c => c.person_id), key })
+    const res = await uploadDailyPhoto(centerId, { roomId: room.id }, file, { caption: caption.trim() || undefined, childIds: tagged.map(c => c.person_id), key, planItemId })
     setBusy(false)
     if (!res.success) { setError(res.error); return }
     onDone(`Class photo added for ${res.count} ${res.count === 1 ? 'child' : 'children'}.`)
@@ -162,6 +169,7 @@ export function ClassPhotoDialog({ centerId, room, children, photos, tintOf, onC
             <>
               <PhotoPicker file={file} onFile={setFile} />
               <input value={caption} onChange={e => setCaption(e.target.value)} maxLength={200} className={FIELD} placeholder="Caption (optional)" />
+              <LessonSelect items={plan.items} value={planItemId} onChange={setPlanItemId} />
               <p className="text-xs font-bold uppercase tracking-wider text-muted">In this photo ({tagged.length})</p>
               <ul className="flex flex-col gap-1">
                 {children.map(c => (

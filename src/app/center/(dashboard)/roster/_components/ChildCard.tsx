@@ -6,7 +6,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { ageLabel, type RosterPerson, type RosterRoom } from '@/lib/roster-ratio'
 import { loadChildDayEvents, setToiletTrained, type RosterMove } from '@/lib/roster'
 import {
-  addEntry, describeEntry, endNaps, giveMedicine, glanceChips, loadChildStatus, loadDay, newKey, recordSleepChecks, showsBottle,
+  addEntry, describeEntry, endNaps, giveMedicine, glanceChips, loadChildStatus, loadDay, logPlanActivity, newKey, recordSleepChecks, showsBottle,
   sleepChecksRequired, startNaps, voidEntry, type ChildStatus, type DailyDetails, type DailyEntry, type SleepStatus,
 } from '@/lib/daily'
 import { Face } from './PersonAvatar'
@@ -154,6 +154,8 @@ export function ChildCard({
       `Saved: ${d.title}${d.detail ? ` · ${d.detail}` : ''}`)
   }
   const me = [person.person_id]
+  const saveLesson = (planItemId: string, note: string | null, at: string | null) => adding &&
+    run(() => logPlanActivity(supabase, centerId, planItemId, me, { note, at, key: adding.key }), 'Lesson activity saved')
   const napStart = (at: string | null) => adding && run(() => startNaps(supabase, centerId, me, { at, key: adding.key }), 'Nap started')
   const napEnd = (at: string | null) => run(() => endNaps(supabase, centerId, me, at), 'Woke up')
   const sleepCheck = (s: SleepStatus, note: string | null, at: string | null) => adding &&
@@ -291,7 +293,8 @@ export function ChildCard({
             ) : adding.kind === 'medicine' ? (
               <MedicineForm key={adding.key} medications={meds} busy={working} error={formError} onSave={medicine} onCancel={cancel} />
             ) : (
-              <EntryForm key={adding.key} kind={adding.kind} busy={working} error={formError} onSave={save} onCancel={cancel} />
+              <EntryForm key={adding.key} kind={adding.kind} busy={working} error={formError} onSave={save} onCancel={cancel}
+                centerId={centerId} roomId={current?.id ?? null} onSaveLesson={saveLesson} />
             )
           ) : (
             <div className="grid grid-cols-3 gap-2">

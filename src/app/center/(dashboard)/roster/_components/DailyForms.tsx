@@ -7,6 +7,7 @@ import {
   mealForTime, nowHHMM, timeToIso,
   type BathroomResult, type BottleContents, type DailyDetails, type DailyKind, type DiaperResult, type MealAmount, type MealName,
 } from '@/lib/daily'
+import { LessonChoices, useTodayPlanItems } from './LessonPicker'
 
 /** The kinds the card can log in this phase */
 export type RoutineKind = Extract<DailyKind, 'meal' | 'bottle' | 'diaper' | 'bathroom' | 'activity' | 'note'>
@@ -43,13 +44,20 @@ export function Choices<T extends string | number>({ label, options, value, onCh
  * The short form for one entry, inside the child card. The time is now unless the teacher changes it;
  * the database checks everything again.
  */
-export function EntryForm({ kind, busy, error, onSave, onCancel }: {
+export function EntryForm({ kind, busy, error, onSave, onCancel, centerId, roomId, onSaveLesson }: {
   kind: RoutineKind
   busy: boolean
   error: string | null
   onSave: (details: DailyDetails, at: string | null) => void
   onCancel: () => void
+  /** Activity: offer today's lesson plan activities for this room (the child's room right now) */
+  centerId?: string
+  roomId?: string | null
+  onSaveLesson?: (planItemId: string, note: string | null, at: string | null) => void
 }) {
+  const plan = useTodayPlanItems(centerId ?? '', kind === 'activity' && centerId && onSaveLesson ? roomId : null)
+  const [planItemId, setPlanItemId] = useState<string | null>(null)
+  const planItem = plan.items.find(i => i.id === planItemId) ?? null
   const [meal, setMeal] = useState<MealName>(mealForTime())
   const [amount, setAmount] = useState<MealAmount | null>(null)
   const [oz, setOz] = useState<number | null>(null)
@@ -71,10 +79,17 @@ export function EntryForm({ kind, busy, error, onSave, onCancel }: {
   if (kind === 'diaper' && diaper) details = { result: diaper, cream, ...n }
   if (kind === 'bathroom' && potty) details = { result: potty, ...(potty !== 'tried' && pottyType ? { type: pottyType } : {}), ...n }
   if ((kind === 'activity' || kind === 'note') && text.trim()) details = { text: text.trim() }
+  // A lesson activity saves through its own function (the note is optional)
+  const lessonReady = kind === 'activity' && !!planItem
 
   return (
     <form className="flex flex-col gap-4 rounded-2xl border border-border bg-surface/40 p-3"
-      onSubmit={e => { e.preventDefault(); if (details) onSave(details, timeTouched ? timeToIso(time) : null) }}>
+      onSubmit={e => {
+        e.preventDefault()
+        const at = timeTouched ? timeToIso(time) : null
+        if (lessonReady && planItem && onSaveLesson) onSaveLesson(planItem.id, note.trim() || null, at)
+        else if (details) onSave(details, at)
+      }}>
       <p className="text-base font-bold text-heading">{KIND_LABEL[kind]}</p>
 
       {kind === 'meal' && (
@@ -108,10 +123,15 @@ export function EntryForm({ kind, busy, error, onSave, onCancel }: {
       )}
 
       {kind === 'activity' && (
-        <div>
-          <input value={text} onChange={e => setText(e.target.value)} maxLength={200} className={FIELD} placeholder="For example: painting with sponges" autoFocus />
-          <p className="mt-1 text-xs text-muted">Picking from the weekly lesson plan is coming soon.</p>
-        </div>
+        <>
+          <LessonChoices items={plan.items} loading={plan.loading} value={planItemId} onChange={setPlanItemId} />
+          {planItem ? (
+            <input value={note} onChange={e => setNote(e.target.value)} maxLength={200} className={FIELD} placeholder="Note (optional), e.g. counted to ten on her own" />
+          ) : (
+            <input value={text} onChange={e => setText(e.target.value)} maxLength={200} className={FIELD} placeholder="For example: painting with sponges"
+              autoFocus={!plan.loading && plan.items.length === 0} />
+          )}
+        </>
       )}
       {kind === 'note' && (
         <textarea value={text} onChange={e => setText(e.target.value)} maxLength={500} rows={3} className={`${FIELD} resize-none py-2`}
@@ -132,7 +152,7 @@ export function EntryForm({ kind, busy, error, onSave, onCancel }: {
 
       <div className="grid grid-cols-2 gap-2">
         <button type="button" onClick={onCancel} className="min-h-12 rounded-xl border border-border bg-white text-sm font-bold text-text-main hover:bg-surface">Cancel</button>
-        <button type="submit" disabled={!details || busy}
+        <button type="submit" disabled={!(details || lessonReady) || busy}
           className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand-600 text-sm font-bold text-white hover:bg-brand-800 disabled:opacity-50">
           {busy && <Loader2 className="h-4 w-4 animate-spin" />} Save
         </button>

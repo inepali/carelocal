@@ -74,6 +74,8 @@ export async function saveDailyPhoto(input: {
   childIds?: string[]
   caption?: string | null
   key: string
+  /** Optional: the lesson activity on today's approved plan this photo belongs to */
+  planItemId?: string | null
 }): Promise<{ success: true; count: number } | Fail> {
   const bucket = process.env.R2_CHILD_BUCKET
   if (!bucket) return fail(NOT_CONFIGURED)
@@ -109,6 +111,7 @@ export async function saveDailyPhoto(input: {
       p_child_ids: input.target.roomId ? (input.childIds ?? []) : null,
       p_at: null,
       p_key: input.key,
+      p_plan_item_id: input.planItemId ?? null,
     })
     if (error) { await remove(); return fail(friendlyDailyError(error)) }
     return { success: true, count: data as number }

@@ -10,13 +10,17 @@ import {
 import { showAlert, showConfirm, showPrompt } from '@/lib/dialog'
 import {
   ChevronLeft, ChevronRight, Loader2, Plus, Edit2, Trash2, X, Save, Send, CheckCircle2, MessageSquareWarning,
-  Undo2, CalendarDays, Clock, Inbox, Target, NotebookPen, type LucideIcon,
+  Undo2, CalendarDays, Clock, Inbox, Target, NotebookPen, Users, Camera, MessageSquare, type LucideIcon,
 } from 'lucide-react'
 
 type Mode = 'admin' | 'teacher'
 type ClassRow = Pick<WorkArea, 'id' | 'name' | 'program_id' | 'is_active'>
 type ProgramRow = Pick<CenterProgram, 'id' | 'name' | 'is_active'>
 type PendingRow = Pick<LessonPlan, 'id' | 'work_area_id' | 'week_start' | 'submitted_by_name' | 'submitted_at'>
+
+type ItemStats = { children: number; photos: number; feedback: { rating: 'great' | 'okay' | 'tough' | null; note: string | null; by: string | null; at: string }[] }
+const RATING_LABEL = { great: 'Went great', okay: 'Okay', tough: 'Tough' } as const
+const RATING_STYLE = { great: 'bg-brand-50 text-brand-700 border-brand-200', okay: 'bg-slate-50 text-slate-600 border-slate-200', tough: 'bg-amber-50 text-amber-800 border-amber-200' } as const
 
 type ItemDraft = { id: string | null; day: number; block: string; title: string; description: string; materials: string; goalIds: string[] }
 
@@ -47,6 +51,8 @@ export default function WeeklyLessonPlan({
 
   const [plan, setPlan] = useState<LessonPlan | null>(null)
   const [items, setItems] = useState<LessonPlanItem[]>([])
+  // How each activity went (children who took part, photos, teacher feedback), from the Live Roster
+  const [stats, setStats] = useState<Record<string, ItemStats>>({})
   const [loadingPlan, setLoadingPlan] = useState(false)
   const [pending, setPending] = useState<PendingRow[]>([])
   const [busy, setBusy] = useState(false)
@@ -110,9 +116,15 @@ export default function WeeklyLessonPlan({
       list = ((itemRows || []) as (Omit<LessonPlanItem, 'goal_ids'> & { lesson_plan_item_goals: { goal_id: string }[] })[])
         .map(({ lesson_plan_item_goals, ...rest }) => ({ ...rest, goal_ids: (lesson_plan_item_goals || []).map(x => x.goal_id) }))
     }
+    let st: Record<string, ItemStats> = {}
+    if (p && p.status === 'approved') {
+      const { data: rows } = await supabase.rpc('lesson_plan_item_stats', { p_plan_id: p.id })
+      st = Object.fromEntries(((rows || []) as ({ item_id: string } & ItemStats)[]).map(({ item_id, ...rest }) => [item_id, rest]))
+    }
     setPlan(p)
     setTheme(p?.theme ?? '')
     setItems(list)
+    setStats(st)
     setLoadingPlan(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classId, weekStart])
@@ -411,6 +423,24 @@ export default function WeeklyLessonPlan({
                             const g = goalById.get(id)
                             return <span key={id} title={g?.name} className="px-1.5 py-0.5 rounded bg-brand-50 text-brand-700 text-[10px] font-bold border border-brand-200">{g?.code || (g?.name.slice(0, 18) ?? 'Goal')}</span>
                           })}
+                        </div>
+                      )}
+                      {stats[item.id] && (stats[item.id].children > 0 || stats[item.id].photos > 0 || stats[item.id].feedback.length > 0) && (
+                        <div className="mt-2 pt-2 border-t border-border space-y-1.5">
+                          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-semibold text-muted">
+                            {stats[item.id].children > 0 && <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {stats[item.id].children} took part</span>}
+                            {stats[item.id].photos > 0 && <span className="flex items-center gap-1"><Camera className="w-3 h-3" /> {stats[item.id].photos} {stats[item.id].photos === 1 ? 'photo' : 'photos'}</span>}
+                          </div>
+                          {stats[item.id].feedback.map((f, fi) => (
+                            <div key={fi} className="text-[11px] text-text-main">
+                              <span className="flex flex-wrap items-center gap-1">
+                                <MessageSquare className="w-3 h-3 text-muted" />
+                                {f.rating && <span className={`px-1.5 py-0.5 rounded border font-bold ${RATING_STYLE[f.rating]}`}>{RATING_LABEL[f.rating]}</span>}
+                                {f.by && <span className="text-subtle">{f.by}</span>}
+                              </span>
+                              {f.note && <p className="mt-0.5 whitespace-pre-line">{f.note}</p>}
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>

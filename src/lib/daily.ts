@@ -33,6 +33,8 @@ export interface DailyDetails {
   caption?: string
   /** A class photo (tagged to the room) */
   class?: boolean
+  /** Activity: logged from today's lesson plan (true). Photo: the lesson activity's title. */
+  lesson?: boolean | string
 }
 
 export type SleepStatus = 'back' | 'other' | 'restless' | 'awake'
@@ -155,7 +157,7 @@ export function describeEntry(e: Pick<DailyEntry, 'kind' | 'details'> & { at?: s
     case 'medicine':
       return { title: 'Medicine', detail: [d.name, d.dose].filter(Boolean).join(' · ') }
     case 'photo':
-      return { title: d.class ? 'Class photo' : 'Photo', detail: d.caption ?? '' }
+      return { title: d.class ? 'Class photo' : 'Photo', detail: [d.caption, typeof d.lesson === 'string' ? `Lesson: ${d.lesson}` : ''].filter(Boolean).join(' · ') }
     case 'meal':
       return { title: label(MEALS, d.meal) || 'Meal', detail: d.amount === 'other' ? (d.other ?? 'Other') : label(AMOUNTS, d.amount) }
     case 'bottle':
@@ -165,6 +167,7 @@ export function describeEntry(e: Pick<DailyEntry, 'kind' | 'details'> & { at?: s
     case 'bathroom':
       return { title: 'Bathroom', detail: [label(BATHROOM_RESULTS, d.result), d.type ? `(${label(BATHROOM_TYPES, d.type).toLowerCase()})` : ''].filter(Boolean).join(' ') }
     case 'activity':
+      return { title: d.lesson ? 'Lesson activity' : KIND_LABEL[e.kind], detail: [d.text, d.note].filter(Boolean).join(' · ') }
     case 'note':
       return { title: KIND_LABEL[e.kind], detail: d.text ?? '' }
     default:
@@ -238,6 +241,53 @@ export async function addClassEntry(supabase: SupabaseClient, centerId: string, 
   })
   if (error) return { success: false, error: friendlyDailyError(error) }
   return { success: true, count: data as number }
+}
+
+/** One activity on today's approved lesson plan for a room (daily_plan_items) */
+export interface TodayPlanItem {
+  id: string
+  title: string
+  block: string | null
+  description: string | null
+  materials: string | null
+  goals: string[]
+  theme: string | null
+  /** Children already logged for it today */
+  children: number
+  my_rating: LessonRating | null
+  my_note: string | null
+}
+
+export type LessonRating = 'great' | 'okay' | 'tough'
+export const LESSON_RATINGS: { value: LessonRating; label: string }[] = [
+  { value: 'great', label: 'Went great' },
+  { value: 'okay', label: 'Okay' },
+  { value: 'tough', label: 'Tough' },
+]
+
+/** Today's activities from the room's approved lesson plan (empty when there is none, or it is not approved) */
+export async function loadTodayPlanItems(supabase: SupabaseClient, centerId: string, roomId: string): Promise<{ success: true; items: TodayPlanItem[] } | Failure> {
+  const { data, error } = await supabase.rpc('daily_plan_items', { p_center_id: centerId, p_room_id: roomId })
+  if (error) return { success: false, error: friendlyDailyError(error) }
+  return { success: true, items: (data ?? []) as TodayPlanItem[] }
+}
+
+/** Log a lesson activity for the children who took part. Same key on a retry saves once. */
+export async function logPlanActivity(supabase: SupabaseClient, centerId: string, planItemId: string, childIds: string[],
+  opts: { note?: string | null; at?: string | null; key?: string } = {}): Promise<{ success: true; count: number } | Failure> {
+  const { data, error } = await supabase.rpc('daily_plan_activity', {
+    p_center_id: centerId, p_plan_item_id: planItemId, p_child_ids: childIds,
+    p_note: opts.note ?? null, p_at: opts.at ?? null, p_key: opts.key ?? newKey(),
+  })
+  if (error) return { success: false, error: friendlyDailyError(error) }
+  return { success: true, count: data as number }
+}
+
+/** The signed-in teacher's class-level feedback on a lesson activity (no rating and no note clears it) */
+export async function saveLessonFeedback(supabase: SupabaseClient, planItemId: string, rating: LessonRating | null, note: string | null): Promise<{ success: true } | Failure> {
+  const { error } = await supabase.rpc('lesson_feedback_save', { p_plan_item_id: planItemId, p_rating: rating, p_note: note })
+  if (error) return { success: false, error: friendlyDailyError(error) }
+  return { success: true }
 }
 
 export async function voidEntry(supabase: SupabaseClient, entryId: string, reason: string): Promise<{ success: true } | Failure> {
