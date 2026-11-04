@@ -70,7 +70,7 @@ export function RoomStage({
     return { left: `${50 + rad * Math.cos(ang)}%`, top: `${50 + rad * Math.sin(ang)}%` }
   }
   const teacherSpot = (i: number) => {
-    if (teachers.length <= 1) return { left: '50%', top: centerActions ? '38%' : '50%' }   // one teacher sits above the buttons
+    if (teachers.length <= 1) return centerActions ? { left: '36%', top: '50%' } : { left: '50%', top: '50%' }   // one teacher sits beside the buttons
     const off = twoRings ? 10 : centerActions && teachers.length === 2 ? 20 : 16
     const ang = -Math.PI / 2 + (2 * Math.PI * i) / teachers.length + (teachers.length === 2 ? Math.PI / 2 : 0)
     return { left: `${50 + off * Math.cos(ang)}%`, top: `${50 + off * Math.sin(ang)}%` }
@@ -172,14 +172,14 @@ export function RoomStage({
         {circleEditor && <div className="absolute bottom-[3%] left-1/2 z-[4] -translate-x-1/2">{circleEditor}</div>}
         {teachers.length === 0 && n > 0 && (
           <div className="pointer-events-none absolute left-1/2 flex h-[120px] w-[120px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-dashed border-[#d14b3f] p-3 text-center text-xs font-bold text-[#a3221b]"
-            style={{ top: centerActions ? '38%' : '50%' }}>
+            style={{ left: centerActions ? '36%' : '50%', top: '50%' }}>
             No teacher checked in
           </div>
         )}
         {centerActions && (
           // Taps here are button presses, never the start of a drag
-          <div className="absolute left-1/2 z-[4] flex -translate-x-1/2 -translate-y-1/2 flex-col items-stretch gap-1"
-            style={{ top: teachers.length <= 1 ? '62%' : '50%' }}
+          <div className="absolute top-1/2 z-[4] flex -translate-x-1/2 -translate-y-1/2 flex-col items-stretch gap-1"
+            style={{ left: teachers.length <= 1 ? '62%' : '50%' }}
             onPointerDown={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
             {centerActions}
           </div>

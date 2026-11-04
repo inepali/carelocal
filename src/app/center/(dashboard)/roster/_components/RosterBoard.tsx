@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, BookOpen, Camera, ClipboardList, FileSpreadsheet, Mail, Moon, Sun, Utensils, Loader2, Radio, RefreshCw, Send, Users, X } from 'lucide-react'
+import { AlertTriangle, Camera, ClipboardList, FileSpreadsheet, Mail, Moon, Sun, Utensils, Loader2, Radio, RefreshCw, Send, Users, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { applyPresence, loadRoster, moveOnRoster, type PresenceRow, type RosterMove } from '@/lib/roster'
 import {
@@ -21,7 +21,6 @@ import { ChildCard } from './ChildCard'
 import { ClassEntryDialog } from './ClassEntryDialog'
 import { RoomNapDialog, type RoomNapMode } from './RoomNapDialog'
 import { ClassPhotoDialog } from './DailyPhoto'
-import { useTodayPlanItems } from './LessonPicker'
 import { clockTime, loadPhotosForReview, loadRoomNaps, reportSettings, nextCheck, sleepChecksRequired, type RoomNap } from '@/lib/daily'
 import { ExportDialog } from './ExportDialog'
 import { ReportSettingsDialog } from './ReportSettingsDialog'
@@ -432,42 +431,24 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
               Using 1:{fs.effectiveRatio} instead of 1:{focusRoom.ratio_children} because a younger child is here.
             </p>
           )}
-          {teacherView && (
-            <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-surface/50 p-2.5">
-              <TodayPlanSummary centerId={centerId} roomId={focusRoom.id} />
-              <button type="button" onClick={() => setClassAction('meal')}
-                className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-white px-3 text-sm font-bold text-heading hover:bg-surface">
-                <Utensils className="h-4 w-4 text-brand-600" /> Meal served
-              </button>
-              <div className="flex w-full flex-wrap items-center gap-2 border-t border-border pt-2">
-                <span className={`mr-auto inline-flex items-center gap-2 px-1 text-sm ${nextDue?.overdue ? 'font-bold text-[#7a4b00]' : 'text-muted'}`} role="status">
-                  <Moon className="h-4 w-4 text-[#3b5bab]" />
-                  {napsHere.length === 0 ? 'No one napping'
-                    : `${napsHere.length} napping${nextDue ? (nextDue.overdue ? ' · sleep check due now' : ` · next check ${clockTime(nextDue.dueAt.toISOString())}`) : ''}`}
-                </span>
-                {napsHere.length > 0 && (
-                  <>
-                    <button type="button" onClick={() => setNapAction('check')}
-                      className={`inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-bold ${nextDue?.overdue ? 'bg-[#b56a00] text-white' : 'border border-border bg-white text-heading hover:bg-surface'}`}>
-                      Sleep check
-                    </button>
-                    <button type="button" onClick={() => setNapAction('wake')}
-                      className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-white px-3 text-sm font-bold text-heading hover:bg-surface">
-                      <Sun className="h-4 w-4 text-[#b56a00]" /> Everyone up
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
           {/* Children with no home room and substitutes waiting for a room wait in the Lobby; teachers with no home room are parked below */}
           <RoomStage room={focusRoom} status={fs} seats={peopleInRoom(focusRoom.id, people)} waiting={waitingInLobby} photos={photos} tintOf={tintOf} visitingFrom={visitingFrom} themeUrl={themes[focusRoom.id]} circleUrl={circleThemes[focusRoom.id]}
             circleEditor={canTheme ? <RoomThemeButton areaId={focusRoom.id} slot="circle" roomName={focusRoom.name} hasImage={!!circleThemes[focusRoom.id]} onChanged={reloadThemes} /> : undefined}
             centerActions={teacherView ? (
               <>
                 <CircleButton onClick={() => setClassAction('activity')} icon={<ClipboardList className="h-3.5 w-3.5 text-brand-600" />} label="Activities" />
+                <CircleButton onClick={() => setClassAction('meal')} icon={<Utensils className="h-3.5 w-3.5 text-brand-600" />} label="Meal" />
                 <CircleButton onClick={() => setClassPhoto(true)} icon={<Camera className="h-3.5 w-3.5 text-brand-600" />} label="Photo" />
                 <CircleButton onClick={() => setNapAction('start')} icon={<Moon className="h-3.5 w-3.5 text-[#3b5bab]" />} label="Nap" />
+                {napsHere.length > 0 && (
+                  <>
+                    <CircleButton onClick={() => setNapAction('check')} alert={!!nextDue?.overdue}
+                      title={`${napsHere.length} napping${nextDue ? (nextDue.overdue ? ' · sleep check due now' : ` · next check ${clockTime(nextDue.dueAt.toISOString())}`) : ''}`}
+                      icon={<Moon className={`h-3.5 w-3.5 ${nextDue?.overdue ? 'text-white' : 'text-[#3b5bab]'}`} />}
+                      label={nextDue && !nextDue.overdue ? `Check ${clockTime(nextDue.dueAt.toISOString())}` : 'Sleep check'} />
+                    <CircleButton onClick={() => setNapAction('wake')} icon={<Sun className="h-3.5 w-3.5 text-[#b56a00]" />} label="Wake all" />
+                  </>
+                )}
               </>
             ) : undefined}
             ix={ix} />
@@ -704,30 +685,12 @@ function useWakeLock(enabled: boolean) {
   }, [enabled])
 }
 
-/** The room bar's first line: today's approved lesson plan for this room, at a glance */
-function TodayPlanSummary({ centerId, roomId }: { centerId: string; roomId: string }) {
-  const { items, loading, error } = useTodayPlanItems(centerId, roomId)
-  const logged = items.filter(i => i.children > 0).length
-  return (
-    <span className="mr-auto inline-flex items-center gap-2 px-1 text-sm text-muted">
-      <BookOpen className="h-4 w-4 text-brand-600" />
-      <span>
-        <span className="font-bold text-heading">Today&apos;s plan</span>
-        {' · '}
-        {loading ? 'Loading…'
-          : error ? 'Could not load the lesson plan'
-          : items.length === 0 ? 'No approved lesson plan for today'
-          : `${items.length} ${items.length === 1 ? 'activity' : 'activities'}${items[0]?.theme ? ` · ${items[0].theme}` : ''}${logged ? ` · ${logged} logged` : ''}`}
-      </span>
-    </span>
-  )
-}
-
 /** A small button in the middle of the Classroom circle */
-function CircleButton({ onClick, icon, label }: { onClick: () => void; icon: React.ReactNode; label: string }) {
+function CircleButton({ onClick, icon, label, alert = false, title }: { onClick: () => void; icon: React.ReactNode; label: string; alert?: boolean; title?: string }) {
   return (
-    <button type="button" onClick={onClick}
-      className="inline-flex min-h-8 items-center justify-center gap-1 rounded-full border border-[#1e7a47]/30 bg-white/95 px-2.5 text-[11px] font-bold text-heading shadow-sm hover:bg-white focus-visible:outline-2 focus-visible:outline-[#1e7a47]">
+    <button type="button" onClick={onClick} title={title} aria-label={title ? `${label}: ${title}` : label}
+      className={`inline-flex min-h-7 items-center justify-center gap-1 whitespace-nowrap rounded-full px-2.5 text-[11px] font-bold shadow-sm focus-visible:outline-2 focus-visible:outline-[#1e7a47] ${
+        alert ? 'animate-pulse bg-[#b56a00] text-white' : 'border border-[#1e7a47]/30 bg-white/95 text-heading hover:bg-white'}`}>
       {icon} {label}
     </button>
   )
