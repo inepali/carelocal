@@ -14,7 +14,7 @@ const QUICK_AMOUNTS = AMOUNTS.filter(a => a.value !== 'other')
 /**
  * Class actions: one entry per child present in the room right now (Classroom, Playground or Lobby).
  *  - Meal served: pick the meal, then one tap per child for how much they ate. Children left blank are skipped.
- *  - Activity with class: pick one of today's lesson plan activities (approved plans only) or type one; everyone
+ *  - Activities: pick one of today's lesson plan activities (approved plans only) or type one; everyone
  *    ticked (who took part) gets it. For a lesson activity the teacher can also leave class-level feedback.
  * Saved all at once; a retried Save is a no-op (one key per dialog).
  */
@@ -84,7 +84,7 @@ export function ClassEntryDialog({ supabase, centerId, room, kind, children, pho
     onDone(`${what} saved for ${res.count} ${res.count === 1 ? 'child' : 'children'}.`)
   }
 
-  const title = kind === 'meal' ? 'Meal served' : 'Activity with class'
+  const title = kind === 'meal' ? 'Meal served' : 'Activities'
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-brand-900/40 backdrop-blur-sm sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="class-h"

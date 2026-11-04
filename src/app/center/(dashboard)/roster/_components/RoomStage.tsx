@@ -28,6 +28,7 @@ export function RoomStage({
   themeUrl,
   circleUrl,
   circleEditor,
+  centerActions,
   ix,
 }: {
   room: RosterRoom
@@ -44,6 +45,8 @@ export function RoomStage({
   circleUrl?: string | null
   /** Admin's pencil for the circle picture, shown at the bottom of the circle */
   circleEditor?: React.ReactNode
+  /** Small room buttons (Activities, Photo, Nap) in the middle of the circle, between the teachers */
+  centerActions?: React.ReactNode
   ix: RosterInteract
 }) {
   /** A zone color, see-through enough to show the room picture behind it */
@@ -54,7 +57,8 @@ export function RoomStage({
   const twoRings = n > 12
   const kidSize = n <= 12 ? 64 : n <= 18 ? 54 : 48
   const outerN = twoRings ? Math.ceil(n * 0.58) : n
-  const teacherSize = twoRings ? 52 : teachers.length >= 3 ? 68 : 84
+  // Leave room in the middle for the buttons: teachers a little smaller and further apart
+  const teacherSize = twoRings ? 52 : teachers.length >= 3 ? 68 : centerActions ? 72 : 84
   const chipSize = Math.round(kidSize / 2)
 
   const kidSpot = (i: number) => {
@@ -66,8 +70,8 @@ export function RoomStage({
     return { left: `${50 + rad * Math.cos(ang)}%`, top: `${50 + rad * Math.sin(ang)}%` }
   }
   const teacherSpot = (i: number) => {
-    if (teachers.length <= 1) return { left: '50%', top: '50%' }
-    const off = twoRings ? 10 : 16
+    if (teachers.length <= 1) return { left: '50%', top: centerActions ? '38%' : '50%' }   // one teacher sits above the buttons
+    const off = twoRings ? 10 : centerActions && teachers.length === 2 ? 20 : 16
     const ang = -Math.PI / 2 + (2 * Math.PI * i) / teachers.length + (teachers.length === 2 ? Math.PI / 2 : 0)
     return { left: `${50 + off * Math.cos(ang)}%`, top: `${50 + off * Math.sin(ang)}%` }
   }
@@ -167,8 +171,17 @@ export function RoomStage({
         </span>
         {circleEditor && <div className="absolute bottom-[3%] left-1/2 z-[4] -translate-x-1/2">{circleEditor}</div>}
         {teachers.length === 0 && n > 0 && (
-          <div className="pointer-events-none absolute left-1/2 top-1/2 flex h-[120px] w-[120px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-dashed border-[#d14b3f] p-3 text-center text-xs font-bold text-[#a3221b]">
+          <div className="pointer-events-none absolute left-1/2 flex h-[120px] w-[120px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-dashed border-[#d14b3f] p-3 text-center text-xs font-bold text-[#a3221b]"
+            style={{ top: centerActions ? '38%' : '50%' }}>
             No teacher checked in
+          </div>
+        )}
+        {centerActions && (
+          // Taps here are button presses, never the start of a drag
+          <div className="absolute left-1/2 z-[4] flex -translate-x-1/2 -translate-y-1/2 flex-col items-stretch gap-1"
+            style={{ top: teachers.length <= 1 ? '62%' : '50%' }}
+            onPointerDown={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
+            {centerActions}
           </div>
         )}
         {teachers.map((t, i) => (

@@ -439,24 +439,12 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
                 className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-white px-3 text-sm font-bold text-heading hover:bg-surface">
                 <Utensils className="h-4 w-4 text-brand-600" /> Meal served
               </button>
-              <button type="button" onClick={() => setClassAction('activity')}
-                className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-white px-3 text-sm font-bold text-heading hover:bg-surface">
-                <ClipboardList className="h-4 w-4 text-brand-600" /> Activity with class
-              </button>
-              <button type="button" onClick={() => setClassPhoto(true)}
-                className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-white px-3 text-sm font-bold text-heading hover:bg-surface">
-                <Camera className="h-4 w-4 text-brand-600" /> Class photo
-              </button>
               <div className="flex w-full flex-wrap items-center gap-2 border-t border-border pt-2">
                 <span className={`mr-auto inline-flex items-center gap-2 px-1 text-sm ${nextDue?.overdue ? 'font-bold text-[#7a4b00]' : 'text-muted'}`} role="status">
                   <Moon className="h-4 w-4 text-[#3b5bab]" />
                   {napsHere.length === 0 ? 'No one napping'
                     : `${napsHere.length} napping${nextDue ? (nextDue.overdue ? ' · sleep check due now' : ` · next check ${clockTime(nextDue.dueAt.toISOString())}`) : ''}`}
                 </span>
-                <button type="button" onClick={() => setNapAction('start')}
-                  className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-white px-3 text-sm font-bold text-heading hover:bg-surface">
-                  <Moon className="h-4 w-4 text-[#3b5bab]" /> Nap time
-                </button>
                 {napsHere.length > 0 && (
                   <>
                     <button type="button" onClick={() => setNapAction('check')}
@@ -474,7 +462,15 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
           )}
           {/* Children with no home room and substitutes waiting for a room wait in the Lobby; teachers with no home room are parked below */}
           <RoomStage room={focusRoom} status={fs} seats={peopleInRoom(focusRoom.id, people)} waiting={waitingInLobby} photos={photos} tintOf={tintOf} visitingFrom={visitingFrom} themeUrl={themes[focusRoom.id]} circleUrl={circleThemes[focusRoom.id]}
-            circleEditor={canTheme ? <RoomThemeButton areaId={focusRoom.id} slot="circle" roomName={focusRoom.name} hasImage={!!circleThemes[focusRoom.id]} onChanged={reloadThemes} /> : undefined} ix={ix} />
+            circleEditor={canTheme ? <RoomThemeButton areaId={focusRoom.id} slot="circle" roomName={focusRoom.name} hasImage={!!circleThemes[focusRoom.id]} onChanged={reloadThemes} /> : undefined}
+            centerActions={teacherView ? (
+              <>
+                <CircleButton onClick={() => setClassAction('activity')} icon={<ClipboardList className="h-3.5 w-3.5 text-brand-600" />} label="Activities" />
+                <CircleButton onClick={() => setClassPhoto(true)} icon={<Camera className="h-3.5 w-3.5 text-brand-600" />} label="Photo" />
+                <CircleButton onClick={() => setNapAction('start')} icon={<Moon className="h-3.5 w-3.5 text-[#3b5bab]" />} label="Nap" />
+              </>
+            ) : undefined}
+            ix={ix} />
           <Legend />
         </section>
 
@@ -724,5 +720,15 @@ function TodayPlanSummary({ centerId, roomId }: { centerId: string; roomId: stri
           : `${items.length} ${items.length === 1 ? 'activity' : 'activities'}${items[0]?.theme ? ` · ${items[0].theme}` : ''}${logged ? ` · ${logged} logged` : ''}`}
       </span>
     </span>
+  )
+}
+
+/** A small button in the middle of the Classroom circle */
+function CircleButton({ onClick, icon, label }: { onClick: () => void; icon: React.ReactNode; label: string }) {
+  return (
+    <button type="button" onClick={onClick}
+      className="inline-flex min-h-8 items-center justify-center gap-1 rounded-full border border-[#1e7a47]/30 bg-white/95 px-2.5 text-[11px] font-bold text-heading shadow-sm hover:bg-white focus-visible:outline-2 focus-visible:outline-[#1e7a47]">
+      {icon} {label}
+    </button>
   )
 }
