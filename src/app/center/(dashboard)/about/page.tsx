@@ -192,7 +192,24 @@ export default function CenterAboutPage() {
                   {program.schedule && (
                     <p className="flex items-center gap-1.5 text-xs text-muted font-medium mb-2"><Clock className="w-3.5 h-3.5" /> {program.schedule}</p>
                   )}
-                  {program.description && <p className="text-sm text-text-muted leading-relaxed whitespace-pre-line">{program.description}</p>}
+                  {(program.description || normalizeWebUrl(program.more_info_url)) && (
+                    <p className="text-sm text-text-muted leading-relaxed whitespace-pre-line">
+                      {program.description}
+                      {normalizeWebUrl(program.more_info_url) && (
+                        <>
+                          {program.description ? ' ' : null}
+                          <a
+                            href={normalizeWebUrl(program.more_info_url)!}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 whitespace-nowrap font-bold text-brand-600 hover:underline"
+                          >
+                            More info <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        </>
+                      )}
+                    </p>
+                  )}
                   {(() => {
                     const mine = classes.filter(c => c.program_id === program.id)
                     return (
@@ -215,16 +232,6 @@ export default function CenterAboutPage() {
                     >
                       <CalendarDays className="w-4 h-4" /> Weekly Lesson Plan
                     </Link>
-                  )}
-                  {normalizeWebUrl(program.more_info_url) && (
-                    <a
-                      href={normalizeWebUrl(program.more_info_url)!}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-3 inline-flex items-center gap-1.5 text-sm font-bold text-brand-600 hover:underline"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" /> More info
-                    </a>
                   )}
                 </>
               )}
