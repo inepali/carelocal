@@ -138,6 +138,8 @@ export interface GuardianInput {
   can_pick_up?: boolean
   /** Gets the parent daily report email */
   daily_report?: boolean
+  /** Teachers can message this contact (on by default) */
+  can_message?: boolean
 }
 
 const clean = (value: string | null | undefined) => (value ?? '').trim() || null
@@ -220,6 +222,7 @@ export async function saveGuardian(supabase: SupabaseClient, centerId: string, c
     is_emergency_contact: input.is_emergency_contact ?? false,
     can_pick_up: input.can_pick_up ?? false,
     daily_report: !!input.daily_report && !!clean(input.email),
+    ...(input.can_message === undefined ? {} : { can_message: input.can_message }),
   }
   const query = input.id
     ? supabase.from('child_guardians').update(row).eq('id', input.id).select('*')

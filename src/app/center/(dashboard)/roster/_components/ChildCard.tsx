@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { AlertTriangle, Baby, Camera, ClipboardList, Loader2, LogIn, LogOut, Milk, Moon, Pill, StickyNote, Droplets, Utensils, X } from 'lucide-react'
+import { AlertTriangle, Baby, Camera, ClipboardList, Loader2, LogIn, LogOut, Mail, Milk, Moon, Pill, StickyNote, Droplets, Utensils, X } from 'lucide-react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { ageLabel, type RosterPerson, type RosterRoom } from '@/lib/roster-ratio'
 import { loadChildDayEvents, setToiletTrained, type RosterMove } from '@/lib/roster'
@@ -15,6 +15,7 @@ import { EntryForm, VoidForm, type RoutineKind } from './DailyForms'
 import { MedicineForm, NapBanner, NapTimeForm, SleepCheckForm } from './NapMedForms'
 import { PhotoForm, PhotoViewer } from './DailyPhoto'
 import { getDailyPhotoUrls } from '@/app/actions/daily-photo.actions'
+import { ParentMessageForm, ParentMessageList } from './ParentMessage'
 
 type AddKind = RoutineKind | 'nap' | 'wake' | 'sleep_check' | 'medicine' | 'photo'
 
@@ -25,7 +26,8 @@ const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: 'num
  * care alert, Check in / Check out, the day at a glance, quick add for the day's routine (meal, bottle,
  * diaper or bathroom, activity, note), naps with sleep checks (due on a timer, required for infants),
  * medicine from the child's authorized list (hidden when there is none), and today's list, where an entry is
- * removed with a reason, never deleted. Photos come next; moving rooms is done by dragging.
+ * removed with a reason, never deleted. Message to parent emails the child's authorized pick-up contacts.
+ * Moving rooms is done by dragging.
  */
 export function ChildCard({
   supabase,
@@ -70,6 +72,8 @@ export function ChildCard({
   const [mode, setMode] = useState<'diaper' | 'bathroom'>(person.diaper_or_bathroom ?? 'diaper')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [messaging, setMessaging] = useState(false)
+  const [messagesKey, setMessagesKey] = useState(0)
 
   useEffect(() => { setMode(person.diaper_or_bathroom ?? 'diaper') }, [person.person_id, person.diaper_or_bathroom])
 
@@ -206,7 +210,7 @@ export function ChildCard({
     { kind: 'note', label: 'Note', icon: StickyNote },
     { kind: 'photo', label: 'Photo', icon: Camera },
   ]
-  const open = (kind: AddKind) => { setVoiding(null); setFormError(null); setAdding({ kind, key: newKey() }) }
+  const open = (kind: AddKind) => { setVoiding(null); setFormError(null); setMessaging(false); setAdding({ kind, key: newKey() }) }
   const cancel = () => { setAdding(null); setFormError(null) }
   const chips = glanceChips(entries)
   // Today's list: the routine entries plus check-in and check-out, newest first
@@ -257,10 +261,26 @@ export function ChildCard({
               <LogIn className="h-5 w-5" /> Check in{base ? ` to ${base.name}` : ''}
             </button>
           )}
+          {!messaging && (
+            <button type="button" onClick={() => { setAdding(null); setVoiding(null); setMessaging(true) }}
+              className="mt-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-white text-sm font-bold text-heading hover:bg-surface">
+              <Mail className="h-4 w-4 text-brand-600" /> Message to parent
+            </button>
+          )}
         </div>
       </div>
 
       <div className="flex flex-col gap-5 p-4">
+        {messaging && (
+          <ParentMessageForm supabase={supabase} centerId={centerId} childId={person.person_id} childName={person.first_name}
+            onCancel={() => setMessaging(false)}
+            onSent={delivered => {
+              setMessaging(false)
+              setMessagesKey(k => k + 1)
+              setSaved(delivered ? 'Message sent' : 'Message saved; email is still sending')
+            }} />
+        )}
+
         {onSite && (
         <section aria-labelledby="glance-h">
           <h3 id="glance-h" className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">Today at a glance</h3>
@@ -360,6 +380,11 @@ export function ChildCard({
               })}
             </ol>
           )}
+        </section>
+
+        <section aria-labelledby="msg-h">
+          <h3 id="msg-h" className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">Messages to parents</h3>
+          <ParentMessageList supabase={supabase} centerId={centerId} childId={person.person_id} refreshKey={messagesKey} />
         </section>
 
         <section aria-labelledby="care-h">

@@ -46,6 +46,8 @@ export interface ChildGuardian {
   can_pick_up: boolean
   /** Gets the parent daily report email (needs an email address) */
   daily_report?: boolean
+  /** Teachers can send this contact messages from the Live roster (authorized pick-ups with an email only) */
+  can_message?: boolean
   created_at: string
   updated_at: string
 }
