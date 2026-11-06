@@ -13,7 +13,7 @@ import {
   ArrowLeft, CheckCircle2, XCircle, Clock, FileText,
   MessageSquare, Loader2, ShieldCheck, User, Briefcase,
   Award, CalendarDays, MapPin, Phone, Mail, CreditCard,
-  AlertTriangle, Star, GraduationCap, Eye
+  AlertTriangle, Star, GraduationCap, Eye, Utensils
 } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
@@ -62,7 +62,7 @@ type TabId = 'overview' | 'education' | 'experience' | 'references' | 'credentia
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function StaffReviewPage() {
-  const { staffTerm } = useCenterContext()
+  const { staffTerm, menuPlanningEnabled } = useCenterContext()
   const { data: roleLookups } = useLookups('Role')
   const { data: paymentLookups } = useLookups('Payment Method')
   const { id: staffId } = useParams()
@@ -98,6 +98,7 @@ export default function StaffReviewPage() {
   // Live roster: the regular teacher's own room (their view opens there; they wait at its Home when not checked in)
   const [homeRoom, setHomeRoom] = useState('')
   const [rooms, setRooms] = useState<{ id: string; name: string }[]>([])
+  const [menuEditor, setMenuEditor] = useState(false)
   
 
   useEffect(() => { loadData() }, [staffId])
@@ -132,7 +133,7 @@ export default function StaffReviewPage() {
       // 2. Employment class at this center + requirements that apply to it
       const { data: membership } = await supabase
         .from('center_staff')
-        .select('status, employment_class, employment_start_date, requested_employment_class, home_work_area_id')
+        .select('status, employment_class, employment_start_date, requested_employment_class, home_work_area_id, menu_editor')
         .eq('center_id', admin.center_id)
         .eq('staff_id', staffId)
         .maybeSingle()
@@ -143,6 +144,7 @@ export default function StaffReviewPage() {
       setApproveClass((membership?.requested_employment_class as EmploymentClass | null) ?? memberClass)
       setStartDate(membership?.employment_start_date ?? '')
       setHomeRoom((membership as { home_work_area_id?: string | null } | null)?.home_work_area_id ?? '')
+      setMenuEditor(!!(membership as { menu_editor?: boolean } | null)?.menu_editor)
       const { data: roomRows } = await supabase.from('work_areas').select('id, name')
         .eq('center_id', admin.center_id).eq('is_active', true).order('sort_order').order('name')
       setRooms((roomRows ?? []) as { id: string; name: string }[])
@@ -319,6 +321,20 @@ export default function StaffReviewPage() {
     }
   }
 
+  async function handleToggleMenuEditor() {
+    if (!centerId) return
+    const next = !menuEditor
+    setMenuEditor(next)
+    const { data, error } = await supabase.from('center_staff').update({ menu_editor: next })
+      .eq('center_id', centerId).eq('staff_id', staffId).select('menu_editor').maybeSingle()
+    // The database keeps the old value when the change is not allowed, so trust what it saved
+    const saved = !!(data as { menu_editor?: boolean } | null)?.menu_editor
+    if (error || saved !== next) {
+      setMenuEditor(error ? !next : saved)
+      showAlert(error ? 'Failed to update menu access: ' + error.message : 'Only the center owner or an administrator can choose menu editors.')
+    }
+  }
+
   async function handleChangeStartDate(next: string) {
     if (!centerId || !next || next === startDate) return
     const previous = startDate
@@ -424,6 +440,17 @@ export default function StaffReviewPage() {
                     {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                   </select>
                 </label>
+              )}
+              {employmentClass === 'regular' && menuPlanningEnabled && targetCenterRole !== 'owner' && targetCenterRole !== 'admin' && (
+                <button
+                  type="button"
+                  onClick={handleToggleMenuEditor}
+                  aria-pressed={menuEditor}
+                  title={menuEditor ? 'Can plan and publish the monthly menu. Click to remove.' : 'Let them plan and publish the monthly menu (e.g. your cook).'}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border transition-colors ${menuEditor ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-white text-muted border-brand-100 hover:text-orange-700'}`}
+                >
+                  <Utensils className="w-3.5 h-3.5" /> {menuEditor ? 'Menu editor' : 'Make menu editor'}
+                </button>
               )}
               {targetCenterRole === 'owner' ? (
                 <span className="inline-flex items-center gap-1.5 bg-brand-900 text-white px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest">

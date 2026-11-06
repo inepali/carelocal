@@ -1,0 +1,24 @@
+-- Rollback for 20261226000000_menu_planning.sql
+DROP FUNCTION IF EXISTS public.seed_menu_library(uuid);
+DROP FUNCTION IF EXISTS public.menu_refresh_preset(uuid);
+DROP TABLE IF EXISTS public.menu_closed_days;
+DROP TABLE IF EXISTS public.menu_entries;
+DROP TABLE IF EXISTS public.menu_months;
+DROP TABLE IF EXISTS public.menu_preset_items;
+DROP TABLE IF EXISTS public.menu_presets;
+DROP TABLE IF EXISTS public.menu_food_items;
+DROP FUNCTION IF EXISTS public.fill_menu_entry();
+DROP FUNCTION IF EXISTS public.stamp_menu_month();
+DROP FUNCTION IF EXISTS public.menu_month_published(uuid, date);
+DROP FUNCTION IF EXISTS public.can_read_menu(uuid);
+DROP FUNCTION IF EXISTS public.can_edit_menu(uuid);
+DROP FUNCTION IF EXISTS public.menu_planning_on(uuid);
+DROP TRIGGER IF EXISTS trg_guard_center_staff_menu_editor ON public.center_staff;
+DROP FUNCTION IF EXISTS public.guard_center_staff_menu_editor();
+ALTER TABLE public.center_staff DROP COLUMN IF EXISTS menu_editor;
+DROP TRIGGER IF EXISTS trg_guard_menu_flags ON public.centers;
+DROP FUNCTION IF EXISTS public.guard_menu_flags();
+ALTER TABLE public.centers DROP CONSTRAINT IF EXISTS centers_menu_slots_check;
+ALTER TABLE public.centers DROP COLUMN IF EXISTS menu_slots;
+ALTER TABLE public.centers DROP COLUMN IF EXISTS cacfp_enabled;
+ALTER TABLE public.centers DROP COLUMN IF EXISTS menu_planning_enabled;

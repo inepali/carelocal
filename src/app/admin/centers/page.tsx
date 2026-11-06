@@ -25,6 +25,7 @@ import { setCenterEnabled } from '@/app/actions/account-status.actions'
 import { setCenterJobLimit, setCenterJobsEnabled } from '@/app/actions/jobs.actions'
 import { setCenterChildFilesEnabled, setCenterRosterEnabled } from '@/app/actions/child-files-admin.actions'
 import { purgeCenter } from '@/app/actions/data-cleanup.actions'
+import { setCenterMenuPlanningEnabled, setCenterCacfpEnabled } from '@/app/actions/menu-admin.actions'
 import { PurgeDialog } from '@/components/admin/PurgeDialog'
 import { showAlert, showConfirm, showPrompt } from '@/lib/dialog'
 
@@ -166,6 +167,32 @@ export default function AdminCentersPage() {
     const res = await setCenterRosterEnabled(center.id, enabling)
     if (!res.success) { showAlert(res.error); return }
     setCenters(prev => prev.map(c => c.id === center.id ? { ...c, roster_enabled: enabling } : c))
+  }
+
+  const toggleMenu = async (center: { id: string; name: string; menu_planning_enabled?: boolean; cacfp_enabled?: boolean }) => {
+    const enabling = !center.menu_planning_enabled
+    if (!await showConfirm(
+      enabling
+        ? `Turn on menu planning for ${center.name}? Its owner, administrators and staff marked as menu editors can plan the monthly menu, and regular staff can see published months.`
+        : `Turn off menu planning for ${center.name}? Menus close for everyone at the center${center.cacfp_enabled ? ' and CACFP tracking turns off too' : ''}. Nothing is deleted.`,
+      { title: 'Menu planning', confirmLabel: enabling ? 'Turn on' : 'Turn off', tone: 'default' },
+    )) return
+    const res = await setCenterMenuPlanningEnabled(center.id, enabling)
+    if (!res.success) { showAlert(res.error); return }
+    setCenters(prev => prev.map(c => c.id === center.id ? { ...c, menu_planning_enabled: enabling, cacfp_enabled: enabling ? c.cacfp_enabled : false } : c))
+  }
+
+  const toggleCacfp = async (center: { id: string; name: string; menu_planning_enabled?: boolean; cacfp_enabled?: boolean }) => {
+    const enabling = !center.cacfp_enabled
+    if (!await showConfirm(
+      enabling
+        ? `Turn on CACFP tracking for ${center.name}? Menus will show whether each meal meets the CACFP meal pattern, and the monthly CACFP report opens.`
+        : `Turn off CACFP tracking for ${center.name}? Menus stay; the component checks and report are hidden.`,
+      { title: 'CACFP tracking', confirmLabel: enabling ? 'Turn on' : 'Turn off', tone: 'default' },
+    )) return
+    const res = await setCenterCacfpEnabled(center.id, enabling)
+    if (!res.success) { showAlert(res.error); return }
+    setCenters(prev => prev.map(c => c.id === center.id ? { ...c, cacfp_enabled: enabling } : c))
   }
 
   const exportChecklist = async (center: { id: string; name: string }) => {
@@ -316,6 +343,24 @@ export default function AdminCentersPage() {
                              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${center.roster_enabled ? 'text-sky-700 border-sky-200 bg-sky-50 hover:bg-sky-100' : 'text-slate-400 border-slate-200 hover:text-sky-700 hover:border-sky-200'}`}
                            >
                              <span className={`w-1.5 h-1.5 rounded-full ${center.roster_enabled ? 'bg-sky-500' : 'bg-slate-300'}`} /> Roster
+                           </button>
+                         )}
+                         {(center.domain_key ?? 'childcare') === 'childcare' && (
+                           <button
+                             onClick={() => toggleMenu(center)}
+                             title={center.menu_planning_enabled ? 'Menu planning is on. Click to turn off.' : 'Menu planning is off. Click to turn on.'}
+                             className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${center.menu_planning_enabled ? 'text-orange-700 border-orange-200 bg-orange-50 hover:bg-orange-100' : 'text-slate-400 border-slate-200 hover:text-orange-700 hover:border-orange-200'}`}
+                           >
+                             <span className={`w-1.5 h-1.5 rounded-full ${center.menu_planning_enabled ? 'bg-orange-500' : 'bg-slate-300'}`} /> Menu
+                           </button>
+                         )}
+                         {(center.domain_key ?? 'childcare') === 'childcare' && center.menu_planning_enabled && (
+                           <button
+                             onClick={() => toggleCacfp(center)}
+                             title={center.cacfp_enabled ? 'CACFP tracking is on. Click to turn off.' : 'CACFP tracking is off. Click to turn on.'}
+                             className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${center.cacfp_enabled ? 'text-emerald-700 border-emerald-200 bg-emerald-50 hover:bg-emerald-100' : 'text-slate-400 border-slate-200 hover:text-emerald-700 hover:border-emerald-200'}`}
+                           >
+                             <span className={`w-1.5 h-1.5 rounded-full ${center.cacfp_enabled ? 'bg-emerald-500' : 'bg-slate-300'}`} /> CACFP
                            </button>
                          )}
                          <button

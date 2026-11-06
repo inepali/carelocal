@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, LayoutDashboard, Users, UserPlus, Info, Calendar, Tags, LifeBuoy, ClipboardCheck, Truck, Baby, Building2, UserCircle, Inbox, ShieldCheck, Briefcase, CalendarCheck, LayoutGrid, PanelLeftClose, PanelLeftOpen, NotebookPen } from 'lucide-react'
+import { LogOut, LayoutDashboard, Users, UserPlus, Info, Calendar, Tags, LifeBuoy, ClipboardCheck, Truck, Baby, Building2, UserCircle, Inbox, ShieldCheck, Briefcase, CalendarCheck, LayoutGrid, PanelLeftClose, PanelLeftOpen, NotebookPen, Utensils } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { CenterContext, canOpenChildFiles, canOpenRoster } from './context'
@@ -35,6 +35,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
   const [role, setRole] = useState<string | null>(null)
   const [childFilesEnabled, setChildFilesEnabled] = useState(false)
   const [rosterEnabled, setRosterEnabled] = useState(false)
+  const [menuPlanningEnabled, setMenuPlanningEnabled] = useState(false)
   // Narrow icon-only sidebar; remembered in this browser
   const [collapsed, setCollapsed] = useState(false)
 
@@ -62,7 +63,8 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
             domain_key,
             jobs_enabled,
             child_files_enabled,
-            roster_enabled
+            roster_enabled,
+            menu_planning_enabled
           )
         `)
         .eq('user_id', user.id)
@@ -88,6 +90,8 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
         setChildFilesEnabled(!!data.centers.child_files_enabled)
         // @ts-ignore
         setRosterEnabled(!!data.centers.roster_enabled)
+        // @ts-ignore
+        setMenuPlanningEnabled(!!data.centers.menu_planning_enabled)
       }
 
       // Admins who are also employees can switch to their own staff portal
@@ -123,6 +127,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
     ...(canOpenRoster({ domainKey, role, childFilesEnabled, rosterEnabled }) ? [{ name: 'Live roster', href: '/center/roster', icon: LayoutGrid }] : []),
     ...(canOpenChildFiles({ domainKey, role, childFilesEnabled }) ? [{ name: 'Children', href: '/center/children', icon: Baby }] : []),
     ...(domainKey === 'childcare' ? [{ name: 'Lesson Plans', href: '/center/lesson-plans/weekly', icon: NotebookPen }] : []),
+    ...(domainKey === 'childcare' && menuPlanningEnabled ? [{ name: 'Menu', href: '/center/menu', icon: Utensils }] : []),
     ...(jobsEnabled ? [{ name: 'Jobs', href: '/center/jobs', icon: Briefcase }] : []),
     { name: 'Requests', href: '/center/requests', icon: Inbox },
     { name: 'Tours', href: '/center/tours', icon: CalendarCheck },
@@ -139,7 +144,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <CenterContext.Provider value={{ staffTerm, workAreaTerm, domainKey, centerId, role, childFilesEnabled, rosterEnabled }}>
+    <CenterContext.Provider value={{ staffTerm, workAreaTerm, domainKey, centerId, role, childFilesEnabled, rosterEnabled, menuPlanningEnabled }}>
       <div className="center-shell min-h-screen bg-surface flex font-sans">
       {/* ── Sidebar ── */}
       <aside className={`${collapsed ? 'w-16' : 'w-64'} bg-brand-900 text-white flex flex-col fixed inset-y-0 z-10 transition-[width] duration-200`}>
