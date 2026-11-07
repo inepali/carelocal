@@ -65,3 +65,25 @@ export async function setCenterLessonPlansEnabled(centerId: string, enabled: boo
   console.warn(`[lesson-plans] super admin ${user.id} turned lesson plans ${enabled ? 'on' : 'off'} for center ${centerId}`)
   return { success: true }
 }
+
+/**
+ * Super admin: turn the parent portal (/parent) on or off for a child care center. Off by default. It needs the
+ * live roster (that is where daily activities and photos come from). Turning it off signs every parent out right
+ * away (the database checks the switch on every visit); codes are kept, so turning it back on lets parents in again.
+ */
+export async function setCenterParentPortalEnabled(centerId: string, enabled: boolean): Promise<Result> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user?.app_metadata?.is_super_admin !== true) return { success: false, error: 'Not allowed' }
+
+  const db = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  const { data: center } = await db.from('centers').select('id, domain_key, roster_enabled').eq('id', centerId).maybeSingle()
+  if (!center) return { success: false, error: 'Center not found' }
+  if (enabled && center.domain_key !== 'childcare') return { success: false, error: 'The parent portal is only for child care centers.' }
+  if (enabled && !center.roster_enabled) return { success: false, error: 'Turn on the Live roster for this center first.' }
+
+  const { error } = await db.from('centers').update({ parent_portal_enabled: enabled }).eq('id', centerId)
+  if (error) return { success: false, error: error.message }
+  console.warn(`[parent-portal] super admin ${user.id} turned the parent portal ${enabled ? 'on' : 'off'} for center ${centerId}`)
+  return { success: true }
+}

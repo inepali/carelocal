@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import {
   X, Building2, MapPin, Phone, Mail, User, ShieldCheck, CreditCard, Calendar, Users, LogIn,
-  Briefcase, Baby, LayoutGrid, NotebookPen, Utensils, ClipboardList,
+  Briefcase, Baby, LayoutGrid, NotebookPen, Utensils, ClipboardList, KeyRound,
 } from 'lucide-react'
 import { TIER_LABELS, type SubscriptionTier } from '@/lib/types'
 
@@ -23,6 +23,7 @@ export interface CenterModuleActions {
   toggleLessonPlans: Toggle
   toggleMenu: Toggle
   toggleCacfp: Toggle
+  toggleParentPortal: Toggle
 }
 
 interface ModuleRow {
@@ -85,6 +86,11 @@ export function CenterDetailsDialog({ center, onClose, actions, statusLabel, job
         key: 'cacfp', label: 'CACFP tracking', icon: ClipboardList, on: !!center.cacfp_enabled, toggle: actions.toggleCacfp, sub: true,
         description: 'Meal-pattern checks on the menu and the monthly CACFP report.',
         needs: !center.menu_planning_enabled ? 'Turn on Menu planning first' : undefined,
+      },
+      {
+        key: 'parent_portal', label: 'Parent page', icon: KeyRound, on: !!center.parent_portal_enabled, toggle: actions.toggleParentPortal,
+        description: 'Parents see daily activities and photos at /parent with an access code from the center.',
+        needs: !center.roster_enabled && !center.parent_portal_enabled ? 'Turn on Live roster first' : undefined,
       },
     ] : []),
   ]
@@ -201,6 +207,7 @@ export function moduleSummary(center: AdminCenter): string[] {
     childcare && center.lesson_plans_enabled !== false && 'Lessons',
     childcare && center.menu_planning_enabled && 'Menu',
     childcare && center.cacfp_enabled && 'CACFP',
+    childcare && center.parent_portal_enabled && 'Parents',
   ].filter((x): x is string => typeof x === 'string')
 }
 

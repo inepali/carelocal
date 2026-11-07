@@ -1,12 +1,14 @@
 'use client'
 
-import { useState } from 'react'
-import { Loader2, Pencil, Plus, ShieldAlert, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { KeyRound, Loader2, Pencil, Plus, ShieldAlert, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { deleteGuardian, saveGuardian } from '@/lib/children'
 import type { Child, ChildGuardian } from '@/lib/child-types'
 import { showAlert, showConfirm } from '@/lib/dialog'
-import { BTN, BTN_PRIMARY, BTN_QUIET, FLD, LBL, Modal, Pill } from './ui'
+import { BTN, BTN_PRIMARY, BTN_QUIET, BTN_QUIET_SM, FLD, LBL, Modal, Pill } from './ui'
+import { ParentAccessDialog } from './ParentAccessDialog'
+import { getParentAccess, type ContactAccess } from '@/app/actions/parent-access.actions'
 
 /**
  * Parents, guardians and the people a child may be released to. A child is released ONLY to someone explicitly
@@ -16,6 +18,15 @@ export function ContactsPanel({ child, guardians, onChanged }: { child: Child; g
   const [editing, setEditing] = useState<(Partial<ChildGuardian> & { name: string }) | null>(null)
   const [saving, setSaving] = useState(false)
   const authorized = guardians.filter(g => g.can_pick_up)
+  // Parent page access (only when the center has the parent portal on)
+  const [portal, setPortal] = useState<{ enabled: boolean; byGuardian: Record<string, ContactAccess> }>({ enabled: false, byGuardian: {} })
+  const [accessFor, setAccessFor] = useState<ChildGuardian | null>(null)
+  const loadAccess = useCallback(async () => {
+    const res = await getParentAccess(child.center_id, child.id)
+    if (res.success) setPortal({ enabled: res.enabled, byGuardian: Object.fromEntries(res.contacts.map(c => [c.guardian_id, c])) })
+  }, [child.center_id, child.id])
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { loadAccess() }, [loadAccess, guardians])
 
   async function save() {
     if (!editing) return
@@ -88,10 +99,14 @@ export function ContactsPanel({ child, guardians, onChanged }: { child: Child; g
                         {g.can_pick_up ? <Pill className="border-emerald-200 bg-emerald-50 text-emerald-700">Authorized pick-up</Pill> : <Pill className="border-border bg-surface text-muted">Not authorized</Pill>}
                         {g.daily_report && g.email && <Pill className="border-sky-200 bg-sky-50 text-sky-700">Daily report</Pill>}
                         {g.can_pick_up && g.can_message === false && <Pill className="border-border bg-surface text-muted">No teacher messages</Pill>}
+                        {portal.enabled && portal.byGuardian[g.id]?.has_access && <Pill className="border-violet-200 bg-violet-50 text-violet-700">Parent page</Pill>}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
+                        {portal.enabled && child.status === 'enrolled' && (
+                          <button onClick={() => setAccessFor(g)} className={BTN_QUIET_SM} title="Parent page access code"><KeyRound className="h-3.5 w-3.5" /> Parent page</button>
+                        )}
                         <button onClick={() => setEditing({ ...g })} className={BTN}><Pencil className="h-3.5 w-3.5" /> Edit</button>
                         <button onClick={() => remove(g)} title="Remove" className="rounded-lg p-2 text-subtle hover:bg-red-50 hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
                       </div>
@@ -103,6 +118,10 @@ export function ContactsPanel({ child, guardians, onChanged }: { child: Child; g
           </div>
         )}
       </section>
+
+      {accessFor && (
+        <ParentAccessDialog child={child} guardian={accessFor} access={portal.byGuardian[accessFor.id]} onClose={() => setAccessFor(null)} onChanged={loadAccess} />
+      )}
 
       {editing && (
         <Modal title={editing.id ? 'Edit contact' : 'Add contact'} onClose={() => setEditing(null)} footer={
