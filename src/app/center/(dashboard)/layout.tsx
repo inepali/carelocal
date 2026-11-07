@@ -63,8 +63,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
             domain_key,
             jobs_enabled,
             child_files_enabled,
-            roster_enabled,
-            menu_planning_enabled
+            roster_enabled
           )
         `)
         .eq('user_id', user.id)
@@ -90,8 +89,13 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
         setChildFilesEnabled(!!data.centers.child_files_enabled)
         // @ts-ignore
         setRosterEnabled(!!data.centers.roster_enabled)
-        // @ts-ignore
-        setMenuPlanningEnabled(!!data.centers.menu_planning_enabled)
+      }
+
+      // Read on its own so a database without the menu planning migration only hides Menu, not the whole header
+      const adminCenterId = (data as { center_id?: string } | null)?.center_id
+      if (adminCenterId) {
+        const { data: menuFlag } = await supabase.from('centers').select('menu_planning_enabled').eq('id', adminCenterId).maybeSingle()
+        setMenuPlanningEnabled(!!(menuFlag as { menu_planning_enabled?: boolean } | null)?.menu_planning_enabled)
       }
 
       // Admins who are also employees can switch to their own staff portal

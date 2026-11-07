@@ -133,7 +133,7 @@ export default function StaffReviewPage() {
       // 2. Employment class at this center + requirements that apply to it
       const { data: membership } = await supabase
         .from('center_staff')
-        .select('status, employment_class, employment_start_date, requested_employment_class, home_work_area_id, menu_editor')
+        .select('status, employment_class, employment_start_date, requested_employment_class, home_work_area_id')
         .eq('center_id', admin.center_id)
         .eq('staff_id', staffId)
         .maybeSingle()
@@ -144,7 +144,10 @@ export default function StaffReviewPage() {
       setApproveClass((membership?.requested_employment_class as EmploymentClass | null) ?? memberClass)
       setStartDate(membership?.employment_start_date ?? '')
       setHomeRoom((membership as { home_work_area_id?: string | null } | null)?.home_work_area_id ?? '')
-      setMenuEditor(!!(membership as { menu_editor?: boolean } | null)?.menu_editor)
+      // Separate read so a database without the menu planning migration doesn't break this page
+      const { data: menuRow } = await supabase.from('center_staff').select('menu_editor')
+        .eq('center_id', admin.center_id).eq('staff_id', staffId).maybeSingle()
+      setMenuEditor(!!(menuRow as { menu_editor?: boolean } | null)?.menu_editor)
       const { data: roomRows } = await supabase.from('work_areas').select('id, name')
         .eq('center_id', admin.center_id).eq('is_active', true).order('sort_order').order('name')
       setRooms((roomRows ?? []) as { id: string; name: string }[])
