@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { CalendarDays, Loader2 } from 'lucide-react'
 import WeeklyLessonPlan from '@/components/lesson-plans/WeeklyLessonPlan'
+import { lessonPlansOn } from '@/lib/staff-lesson-plans'
 
 type State =
   | { kind: 'loading' }
@@ -27,9 +28,12 @@ export default function StaffLessonPlansPage() {
         .select('center_id, home_work_area_id')
         .eq('staff_id', profile.id).eq('employment_class', 'regular').eq('status', 'active')
         .maybeSingle()
+      const enabled = membership ? await lessonPlansOn(membership.center_id as string) : true
       if (cancelled) return
       if (!membership) {
         setState({ kind: 'blocked', message: 'Lesson plans are for regular teachers of a center. Ask your director to add you as a regular employee.' })
+      } else if (!enabled) {
+        setState({ kind: 'blocked', message: 'Lesson plans aren’t turned on for your center.' })
       } else {
         setState({
           kind: 'ready',

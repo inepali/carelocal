@@ -36,6 +36,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
   const [childFilesEnabled, setChildFilesEnabled] = useState(false)
   const [rosterEnabled, setRosterEnabled] = useState(false)
   const [menuPlanningEnabled, setMenuPlanningEnabled] = useState(false)
+  const [lessonPlansEnabled, setLessonPlansEnabled] = useState(true)
   // Narrow icon-only sidebar; remembered in this browser
   const [collapsed, setCollapsed] = useState(false)
 
@@ -94,8 +95,13 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
       // Read on its own so a database without the menu planning migration only hides Menu, not the whole header
       const adminCenterId = (data as { center_id?: string } | null)?.center_id
       if (adminCenterId) {
-        const { data: menuFlag } = await supabase.from('centers').select('menu_planning_enabled').eq('id', adminCenterId).maybeSingle()
-        setMenuPlanningEnabled(!!(menuFlag as { menu_planning_enabled?: boolean } | null)?.menu_planning_enabled)
+        const [menuFlag, lessonFlag] = await Promise.all([
+          supabase.from('centers').select('menu_planning_enabled').eq('id', adminCenterId).maybeSingle(),
+          supabase.from('centers').select('lesson_plans_enabled').eq('id', adminCenterId).maybeSingle(),
+        ])
+        setMenuPlanningEnabled(!!(menuFlag.data as { menu_planning_enabled?: boolean } | null)?.menu_planning_enabled)
+        // On by default: only an explicit false (set by a super admin) hides Lesson Plans
+        setLessonPlansEnabled((lessonFlag.data as { lesson_plans_enabled?: boolean } | null)?.lesson_plans_enabled !== false)
       }
 
       // Admins who are also employees can switch to their own staff portal
@@ -128,6 +134,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
   const HEADER_NAVIGATION = [
     ...(canOpenRoster({ domainKey, role, childFilesEnabled, rosterEnabled }) ? [{ name: 'Live roster', href: '/center/roster', icon: LayoutGrid }] : []),
     ...(canOpenChildFiles({ domainKey, role, childFilesEnabled }) ? [{ name: 'Children', href: '/center/children', icon: Baby }] : []),
+    ...(domainKey === 'childcare' && lessonPlansEnabled ? [{ name: 'Lesson Plans', href: '/center/lesson-plans/weekly', icon: NotebookPen }] : []),
     ...(domainKey === 'childcare' && menuPlanningEnabled ? [{ name: 'Menu', href: '/center/menu', icon: Utensils }] : []),
     ...(jobsEnabled ? [{ name: 'Jobs', href: '/center/jobs', icon: Briefcase }] : []),
   ]
@@ -136,7 +143,6 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
     { name: 'Dashboard', href: '/center/dashboard', icon: LayoutDashboard },
     { name: 'Shifts', href: '/center/shifts', icon: Calendar },
     { name: staffTerm, href: '/center/team_member', icon: Users },
-    ...(domainKey === 'childcare' ? [{ name: 'Lesson Plans', href: '/center/lesson-plans/weekly', icon: NotebookPen }] : []),
     { name: 'Requests', href: '/center/requests', icon: Inbox },
     { name: 'Tours', href: '/center/tours', icon: CalendarCheck },
     { name: 'Compliance', href: '/center/compliance', icon: ShieldCheck },
@@ -152,7 +158,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <CenterContext.Provider value={{ staffTerm, workAreaTerm, domainKey, centerId, role, childFilesEnabled, rosterEnabled, menuPlanningEnabled }}>
+    <CenterContext.Provider value={{ staffTerm, workAreaTerm, domainKey, centerId, role, childFilesEnabled, rosterEnabled, menuPlanningEnabled, lessonPlansEnabled }}>
       <div className="center-shell min-h-screen bg-surface flex font-sans">
       {/* ── Sidebar ── */}
       <aside className={`${collapsed ? 'w-16' : 'w-64'} bg-brand-900 text-white flex flex-col fixed inset-y-0 z-10 transition-[width] duration-200`}>

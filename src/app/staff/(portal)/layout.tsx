@@ -10,6 +10,7 @@ import { getDomainKey } from '@/lib/domain-config'
 import { GettingStartedBanner } from '@/components/staff/GettingStarted'
 import { teacherRosterEnabled } from '@/components/roster/TeacherRoster'
 import { staffMenuEnabled } from '@/components/menu/staffMenuCenter'
+import { staffLessonPlansEnabled } from '@/lib/staff-lesson-plans'
 
 export default function StaffPortalLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -23,10 +24,12 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
   const { isRegularOnly, loading: classLoading } = useIsRegularOnly()
   const [rosterOn, setRosterOn] = useState(false)
   const [menuOn, setMenuOn] = useState(false)
+  const [lessonPlansOn, setLessonPlansOn] = useState(false)
   useEffect(() => {
     if (!classLoading && isRegularOnly) {
       teacherRosterEnabled().then(setRosterOn)
       staffMenuEnabled().then(setMenuOn)
+      staffLessonPlansEnabled().then(setLessonPlansOn)
     }
   }, [classLoading, isRegularOnly])
 
@@ -88,7 +91,7 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
     { name: 'My Account', href: '/staff/account', icon: CreditCard },
   ].filter(item => isRegularOnly ? !isSubstituteOnlyRoute(item.href) : !isRegularOnlyRoute(item.href))
    .filter(item => item.href !== '/staff/roster' || rosterOn)
-   .filter(item => item.href !== '/staff/lesson-plans' || isChildcare)
+   .filter(item => item.href !== '/staff/lesson-plans' || (isChildcare && lessonPlansOn))
    .filter(item => item.href !== '/staff/menu' || menuOn)
 
   if (loading || classLoading || blockedRoute) {

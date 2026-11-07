@@ -17,7 +17,8 @@ import {
   MapPin,
   Calendar,
   FileDown,
-  Trash2
+  Trash2,
+  Settings2
 } from 'lucide-react'
 import Link from 'next/link'
 import { exportCenterRequirementsAsTemplate } from '@/app/actions/requirement-templates.actions'
@@ -25,7 +26,8 @@ import { setCenterEnabled } from '@/app/actions/account-status.actions'
 import { setCenterJobLimit, setCenterJobsEnabled } from '@/app/actions/jobs.actions'
 import { setCenterChildFilesEnabled, setCenterRosterEnabled } from '@/app/actions/child-files-admin.actions'
 import { purgeCenter } from '@/app/actions/data-cleanup.actions'
-import { setCenterMenuPlanningEnabled, setCenterCacfpEnabled } from '@/app/actions/menu-admin.actions'
+import { setCenterMenuPlanningEnabled, setCenterCacfpEnabled, setCenterLessonPlansEnabled } from '@/app/actions/center-modules.actions'
+import { CenterDetailsDialog, moduleSummary } from '@/components/admin/CenterDetailsDialog'
 import { PurgeDialog } from '@/components/admin/PurgeDialog'
 import { showAlert, showConfirm, showPrompt } from '@/lib/dialog'
 
@@ -35,6 +37,9 @@ export default function AdminCentersPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [purging, setPurging] = useState<{ id: string; name: string } | null>(null)
+  // Center whose details pop-up is open; looked up in `centers` so its switches update in place
+  const [detailsId, setDetailsId] = useState<string | null>(null)
+  const detailsCenter = detailsId ? centers.find(c => c.id === detailsId) ?? null : null
   // The row menu is drawn at a fixed spot under its button so the table's scroll area cannot clip it
   const [menu, setMenu] = useState<{ center: { id: string; name: string; is_active?: boolean; job_limit_override?: number | null }; top: number; right: number } | null>(null)
 
@@ -195,6 +200,19 @@ export default function AdminCentersPage() {
     setCenters(prev => prev.map(c => c.id === center.id ? { ...c, cacfp_enabled: enabling } : c))
   }
 
+  const toggleLessonPlans = async (center: { id: string; name: string; lesson_plans_enabled?: boolean }) => {
+    const enabling = center.lesson_plans_enabled === false
+    if (!await showConfirm(
+      enabling
+        ? `Turn on Lesson Plans for ${center.name}? Its admins and regular teachers can build and approve weekly lesson plans again.`
+        : `Turn off Lesson Plans for ${center.name}? Lesson Plans closes for everyone at the center. Plans and goals are kept.`,
+      { title: 'Lesson Plans', confirmLabel: enabling ? 'Turn on' : 'Turn off', tone: 'default' },
+    )) return
+    const res = await setCenterLessonPlansEnabled(center.id, enabling)
+    if (!res.success) { showAlert(res.error); return }
+    setCenters(prev => prev.map(c => c.id === center.id ? { ...c, lesson_plans_enabled: enabling } : c))
+  }
+
   const exportChecklist = async (center: { id: string; name: string }) => {
     const name = await showPrompt(`Template name for ${center.name}'s document requirements:`, `${center.name} checklist`, { title: 'Export as template' })
     if (!name?.trim()) return
@@ -268,9 +286,9 @@ export default function AdminCentersPage() {
                            )}
                          </div>
                          <div>
-                           <div className="font-extrabold text-slate-900 text-sm mb-0.5 tracking-tight group-hover:text-blue-600 transition-colors">
+                           <button onClick={() => setDetailsId(center.id)} className="block text-left font-extrabold text-slate-900 text-sm mb-0.5 tracking-tight group-hover:text-blue-600 hover:underline transition-colors">
                              {center.name}
-                           </div>
+                           </button>
                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                              /{center.slug}
                            </div>
@@ -320,49 +338,19 @@ export default function AdminCentersPage() {
                      </td>
                      <td className="px-4 py-4">
                        <div className="flex items-center justify-end gap-1.5">
+                         {moduleSummary(center).length > 0 && (
+                           <span className="hidden 2xl:inline text-[10px] font-bold text-slate-400 mr-1" title="Modules on">
+                             {moduleSummary(center).join(' · ')}
+                           </span>
+                         )}
                          <button
-                           onClick={() => toggleJobs(center)}
-                           title={center.jobs_enabled ? 'Job postings are on. Click to turn off.' : 'Job postings are off. Click to turn on.'}
-                           className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${center.jobs_enabled ? 'text-violet-700 border-violet-200 bg-violet-50 hover:bg-violet-100' : 'text-slate-400 border-slate-200 hover:text-violet-700 hover:border-violet-200'}`}
+                           onClick={() => setDetailsId(center.id)}
+                           title="Center details and modules"
+                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-widest border border-slate-200 text-slate-600 hover:text-blue-700 hover:border-blue-200 hover:bg-blue-50 transition-all"
                          >
-                           <span className={`w-1.5 h-1.5 rounded-full ${center.jobs_enabled ? 'bg-violet-500' : 'bg-slate-300'}`} /> Jobs{center.job_limit_override != null && <span className="normal-case tracking-normal font-bold" title="Job limit set by you">· {center.job_limit_override === -1 ? '∞' : center.job_limit_override}</span>}
+                           <Settings2 className="w-3.5 h-3.5" /> Manage
+                           <span className="ml-0.5 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500 normal-case tracking-normal">{moduleSummary(center).length}</span>
                          </button>
-                         {(center.domain_key ?? 'childcare') === 'childcare' && (
-                           <button
-                             onClick={() => toggleChildFiles(center)}
-                             title={center.child_files_enabled ? 'Child Files is on. Click to turn off.' : 'Child Files is off. Click to turn on.'}
-                             className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${center.child_files_enabled ? 'text-teal-700 border-teal-200 bg-teal-50 hover:bg-teal-100' : 'text-slate-400 border-slate-200 hover:text-teal-700 hover:border-teal-200'}`}
-                           >
-                             <span className={`w-1.5 h-1.5 rounded-full ${center.child_files_enabled ? 'bg-teal-500' : 'bg-slate-300'}`} /> Children
-                           </button>
-                         )}
-                         {(center.domain_key ?? 'childcare') === 'childcare' && (
-                           <button
-                             onClick={() => toggleRoster(center)}
-                             title={center.roster_enabled ? 'Live roster is on. Click to turn off.' : center.child_files_enabled ? 'Live roster is off. Click to turn on.' : 'Live roster needs Child Files on first.'}
-                             className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${center.roster_enabled ? 'text-sky-700 border-sky-200 bg-sky-50 hover:bg-sky-100' : 'text-slate-400 border-slate-200 hover:text-sky-700 hover:border-sky-200'}`}
-                           >
-                             <span className={`w-1.5 h-1.5 rounded-full ${center.roster_enabled ? 'bg-sky-500' : 'bg-slate-300'}`} /> Roster
-                           </button>
-                         )}
-                         {(center.domain_key ?? 'childcare') === 'childcare' && (
-                           <button
-                             onClick={() => toggleMenu(center)}
-                             title={center.menu_planning_enabled ? 'Menu planning is on. Click to turn off.' : 'Menu planning is off. Click to turn on.'}
-                             className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${center.menu_planning_enabled ? 'text-orange-700 border-orange-200 bg-orange-50 hover:bg-orange-100' : 'text-slate-400 border-slate-200 hover:text-orange-700 hover:border-orange-200'}`}
-                           >
-                             <span className={`w-1.5 h-1.5 rounded-full ${center.menu_planning_enabled ? 'bg-orange-500' : 'bg-slate-300'}`} /> Menu
-                           </button>
-                         )}
-                         {(center.domain_key ?? 'childcare') === 'childcare' && center.menu_planning_enabled && (
-                           <button
-                             onClick={() => toggleCacfp(center)}
-                             title={center.cacfp_enabled ? 'CACFP tracking is on. Click to turn off.' : 'CACFP tracking is off. Click to turn on.'}
-                             className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${center.cacfp_enabled ? 'text-emerald-700 border-emerald-200 bg-emerald-50 hover:bg-emerald-100' : 'text-slate-400 border-slate-200 hover:text-emerald-700 hover:border-emerald-200'}`}
-                           >
-                             <span className={`w-1.5 h-1.5 rounded-full ${center.cacfp_enabled ? 'bg-emerald-500' : 'bg-slate-300'}`} /> CACFP
-                           </button>
-                         )}
                          <button
                            aria-haspopup="menu"
                            aria-expanded={menu?.center.id === center.id}
@@ -418,6 +406,16 @@ export default function AdminCentersPage() {
           </div>
         </>,
         document.body,
+      )}
+
+      {detailsCenter && (
+        <CenterDetailsDialog
+          center={detailsCenter}
+          onClose={() => setDetailsId(null)}
+          statusLabel={detailsCenter.subscriptions?.[0]?.status || 'No subscription'}
+          jobLimitLabel={describeJobLimit(detailsCenter.job_limit_override)}
+          actions={{ toggleJobs, changeJobLimit, toggleChildFiles, toggleRoster, toggleLessonPlans, toggleMenu, toggleCacfp }}
+        />
       )}
 
       {purging && (
