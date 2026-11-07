@@ -72,7 +72,7 @@ export async function rememberedCenterKey() {
 
 export interface PortalChild { id: string; first_name: string; photo_key: string | null }
 export interface PortalHome {
-  center: { id: string; name: string; email: string | null; phone: string | null; timezone: string; today: string; domain_key: string | null }
+  center: { id: string; name: string; email: string | null; phone: string | null; timezone: string; today: string; domain_key: string | null; menu?: boolean }
   parent: { name: string | null }
   children: PortalChild[]
 }
@@ -164,4 +164,26 @@ export async function loadPortalThread(auth: { tokenHash: string } | { linkHash:
 /** An email link token from the URL, as stored (null when it cannot be one) */
 export function linkHash(token: string | undefined | null) {
   return token && /^[A-Za-z0-9_-]{40,64}$/.test(token) ? hashToken(token) : null
+}
+
+// ── Menu (20261230000000_parent_menu.sql) ────────────────────────────────────────────────────────────────────
+
+export interface PortalMenuFood { name: string; serving_note: string | null; allergens: string[] }
+export interface PortalMenu {
+  /** First of the month shown */
+  month: string
+  today: string
+  published: boolean
+  slots: ('breakfast' | 'am_snack' | 'lunch' | 'pm_snack' | 'supper')[]
+  /** Published months the parent can move between */
+  months: string[]
+  entries: { date: string; slot: PortalMenu['slots'][number]; name: string; note: string | null; foods: PortalMenuFood[] }[]
+  closed: { date: string; reason: string | null }[]
+}
+
+/** A published month of the center's menu; null when signed out or the center has Menu planning off */
+export async function loadPortalMenu(tokenHash: string, month: string | null) {
+  const { data, error } = await parentDb().rpc('parent_portal_menu', { p_token_hash: tokenHash, p_month: month })
+  if (error) throw new Error(`parent_portal_menu: ${error.message}`)
+  return (data as PortalMenu | null) ?? null
 }

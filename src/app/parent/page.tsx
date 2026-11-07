@@ -8,17 +8,20 @@ import {
 import { NoCenterLink } from './_components/SignInForm'
 import { SignOutButton } from './_components/SignOutButton'
 import { Conversation, NewMessageForm } from './_components/Messages'
+import { MenuView } from './_components/MenuView'
 
 /**
  * /parent: a parent's view of their child's day, opened with a 6-digit PIN on the center’s link (no account). Server rendered;
  * every read goes through the parent_portal_* database functions with this device's session.
  *   ?child=<id>  which child (siblings share one code)   ?tab=today|photos|messages   ?day=YYYY-MM-DD
- *   ?before=<iso> (photos)   ?thread=<id> | ?compose=1 (messages)
+ *   ?before=<iso> (photos)   ?thread=<id> | ?compose=1 (messages)   ?tab=menu&month=YYYY-MM (the center's menu)
  */
 
-type Search = { child?: string; tab?: string; day?: string; before?: string; thread?: string; compose?: string }
-type Tab = 'today' | 'photos' | 'messages'
-const TABS: { id: Tab; label: string }[] = [{ id: 'today', label: 'Activities' }, { id: 'photos', label: 'Photos' }, { id: 'messages', label: 'Messages' }]
+type Search = { child?: string; tab?: string; day?: string; before?: string; thread?: string; compose?: string; month?: string }
+type Tab = 'today' | 'photos' | 'messages' | 'menu'
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'today', label: 'Activities' }, { id: 'photos', label: 'Photos' }, { id: 'messages', label: 'Messages' }, { id: 'menu', label: 'Menu' },
+]
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const DAY = /^\d{4}-\d{2}-\d{2}$/
@@ -56,7 +59,9 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
   }
 
   const child = home.children.find(c => sp.child && UUID.test(sp.child) && c.id === sp.child) ?? home.children[0]
-  const tab: Tab = sp.tab === 'photos' ? 'photos' : sp.tab === 'messages' ? 'messages' : 'today'
+  const menuOn = home.center.menu === true
+  const tabs = TABS.filter(t => t.id !== 'menu' || menuOn)
+  const tab: Tab = tabs.find(t => t.id === sp.tab)?.id ?? 'today'
   const [faces, threads] = await Promise.all([
     signPortalPhotos(home.center.id, home.children.map(c => c.photo_key)),
     loadPortalThreads(tokenHash, child.id),
@@ -93,8 +98,8 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
         <h1 className="text-2xl font-bold">{child.first_name}</h1>
       </div>
 
-      <nav aria-label="Sections" className="mb-5 grid grid-cols-3 gap-1 rounded-2xl border border-border bg-white p-1 text-sm font-semibold">
-        {TABS.map(t => (
+      <nav aria-label="Sections" className={`mb-5 grid gap-1 rounded-2xl border border-border bg-white p-1 font-semibold ${tabs.length > 3 ? 'grid-cols-4 text-[13px]' : 'grid-cols-3 text-sm'}`}>
+        {tabs.map(t => (
           <Link key={t.id} href={href({ child: child.id, tab: t.id === 'today' ? null : t.id })} aria-current={tab === t.id ? 'page' : undefined}
             className={`flex items-center justify-center gap-1.5 rounded-xl py-2 ${tab === t.id ? 'bg-brand-50 text-brand-700' : 'text-text-muted'}`}>
             {t.label}
@@ -114,6 +119,8 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
               ? <NewMessageForm childId={child.id} childName={child.first_name} centerName={home.center.name} />
               : <ThreadList threads={threads} childId={child.id} childName={child.first_name} tz={home.center.timezone} />
       )}
+
+      {tab === 'menu' && <MenuView tokenHash={tokenHash} childId={child.id} month={sp.month && /^\d{4}-\d{2}$/.test(sp.month) ? `${sp.month}-01` : null} />}
 
       <footer className="mt-10 text-center text-xs text-muted">
         {home.center.phone && (
