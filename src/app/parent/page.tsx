@@ -1,19 +1,23 @@
 import Link from 'next/link'
-import { Camera, ChevronLeft, ChevronRight, Clock, ImageOff, Phone } from 'lucide-react'
+import { Camera, ChevronLeft, ChevronRight, Clock, ImageOff, MessageSquarePlus, Phone } from 'lucide-react'
 import { reportDate, reportSections, reportTime } from '@/lib/daily-report'
 import {
-  loadPortalDay, loadPortalHome, loadPortalPhotos, parentTokenHash, signPortalPhotos, type PortalHome,
+  loadPortalDay, loadPortalHome, loadPortalPhotos, loadPortalThread, loadPortalThreads, parentTokenHash, signPortalPhotos, type PortalHome,
 } from '@/lib/server/parent-portal'
 import { SignInForm } from './_components/SignInForm'
 import { SignOutButton } from './_components/SignOutButton'
+import { Conversation, NewMessageForm } from './_components/Messages'
 
 /**
  * /parent: a parent's view of their child's day, opened with an access code (no account). Server rendered;
  * every read goes through the parent_portal_* database functions with this device's session.
- *   ?child=<id>  which child (siblings share one code)   ?tab=today|photos   ?day=YYYY-MM-DD   ?before=<iso> (photos)
+ *   ?child=<id>  which child (siblings share one code)   ?tab=today|photos|messages   ?day=YYYY-MM-DD
+ *   ?before=<iso> (photos)   ?thread=<id> | ?compose=1 (messages)
  */
 
-type Search = { child?: string; tab?: string; day?: string; before?: string }
+type Search = { child?: string; tab?: string; day?: string; before?: string; thread?: string; compose?: string }
+type Tab = 'today' | 'photos' | 'messages'
+const TABS: { id: Tab; label: string }[] = [{ id: 'today', label: 'Activities' }, { id: 'photos', label: 'Photos' }, { id: 'messages', label: 'Messages' }]
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const DAY = /^\d{4}-\d{2}-\d{2}$/
@@ -22,6 +26,14 @@ function addDays(day: string, n: number) {
   const d = new Date(`${day}T12:00:00Z`)
   d.setUTCDate(d.getUTCDate() + n)
   return d.toISOString().slice(0, 10)
+}
+
+/** "3:40 PM" today, "Nov 5" before (in the center's time zone) */
+function shortWhen(iso: string, timeZone: string) {
+  const day = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
+  return day(new Date(iso)) === day(new Date())
+    ? reportTime(iso, timeZone)
+    : new Intl.DateTimeFormat('en-US', { timeZone, month: 'short', day: 'numeric' }).format(new Date(iso))
 }
 
 function href(params: Record<string, string | null | undefined>) {
@@ -38,8 +50,12 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
   if (!tokenHash || !home) return <SignInForm expired={!!tokenHash} />
 
   const child = home.children.find(c => sp.child && UUID.test(sp.child) && c.id === sp.child) ?? home.children[0]
-  const tab = sp.tab === 'photos' ? 'photos' : 'today'
-  const faces = await signPortalPhotos(home.center.id, home.children.map(c => c.photo_key))
+  const tab: Tab = sp.tab === 'photos' ? 'photos' : sp.tab === 'messages' ? 'messages' : 'today'
+  const [faces, threads] = await Promise.all([
+    signPortalPhotos(home.center.id, home.children.map(c => c.photo_key)),
+    loadPortalThreads(tokenHash, child.id),
+  ])
+  const unread = (threads ?? []).reduce((n, t) => n + t.unread, 0)
 
   return (
     <>
@@ -71,18 +87,27 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
         <h1 className="text-2xl font-bold">{child.first_name}</h1>
       </div>
 
-      <nav aria-label="Sections" className="mb-5 grid grid-cols-2 gap-1 rounded-2xl border border-border bg-white p-1 text-sm font-semibold">
-        {(['today', 'photos'] as const).map(t => (
-          <Link key={t} href={href({ child: child.id, tab: t })} aria-current={tab === t ? 'page' : undefined}
-            className={`rounded-xl py-2 text-center ${tab === t ? 'bg-brand-50 text-brand-700' : 'text-text-muted'}`}>
-            {t === 'today' ? 'Daily activities' : 'Photos'}
+      <nav aria-label="Sections" className="mb-5 grid grid-cols-3 gap-1 rounded-2xl border border-border bg-white p-1 text-sm font-semibold">
+        {TABS.map(t => (
+          <Link key={t.id} href={href({ child: child.id, tab: t.id === 'today' ? null : t.id })} aria-current={tab === t.id ? 'page' : undefined}
+            className={`flex items-center justify-center gap-1.5 rounded-xl py-2 ${tab === t.id ? 'bg-brand-50 text-brand-700' : 'text-text-muted'}`}>
+            {t.label}
+            {t.id === 'messages' && unread > 0 && <span className="rounded-full bg-brand-600 px-1.5 text-[11px] leading-5 text-white" aria-label={`${unread} unread`}>{unread}</span>}
           </Link>
         ))}
       </nav>
 
-      {tab === 'today'
-        ? <TodayView tokenHash={tokenHash} home={home} childId={child.id} day={sp.day && DAY.test(sp.day) ? sp.day : null} />
-        : <PhotosView tokenHash={tokenHash} childId={child.id} firstName={child.first_name} before={sp.before && !Number.isNaN(Date.parse(sp.before)) ? sp.before : null} />}
+      {tab === 'today' && <TodayView tokenHash={tokenHash} home={home} childId={child.id} day={sp.day && DAY.test(sp.day) ? sp.day : null} />}
+      {tab === 'photos' && <PhotosView tokenHash={tokenHash} childId={child.id} firstName={child.first_name} before={sp.before && !Number.isNaN(Date.parse(sp.before)) ? sp.before : null} />}
+      {tab === 'messages' && (
+        threads === null
+          ? <Card><p className="text-sm text-text-muted">Messages are not turned on for you. Please call {home.center.name}.</p></Card>
+          : sp.thread && UUID.test(sp.thread)
+            ? <ThreadView tokenHash={tokenHash} threadId={sp.thread} childId={child.id} />
+            : sp.compose
+              ? <NewMessageForm childId={child.id} childName={child.first_name} centerName={home.center.name} />
+              : <ThreadList threads={threads} childId={child.id} childName={child.first_name} tz={home.center.timezone} />
+      )}
 
       <footer className="mt-10 text-center text-xs text-muted">
         {home.center.phone && (
@@ -205,6 +230,52 @@ async function PhotosView({ tokenHash, childId, firstName, before }: { tokenHash
         <Link href={href({ child: childId, tab: 'photos', before: last.at })} className="block rounded-2xl border border-border bg-white py-3 text-center text-sm font-semibold text-brand-600">
           Older photos
         </Link>
+      )}
+    </div>
+  )
+}
+
+async function ThreadView({ tokenHash, threadId, childId }: { tokenHash: string; threadId: string; childId: string }) {
+  const thread = await loadPortalThread({ tokenHash }, threadId)
+  if (!thread || thread.child.id !== childId) {
+    return <Card><p className="text-sm text-text-muted">This conversation is not available.</p>
+      <Link href={href({ child: childId, tab: 'messages' })} className="mt-3 inline-block text-sm font-semibold text-brand-600">All messages</Link></Card>
+  }
+  return (
+    <div className="space-y-3">
+      <Link href={href({ child: childId, tab: 'messages' })} className="inline-flex items-center gap-1 text-sm font-semibold text-brand-600"><ChevronLeft className="h-4 w-4" /> All messages</Link>
+      <Conversation thread={thread} />
+    </div>
+  )
+}
+
+function ThreadList({ threads, childId, childName, tz }: { threads: NonNullable<Awaited<ReturnType<typeof loadPortalThreads>>>; childId: string; childName: string; tz: string }) {
+  return (
+    <div className="space-y-3">
+      <Link href={href({ child: childId, tab: 'messages', compose: '1' })}
+        className="flex items-center justify-center gap-2 rounded-2xl bg-brand-600 py-3 text-sm font-semibold text-white hover:bg-brand-700">
+        <MessageSquarePlus className="h-4 w-4" /> Message {childName}’s teachers
+      </Link>
+      {threads.length === 0 ? (
+        <Card><p className="text-sm text-text-muted">No messages in the last 60 days.</p></Card>
+      ) : (
+        <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+          {threads.map(t => (
+            <li key={t.id}>
+              <Link href={href({ child: childId, tab: 'messages', thread: t.id })} className="flex items-start gap-3 px-4 py-3 hover:bg-surface">
+                <span aria-hidden="true" className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${t.unread > 0 ? 'bg-brand-600' : 'bg-transparent'}`} />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-baseline justify-between gap-2">
+                    <span className={`truncate text-[15px] ${t.unread > 0 ? 'font-bold' : 'font-semibold'}`}>{t.subject}</span>
+                    <span className="shrink-0 text-xs text-muted">{shortWhen(t.last_at, tz)}</span>
+                  </span>
+                  <span className="block truncate text-sm text-text-muted">{t.last_from}: {t.preview}</span>
+                  {t.needs_ack && <span className="mt-1 inline-block rounded-full bg-amber-50 px-2 text-[11px] font-semibold text-amber-800">Please acknowledge</span>}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   )

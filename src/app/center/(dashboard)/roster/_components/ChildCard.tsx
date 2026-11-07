@@ -383,7 +383,7 @@ export function ChildCard({
         </section>
 
         <section aria-labelledby="msg-h">
-          <h3 id="msg-h" className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">Messages to parents</h3>
+          <h3 id="msg-h" className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">Messages with parents</h3>
           <ParentMessageList supabase={supabase} centerId={centerId} childId={person.person_id} refreshKey={messagesKey} />
         </section>
 

@@ -4,6 +4,7 @@ import type { CSSProperties } from 'react'
 import type { RosterPerson } from '@/lib/roster-ratio'
 import { ageLabel } from '@/lib/roster-ratio'
 import type { RosterInteract } from './useRosterDrag'
+import { MessageDot } from './unread-messages'
 
 const SELECTED_RING = '0 0 0 3px #2357d9'
 
@@ -87,6 +88,7 @@ export function PersonAvatar({
       <span className="relative rounded-full shadow-sm" style={{ boxShadow: selected ? SELECTED_RING : undefined }}>
         <Face person={person} url={url} tint={tint} size={size} border={ring} />
         {visitingFrom && <span aria-hidden="true" className="absolute right-0 top-0 h-3.5 w-3.5 rounded-full border-2 border-white bg-amber-600" />}
+        <MessageDot childId={isStaff ? null : person.person_id} size={Math.max(12, Math.round(size / 5))} />
       </span>
       {label === 'below' && (
         <span className={`mt-1 max-w-[88px] truncate whitespace-nowrap rounded-full px-1.5 text-[11px] font-semibold leading-4 ${isStaff ? 'border border-border bg-white text-heading' : 'text-text-main'}`}>
@@ -117,8 +119,9 @@ export function Chip({ person, url, tint, size, dashed, ix }: { person: RosterPe
       className="relative flex w-[52px] cursor-grab touch-none select-none flex-col items-center gap-0.5 border-0 bg-transparent p-0 focus-visible:outline-3 focus-visible:outline-brand-600"
       style={{ opacity: ix?.draggingId === person.person_id ? 0.35 : 1 }}
     >
-      <span className="rounded-full" style={{ boxShadow: rings || undefined }}>
+      <span className="relative rounded-full" style={{ boxShadow: rings || undefined }}>
         <Face person={person} url={url} tint={tint} size={faceSize} border={`2px ${dashed ? 'dashed' : 'solid'} ${isStaff ? '#16202a' : dashed ? '#7e1a14' : '#ffffff'}`} />
+        <MessageDot childId={isStaff ? null : person.person_id} size={12} />
       </span>
       <span className="max-w-[52px] truncate text-[10px] font-semibold text-heading">{person.first_name} {person.last_initial}.</span>
     </button>

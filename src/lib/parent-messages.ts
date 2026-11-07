@@ -67,3 +67,56 @@ export const MESSAGE_TEMPLATES: { label: string; subject: string; body: (name: s
   { label: 'Not feeling well', subject: 'Checking in', body: n => `Hi, ${n} does not seem to be feeling well today. Please call the center when you can.` },
   { label: 'Great day', subject: 'A great day', body: n => `Hi! Just wanted to share that ${n} had a great day today.` },
 ]
+
+// ── Conversations (20261229000000_parent_message_threads.sql) ─────────────────────────────────────────────────
+
+export interface ThreadRecipient {
+  name: string
+  kind: 'parent' | 'staff'
+  status: 'queued' | 'sent' | 'failed'
+  read: boolean
+  acknowledged: boolean
+}
+
+export interface ThreadMessage {
+  id: string
+  author_kind: 'staff' | 'parent'
+  sender_label: string
+  body: string
+  status: MessageStatus
+  created_at: string
+  /** Parent messages: when someone on the roster first opened it */
+  seen_at: string | null
+  recipients: ThreadRecipient[]
+}
+
+export interface ParentThread {
+  id: string
+  subject: string
+  last_at: string
+  /** Parent messages nobody on the roster has opened yet */
+  unread: number
+  /** Someone in the conversation can still get a reply */
+  can_reply: boolean
+  messages: ThreadMessage[]
+}
+
+/** The child's conversations, newest activity first */
+export async function loadParentThreads(supabase: SupabaseClient, centerId: string, childId: string, limit = 10): Promise<{ success: true; threads: ParentThread[] } | Failure> {
+  const { data, error } = await supabase.rpc('parent_threads_for_child', { p_center_id: centerId, p_child_id: childId, p_limit: limit })
+  if (error) return { success: false, error: friendly(error) }
+  return { success: true, threads: (data ?? []) as ParentThread[] }
+}
+
+/** Someone on the roster opened a conversation: the parent's messages in it are no longer unread */
+export async function markThreadSeen(supabase: SupabaseClient, centerId: string, threadId: string) {
+  const { error } = await supabase.rpc('parent_message_mark_seen', { p_center_id: centerId, p_thread_id: threadId })
+  return !error
+}
+
+/** Children with parent messages nobody on the roster has opened: child id -> how many */
+export async function loadUnreadParentMessages(supabase: SupabaseClient, centerId: string): Promise<Record<string, number>> {
+  const { data, error } = await supabase.rpc('parent_messages_unread', { p_center_id: centerId })
+  if (error) return {}
+  return Object.fromEntries(((data ?? []) as { child_id: string; unread: number }[]).map(r => [r.child_id, r.unread]))
+}

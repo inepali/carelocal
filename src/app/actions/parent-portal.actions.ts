@@ -3,8 +3,9 @@
 import { cookies } from 'next/headers'
 import { normalizeParentCode } from '@/lib/parent-code'
 import {
-  PARENT_COOKIE, PARENT_COOKIE_MAX_AGE, clientIp, hashIp, hashParentCode, hashToken, newSessionToken, parentDb, parentTokenHash, userAgent,
+  PARENT_COOKIE, PARENT_COOKIE_MAX_AGE, clientIp, hashIp, hashParentCode, hashToken, linkHash, newSessionToken, parentDb, parentTokenHash, userAgent,
 } from '@/lib/server/parent-portal'
+import { sendParentMessageNow } from '@/lib/server/parent-message-send'
 
 /**
  * Parent portal sign-in (no account): the parent types the access code their center gave them. parent_login()
@@ -65,4 +66,68 @@ export async function parentSignOut() {
     })
   }
   ;(await cookies()).delete({ name: PARENT_COOKIE, path: '/parent' })
+}
+
+// ── Messages ──────────────────────────────────────────────────────────────────────────────────────────────────
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** The device session, or the email link the page was opened with (the link only reaches its own conversation) */
+async function actor(link: string | null | undefined) {
+  if (link) {
+    const hash = linkHash(link)
+    return hash ? { token: null, link: hash } : null
+  }
+  const token = await parentTokenHash()
+  return token ? { token, link: null } : null
+}
+
+function friendly(error: { message?: string } | null) {
+  const msg = error?.message?.replace(/^.*?ERROR:\s*/, '')
+  return msg && msg.length < 200 ? msg : 'Something went wrong. Please try again.'
+}
+
+/**
+ * A parent writes: a new message about their child (threadId null, needs the access code) or a reply.
+ * The center's owners and admins are copied by email right away; teachers see it on the Live roster.
+ */
+export async function parentSendMessage(input: {
+  link?: string | null
+  childId?: string | null
+  threadId?: string | null
+  subject?: string
+  body: string
+  key: string
+}): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  try {
+    const who = await actor(input.link)
+    if (!who) return { ok: false, error: 'Please enter your access code again.' }
+    if (!UUID.test(input.key) || (input.threadId && !UUID.test(input.threadId)) || (input.childId && !UUID.test(input.childId))) {
+      return { ok: false, error: 'Something went wrong. Please try again.' }
+    }
+    const { data, error } = await parentDb().rpc('parent_portal_post', {
+      p_token_hash: who.token,
+      p_link_hash: who.link,
+      p_child_id: input.childId ?? null,
+      p_thread_id: input.threadId ?? null,
+      p_subject: (input.subject ?? '').slice(0, 200),
+      p_body: (input.body ?? '').slice(0, 4000),
+      p_client_key: input.key,
+    })
+    if (error || !data) return { ok: false, error: friendly(error) }
+    await sendParentMessageNow(data as string).catch(e => console.error('[parent-portal] admin copy failed (cron retries):', e))
+    return { ok: true, id: data as string }
+  } catch (e) {
+    console.error('[parent-portal] send failed:', e)
+    return { ok: false, error: 'Something went wrong. Please try again.' }
+  }
+}
+
+/** Acknowledge a message the center sent this parent */
+export async function parentAcknowledge(input: { link?: string | null; messageId: string }): Promise<{ ok: boolean }> {
+  const who = await actor(input.link)
+  if (!who || !UUID.test(input.messageId)) return { ok: false }
+  const { data, error } = await parentDb().rpc('parent_portal_ack', { p_token_hash: who.token, p_link_hash: who.link, p_message_id: input.messageId })
+  if (error) console.error('[parent-portal] acknowledge failed:', error.message)
+  return { ok: data === true }
 }

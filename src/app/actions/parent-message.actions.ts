@@ -43,3 +43,32 @@ export async function sendParentMessage(input: {
     return { success: false as const, error: 'Could not send the message.' }
   }
 }
+
+/**
+ * Teachers, owners and admins: reply in a conversation from the child card. parent_message_reply() sends it to
+ * the parents in the conversation who can still get messages, and marks the parent's messages as read.
+ */
+export async function sendParentReply(input: { centerId: string; threadId: string; body: string; key: string }) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false as const, error: 'Please sign in again.' }
+
+    const { data: id, error } = await supabase.rpc('parent_message_reply', {
+      p_center_id: input.centerId,
+      p_thread_id: input.threadId,
+      p_body: input.body,
+      p_client_key: input.key,
+    })
+    if (error || !id) return { success: false as const, error: friendlyDailyError(error) }
+
+    const result = await sendParentMessageNow(id as string).catch(e => {
+      console.error('[parent-message] reply send failed:', e)
+      return { sent: 0, failed: 1 }
+    })
+    return { success: true as const, id: id as string, delivered: result.sent > 0 && result.failed === 0 }
+  } catch (error) {
+    console.error('[parent-message] reply failed:', error)
+    return { success: false as const, error: 'Could not send the reply.' }
+  }
+}

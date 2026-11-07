@@ -96,3 +96,56 @@ export async function signPortalPhotos(centerId: string, keys: (string | null | 
   }))
   return Object.fromEntries(pairs.filter((p): p is readonly [string, string] => !!p)) as Record<string, string>
 }
+
+// ── Messages (20261229000000_parent_message_threads.sql) ──────────────────────────────────────────────────────
+
+export interface PortalThreadSummary {
+  id: string
+  subject: string
+  last_at: string
+  last_from: string
+  preview: string
+  unread: number
+  needs_ack: boolean
+}
+export interface PortalThreadMessage {
+  id: string
+  from: string
+  from_parent: boolean
+  mine: boolean
+  body: string
+  at: string
+  to_me: boolean
+  acknowledged_at: string | null
+  seen_by_center: boolean
+}
+export interface PortalThread {
+  id: string
+  subject: string
+  child: { id: string; first_name: string }
+  center: { name: string; phone: string | null }
+  messages: PortalThreadMessage[]
+}
+
+/** null = messages are not available to this parent (signed out, or the center turned messages off for them) */
+export async function loadPortalThreads(tokenHash: string, childId: string) {
+  const { data, error } = await parentDb().rpc('parent_portal_threads', { p_token_hash: tokenHash, p_child_id: childId })
+  if (error) throw new Error(`parent_portal_threads: ${error.message}`)
+  return (data as PortalThreadSummary[] | null) ?? null
+}
+
+/** One conversation, with the device session or with an email link (which opens only its own conversation) */
+export async function loadPortalThread(auth: { tokenHash: string } | { linkHash: string }, threadId: string | null) {
+  const { data, error } = await parentDb().rpc('parent_portal_thread', {
+    p_token_hash: 'tokenHash' in auth ? auth.tokenHash : null,
+    p_link_hash: 'linkHash' in auth ? auth.linkHash : null,
+    p_thread_id: threadId,
+  })
+  if (error) throw new Error(`parent_portal_thread: ${error.message}`)
+  return (data as PortalThread | null) ?? null
+}
+
+/** An email link token from the URL, as stored (null when it cannot be one) */
+export function linkHash(token: string | undefined | null) {
+  return token && /^[A-Za-z0-9_-]{40,64}$/.test(token) ? hashToken(token) : null
+}

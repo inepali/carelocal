@@ -23,6 +23,8 @@ import { RoomNapDialog, type RoomNapMode } from './RoomNapDialog'
 import { ClassPhotoDialog } from './DailyPhoto'
 import { clockTime, loadPhotosForReview, loadRoomNaps, reportSettings, nextCheck, sleepChecksRequired, type RoomNap } from '@/lib/daily'
 import { ExportDialog } from './ExportDialog'
+import { UnreadMessagesContext } from './unread-messages'
+import { loadUnreadParentMessages } from '@/lib/parent-messages'
 import { ReportSettingsDialog } from './ReportSettingsDialog'
 import { useRosterDrag, type RosterInteract } from './useRosterDrag'
 
@@ -180,6 +182,19 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
     return () => { window.clearTimeout(t); window.clearInterval(tick); supabase.removeChannel(channel) }
   }, [supabase, centerId, teacherView, reloadNaps])
 
+  // Parent messages nobody on the roster has opened yet (dots on the child circles); every minute and on return
+  const [unread, setUnread] = useState<Record<string, number>>({})
+  const reloadUnread = useCallback(() => { loadUnreadParentMessages(supabase, centerId).then(setUnread) }, [supabase, centerId])
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    reloadUnread()
+    const t = window.setInterval(reloadUnread, 60_000)
+    const onVisible = () => { if (document.visibilityState === 'visible') reloadUnread() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { window.clearInterval(t); document.removeEventListener('visibilitychange', onVisible) }
+  }, [reloadUnread])
+  const unreadValue = useMemo(() => ({ byChild: unread, refresh: reloadUnread }), [unread, reloadUnread])
+
   // Owners and admins: how many photos wait for review (refreshed when a toast says something changed)
   useEffect(() => {
     if (teacher) return
@@ -325,6 +340,7 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
   }
 
   return (
+    <UnreadMessagesContext.Provider value={unreadValue}>
     <div className="flex w-full flex-col gap-5">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -600,6 +616,7 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
         </div>
       )}
     </div>
+    </UnreadMessagesContext.Provider>
   )
 }
 
