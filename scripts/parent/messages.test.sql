@@ -30,13 +30,13 @@ INSERT INTO child_guardians (id, center_id, child_id, name, email, is_primary) V
 -- Codes for Mom, Dad and the center B parent
 SET ROLE authenticated;
 SELECT pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
-SELECT parent_access_issue('10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', pg_temp.h('mom'), 'MOM1');
-SELECT parent_access_issue('10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000003', pg_temp.h('dad'), 'DAD1');
+SELECT parent_access_issue('10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', pg_temp.h('mom'));
+SELECT parent_access_issue('10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000003', pg_temp.h('dad'));
 -- 1. A teacher writes to Mom and Dad
 SELECT parent_message_create('10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001',
   ARRAY['30000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000003']::uuid[], 'Supplies', 'Diapers please', gen_random_uuid());
 SELECT pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
-SELECT parent_access_issue('10000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000009', pg_temp.h('bpar'), 'BPAR');
+SELECT parent_access_issue('10000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000009', pg_temp.h('bpar'));
 RESET ROLE;
 SELECT pg_temp.as_user(NULL);
 CREATE TEMP TABLE t AS SELECT id AS thread FROM parent_messages WHERE reply_to IS NULL;
@@ -44,9 +44,9 @@ GRANT SELECT ON t TO service_role, authenticated;
 
 SET ROLE service_role;
 DO $$ DECLARE th uuid := (SELECT thread FROM t); l jsonb; x jsonb; BEGIN
-  PERFORM parent_login(pg_temp.h('mom'), 'ip', pg_temp.h('tok-mom'));
-  PERFORM parent_login(pg_temp.h('dad'), 'ip', pg_temp.h('tok-dad'));
-  PERFORM parent_login(pg_temp.h('bpar'), 'ip', pg_temp.h('tok-b'));
+  PERFORM parent_login('10000000-0000-0000-0000-000000000001'::uuid, pg_temp.h('mom'), 'ip', pg_temp.h('tok-mom'));
+  PERFORM parent_login('10000000-0000-0000-0000-000000000001'::uuid, pg_temp.h('dad'), 'ip', pg_temp.h('tok-dad'));
+  PERFORM parent_login('10000000-0000-0000-0000-000000000002'::uuid, pg_temp.h('bpar'), 'ip', pg_temp.h('tok-b'));
   -- 2. Mom's list: one unread conversation waiting for her acknowledgement
   l := parent_portal_threads(pg_temp.h('tok-mom'), '20000000-0000-0000-0000-000000000001');
   ASSERT jsonb_array_length(l) = 1 AND (l -> 0 ->> 'unread')::int = 1 AND (l -> 0 ->> 'needs_ack')::boolean, l::text;

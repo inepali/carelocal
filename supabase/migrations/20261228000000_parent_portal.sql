@@ -2,9 +2,11 @@
 -- Parent portal, phase 1: /parent, a page parents open without a CareLocal account.
 --
 --  - centers.parent_portal_enabled: the module switch (super admin only, like the other modules). Off by default.
---  - parent_access: one access code per person at a center. An owner or admin issues it from a contact on the
---    child's Contacts tab. The code is shown once; only an HMAC of it (keyed with the app's PARENT_CODE_PEPPER)
---    is stored, with its last 4 characters as a hint for staff.
+--  - centers.parent_portal_key: the center's private link, /parent/<key> (8 random characters). Parents get it
+--    with their PIN (email, printed card); it is not listed anywhere public. Only super admins change it.
+--  - parent_access: one 6-digit PIN per person at a center. An owner or admin sets it (typed or generated) from
+--    a contact on the child's Contacts tab. PINs are unique within a center (not across centers), so a parent
+--    needs the center's link AND the PIN. Only HMAC(center id + PIN, PARENT_CODE_PEPPER) is stored.
 --  - child_guardians.parent_access_id: which contact rows the code covers. Issuing a code for a contact also
 --    links every other contact row at the center with the same email (the same parent of a sibling), so one
 --    code shows all of that parent's children. Two parents of one child get separate codes, so one can be
@@ -12,7 +14,8 @@
 --  - parent_sessions: a device that entered a valid code. The browser keeps a random token in an httpOnly
 --    cookie; only its SHA-256 is stored. Sessions slide 30 days from last use, 180 days at most, and end when the
 --    code is replaced or turned off, the center turns the portal off, or the child is withdrawn.
---  - parent_login_attempts: brute-force limit, 5 wrong codes per IP (stored as an HMAC) per 15 minutes.
+--  - parent_login_attempts: brute-force limits: 5 wrong PINs per IP (stored as an HMAC) per 15 minutes, and
+--    20 wrong PINs per center per hour from anywhere, after which that center's sign-in pauses for the hour.
 --  - Parents see only enrolled children linked to their code, only the last 60 days, never voided entries,
 --    never photos waiting for review, never staff names. Everything goes through the functions below, which
 --    only the service role can call; anon and authenticated get nothing.
@@ -22,13 +25,37 @@
 -- 1. The module switch -------------------------------------------------------------------------------------------
 ALTER TABLE public.centers ADD COLUMN IF NOT EXISTS parent_portal_enabled boolean NOT NULL DEFAULT false;
 
+-- 8 characters from a 32-letter alphabet without i, l, o, u (40 bits), from random UUID bytes that carry no
+-- version or variant bits (bytes 0-5 of each), so every character is uniform.
+CREATE OR REPLACE FUNCTION public.parent_portal_new_key()
+RETURNS text LANGUAGE plpgsql VOLATILE SET search_path = public AS $$
+DECLARE
+  a bytea := decode(replace(gen_random_uuid()::text, '-', ''), 'hex');
+  b bytea := decode(replace(gen_random_uuid()::text, '-', ''), 'hex');
+  k text := '';
+  i integer;
+BEGIN
+  FOR i IN 0..7 LOOP
+    k := k || substr('0123456789abcdefghjkmnpqrstvwxyz', 1 + (get_byte(CASE WHEN i < 6 THEN a ELSE b END, i % 6) % 32), 1);
+  END LOOP;
+  RETURN k;
+END $$;
+REVOKE ALL ON FUNCTION public.parent_portal_new_key() FROM PUBLIC, anon, authenticated;
+
+ALTER TABLE public.centers ADD COLUMN IF NOT EXISTS parent_portal_key text NOT NULL DEFAULT public.parent_portal_new_key();
+ALTER TABLE public.centers DROP CONSTRAINT IF EXISTS centers_parent_portal_key_format;
+ALTER TABLE public.centers ADD CONSTRAINT centers_parent_portal_key_format CHECK (parent_portal_key ~ '^[0-9a-hjkmnp-tv-z]{8}$');
+CREATE UNIQUE INDEX IF NOT EXISTS centers_parent_portal_key_idx ON public.centers (parent_portal_key);
+
 CREATE OR REPLACE FUNCTION public.guard_parent_portal_flag()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
-  IF NEW.parent_portal_enabled IS NOT DISTINCT FROM OLD.parent_portal_enabled THEN RETURN NEW; END IF;
+  IF NEW.parent_portal_enabled IS NOT DISTINCT FROM OLD.parent_portal_enabled
+     AND NEW.parent_portal_key IS NOT DISTINCT FROM OLD.parent_portal_key THEN RETURN NEW; END IF;
   IF auth.uid() IS NULL THEN RETURN NEW; END IF;
   IF COALESCE((auth.jwt() -> 'app_metadata' ->> 'is_super_admin')::boolean, false) THEN RETURN NEW; END IF;
   NEW.parent_portal_enabled := OLD.parent_portal_enabled;
+  NEW.parent_portal_key := OLD.parent_portal_key;
   RETURN NEW;
 END $$;
 REVOKE ALL ON FUNCTION public.guard_parent_portal_flag() FROM PUBLIC, anon, authenticated;
@@ -41,8 +68,7 @@ CREATE TRIGGER trg_guard_parent_portal_flag BEFORE UPDATE ON public.centers
 CREATE TABLE IF NOT EXISTS public.parent_access (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   center_id      uuid NOT NULL REFERENCES public.centers(id) ON DELETE CASCADE,
-  code_hash      text NOT NULL UNIQUE CHECK (code_hash ~ '^[0-9a-f]{64}$'),
-  code_hint      text NOT NULL CHECK (code_hint ~ '^[0-9A-Z]{4}$'),   -- last 4 characters, for staff
+  code_hash      text NOT NULL UNIQUE CHECK (code_hash ~ '^[0-9a-f]{64}$'),   -- HMAC of center id + PIN
   issued_by      uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   issued_at      timestamptz NOT NULL DEFAULT now(),
   last_login_at  timestamptz
@@ -65,7 +91,7 @@ BEGIN
     IF NEW.parent_access_id IS NULL THEN RETURN NEW; END IF;
   END IF;
   IF NOT EXISTS (SELECT 1 FROM parent_access a WHERE a.id = NEW.parent_access_id AND a.center_id = NEW.center_id) THEN
-    RAISE EXCEPTION 'A parent access code can only cover contacts at its own center.' USING ERRCODE = '42501';
+    RAISE EXCEPTION 'A parent PIN can only cover contacts at its own center.' USING ERRCODE = '42501';
   END IF;
   RETURN NEW;
 END $$;
@@ -91,11 +117,13 @@ CREATE INDEX IF NOT EXISTS parent_sessions_expires_idx ON public.parent_sessions
 
 CREATE TABLE IF NOT EXISTS public.parent_login_attempts (
   id       bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  ip_hash  text NOT NULL,
-  ok       boolean NOT NULL,
+  ip_hash    text NOT NULL,
+  center_id  uuid REFERENCES public.centers(id) ON DELETE CASCADE,
+  ok         boolean NOT NULL,
   at       timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS parent_login_attempts_ip_idx ON public.parent_login_attempts (ip_hash, at DESC);
+CREATE INDEX IF NOT EXISTS parent_login_attempts_center_idx ON public.parent_login_attempts (center_id, at DESC) WHERE NOT ok;
 CREATE INDEX IF NOT EXISTS parent_login_attempts_at_idx ON public.parent_login_attempts (at);
 
 ALTER TABLE public.parent_access ENABLE ROW LEVEL SECURITY;
@@ -110,21 +138,32 @@ GRANT ALL ON public.parent_login_attempts TO service_role;
 
 -- 4. Parent side (service role only) ----------------------------------------------------------------------------
 
--- Enter a code. Returns {status: 'ok', expires_at} | {status: 'invalid', left} | {status: 'rate_limited', retry_after}.
--- A code works only while its center is active with the portal on and it covers at least one enrolled child.
-CREATE OR REPLACE FUNCTION public.parent_login(p_code_hash text, p_ip_hash text, p_token_hash text, p_user_agent text DEFAULT NULL)
+-- The center behind a /parent/<key> link: {id, name}, or NULL when the link is wrong or the portal is off
+CREATE OR REPLACE FUNCTION public.parent_center(p_key text)
+RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT jsonb_build_object('id', c.id, 'name', c.name, 'key', c.parent_portal_key)
+    FROM centers c WHERE c.parent_portal_key = lower(p_key) AND c.parent_portal_enabled AND c.is_active;
+$$;
+
+-- Enter a PIN on a center's link. Returns {status: 'ok', expires_at} | {status: 'invalid', left}
+-- | {status: 'rate_limited', retry_after} (this device) | {status: 'center_paused', retry_after} (the center).
+-- A PIN works only while the center is active with the portal on and it covers at least one enrolled child.
+CREATE OR REPLACE FUNCTION public.parent_login(p_center_id uuid, p_code_hash text, p_ip_hash text, p_token_hash text, p_user_agent text DEFAULT NULL)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
-  c_window   constant interval := interval '15 minutes';
-  c_max_fail constant integer := 5;
+  c_window          constant interval := interval '15 minutes';
+  c_max_fail        constant integer := 5;
+  c_center_window   constant interval := interval '1 hour';
+  c_center_max_fail constant integer := 20;
   v_fails    integer;
   v_oldest   timestamptz;
   v_access   uuid;
   v_expires  timestamptz := now() + interval '30 days';
 BEGIN
-  IF p_ip_hash IS NULL OR p_token_hash !~ '^[0-9a-f]{64}$' THEN
+  IF p_center_id IS NULL OR p_ip_hash IS NULL OR p_token_hash !~ '^[0-9a-f]{64}$' THEN
     RAISE EXCEPTION 'Bad sign-in request' USING ERRCODE = '22023';
   END IF;
+  PERFORM pg_advisory_xact_lock(hashtext('parent_login:' || p_center_id::text));
   PERFORM pg_advisory_xact_lock(hashtext('parent_login:' || p_ip_hash));
   DELETE FROM parent_login_attempts WHERE at < now() - interval '1 day';
 
@@ -134,30 +173,33 @@ BEGIN
     RETURN jsonb_build_object('status', 'rate_limited',
       'retry_after', GREATEST(60, ceil(extract(epoch FROM (v_oldest + c_window - now())))::integer));
   END IF;
+  IF (SELECT count(*) FROM parent_login_attempts WHERE center_id = p_center_id AND NOT ok AND at > now() - c_center_window) >= c_center_max_fail THEN
+    RETURN jsonb_build_object('status', 'center_paused', 'retry_after', 3600);
+  END IF;
 
   SELECT a.id INTO v_access
     FROM parent_access a JOIN centers c ON c.id = a.center_id
-   WHERE a.code_hash = p_code_hash AND c.parent_portal_enabled AND c.is_active
+   WHERE a.center_id = p_center_id AND a.code_hash = p_code_hash AND c.parent_portal_enabled AND c.is_active
      AND EXISTS (SELECT 1 FROM child_guardians g JOIN children ch ON ch.id = g.child_id
                   WHERE g.parent_access_id = a.id AND ch.status = 'enrolled');
 
   IF v_access IS NULL THEN
-    INSERT INTO parent_login_attempts (ip_hash, ok) VALUES (p_ip_hash, false);
+    INSERT INTO parent_login_attempts (ip_hash, center_id, ok) VALUES (p_ip_hash, p_center_id, false);
     RETURN jsonb_build_object('status', 'invalid', 'left', c_max_fail - v_fails - 1);
   END IF;
 
-  INSERT INTO parent_login_attempts (ip_hash, ok) VALUES (p_ip_hash, true);
+  INSERT INTO parent_login_attempts (ip_hash, center_id, ok) VALUES (p_ip_hash, p_center_id, true);
   INSERT INTO parent_sessions (access_id, token_hash, expires_at, ip_hash, user_agent)
   VALUES (v_access, p_token_hash, v_expires, p_ip_hash, left(p_user_agent, 300));
   UPDATE parent_access SET last_login_at = now() WHERE id = v_access;
-  -- At most 10 devices per code: the least recently used go first
+  -- At most 10 devices per PIN: the least recently used go first
   DELETE FROM parent_sessions WHERE id IN (
     SELECT id FROM parent_sessions WHERE access_id = v_access ORDER BY last_seen_at DESC OFFSET 10);
   DELETE FROM parent_sessions WHERE expires_at < now() - interval '1 day';
   RETURN jsonb_build_object('status', 'ok', 'expires_at', v_expires);
 END $$;
 
--- The code a session belongs to, or NULL (expired, replaced, turned off, portal off). Slides the expiry.
+-- The PIN a session belongs to, or NULL (expired, replaced, turned off, portal off). Slides the expiry.
 CREATE OR REPLACE FUNCTION public.parent_session_access(p_token_hash text)
 RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE v_session parent_sessions%ROWTYPE;
@@ -279,14 +321,16 @@ BEGIN
          LIMIT LEAST(GREATEST(COALESCE(p_limit, 30), 1), 60)) p), '[]'::jsonb));
 END $$;
 
-REVOKE ALL ON FUNCTION public.parent_login(text, text, text, text) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.parent_center(text) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.parent_login(uuid, text, text, text, text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.parent_session_access(text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.parent_session_child(text, uuid) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.parent_logout(text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.parent_portal_home(text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.parent_portal_day(text, uuid, date) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.parent_portal_photos(text, uuid, timestamptz, integer) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.parent_login(text, text, text, text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.parent_center(text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.parent_login(uuid, text, text, text, text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.parent_session_access(text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.parent_session_child(text, uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.parent_logout(text) TO service_role;
@@ -307,8 +351,8 @@ BEGIN
   END IF;
 END $$;
 
--- Each contact of a child: whether they have a code, its hint, last sign-in, devices, the other children it covers.
--- {enabled: false} when the portal is off (or the caller is not an owner or admin).
+-- Each contact of a child: whether they have a PIN, last sign-in, devices, the other children it covers, and the
+-- center's link key. {enabled: false} when the portal is off (or the caller is not an owner or admin).
 CREATE OR REPLACE FUNCTION public.parent_access_status(p_center_id uuid, p_child_id uuid)
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
 BEGIN
@@ -316,11 +360,12 @@ BEGIN
      OR NOT EXISTS (SELECT 1 FROM centers WHERE id = p_center_id AND parent_portal_enabled) THEN
     RETURN jsonb_build_object('enabled', false, 'contacts', '[]'::jsonb);
   END IF;
-  RETURN jsonb_build_object('enabled', true, 'contacts', COALESCE((
+  RETURN jsonb_build_object('enabled', true,
+    'link_key', (SELECT parent_portal_key FROM centers WHERE id = p_center_id),
+    'contacts', COALESCE((
     SELECT jsonb_agg(jsonb_build_object(
              'guardian_id', g.id,
              'has_access', a.id IS NOT NULL,
-             'code_hint', a.code_hint,
              'issued_at', a.issued_at,
              'last_login_at', a.last_login_at,
              'devices', (SELECT count(*) FROM parent_sessions s WHERE s.access_id = a.id AND s.expires_at > now()),
@@ -332,11 +377,12 @@ BEGIN
      WHERE g.center_id = p_center_id AND g.child_id = p_child_id), '[]'::jsonb));
 END $$;
 
--- Give a contact a code, or a new one (the old code and its devices stop working).
--- When the contact has no code but another contact row at the center with the same email does, the contact is
--- added to that code instead and no new code is made: {access_id, new_code: false}. Otherwise the code whose
+-- Give a contact a PIN, or a new one (the old PIN and its devices stop working).
+-- When the contact has no PIN but another contact row at the center with the same email does, the contact is
+-- added to that PIN instead and nothing new is made: {access_id, new_code: false}. Otherwise the PIN whose
 -- HMAC is p_code_hash is saved and every unlinked same-email contact row joins it: {access_id, new_code: true}.
-CREATE OR REPLACE FUNCTION public.parent_access_issue(p_center_id uuid, p_guardian_id uuid, p_code_hash text, p_code_hint text)
+-- A PIN another family at the center already has is refused (SQLSTATE 23505), so it can be picked again.
+CREATE OR REPLACE FUNCTION public.parent_access_issue(p_center_id uuid, p_guardian_id uuid, p_code_hash text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE v_guardian child_guardians%ROWTYPE; v_email text; v_access uuid;
 BEGIN
@@ -349,14 +395,7 @@ BEGIN
   PERFORM set_config('carelocal.parent_access', 'on', true);
   v_email := lower(NULLIF(btrim(v_guardian.email), ''));
 
-  IF v_guardian.parent_access_id IS NOT NULL THEN
-    UPDATE parent_access SET code_hash = p_code_hash, code_hint = p_code_hint, issued_by = auth.uid(), issued_at = now()
-     WHERE id = v_guardian.parent_access_id;
-    DELETE FROM parent_sessions WHERE access_id = v_guardian.parent_access_id;
-    RETURN jsonb_build_object('access_id', v_guardian.parent_access_id, 'new_code', true);
-  END IF;
-
-  IF v_email IS NOT NULL THEN
+  IF v_guardian.parent_access_id IS NULL AND v_email IS NOT NULL THEN
     SELECT g.parent_access_id INTO v_access FROM child_guardians g
      WHERE g.center_id = p_center_id AND g.parent_access_id IS NOT NULL AND lower(btrim(g.email)) = v_email
      ORDER BY g.created_at LIMIT 1;
@@ -366,8 +405,19 @@ BEGIN
     END IF;
   END IF;
 
-  INSERT INTO parent_access (center_id, code_hash, code_hint, issued_by)
-  VALUES (p_center_id, p_code_hash, p_code_hint, auth.uid()) RETURNING id INTO v_access;
+  IF EXISTS (SELECT 1 FROM parent_access WHERE code_hash = p_code_hash AND id IS DISTINCT FROM v_guardian.parent_access_id) THEN
+    RAISE EXCEPTION 'Another family at your center already has that PIN. Pick a different one.' USING ERRCODE = '23505';
+  END IF;
+
+  IF v_guardian.parent_access_id IS NOT NULL THEN
+    UPDATE parent_access SET code_hash = p_code_hash, issued_by = auth.uid(), issued_at = now()
+     WHERE id = v_guardian.parent_access_id;
+    DELETE FROM parent_sessions WHERE access_id = v_guardian.parent_access_id;
+    RETURN jsonb_build_object('access_id', v_guardian.parent_access_id, 'new_code', true);
+  END IF;
+
+  INSERT INTO parent_access (center_id, code_hash, issued_by)
+  VALUES (p_center_id, p_code_hash, auth.uid()) RETURNING id INTO v_access;
   UPDATE child_guardians SET parent_access_id = v_access
    WHERE center_id = p_center_id AND parent_access_id IS NULL
      AND (id = p_guardian_id OR (v_email IS NOT NULL AND lower(btrim(email)) = v_email));
@@ -386,14 +436,16 @@ BEGIN
   DELETE FROM parent_access WHERE id = v_access AND center_id = p_center_id;
 END $$;
 
--- For emailing a code just issued: the contact's email, only when p_code_hash is that contact's current code.
+-- For emailing a PIN just set: the contact's email and the center's link, only when p_code_hash is that
+-- contact's current PIN.
 CREATE OR REPLACE FUNCTION public.parent_access_email_data(p_center_id uuid, p_guardian_id uuid, p_code_hash text)
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
 BEGIN
   PERFORM public.parent_access_check(p_center_id);
   RETURN (
     SELECT jsonb_build_object('name', g.name, 'email', NULLIF(btrim(g.email), ''),
-             'center', jsonb_build_object('name', c.name, 'email', NULLIF(btrim(c.email), ''), 'phone', c.phone, 'domain_key', c.domain_key),
+             'center', jsonb_build_object('name', c.name, 'email', NULLIF(btrim(c.email), ''), 'phone', c.phone, 'domain_key', c.domain_key,
+                                          'link_key', c.parent_portal_key),
              'children', (SELECT jsonb_agg(DISTINCT COALESCE(NULLIF(btrim(o.preferred_name), ''), o.first_name))
                             FROM child_guardians og JOIN children o ON o.id = og.child_id
                            WHERE og.parent_access_id = a.id AND o.status = 'enrolled'))
@@ -403,11 +455,11 @@ END $$;
 
 REVOKE ALL ON FUNCTION public.parent_access_check(uuid) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.parent_access_status(uuid, uuid) FROM PUBLIC, anon;
-REVOKE ALL ON FUNCTION public.parent_access_issue(uuid, uuid, text, text) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.parent_access_issue(uuid, uuid, text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.parent_access_revoke(uuid, uuid) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.parent_access_email_data(uuid, uuid, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.parent_access_status(uuid, uuid) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.parent_access_issue(uuid, uuid, text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.parent_access_issue(uuid, uuid, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.parent_access_revoke(uuid, uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.parent_access_email_data(uuid, uuid, text) TO authenticated;
 

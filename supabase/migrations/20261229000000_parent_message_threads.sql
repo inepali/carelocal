@@ -10,7 +10,7 @@
 --  - parent_message_recipients.kind: 'parent' (a contact) or 'staff' (an owner or admin getting the copy).
 --    read_at / acknowledged_at: the parent opened it / tapped Acknowledge on the parent page.
 --  - parent_message_links: each parent email carries a link (/parent/m/<token>, 30 days) that opens ONLY that
---    conversation: read, acknowledge, reply. Photos and daily activities still need the access code. Only the
+--    conversation: read, acknowledge, reply. Photos and daily activities still need the PIN. Only the
 --    token's SHA-256 is stored. Links work only while the center has the parent page on.
 --  - Who in a conversation: the contacts it was sent to, and the parent who wrote it. A parent sees only
 --    conversations they are part of (another parent of the same child, with their own code, does not see them).
@@ -61,7 +61,7 @@ RETURNS SETOF uuid LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
    WHERE (m.id = p_thread_id OR m.reply_to = p_thread_id) AND m.author_kind = 'parent' AND m.guardian_id IS NOT NULL;
 $$;
 
--- The parent acting on the parent page: their contact rows (all rows linked to their access code), and, when
+-- The parent acting on the parent page: their contact rows (all rows linked to their PIN), and, when
 -- they came from an email link, the one conversation that link opens. NULL guardians = not signed in.
 CREATE OR REPLACE FUNCTION public.parent_actor(p_token_hash text, p_link_hash text, OUT guardians uuid[], OUT only_thread uuid)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
@@ -212,7 +212,7 @@ BEGIN
   RETURN v_count;
 END $$;
 
--- A parent writes: a new conversation about one of their children (p_thread_id NULL; needs the access code,
+-- A parent writes: a new conversation about one of their children (p_thread_id NULL; needs the PIN,
 -- not an email link) or a reply in a conversation they are part of. Returns the message id (the same one when
 -- the same Send is retried). The center's owners and admins are copied by email.
 CREATE OR REPLACE FUNCTION public.parent_portal_post(
@@ -239,7 +239,7 @@ BEGIN
     SELECT child_id, 'Re: ' || regexp_replace(subject, '^(Re: )+', '') INTO v_child, v_subject FROM parent_messages WHERE id = p_thread_id;
     v_subject := left(v_subject, 120);
   ELSIF v_actor.only_thread IS NOT NULL OR p_token_hash IS NULL OR public.parent_session_child(p_token_hash, p_child_id) IS NULL THEN
-    RAISE EXCEPTION 'Open the parent page with your access code to start a new message.' USING ERRCODE = '42501';
+    RAISE EXCEPTION 'Open the parent page with your PIN to start a new message.' USING ERRCODE = '42501';
   END IF;
 
   SELECT * INTO v_guardian FROM child_guardians

@@ -1,15 +1,16 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { Camera, ChevronLeft, ChevronRight, Clock, ImageOff, MessageSquarePlus, Phone } from 'lucide-react'
 import { reportDate, reportSections, reportTime } from '@/lib/daily-report'
 import {
-  loadPortalDay, loadPortalHome, loadPortalPhotos, loadPortalThread, loadPortalThreads, parentTokenHash, signPortalPhotos, type PortalHome,
+  loadPortalDay, loadPortalHome, loadPortalPhotos, loadPortalThread, loadPortalThreads, parentTokenHash, rememberedCenterKey, signPortalPhotos, type PortalHome,
 } from '@/lib/server/parent-portal'
-import { SignInForm } from './_components/SignInForm'
+import { NoCenterLink } from './_components/SignInForm'
 import { SignOutButton } from './_components/SignOutButton'
 import { Conversation, NewMessageForm } from './_components/Messages'
 
 /**
- * /parent: a parent's view of their child's day, opened with an access code (no account). Server rendered;
+ * /parent: a parent's view of their child's day, opened with a 6-digit PIN on the center’s link (no account). Server rendered;
  * every read goes through the parent_portal_* database functions with this device's session.
  *   ?child=<id>  which child (siblings share one code)   ?tab=today|photos|messages   ?day=YYYY-MM-DD
  *   ?before=<iso> (photos)   ?thread=<id> | ?compose=1 (messages)
@@ -47,7 +48,12 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
   const sp = await searchParams
   const tokenHash = await parentTokenHash()
   const home = tokenHash ? await loadPortalHome(tokenHash) : null
-  if (!tokenHash || !home) return <SignInForm expired={!!tokenHash} />
+  if (!tokenHash || !home) {
+    // Signed out: back to the center link this phone used before, or ask for it
+    const key = await rememberedCenterKey()
+    if (key) redirect(`/parent/${key}${tokenHash ? '?expired=1' : ''}`)
+    return <NoCenterLink />
+  }
 
   const child = home.children.find(c => sp.child && UUID.test(sp.child) && c.id === sp.child) ?? home.children[0]
   const tab: Tab = sp.tab === 'photos' ? 'photos' : sp.tab === 'messages' ? 'messages' : 'today'

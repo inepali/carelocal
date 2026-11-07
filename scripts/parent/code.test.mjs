@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * Tests for parent access codes (src/lib/parent-code.ts).
+ * Tests for parent PINs and center link keys (src/lib/parent-code.ts).
  *
  *   npm run test:parent
  */
-import { randomBytes } from 'node:crypto'
-import { codeFromBytes, formatParentCode, normalizeParentCode, parentCodeHint } from '../../src/lib/parent-code.ts'
+import { randomInt } from 'node:crypto'
+import { formatPin, normalizeCenterKey, normalizePin, pinFromNumber, weakPinReason } from '../../src/lib/parent-code.ts'
 
 let passed = 0
 const failures = []
@@ -13,31 +13,35 @@ function check(name, ok, detail = '') {
   if (ok) { passed++; console.log(`  ✓ ${name}`) } else { failures.push(name); console.log(`  ✗ ${name}${detail ? `  [${detail}]` : ''}`) }
 }
 
-console.log('codeFromBytes')
-const zeros = codeFromBytes(new Uint8Array(8))
-check('all-zero bytes give 00000000', zeros === '00000000', zeros)
-check('high bits are ignored (255 -> Z)', codeFromBytes(new Uint8Array(8).fill(255)) === 'ZZZZZZZZ')
-check('short input throws', (() => { try { codeFromBytes(new Uint8Array(4)); return false } catch { return true } })())
-const many = Array.from({ length: 2000 }, () => codeFromBytes(randomBytes(8)))
-check('random codes are always valid', many.every(c => normalizeParentCode(c) === c))
-check('random codes never use I, L, O or U', many.every(c => !/[ILOU]/.test(c)))
-check('2000 random codes are all different', new Set(many).size === many.length)
-const counts = new Map()
-for (const c of Array.from({ length: 4000 }, () => codeFromBytes(randomBytes(8))).join('')) counts.set(c, (counts.get(c) ?? 0) + 1)
-check('all 32 characters show up', counts.size === 32, String(counts.size))
+console.log('normalizePin')
+check('six digits', normalizePin('482913') === '482913')
+check('spaces and dashes ignored', normalizePin(' 482 913 ') === '482913' && normalizePin('482-913') === '482913')
+check('leading zeros kept', normalizePin('007312') === '007312')
+check('five digits refused', normalizePin('48291') === null)
+check('seven digits refused', normalizePin('4829130') === null)
+check('letters refused', normalizePin('48291a') === null)
 
-console.log('normalizeParentCode')
-check('dash and spaces', normalizeParentCode(' k7qf-29xm ') === 'K7QF29XM')
-check('O read as 0, I and L as 1', normalizeParentCode('OIL0-1234') === '01101234')
-check('too short', normalizeParentCode('K7QF-29X') === null)
-check('too long', normalizeParentCode('K7QF-29XMA') === null)
-check('U is not a code character', normalizeParentCode('UUUU-UUUU') === null)
-check('other symbols refused', normalizeParentCode('K7QF/29XM') === null)
-check('empty', normalizeParentCode('') === null)
+console.log('weakPinReason')
+for (const pin of ['000000', '999999', '123456', '234567', '654321', '987654', '012345', '121212', '123123', '454545', '112233', '159753']) {
+  check(`${pin} is refused`, weakPinReason(pin) !== null)
+}
+for (const pin of ['482913', '730264', '051938', '119284']) {
+  check(`${pin} is fine`, weakPinReason(pin) === null, weakPinReason(pin) ?? '')
+}
 
-console.log('format and hint')
-check('format', formatParentCode('K7QF29XM') === 'K7QF-29XM')
-check('hint is the last 4', parentCodeHint('K7QF29XM') === '29XM')
+console.log('pinFromNumber')
+check('pads to 6', pinFromNumber(42) === '000042')
+check('top of range', pinFromNumber(999999) === '999999')
+check('out of range throws', (() => { try { pinFromNumber(1_000_000); return false } catch { return true } })())
+const many = Array.from({ length: 5000 }, () => pinFromNumber(randomInt(0, 1_000_000)))
+check('random PINs are always 6 digits', many.every(p => normalizePin(p) === p))
+check('most random PINs are not weak', many.filter(p => weakPinReason(p)).length < 50)
+
+console.log('format and center key')
+check('format', formatPin('482913') === '482 913')
+check('key ok', normalizeCenterKey('k7m2xq9d') === 'k7m2xq9d' && normalizeCenterKey('K7M2XQ9D') === 'k7m2xq9d')
+check('key with i/l/o/u refused', normalizeCenterKey('k7m2xq9i') === null && normalizeCenterKey('uuuuuuuu') === null)
+check('key wrong length refused', normalizeCenterKey('k7m2xq9') === null && normalizeCenterKey('') === null && normalizeCenterKey(null) === null)
 
 console.log(`\n${passed} passed, ${failures.length} failed`)
 if (failures.length) process.exit(1)

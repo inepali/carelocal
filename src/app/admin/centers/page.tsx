@@ -217,7 +217,7 @@ export default function AdminCentersPage() {
     const enabling = !center.parent_portal_enabled
     if (!await showConfirm(
       enabling
-        ? `Turn on the parent page for ${center.name}? Its owner and administrators can give parents access codes to see daily activities and photos at /parent.`
+        ? `Turn on the parent page for ${center.name}? Its owner and administrators can give parents 6-digit PINs to see daily activities and photos and message teachers.`
         : `Turn off the parent page for ${center.name}? Every parent is signed out right away. Access codes are kept for when it is turned back on.`,
       { title: 'Parent page', confirmLabel: enabling ? 'Turn on' : 'Turn off', tone: 'default' },
     )) return

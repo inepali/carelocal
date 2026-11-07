@@ -34,7 +34,7 @@ CREATE FUNCTION pg_temp.h(t text) RETURNS text LANGUAGE sql AS $$ SELECT encode(
 SET ROLE authenticated; SELECT pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
 DO $$ BEGIN
   ASSERT (parent_access_status('10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001') ->> 'enabled')::boolean = false;
-  BEGIN PERFORM parent_access_issue('10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', pg_temp.h('c1'), 'ABCD');
+  BEGIN PERFORM parent_access_issue('10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', pg_temp.h('c1'));
     RAISE EXCEPTION 'issue should fail when off'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
   UPDATE centers SET parent_portal_enabled = true WHERE id = '10000000-0000-0000-0000-000000000001';
   ASSERT NOT (SELECT parent_portal_enabled FROM centers WHERE id = '10000000-0000-0000-0000-000000000001'), 'owner switched it on';
@@ -46,14 +46,14 @@ SELECT pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
 
 -- 2. Issue for Mom on Maya: links Leo's Mom row too (same email, trimmed/case-insensitive), not center B's row
 DO $$ DECLARE r jsonb; s jsonb; BEGIN
-  r := parent_access_issue('10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', pg_temp.h('mom1'), 'MOM1');
+  r := parent_access_issue('10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', pg_temp.h('mom1'));
   ASSERT (r ->> 'new_code')::boolean;
   s := parent_access_status('10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001');
   ASSERT (s -> 'contacts') @> '[{"guardian_id":"30000000-0000-0000-0000-000000000001","has_access":true,"also_covers":["Leo"]}]', s::text;
   ASSERT (s -> 'contacts') @> '[{"guardian_id":"30000000-0000-0000-0000-000000000003","has_access":false}]', s::text;
 END $$;
 -- Dad gets his own code
-SELECT parent_access_issue('10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000003', pg_temp.h('dad1'), 'DAD1');
+SELECT parent_access_issue('10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000003', pg_temp.h('dad1'));
 
 -- 3. Staff cannot link a contact directly or read the tables
 DO $$ BEGIN
@@ -62,7 +62,7 @@ DO $$ BEGIN
   ASSERT (SELECT parent_access_id FROM child_guardians WHERE id = '30000000-0000-0000-0000-000000000003')
          IS DISTINCT FROM (SELECT parent_access_id FROM child_guardians WHERE id = '30000000-0000-0000-0000-000000000001'), 'direct relink worked';
   BEGIN PERFORM 1 FROM parent_access; RAISE EXCEPTION 'read parent_access'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
-  BEGIN PERFORM parent_login(pg_temp.h('mom1'), 'ip', pg_temp.h('t')); RAISE EXCEPTION 'authenticated called login'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  BEGIN PERFORM parent_login('10000000-0000-0000-0000-000000000001'::uuid, pg_temp.h('mom1'), 'ip', pg_temp.h('t')); RAISE EXCEPTION 'authenticated called login'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
 END $$;
 -- 4. Another center's owner cannot touch center A
 SELECT pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
@@ -76,7 +76,7 @@ RESET ROLE;
 -- 5. Parent side as service role
 SET ROLE service_role;
 DO $$ DECLARE r jsonb; h jsonb; d jsonb; p jsonb; i int; BEGIN
-  r := parent_login(pg_temp.h('mom1'), 'ip-1', pg_temp.h('tok-mom'), 'UA');
+  r := parent_login('10000000-0000-0000-0000-000000000001'::uuid, pg_temp.h('mom1'), 'ip-1', pg_temp.h('tok-mom'), 'UA');
   ASSERT r ->> 'status' = 'ok', r::text;
   h := parent_portal_home(pg_temp.h('tok-mom'));
   ASSERT jsonb_array_length(h -> 'children') = 2, h::text;
@@ -90,21 +90,21 @@ DO $$ DECLARE r jsonb; h jsonb; d jsonb; p jsonb; i int; BEGIN
   p := parent_portal_photos(pg_temp.h('tok-mom'), '20000000-0000-0000-0000-000000000001');
   ASSERT jsonb_array_length(p -> 'photos') = 1, p::text;
   -- Dad sees Maya only
-  r := parent_login(pg_temp.h('dad1'), 'ip-1', pg_temp.h('tok-dad'));
+  r := parent_login('10000000-0000-0000-0000-000000000001'::uuid, pg_temp.h('dad1'), 'ip-1', pg_temp.h('tok-dad'));
   ASSERT jsonb_array_length(parent_portal_home(pg_temp.h('tok-dad')) -> 'children') = 1;
   ASSERT parent_portal_day(pg_temp.h('tok-dad'), '20000000-0000-0000-0000-000000000002') IS NULL, 'dad saw Leo';
   ASSERT parent_portal_home(pg_temp.h('nope')) IS NULL;
   -- Rate limit: 5 wrong codes from one IP, then blocked even with the right code; other IPs fine
-  FOR i IN 1..5 LOOP r := parent_login(pg_temp.h('wrong' || i), 'ip-2', pg_temp.h('x' || i)); ASSERT r ->> 'status' = 'invalid', r::text; END LOOP;
-  r := parent_login(pg_temp.h('mom1'), 'ip-2', pg_temp.h('tok-blocked'));
+  FOR i IN 1..5 LOOP r := parent_login('10000000-0000-0000-0000-000000000001'::uuid, pg_temp.h('wrong' || i), 'ip-2', pg_temp.h('x' || i)); ASSERT r ->> 'status' = 'invalid', r::text; END LOOP;
+  r := parent_login('10000000-0000-0000-0000-000000000001'::uuid, pg_temp.h('mom1'), 'ip-2', pg_temp.h('tok-blocked'));
   ASSERT r ->> 'status' = 'rate_limited', r::text;
-  ASSERT parent_login(pg_temp.h('mom1'), 'ip-3', pg_temp.h('tok-mom2')) ->> 'status' = 'ok';
+  ASSERT parent_login('10000000-0000-0000-0000-000000000001'::uuid, pg_temp.h('mom1'), 'ip-3', pg_temp.h('tok-mom2')) ->> 'status' = 'ok';
 END $$;
 RESET ROLE;
 
 -- 6. New code for Mom ends her devices; withdrawing Leo hides him; portal off signs everyone out
 SET ROLE authenticated; SELECT pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
-SELECT parent_access_issue('10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000002', pg_temp.h('mom2'), 'MOM2');
+SELECT parent_access_issue('10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000002', pg_temp.h('mom2'));
 DO $$ BEGIN
   ASSERT parent_access_email_data('10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', pg_temp.h('mom2')) ->> 'email' = 'Mom@x.com';
   ASSERT parent_access_email_data('10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', pg_temp.h('mom1')) IS NULL, 'old code still emailable';
@@ -113,8 +113,8 @@ RESET ROLE;
 SET ROLE service_role;
 DO $$ BEGIN
   ASSERT parent_portal_home(pg_temp.h('tok-mom')) IS NULL, 'old device survived new code';
-  ASSERT parent_login(pg_temp.h('mom1'), 'ip-4', pg_temp.h('t-old')) ->> 'status' = 'invalid', 'old code still works';
-  ASSERT parent_login(pg_temp.h('mom2'), 'ip-4', pg_temp.h('tok-mom3')) ->> 'status' = 'ok';
+  ASSERT parent_login('10000000-0000-0000-0000-000000000001'::uuid, pg_temp.h('mom1'), 'ip-4', pg_temp.h('t-old')) ->> 'status' = 'invalid', 'old code still works';
+  ASSERT parent_login('10000000-0000-0000-0000-000000000001'::uuid, pg_temp.h('mom2'), 'ip-4', pg_temp.h('tok-mom3')) ->> 'status' = 'ok';
 END $$;
 RESET ROLE;
 UPDATE children SET status = 'withdrawn' WHERE id = '20000000-0000-0000-0000-000000000002';
@@ -138,4 +138,44 @@ DO $$ BEGIN ASSERT parent_portal_home(pg_temp.h('tok-mom3')) IS NULL, 'portal of
 RESET ROLE;
 -- 8. Deleting a contact or a whole child still works with links in place
 DELETE FROM children WHERE id = '20000000-0000-0000-0000-000000000001';
+
+-- 9. Center links: random keys, only super admins change them; PINs unique within a center; center pause
+SELECT set_config('request.jwt.claim.sub', '', false);
+UPDATE centers SET parent_portal_enabled = true;
+INSERT INTO child_guardians (id, center_id, child_id, name, email) VALUES
+  ('30000000-0000-0000-0000-000000000007', '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000003', 'Aunt', 'aunt@x.com'),
+  ('30000000-0000-0000-0000-000000000008', '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000003', 'Uncle', 'uncle@x.com');
+DO $$ DECLARE k1 text; k2 text; BEGIN
+  SELECT parent_portal_key INTO k1 FROM centers WHERE id = '10000000-0000-0000-0000-000000000001';
+  SELECT parent_portal_key INTO k2 FROM centers WHERE id = '10000000-0000-0000-0000-000000000002';
+  ASSERT k1 ~ '^[0-9a-hjkmnp-tv-z]{8}$' AND k2 ~ '^[0-9a-hjkmnp-tv-z]{8}$' AND k1 <> k2, k1 || ' ' || k2;
+  ASSERT parent_center(k1) ->> 'id' = '10000000-0000-0000-0000-000000000001';
+  ASSERT parent_center(upper(k1)) ->> 'id' = '10000000-0000-0000-0000-000000000001', 'key is case-insensitive';
+  ASSERT parent_center('zzzzzzzz') IS NULL;
+END $$;
+SET ROLE authenticated; SELECT pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+DO $$ DECLARE k text; BEGIN
+  SELECT parent_portal_key INTO k FROM centers WHERE id = '10000000-0000-0000-0000-000000000001';
+  UPDATE centers SET parent_portal_key = 'aaaaaaaa' WHERE id = '10000000-0000-0000-0000-000000000001';
+  ASSERT (SELECT parent_portal_key FROM centers WHERE id = '10000000-0000-0000-0000-000000000001') = k, 'owner changed the link';
+  PERFORM parent_access_issue('10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000007', pg_temp.h('pin-a'));
+  BEGIN PERFORM parent_access_issue('10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000008', pg_temp.h('pin-a'));
+    RAISE EXCEPTION 'duplicate PIN accepted'; EXCEPTION WHEN unique_violation THEN NULL; END;
+  -- The same person may be given the same PIN again
+  PERFORM parent_access_issue('10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000007', pg_temp.h('pin-a'));
+  PERFORM parent_access_issue('10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000008', pg_temp.h('pin-u'));
+END $$;
+RESET ROLE;
+SET ROLE service_role;
+DO $$ DECLARE r jsonb; i int; BEGIN
+  -- A PIN only works on its own center
+  ASSERT parent_login('10000000-0000-0000-0000-000000000002'::uuid, pg_temp.h('pin-a'), 'ip-x', pg_temp.h('tx')) ->> 'status' = 'invalid';
+  ASSERT parent_login('10000000-0000-0000-0000-000000000001'::uuid, pg_temp.h('pin-a'), 'ip-x', pg_temp.h('ty')) ->> 'status' = 'ok';
+  -- 20 wrong PINs from 20 different IPs pause the center; another center is not affected
+  FOR i IN 1..20 LOOP PERFORM parent_login('10000000-0000-0000-0000-000000000001'::uuid, pg_temp.h('nope' || i), 'spread-' || i, pg_temp.h('z' || i)); END LOOP;
+  r := parent_login('10000000-0000-0000-0000-000000000001'::uuid, pg_temp.h('pin-u'), 'fresh-ip', pg_temp.h('tz'));
+  ASSERT r ->> 'status' = 'center_paused', r::text;
+  ASSERT parent_login('10000000-0000-0000-0000-000000000002'::uuid, pg_temp.h('nope'), 'fresh-ip', pg_temp.h('tq')) ->> 'status' = 'invalid';
+END $$;
+RESET ROLE;
 SELECT 'ALL PASSED';

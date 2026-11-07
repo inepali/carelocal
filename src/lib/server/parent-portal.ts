@@ -10,12 +10,15 @@ import type { ReportData } from '@/lib/daily-report'
  * The parent portal's server side: no Supabase account, so everything here runs with the service role and the
  * database functions (20261228000000_parent_portal.sql) decide what a session may see.
  *
- *  - Codes are stored as HMAC-SHA256(code, PARENT_CODE_PEPPER); IPs the same way, so the attempt log holds no IPs.
+ *  - PINs are stored as HMAC-SHA256(center id + PIN, PARENT_CODE_PEPPER), so the same PIN at two centers is two
+ *    different hashes; IPs the same way, so the attempt log holds no IPs.
  *  - A signed-in device holds a random 256-bit token in the httpOnly cookie below; only its SHA-256 is stored.
  *  - Photos are signed for 15 minutes, and only keys under the child's own center are signed.
  */
 
 export const PARENT_COOKIE = 'cl_parent'
+/** The center link this device signed in through, so /parent can send a signed-out parent back to it */
+export const PARENT_CENTER_COOKIE = 'cl_parent_center'
 /** The cookie outlives the session on purpose: the database slides the real expiry (30 days, 180 at most). */
 export const PARENT_COOKIE_MAX_AGE = 180 * 24 * 60 * 60
 const PHOTO_URL_SECONDS = 15 * 60
@@ -32,8 +35,8 @@ function pepper() {
 
 const hmac = (purpose: string, value: string) => createHmac('sha256', pepper()).update(`${purpose}:${value}`).digest('hex')
 
-/** The stored form of a normalized code ("K7QF29XM") */
-export const hashParentCode = (code: string) => hmac('code', code)
+/** The stored form of a center's 6-digit PIN */
+export const hashPin = (centerId: string, pin: string) => hmac('pin', `${centerId}:${pin}`)
 export const hashIp = (ip: string) => hmac('ip', ip)
 export const hashToken = (token: string) => createHash('sha256').update(token).digest('hex')
 export const newSessionToken = () => randomBytes(32).toString('base64url')
@@ -52,6 +55,19 @@ export async function userAgent() {
 export async function parentTokenHash() {
   const token = (await cookies()).get(PARENT_COOKIE)?.value
   return token && token.length >= 40 && token.length <= 64 ? hashToken(token) : null
+}
+
+/** The center behind a /parent/<key> link, or null (wrong link, or the parent page is off) */
+export async function loadPortalCenter(key: string) {
+  const { data, error } = await parentDb().rpc('parent_center', { p_key: key })
+  if (error) throw new Error(`parent_center: ${error.message}`)
+  return (data as { id: string; name: string; key: string } | null) ?? null
+}
+
+/** The center link this device used last (not a secret; it only picks the sign-in page) */
+export async function rememberedCenterKey() {
+  const key = (await cookies()).get(PARENT_CENTER_COOKIE)?.value
+  return key && /^[0-9a-hjkmnp-tv-z]{8}$/.test(key) ? key : null
 }
 
 export interface PortalChild { id: string; first_name: string; photo_key: string | null }

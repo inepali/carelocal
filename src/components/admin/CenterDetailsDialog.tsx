@@ -89,7 +89,7 @@ export function CenterDetailsDialog({ center, onClose, actions, statusLabel, job
       },
       {
         key: 'parent_portal', label: 'Parent page', icon: KeyRound, on: !!center.parent_portal_enabled, toggle: actions.toggleParentPortal,
-        description: 'Parents see daily activities and photos at /parent with an access code from the center.',
+        description: 'Parents see daily activities and photos and message teachers on the center’s link, with a 6-digit PIN.',
         needs: !center.roster_enabled && !center.parent_portal_enabled ? 'Turn on Live roster first' : undefined,
       },
     ] : []),

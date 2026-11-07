@@ -19,11 +19,11 @@ export function ContactsPanel({ child, guardians, onChanged }: { child: Child; g
   const [saving, setSaving] = useState(false)
   const authorized = guardians.filter(g => g.can_pick_up)
   // Parent page access (only when the center has the parent portal on)
-  const [portal, setPortal] = useState<{ enabled: boolean; byGuardian: Record<string, ContactAccess> }>({ enabled: false, byGuardian: {} })
+  const [portal, setPortal] = useState<{ enabled: boolean; linkKey: string | null; byGuardian: Record<string, ContactAccess> }>({ enabled: false, linkKey: null, byGuardian: {} })
   const [accessFor, setAccessFor] = useState<ChildGuardian | null>(null)
   const loadAccess = useCallback(async () => {
     const res = await getParentAccess(child.center_id, child.id)
-    if (res.success) setPortal({ enabled: res.enabled, byGuardian: Object.fromEntries(res.contacts.map(c => [c.guardian_id, c])) })
+    if (res.success) setPortal({ enabled: res.enabled, linkKey: res.linkKey, byGuardian: Object.fromEntries(res.contacts.map(c => [c.guardian_id, c])) })
   }, [child.center_id, child.id])
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadAccess() }, [loadAccess, guardians])
@@ -105,7 +105,7 @@ export function ContactsPanel({ child, guardians, onChanged }: { child: Child; g
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         {portal.enabled && child.status === 'enrolled' && (
-                          <button onClick={() => setAccessFor(g)} className={BTN_QUIET_SM} title="Parent page access code"><KeyRound className="h-3.5 w-3.5" /> Parent page</button>
+                          <button onClick={() => setAccessFor(g)} className={BTN_QUIET_SM} title="Parent page PIN"><KeyRound className="h-3.5 w-3.5" /> Parent page</button>
                         )}
                         <button onClick={() => setEditing({ ...g })} className={BTN}><Pencil className="h-3.5 w-3.5" /> Edit</button>
                         <button onClick={() => remove(g)} title="Remove" className="rounded-lg p-2 text-subtle hover:bg-red-50 hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
@@ -120,7 +120,7 @@ export function ContactsPanel({ child, guardians, onChanged }: { child: Child; g
       </section>
 
       {accessFor && (
-        <ParentAccessDialog child={child} guardian={accessFor} access={portal.byGuardian[accessFor.id]} onClose={() => setAccessFor(null)} onChanged={loadAccess} />
+        <ParentAccessDialog child={child} guardian={accessFor} access={portal.byGuardian[accessFor.id]} linkKey={portal.linkKey} onClose={() => setAccessFor(null)} onChanged={loadAccess} />
       )}
 
       {editing && (

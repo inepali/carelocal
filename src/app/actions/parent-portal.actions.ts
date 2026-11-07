@@ -1,55 +1,65 @@
 'use server'
 
 import { cookies } from 'next/headers'
-import { normalizeParentCode } from '@/lib/parent-code'
+import { normalizeCenterKey, normalizePin } from '@/lib/parent-code'
 import {
-  PARENT_COOKIE, PARENT_COOKIE_MAX_AGE, clientIp, hashIp, hashParentCode, hashToken, linkHash, newSessionToken, parentDb, parentTokenHash, userAgent,
+  PARENT_CENTER_COOKIE, PARENT_COOKIE, PARENT_COOKIE_MAX_AGE, clientIp, hashIp, hashPin, hashToken, linkHash, loadPortalCenter, newSessionToken,
+  parentDb, parentTokenHash, userAgent,
 } from '@/lib/server/parent-portal'
 import { sendParentMessageNow } from '@/lib/server/parent-message-send'
 
 /**
- * Parent portal sign-in (no account): the parent types the access code their center gave them. parent_login()
- * checks it, applies the limit (5 wrong codes per IP per 15 minutes) and starts a session for this device.
- * The answer never says whether a code exists, only that it did not work.
+ * Parent portal sign-in (no account): the parent opens their center's link (/parent/<key>) and types the
+ * 6-digit PIN the center gave them. parent_login() checks it, applies the limits (5 wrong PINs per IP per
+ * 15 minutes; 20 per center per hour) and starts a session for this device. The answer never says whether a
+ * PIN exists, only that it did not work.
  */
 export type SignInResult =
   | { ok: true }
   | { ok: false; error: string; retryAfter?: number }
 
-export async function parentSignIn(input: string): Promise<SignInResult> {
-  const code = normalizeParentCode(typeof input === 'string' ? input.slice(0, 40) : '')
-  if (!code) return { ok: false, error: 'Access codes have 8 letters and numbers, like K7QF-29XM.' }
+export async function parentSignIn(centerKey: string, input: string): Promise<SignInResult> {
+  const key = normalizeCenterKey(centerKey)
+  const pin = normalizePin(typeof input === 'string' ? input.slice(0, 20) : '')
+  if (!key) return { ok: false, error: 'This link is not right. Open the link from your center’s email or card.' }
+  if (!pin) return { ok: false, error: 'Your PIN has 6 digits.' }
   try {
+    const center = await loadPortalCenter(key)
+    if (!center) return { ok: false, error: 'This link is not working. Please check with your center.' }
     const token = newSessionToken()
     const { data, error } = await parentDb().rpc('parent_login', {
-      p_code_hash: hashParentCode(code),
+      p_center_id: center.id,
+      p_code_hash: hashPin(center.id, pin),
       p_ip_hash: hashIp(await clientIp()),
       p_token_hash: hashToken(token),
       p_user_agent: await userAgent(),
     })
     if (error) throw new Error(error.message)
-    const result = data as { status: 'ok' } | { status: 'invalid'; left: number } | { status: 'rate_limited'; retry_after: number }
+    const result = data as
+      | { status: 'ok' }
+      | { status: 'invalid'; left: number }
+      | { status: 'rate_limited' | 'center_paused'; retry_after: number }
 
     if (result.status === 'rate_limited') {
       const minutes = Math.max(1, Math.ceil(result.retry_after / 60))
       return { ok: false, retryAfter: result.retry_after, error: `Too many tries. Please wait ${minutes} minute${minutes === 1 ? '' : 's'} and try again.` }
     }
+    if (result.status === 'center_paused') {
+      return { ok: false, retryAfter: result.retry_after, error: `Sign-in is paused for a while after many wrong PINs. Please try again in an hour, or call ${center.name}.` }
+    }
     if (result.status === 'invalid') {
       return {
         ok: false,
         error: result.left > 0
-          ? 'That code did not work. Check it with your center and try again.'
-          : 'That code did not work. Please wait 15 minutes before trying again.',
+          ? 'That PIN did not work. Check it with your center and try again.'
+          : 'That PIN did not work. Please wait 15 minutes before trying again.',
       }
     }
 
-    ;(await cookies()).set(PARENT_COOKIE, token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/parent',
-      maxAge: PARENT_COOKIE_MAX_AGE,
-    })
+    const jar = await cookies()
+    const secure = process.env.NODE_ENV === 'production'
+    jar.set(PARENT_COOKIE, token, { httpOnly: true, secure, sameSite: 'lax', path: '/parent', maxAge: PARENT_COOKIE_MAX_AGE })
+    jar.set(PARENT_CENTER_COOKIE, center.key, { httpOnly: true, secure, sameSite: 'lax', path: '/parent', maxAge: PARENT_COOKIE_MAX_AGE })
     return { ok: true }
   } catch (e) {
     console.error('[parent-portal] sign-in failed:', e)
@@ -88,7 +98,7 @@ function friendly(error: { message?: string } | null) {
 }
 
 /**
- * A parent writes: a new message about their child (threadId null, needs the access code) or a reply.
+ * A parent writes: a new message about their child (threadId null, needs the PIN) or a reply.
  * The center's owners and admins are copied by email right away; teachers see it on the Live roster.
  */
 export async function parentSendMessage(input: {
@@ -101,7 +111,7 @@ export async function parentSendMessage(input: {
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   try {
     const who = await actor(input.link)
-    if (!who) return { ok: false, error: 'Please enter your access code again.' }
+    if (!who) return { ok: false, error: 'Please enter your PIN again.' }
     if (!UUID.test(input.key) || (input.threadId && !UUID.test(input.threadId)) || (input.childId && !UUID.test(input.childId))) {
       return { ok: false, error: 'Something went wrong. Please try again.' }
     }
