@@ -124,15 +124,19 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
     window.location.assign(`${targetOrigin}${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`)
   }
 
+  // Modules a super admin switches on per center live in the header, so the sidebar keeps the everyday pages
+  const HEADER_NAVIGATION = [
+    ...(canOpenRoster({ domainKey, role, childFilesEnabled, rosterEnabled }) ? [{ name: 'Live roster', href: '/center/roster', icon: LayoutGrid }] : []),
+    ...(canOpenChildFiles({ domainKey, role, childFilesEnabled }) ? [{ name: 'Children', href: '/center/children', icon: Baby }] : []),
+    ...(domainKey === 'childcare' && menuPlanningEnabled ? [{ name: 'Menu', href: '/center/menu', icon: Utensils }] : []),
+    ...(jobsEnabled ? [{ name: 'Jobs', href: '/center/jobs', icon: Briefcase }] : []),
+  ]
+
   const NAVIGATION = [
     { name: 'Dashboard', href: '/center/dashboard', icon: LayoutDashboard },
     { name: 'Shifts', href: '/center/shifts', icon: Calendar },
     { name: staffTerm, href: '/center/team_member', icon: Users },
-    ...(canOpenRoster({ domainKey, role, childFilesEnabled, rosterEnabled }) ? [{ name: 'Live roster', href: '/center/roster', icon: LayoutGrid }] : []),
-    ...(canOpenChildFiles({ domainKey, role, childFilesEnabled }) ? [{ name: 'Children', href: '/center/children', icon: Baby }] : []),
     ...(domainKey === 'childcare' ? [{ name: 'Lesson Plans', href: '/center/lesson-plans/weekly', icon: NotebookPen }] : []),
-    ...(domainKey === 'childcare' && menuPlanningEnabled ? [{ name: 'Menu', href: '/center/menu', icon: Utensils }] : []),
-    ...(jobsEnabled ? [{ name: 'Jobs', href: '/center/jobs', icon: Briefcase }] : []),
     { name: 'Requests', href: '/center/requests', icon: Inbox },
     { name: 'Tours', href: '/center/tours', icon: CalendarCheck },
     { name: 'Compliance', href: '/center/compliance', icon: ShieldCheck },
@@ -240,13 +244,36 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {HEADER_NAVIGATION.length > 0 && (
+              <nav aria-label="Center modules" className="flex items-center gap-1 border-r border-border pr-2 mr-1">
+                {HEADER_NAVIGATION.map(item => {
+                  const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      title={item.name}
+                      aria-current={isActive ? 'page' : undefined}
+                      className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                        isActive ? 'bg-brand-50 text-brand-700' : 'text-muted hover:bg-brand-50 hover:text-brand-600'
+                      }`}
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      {/* Labels give way to icons on narrower screens so the header never wraps */}
+                      <span className="hidden xl:inline">{item.name}</span>
+                    </Link>
+                  )
+                })}
+              </nav>
+            )}
             {hasStaffProfile && (
               <Link
                 href="/staff/documents"
+                title="My staff portal"
                 className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-brand-50 hover:text-brand-600"
               >
                 <UserCircle className="h-4 w-4" />
-                My staff portal
+                <span className="hidden lg:inline">My staff portal</span>
               </Link>
             )}
             <button
