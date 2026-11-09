@@ -95,8 +95,12 @@ type Failure = { success: false; error: string }
 
 export function friendlyAnnouncementError(error: { code?: string; message?: string } | null | undefined) {
   if (!error) return 'Something went wrong.'
+  // Logged in full so the browser console shows the real cause
+  console.error('[announcements]', error)
+  // PGRST202: the database function is missing (the latest announcements migration has not been applied)
+  if (error.code === 'PGRST202') return 'Announcements needs a database update. Ask CareLocal support to apply the latest announcements migration.'
   const msg = error.message?.replace(/^.*?ERROR:\s*/, '')
-  if (msg && error.code !== 'PGRST202') return msg
+  if (msg) return msg
   return error.code === '42501' ? 'You do not have access to this.' : 'Something went wrong.'
 }
 
