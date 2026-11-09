@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, LayoutDashboard, Users, UserPlus, Info, Calendar, Tags, LifeBuoy, ClipboardCheck, Truck, Baby, Building2, UserCircle, Inbox, ShieldCheck, Briefcase, CalendarCheck, LayoutGrid, PanelLeftClose, PanelLeftOpen, NotebookPen, Utensils } from 'lucide-react'
+import { LogOut, LayoutDashboard, Users, UserPlus, Info, Calendar, Tags, LifeBuoy, ClipboardCheck, Truck, Baby, Building2, UserCircle, Inbox, ShieldCheck, Briefcase, CalendarCheck, LayoutGrid, PanelLeftClose, PanelLeftOpen, NotebookPen, Utensils, Megaphone } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { CenterContext, canOpenChildFiles, canOpenRoster } from './context'
@@ -140,6 +140,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
     ...(domainKey === 'childcare' && lessonPlansEnabled ? [{ name: 'Lesson Plans', href: '/center/lesson-plans/weekly', icon: NotebookPen }] : []),
     ...(domainKey === 'childcare' && menuPlanningEnabled ? [{ name: 'Menu', href: '/center/menu', icon: Utensils }] : []),
     ...(jobsEnabled ? [{ name: 'Jobs', href: '/center/jobs', icon: Briefcase }] : []),
+    ...(announcementsEnabled && (role === 'owner' || role === 'admin') ? [{ name: 'Announcements', href: '/center/announcements', icon: Megaphone }] : []),
   ]
 
   const NAVIGATION = [

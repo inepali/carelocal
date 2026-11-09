@@ -141,3 +141,12 @@ export async function parentAcknowledge(input: { link?: string | null; messageId
   if (error) console.error('[parent-portal] acknowledge failed:', error.message)
   return { ok: data === true }
 }
+
+/** Acknowledge an announcement the center sent this parent (from the Notices tab) */
+export async function parentAcknowledgeAnnouncement(announcementId: string): Promise<{ ok: boolean }> {
+  const token = await parentTokenHash()
+  if (!token || !UUID.test(announcementId)) return { ok: false }
+  const { data, error } = await parentDb().rpc('parent_portal_announcement_ack', { p_token_hash: token, p_announcement_id: announcementId })
+  if (error) console.error('[parent-portal] announcement acknowledge failed:', error.message)
+  return { ok: data === true }
+}

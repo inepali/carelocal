@@ -20,6 +20,8 @@
 --    and acknowledge it without the PIN. Only the token's SHA-256 is stored, set by the sender when the email goes.
 --  - Owners and admins read everything at their center (row level security); every write goes through the
 --    functions below. The sending functions are service role only.
+--  - Parents also see their announcements on the parent page (Notices tab, 60 days) and staff in the staff app;
+--    either can acknowledge there. Needs the parent portal migrations (parent_actor) first.
 -- Rollback: supabase/rollbacks/20261230000000_announcements.down.sql
 -- ============================================================
 
@@ -355,7 +357,7 @@ $$;
 CREATE OR REPLACE FUNCTION public.announcement_claim(p_announcement_id uuid DEFAULT NULL, p_limit integer DEFAULT 100)
 RETURNS TABLE (delivery_id uuid, recipient_id uuid, announcement_id uuid, center_id uuid, channel text, kind text,
                name text, email text, subject text, body text, urgent boolean, requires_ack boolean,
-               sender_label text, center_name text, center_email text, attempts integer)
+               sender_label text, center_name text, center_email text, center_domain text, attempts integer)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 #variable_conflict use_column
 DECLARE v_id uuid;
@@ -389,7 +391,7 @@ BEGIN
     RETURNING d.id, d.recipient_id, d.announcement_id, d.center_id, d.channel, d.attempts
   )
   SELECT cl.id, cl.recipient_id, cl.announcement_id, cl.center_id, cl.channel, r.kind, r.name, r.email,
-         a.subject, a.body, a.urgent, a.requires_ack, a.sender_label, c.name, c.email, cl.attempts
+         a.subject, a.body, a.urgent, a.requires_ack, a.sender_label, c.name, NULLIF(btrim(c.email), ''), c.domain_key, cl.attempts
     FROM claimed cl
     JOIN announcement_recipients r ON r.id = cl.recipient_id
     JOIN announcements a ON a.id = cl.announcement_id
@@ -478,11 +480,155 @@ BEGIN
   RETURN v_at;
 END $$;
 
--- 7. Grants -------------------------------------------------------------------------------------------------------
+-- 7. Reading announcements back ----------------------------------------------------------------------------------
+
+-- Owners and admins: the center's announcements, newest first, with how each is doing
+CREATE OR REPLACE FUNCTION public.announcements_list(p_center_id uuid, p_limit integer DEFAULT 50)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  PERFORM public.announcement_check(p_center_id);
+  RETURN COALESCE((
+    SELECT jsonb_agg(x ORDER BY x.created_at DESC) FROM (
+      SELECT a.id, a.subject, a.audience_label, a.status, a.urgent, a.requires_ack, a.sender_label, a.created_at, a.sent_at,
+             a.recipient_count, a.no_email_count,
+             (SELECT count(*) FROM announcement_deliveries d WHERE d.announcement_id = a.id AND d.status IN ('sent', 'delivered')) AS sent,
+             (SELECT count(*) FROM announcement_deliveries d WHERE d.announcement_id = a.id AND d.status IN ('failed', 'bounced')) AS failed,
+             (SELECT count(*) FROM announcement_deliveries d WHERE d.announcement_id = a.id AND d.status = 'queued') AS queued,
+             (SELECT count(*) FROM announcement_recipients r WHERE r.announcement_id = a.id AND r.opened_at IS NOT NULL) AS opened,
+             (SELECT count(*) FROM announcement_recipients r WHERE r.announcement_id = a.id AND r.acknowledged_at IS NOT NULL) AS acknowledged
+        FROM announcements a
+       WHERE a.center_id = p_center_id
+       ORDER BY a.created_at DESC
+       LIMIT GREATEST(1, LEAST(COALESCE(p_limit, 50), 200))) x), '[]'::jsonb);
+END $$;
+
+-- Owners and admins: one announcement and every person it went to (with the children a parent was sent about)
+CREATE OR REPLACE FUNCTION public.announcement_detail(p_center_id uuid, p_announcement_id uuid)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  PERFORM public.announcement_check(p_center_id);
+  RETURN (
+    SELECT to_jsonb(a) - 'client_key' - 'created_by' || jsonb_build_object('recipients', COALESCE((
+      SELECT jsonb_agg(jsonb_build_object(
+               'id', r.id, 'kind', r.kind, 'name', r.name, 'email', r.email,
+               'children', (SELECT COALESCE(jsonb_agg(COALESCE(NULLIF(btrim(ch.preferred_name), ''), ch.first_name) ORDER BY ch.first_name), '[]'::jsonb)
+                              FROM children ch WHERE ch.id = ANY (r.child_ids)),
+               'status', d.status, 'error', d.last_error, 'sent_at', d.sent_at,
+               'opened_at', r.opened_at, 'acknowledged_at', r.acknowledged_at)
+             ORDER BY r.kind, r.name)
+        FROM announcement_recipients r
+        LEFT JOIN announcement_deliveries d ON d.recipient_id = r.id AND d.channel = 'email'
+       WHERE r.announcement_id = a.id), '[]'::jsonb))
+      FROM announcements a WHERE a.id = p_announcement_id AND a.center_id = p_center_id);
+END $$;
+
+-- Parent page (service role): announcements sent to this parent in the last 60 days, newest first. NULL when signed
+-- out or the center has announcements off (the page then hides the tab). p_mark_seen: the parent opened the tab;
+-- 'unread' in the answer is how it was before that.
+CREATE OR REPLACE FUNCTION public.parent_portal_announcements(p_token_hash text, p_mark_seen boolean DEFAULT false)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_actor record; v_center uuid; v_result jsonb;
+BEGIN
+  SELECT * INTO v_actor FROM public.parent_actor(p_token_hash, NULL);
+  IF v_actor.guardians IS NULL THEN RETURN NULL; END IF;
+  SELECT g.center_id INTO v_center FROM child_guardians g WHERE g.id = v_actor.guardians[1];
+  IF NOT EXISTS (SELECT 1 FROM centers WHERE id = v_center AND announcements_enabled AND is_active) THEN RETURN NULL; END IF;
+
+  SELECT COALESCE(jsonb_agg(x ORDER BY x.sent_at DESC), '[]'::jsonb) INTO v_result FROM (
+    SELECT a.id, a.subject, a.body, a.sender_label, a.sent_at, a.urgent, a.requires_ack,
+           bool_or(r.acknowledged_at IS NOT NULL) AS acknowledged,
+           bool_and(r.opened_at IS NULL) AS unread
+      FROM announcement_recipients r JOIN announcements a ON a.id = r.announcement_id
+     WHERE r.kind = 'parent' AND r.center_id = v_center AND r.guardian_ids && v_actor.guardians
+       AND a.sent_at > now() - interval '60 days'
+     GROUP BY a.id
+     ORDER BY a.sent_at DESC
+     LIMIT 50) x;
+
+  IF p_mark_seen THEN
+    UPDATE announcement_recipients r SET opened_at = now()
+      FROM announcements a
+     WHERE a.id = r.announcement_id AND r.kind = 'parent' AND r.center_id = v_center
+       AND r.guardian_ids && v_actor.guardians AND r.opened_at IS NULL AND a.sent_at > now() - interval '60 days';
+  END IF;
+  RETURN v_result;
+END $$;
+
+-- Parent page (service role): acknowledge one announcement that asked for it
+CREATE OR REPLACE FUNCTION public.parent_portal_announcement_ack(p_token_hash text, p_announcement_id uuid)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_actor record; v_n integer;
+BEGIN
+  SELECT * INTO v_actor FROM public.parent_actor(p_token_hash, NULL);
+  IF v_actor.guardians IS NULL THEN RETURN false; END IF;
+  UPDATE announcement_recipients r
+     SET acknowledged_at = COALESCE(r.acknowledged_at, now()), opened_at = COALESCE(r.opened_at, now())
+    FROM announcements a, centers c
+   WHERE r.announcement_id = p_announcement_id AND a.id = r.announcement_id AND c.id = r.center_id
+     AND r.kind = 'parent' AND r.guardian_ids && v_actor.guardians
+     AND a.requires_ack AND c.announcements_enabled AND c.is_active AND a.sent_at > now() - interval '60 days';
+  GET DIAGNOSTICS v_n = ROW_COUNT;
+  RETURN v_n > 0;
+END $$;
+
+-- Staff (signed in): announcements sent to me as staff in the last 60 days, at centers that still have them on.
+-- p_mark_seen as above.
+CREATE OR REPLACE FUNCTION public.my_announcements(p_mark_seen boolean DEFAULT false)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_result jsonb;
+BEGIN
+  IF auth.uid() IS NULL THEN RETURN '[]'::jsonb; END IF;
+  SELECT COALESCE(jsonb_agg(x ORDER BY x.sent_at DESC), '[]'::jsonb) INTO v_result FROM (
+    SELECT a.id, a.subject, a.body, a.sender_label, a.sent_at, a.urgent, a.requires_ack, c.name AS center_name,
+           r.acknowledged_at IS NOT NULL AS acknowledged, r.opened_at IS NULL AS unread
+      FROM announcement_recipients r
+      JOIN announcements a ON a.id = r.announcement_id
+      JOIN centers c ON c.id = r.center_id
+     WHERE r.kind = 'staff' AND r.user_id = auth.uid() AND c.announcements_enabled AND c.is_active
+       AND a.sent_at > now() - interval '60 days'
+     ORDER BY a.sent_at DESC
+     LIMIT 50) x;
+  IF p_mark_seen THEN
+    UPDATE announcement_recipients r SET opened_at = now()
+      FROM announcements a
+     WHERE a.id = r.announcement_id AND r.kind = 'staff' AND r.user_id = auth.uid() AND r.opened_at IS NULL
+       AND a.sent_at > now() - interval '60 days';
+  END IF;
+  RETURN v_result;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.my_announcement_ack(p_announcement_id uuid)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_n integer;
+BEGIN
+  IF auth.uid() IS NULL THEN RETURN false; END IF;
+  UPDATE announcement_recipients r
+     SET acknowledged_at = COALESCE(r.acknowledged_at, now()), opened_at = COALESCE(r.opened_at, now())
+    FROM announcements a, centers c
+   WHERE r.announcement_id = p_announcement_id AND a.id = r.announcement_id AND c.id = r.center_id
+     AND r.kind = 'staff' AND r.user_id = auth.uid()
+     AND a.requires_ack AND c.announcements_enabled AND c.is_active AND a.sent_at > now() - interval '60 days';
+  GET DIAGNOSTICS v_n = ROW_COUNT;
+  RETURN v_n > 0;
+END $$;
+
+-- 8. Grants -------------------------------------------------------------------------------------------------------
 REVOKE ALL ON FUNCTION public.announcement_preview(uuid, jsonb) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.announcement_create(uuid, text, text, jsonb, text[], boolean, boolean, uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.announcement_preview(uuid, jsonb) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.announcement_create(uuid, text, text, jsonb, text[], boolean, boolean, uuid) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.announcements_list(uuid, integer) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.announcement_detail(uuid, uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.my_announcements(boolean) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.my_announcement_ack(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.announcements_list(uuid, integer) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.announcement_detail(uuid, uuid) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.my_announcements(boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.my_announcement_ack(uuid) TO authenticated;
+REVOKE ALL ON FUNCTION public.parent_portal_announcements(text, boolean) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.parent_portal_announcement_ack(text, uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.parent_portal_announcements(text, boolean) TO service_role;
+GRANT EXECUTE ON FUNCTION public.parent_portal_announcement_ack(text, uuid) TO service_role;
 
 REVOKE ALL ON FUNCTION public.announcement_refresh(uuid) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.announcement_claim(uuid, integer) FROM PUBLIC, anon, authenticated;

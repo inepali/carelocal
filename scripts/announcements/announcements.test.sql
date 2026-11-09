@@ -1,7 +1,8 @@
 -- Database tests for center announcements (20261230000000_announcements.sql), run on a throwaway local Postgres,
 -- never a Supabase project:
 --   createdb ann && psql -q -d ann -f scripts/parent/portal-stub.sql -f scripts/announcements/stub.sql \
---     -f supabase/migrations/20261225000000_parent_messages.sql \
+--     -f supabase/migrations/20261225000000_parent_messages.sql -f supabase/migrations/20261228000000_parent_portal.sql \
+--     -f supabase/migrations/20261229000000_parent_message_threads.sql \
 --     -f supabase/migrations/20261230000000_announcements.sql -f scripts/announcements/announcements.test.sql
 -- It prints ALL PASSED or stops at the first failed check.
 \set ON_ERROR_STOP on
@@ -189,6 +190,66 @@ BEGIN
 END $$;
 RESET ROLE;
 
+-- 11b. Reading back: the admin list and detail, the staff list, the parent page
+SET ROLE authenticated;
+SELECT pg_temp.as_user('00000000-0000-0000-0000-0000000000ff', true);
+UPDATE centers SET parent_portal_enabled = true WHERE id = '10000000-0000-0000-0000-000000000001';
+SELECT pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+SELECT parent_access_issue(:A, (SELECT id FROM child_guardians WHERE name = 'Mom' AND child_id = '20000000-0000-0000-0000-000000000001'), pg_temp.h('mom-pin')) IS NOT NULL;
+SELECT announcement_create(:A, 'Toddler 2 picture day', 'Picture day is Tuesday. Please confirm.', '{"parents":{"classes":["40000000-0000-0000-0000-000000000001"]}}',
+  '{email}', false, true, '60000000-0000-0000-0000-000000000004') IS NOT NULL;
+DO $$
+DECLARE l jsonb; d jsonb;
+BEGIN
+  l := announcements_list('10000000-0000-0000-0000-000000000001');
+  ASSERT jsonb_array_length(l) = 3, 'admin list: ' || l::text;
+  ASSERT l -> 0 ->> 'subject' = 'Toddler 2 picture day', 'newest first';
+  ASSERT (SELECT (x ->> 'sent')::int = 3 AND (x ->> 'failed')::int = 2 AND (x ->> 'opened')::int = 1
+            FROM jsonb_array_elements(l) x WHERE x ->> 'subject' = 'Closed Friday'), 'closed friday counts: ' || l::text;
+  d := announcement_detail('10000000-0000-0000-0000-000000000001', (SELECT id FROM announcements WHERE subject = 'Closed Friday'));
+  ASSERT jsonb_array_length(d -> 'recipients') = 5 AND NOT d ? 'client_key', 'detail';
+  ASSERT (SELECT r -> 'children' FROM jsonb_array_elements(d -> 'recipients') r WHERE r ->> 'email' = 'mom@x.com') = '["Leo", "Maya"]', 'mom children';
+  ASSERT (SELECT r ->> 'status' FROM jsonb_array_elements(d -> 'recipients') r WHERE r ->> 'email' = 't@x.com') = 'bounced', 'bounce shows';
+END $$;
+SELECT pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+DO $$ BEGIN
+  ASSERT pg_temp.err($q$SELECT announcement_detail('10000000-0000-0000-0000-000000000001', (SELECT id FROM announcements LIMIT 1))$q$) IS NOT NULL, 'center B no detail';
+END $$;
+-- Sam (sub, signed in) got "Closed Friday" as staff, not the regular-only policy
+SELECT pg_temp.as_user('00000000-0000-0000-0000-00000000000d');
+DO $$
+DECLARE l jsonb;
+BEGIN
+  l := my_announcements(true);
+  ASSERT jsonb_array_length(l) = 1 AND l -> 0 ->> 'subject' = 'Closed Friday' AND (l -> 0 ->> 'unread')::boolean, 'staff list: ' || l::text;
+  ASSERT NOT (my_announcements() -> 0 ->> 'unread')::boolean, 'seen after opening';
+  ASSERT NOT my_announcement_ack((SELECT id FROM announcements WHERE subject = 'Closed Friday')), 'no ack when not asked';
+END $$;
+SELECT pg_temp.as_user(NULL);
+DO $$ BEGIN ASSERT my_announcements() = '[]'::jsonb, 'signed out staff sees nothing'; END $$;
+RESET ROLE;
+
+SET ROLE service_role;
+DO $$
+DECLARE l jsonb; r record;
+BEGIN
+  FOR r IN SELECT * FROM announcement_claim((SELECT id FROM announcements WHERE subject = 'Toddler 2 picture day')) LOOP
+    PERFORM announcement_delivery_result(r.delivery_id, true, 'p4-' || r.email, NULL, NULL);
+  END LOOP;
+  PERFORM parent_login('10000000-0000-0000-0000-000000000001'::uuid, pg_temp.h('mom-pin'), 'ip', pg_temp.h('tok-mom'));
+  l := parent_portal_announcements(pg_temp.h('tok-mom'), false);
+  ASSERT jsonb_array_length(l) = 2, 'parent sees closed friday + picture day: ' || COALESCE(l::text, 'null');
+  ASSERT (l -> 0 ->> 'subject') = 'Toddler 2 picture day' AND (l -> 0 ->> 'unread')::boolean, 'newest, unread';
+  ASSERT NOT (l -> 1 ->> 'unread')::boolean, 'closed friday already opened from the email';
+  PERFORM parent_portal_announcements(pg_temp.h('tok-mom'), true);
+  ASSERT NOT (parent_portal_announcements(pg_temp.h('tok-mom')) -> 0 ->> 'unread')::boolean, 'seen after the tab';
+  ASSERT parent_portal_announcement_ack(pg_temp.h('tok-mom'), (SELECT id FROM announcements WHERE subject = 'Toddler 2 picture day')), 'parent acks';
+  ASSERT (parent_portal_announcements(pg_temp.h('tok-mom')) -> 0 ->> 'acknowledged')::boolean, 'acked shows';
+  ASSERT NOT parent_portal_announcement_ack(pg_temp.h('tok-mom'), (SELECT id FROM announcements WHERE subject = 'Policy update')), 'not mine';
+  ASSERT parent_portal_announcements(pg_temp.h('nobody')) IS NULL, 'signed out parent';
+END $$;
+RESET ROLE;
+
 -- 12. Turning the module off closes the links and fails whatever is still queued
 SET ROLE authenticated;
 SELECT pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
@@ -200,6 +261,7 @@ RESET ROLE;
 SET ROLE service_role;
 DO $$ BEGIN
   ASSERT announcement_open(pg_temp.h('tok-dad@x.com')) IS NULL, 'links closed when off';
+  ASSERT parent_portal_announcements(pg_temp.h('tok-mom')) IS NULL, 'parent tab hidden when off';
   ASSERT (SELECT count(*) FROM announcement_claim()) = 0, 'nothing sent when off';
   ASSERT (SELECT status FROM announcements WHERE client_key = '60000000-0000-0000-0000-000000000003') = 'failed', 'queued fails when off';
 END $$;

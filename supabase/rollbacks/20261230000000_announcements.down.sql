@@ -1,4 +1,10 @@
 -- Rollback for 20261230000000_announcements.sql (deletes every announcement and its delivery log)
+DROP FUNCTION IF EXISTS public.my_announcement_ack(uuid);
+DROP FUNCTION IF EXISTS public.my_announcements(boolean);
+DROP FUNCTION IF EXISTS public.parent_portal_announcement_ack(text, uuid);
+DROP FUNCTION IF EXISTS public.parent_portal_announcements(text, boolean);
+DROP FUNCTION IF EXISTS public.announcement_detail(uuid, uuid);
+DROP FUNCTION IF EXISTS public.announcements_list(uuid, integer);
 DROP FUNCTION IF EXISTS public.announcement_acknowledge(text);
 DROP FUNCTION IF EXISTS public.announcement_open(text);
 DROP FUNCTION IF EXISTS public.announcement_delivery_event(text, text);

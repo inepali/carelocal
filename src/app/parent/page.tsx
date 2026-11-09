@@ -3,22 +3,26 @@ import { redirect } from 'next/navigation'
 import { Camera, ChevronLeft, ChevronRight, Clock, ImageOff, MessageSquarePlus, Phone } from 'lucide-react'
 import { reportDate, reportSections, reportTime } from '@/lib/daily-report'
 import {
-  loadPortalDay, loadPortalHome, loadPortalPhotos, loadPortalThread, loadPortalThreads, parentTokenHash, rememberedCenterKey, signPortalPhotos, type PortalHome,
+  loadPortalAnnouncements, loadPortalDay, loadPortalHome, loadPortalPhotos, loadPortalThread, loadPortalThreads, parentTokenHash, rememberedCenterKey, signPortalPhotos,
+  type PortalHome,
 } from '@/lib/server/parent-portal'
 import { NoCenterLink } from './_components/SignInForm'
 import { SignOutButton } from './_components/SignOutButton'
 import { Conversation, NewMessageForm } from './_components/Messages'
+import { Notices } from './_components/Notices'
 
 /**
  * /parent: a parent's view of their child's day, opened with a 6-digit PIN on the center’s link (no account). Server rendered;
  * every read goes through the parent_portal_* database functions with this device's session.
- *   ?child=<id>  which child (siblings share one code)   ?tab=today|photos|messages   ?day=YYYY-MM-DD
+ *   ?child=<id>  which child (siblings share one code)   ?tab=today|photos|messages|notices   ?day=YYYY-MM-DD
  *   ?before=<iso> (photos)   ?thread=<id> | ?compose=1 (messages)
  */
 
 type Search = { child?: string; tab?: string; day?: string; before?: string; thread?: string; compose?: string }
-type Tab = 'today' | 'photos' | 'messages'
-const TABS: { id: Tab; label: string }[] = [{ id: 'today', label: 'Activities' }, { id: 'photos', label: 'Photos' }, { id: 'messages', label: 'Messages' }]
+type Tab = 'today' | 'photos' | 'messages' | 'notices'
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'today', label: 'Activities' }, { id: 'photos', label: 'Photos' }, { id: 'messages', label: 'Messages' }, { id: 'notices', label: 'Notices' },
+]
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const DAY = /^\d{4}-\d{2}-\d{2}$/
@@ -56,12 +60,17 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
   }
 
   const child = home.children.find(c => sp.child && UUID.test(sp.child) && c.id === sp.child) ?? home.children[0]
-  const tab: Tab = sp.tab === 'photos' ? 'photos' : sp.tab === 'messages' ? 'messages' : 'today'
-  const [faces, threads] = await Promise.all([
+  const asked: Tab = sp.tab === 'photos' ? 'photos' : sp.tab === 'messages' ? 'messages' : sp.tab === 'notices' ? 'notices' : 'today'
+  // Announcements are for the whole center, so the same on every child; opening the tab marks them seen
+  const [faces, threads, notices] = await Promise.all([
     signPortalPhotos(home.center.id, home.children.map(c => c.photo_key)),
     loadPortalThreads(tokenHash, child.id),
+    loadPortalAnnouncements(tokenHash, asked === 'notices'),
   ])
+  const tab: Tab = asked === 'notices' && notices === null ? 'today' : asked
+  const tabs = TABS.filter(t => t.id !== 'notices' || notices !== null)
   const unread = (threads ?? []).reduce((n, t) => n + t.unread, 0)
+  const newNotices = tab === 'notices' ? 0 : (notices ?? []).filter(n => n.unread).length
 
   return (
     <>
@@ -93,12 +102,13 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
         <h1 className="text-2xl font-bold">{child.first_name}</h1>
       </div>
 
-      <nav aria-label="Sections" className="mb-5 grid grid-cols-3 gap-1 rounded-2xl border border-border bg-white p-1 text-sm font-semibold">
-        {TABS.map(t => (
+      <nav aria-label="Sections" className={`mb-5 grid ${tabs.length === 4 ? 'grid-cols-4 text-[13px]' : 'grid-cols-3 text-sm'} gap-1 rounded-2xl border border-border bg-white p-1 font-semibold`}>
+        {tabs.map(t => (
           <Link key={t.id} href={href({ child: child.id, tab: t.id === 'today' ? null : t.id })} aria-current={tab === t.id ? 'page' : undefined}
             className={`flex items-center justify-center gap-1.5 rounded-xl py-2 ${tab === t.id ? 'bg-brand-50 text-brand-700' : 'text-text-muted'}`}>
             {t.label}
             {t.id === 'messages' && unread > 0 && <span className="rounded-full bg-brand-600 px-1.5 text-[11px] leading-5 text-white" aria-label={`${unread} unread`}>{unread}</span>}
+            {t.id === 'notices' && newNotices > 0 && <span className="rounded-full bg-brand-600 px-1.5 text-[11px] leading-5 text-white" aria-label={`${newNotices} new`}>{newNotices}</span>}
           </Link>
         ))}
       </nav>
@@ -114,6 +124,8 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
               ? <NewMessageForm childId={child.id} childName={child.first_name} centerName={home.center.name} />
               : <ThreadList threads={threads} childId={child.id} childName={child.first_name} tz={home.center.timezone} />
       )}
+
+      {tab === 'notices' && notices && <Notices items={notices} centerName={home.center.name} />}
 
       <footer className="mt-10 text-center text-xs text-muted">
         {home.center.phone && (
