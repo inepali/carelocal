@@ -1,111 +1,117 @@
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Utensils } from 'lucide-react'
-import { SLOT_LABELS, fromDateOnly, monthLabel, monthWeeks, type MealSlot } from '@/lib/menu'
+import { SLOT_LABELS, addDays, fromDateOnly, monthOf, type MealSlot } from '@/lib/menu'
 import { loadPortalMenu, type PortalMenu } from '@/lib/server/parent-portal'
 
 /**
- * The center's monthly menu on the parent page, read only: published months only, week by week, each weekday
- * with its meals in the center's serving order, the foods (with serving notes and allergens) and closed days.
+ * The center's menu on the parent page, read only, one week at a time (Sunday to Saturday), opening on this week.
+ * Each day shows its meals in the center's serving order with foods, serving notes and allergens, or that the
+ * center is closed. Only published months show (parent_portal_menu enforces it); a week that crosses into another
+ * month loads that month too.
  */
 
-const dayLabel = (d: string) => fromDateOnly(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-const monthParam = (m: string) => m.slice(0, 7)
+const dayLabel = (d: string) => fromDateOnly(d).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
+const shortLabel = (d: string) => fromDateOnly(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
-function menuHref(childId: string, month: string | null) {
+/** Sunday of the week containing the date */
+export const sundayOf = (d: string) => addDays(d, -fromDateOnly(d).getDay())
+
+function weekHref(childId: string, week: string | null) {
   const q = new URLSearchParams({ child: childId, tab: 'menu' })
-  if (month) q.set('month', monthParam(month))
+  if (week) q.set('week', week)
   return `/parent?${q.toString()}`
 }
 
-export async function MenuView({ tokenHash, childId, month }: { tokenHash: string; childId: string; month: string | null }) {
-  const menu = await loadPortalMenu(tokenHash, month)
-  if (!menu) return <Box><p className="text-sm text-text-muted">The menu is not available.</p></Box>
+export async function MenuView({ tokenHash, childId, week }: { tokenHash: string; childId: string; week: string | null }) {
+  // This month first: it also tells us the center's today and which months are published
+  const base = await loadPortalMenu(tokenHash, null)
+  if (!base) return <Box><p className="text-sm text-text-muted">The menu is not available.</p></Box>
 
-  const before = [...menu.months].reverse().find(m => m < menu.month) ?? null
-  const after = menu.months.find(m => m > menu.month) ?? null
-  const isThisMonth = menu.month === `${menu.today.slice(0, 7)}-01`
+  const thisWeek = sundayOf(base.today)
+  const start = week ? sundayOf(week) : thisWeek
+  const end = addDays(start, 6)
+  const months = [...new Set([monthOf(start), monthOf(end)])]
+  const loaded = await Promise.all(months.map(m => (m === base.month ? base : loadPortalMenu(tokenHash, m))))
+  const byMonth = new Map(loaded.filter((m): m is PortalMenu => m !== null).map(m => [m.month, m]))
+
+  const published = new Set(base.months)
+  const weekHasMenu = (sunday: string) => published.has(monthOf(sunday)) || published.has(monthOf(addDays(sunday, 6)))
+  const prev = addDays(start, -7)
+  const next = addDays(start, 7)
+  const isThisWeek = start === thisWeek
+  const days = Array.from({ length: 7 }, (_, i) => addDays(start, i))
+  const anyPublished = days.some(d => byMonth.get(monthOf(d))?.published)
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        {before
-          ? <Link href={menuHref(childId, before)} aria-label={`Menu for ${monthLabel(before)}`} className="rounded-xl border border-border bg-white p-2"><ChevronLeft className="h-5 w-5" /></Link>
+        {weekHasMenu(prev)
+          ? <Link href={weekHref(childId, prev)} aria-label="Previous week" className="rounded-xl border border-border bg-white p-2"><ChevronLeft className="h-5 w-5" /></Link>
           : <span className="w-10" />}
         <div className="text-center">
-          <p className="text-base font-bold">{monthLabel(menu.month)}</p>
-          {isThisMonth && <p className="text-xs text-muted">This month</p>}
+          <p className="text-base font-bold">{isThisWeek ? 'This week' : `Week of ${shortLabel(start)}`}</p>
+          <p className="text-xs text-muted">{shortLabel(start)} – {shortLabel(end)}</p>
         </div>
-        {after
-          ? <Link href={menuHref(childId, after)} aria-label={`Menu for ${monthLabel(after)}`} className="rounded-xl border border-border bg-white p-2"><ChevronRight className="h-5 w-5" /></Link>
+        {weekHasMenu(next)
+          ? <Link href={weekHref(childId, next)} aria-label="Next week" className="rounded-xl border border-border bg-white p-2"><ChevronRight className="h-5 w-5" /></Link>
           : <span className="w-10" />}
       </div>
 
-      {!menu.published ? (
+      {!isThisWeek && (
+        <Link href={weekHref(childId, null)} className="block text-center text-sm font-semibold text-brand-600">Back to this week</Link>
+      )}
+
+      {!anyPublished ? (
         <Box>
           <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-text-muted">
             <Utensils className="h-8 w-8 text-subtle" />
-            The menu for {monthLabel(menu.month)} is not ready yet.
-            {menu.months.length > 0 && (
-              <span className="mt-1 flex flex-wrap justify-center gap-2">
-                {menu.months.map(m => (
-                  <Link key={m} href={menuHref(childId, m)} className="rounded-full border border-border bg-white px-3 py-1 text-xs font-semibold text-brand-600">{monthLabel(m)}</Link>
-                ))}
-              </span>
-            )}
+            The menu for this week is not ready yet.
           </div>
         </Box>
       ) : (
-        <>
-          {isThisMonth && <a href="#today" className="block text-center text-sm font-semibold text-brand-600">Jump to today</a>}
-          <MonthWeeks menu={menu} />
-        </>
+        <WeekDays days={days} byMonth={byMonth} today={base.today} slots={base.slots} />
       )}
+      <p className="px-1 text-center text-xs text-muted">Menus can change. Allergens are listed as the center entered them; ask the center about your child’s needs.</p>
     </div>
   )
 }
 
-function MonthWeeks({ menu }: { menu: PortalMenu }) {
-  const byDay = new Map<string, PortalMenu['entries']>()
-  for (const e of menu.entries) byDay.set(e.date, [...(byDay.get(e.date) ?? []), e])
-  const closed = new Map(menu.closed.map(c => [c.date, c.reason]))
-  const order = (slot: MealSlot) => { const n = menu.slots.indexOf(slot); return n === -1 ? 99 : n }
-
+function WeekDays({ days, byMonth, today, slots }: {
+  days: string[]; byMonth: Map<string, PortalMenu>; today: string; slots: MealSlot[]
+}) {
+  const order = (slot: MealSlot) => { const n = slots.indexOf(slot); return n === -1 ? 99 : n }
   return (
-    <>
-      {monthWeeks(menu.month).map(week => {
-        const days = week.filter((d): d is string => d !== null)
-        if (days.length === 0) return null
-        const thisWeek = days[0] <= menu.today && menu.today <= days[days.length - 1]
+    <div className="space-y-2">
+      {days.map(d => {
+        const month = byMonth.get(monthOf(d))
+        const isToday = d === today
+        const weekend = fromDateOnly(d).getDay() % 6 === 0
+        const closed = month?.published ? month.closed.find(c => c.date === d) : undefined
+        const meals = month?.published
+          ? month.entries.filter(e => e.date === d).sort((a, b) => order(a.slot) - order(b.slot))
+          : []
+        let empty: string | null = null
+        if (!month?.published) empty = 'Menu not ready yet.'
+        else if (closed) empty = `Closed${closed.reason ? ` · ${closed.reason}` : ''}`
+        else if (meals.length === 0) empty = weekend ? 'No meals served.' : 'Not on the menu yet.'
+
         return (
-          <section key={days[0]} aria-label={`Week of ${dayLabel(days[0])}`} className="space-y-2">
-            <h2 className="px-1 text-xs font-bold uppercase tracking-wide text-muted">{thisWeek ? 'This week' : `Week of ${dayLabel(days[0])}`}</h2>
-            {days.map(d => {
-              const today = d === menu.today
-              const meals = (byDay.get(d) ?? []).slice().sort((a, b) => order(a.slot) - order(b.slot))
-              return (
-                <div key={d} id={today ? 'today' : undefined}
-                  className={`scroll-mt-4 rounded-2xl border bg-white p-4 shadow-sm ${today ? 'border-brand-600 ring-2 ring-brand-100' : 'border-border'} ${d < menu.today ? 'opacity-75' : ''}`}>
-                  <p className="mb-2 flex items-center gap-2 text-sm font-bold">
-                    {dayLabel(d)}
-                    {today && <span className="rounded-full bg-brand-600 px-2 text-[11px] leading-5 text-white">Today</span>}
-                  </p>
-                  {closed.has(d) ? (
-                    <p className="text-sm text-text-muted">Closed{closed.get(d) ? ` · ${closed.get(d)}` : ''}</p>
-                  ) : meals.length === 0 ? (
-                    <p className="text-sm text-muted">Not on the menu yet.</p>
-                  ) : (
-                    <ul className="space-y-2.5">
-                      {meals.map(m => <Meal key={m.slot} meal={m} />)}
-                    </ul>
-                  )}
-                </div>
-              )
-            })}
-          </section>
+          <div key={d}
+            className={`rounded-2xl border bg-white shadow-sm ${empty && weekend ? 'px-4 py-2.5' : 'p-4'} ${isToday ? 'border-brand-600 ring-2 ring-brand-100' : 'border-border'} ${d < today ? 'opacity-75' : ''}`}>
+            <p className={`flex items-center gap-2 text-sm font-bold ${empty ? '' : 'mb-2'}`}>
+              {dayLabel(d)}
+              {isToday && <span className="rounded-full bg-brand-600 px-2 text-[11px] leading-5 text-white">Today</span>}
+              {empty && <span className="ml-auto text-xs font-normal text-text-muted">{empty}</span>}
+            </p>
+            {!empty && (
+              <ul className="space-y-2.5">
+                {meals.map(m => <Meal key={m.slot} meal={m} />)}
+              </ul>
+            )}
+          </div>
         )
       })}
-      <p className="px-1 text-center text-xs text-muted">Menus can change. Allergens are listed as the center entered them; ask the center about your child’s needs.</p>
-    </>
+    </div>
   )
 }
 

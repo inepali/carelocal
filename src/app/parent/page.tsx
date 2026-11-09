@@ -14,10 +14,10 @@ import { MenuView } from './_components/MenuView'
  * /parent: a parent's view of their child's day, opened with a 6-digit PIN on the center’s link (no account). Server rendered;
  * every read goes through the parent_portal_* database functions with this device's session.
  *   ?child=<id>  which child (siblings share one code)   ?tab=today|photos|messages   ?day=YYYY-MM-DD
- *   ?before=<iso> (photos)   ?thread=<id> | ?compose=1 (messages)   ?tab=menu&month=YYYY-MM (the center's menu)
+ *   ?before=<iso> (photos)   ?thread=<id> | ?compose=1 (messages)   ?tab=menu&week=YYYY-MM-DD (the center's menu, Sunday–Saturday)
  */
 
-type Search = { child?: string; tab?: string; day?: string; before?: string; thread?: string; compose?: string; month?: string }
+type Search = { child?: string; tab?: string; day?: string; before?: string; thread?: string; compose?: string; week?: string }
 type Tab = 'today' | 'photos' | 'messages' | 'menu'
 const TABS: { id: Tab; label: string }[] = [
   { id: 'today', label: 'Activities' }, { id: 'photos', label: 'Photos' }, { id: 'messages', label: 'Messages' }, { id: 'menu', label: 'Menu' },
@@ -120,7 +120,7 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
               : <ThreadList threads={threads} childId={child.id} childName={child.first_name} tz={home.center.timezone} />
       )}
 
-      {tab === 'menu' && <MenuView tokenHash={tokenHash} childId={child.id} month={sp.month && /^\d{4}-\d{2}$/.test(sp.month) ? `${sp.month}-01` : null} />}
+      {tab === 'menu' && <MenuView tokenHash={tokenHash} childId={child.id} week={sp.week && DAY.test(sp.week) ? sp.week : null} />}
 
       <footer className="mt-10 text-center text-xs text-muted">
         {home.center.phone && (
