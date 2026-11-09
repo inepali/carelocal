@@ -37,6 +37,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
   const [rosterEnabled, setRosterEnabled] = useState(false)
   const [menuPlanningEnabled, setMenuPlanningEnabled] = useState(false)
   const [lessonPlansEnabled, setLessonPlansEnabled] = useState(true)
+  const [announcementsEnabled, setAnnouncementsEnabled] = useState(false)
   // Narrow icon-only sidebar; remembered in this browser
   const [collapsed, setCollapsed] = useState(false)
 
@@ -95,13 +96,15 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
       // Read on its own so a database without the menu planning migration only hides Menu, not the whole header
       const adminCenterId = (data as { center_id?: string } | null)?.center_id
       if (adminCenterId) {
-        const [menuFlag, lessonFlag] = await Promise.all([
+        const [menuFlag, lessonFlag, announcementsFlag] = await Promise.all([
           supabase.from('centers').select('menu_planning_enabled').eq('id', adminCenterId).maybeSingle(),
           supabase.from('centers').select('lesson_plans_enabled').eq('id', adminCenterId).maybeSingle(),
+          supabase.from('centers').select('announcements_enabled').eq('id', adminCenterId).maybeSingle(),
         ])
         setMenuPlanningEnabled(!!(menuFlag.data as { menu_planning_enabled?: boolean } | null)?.menu_planning_enabled)
         // On by default: only an explicit false (set by a super admin) hides Lesson Plans
         setLessonPlansEnabled((lessonFlag.data as { lesson_plans_enabled?: boolean } | null)?.lesson_plans_enabled !== false)
+        setAnnouncementsEnabled(!!(announcementsFlag.data as { announcements_enabled?: boolean } | null)?.announcements_enabled)
       }
 
       // Admins who are also employees can switch to their own staff portal
@@ -158,7 +161,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <CenterContext.Provider value={{ staffTerm, workAreaTerm, domainKey, centerId, role, childFilesEnabled, rosterEnabled, menuPlanningEnabled, lessonPlansEnabled }}>
+    <CenterContext.Provider value={{ staffTerm, workAreaTerm, domainKey, centerId, role, childFilesEnabled, rosterEnabled, menuPlanningEnabled, lessonPlansEnabled, announcementsEnabled }}>
       <div className="center-shell min-h-screen bg-surface flex font-sans">
       {/* ── Sidebar ── */}
       <aside className={`${collapsed ? 'w-16' : 'w-64'} bg-brand-900 text-white flex flex-col fixed inset-y-0 z-10 transition-[width] duration-200`}>

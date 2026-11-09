@@ -26,7 +26,7 @@ import { setCenterEnabled } from '@/app/actions/account-status.actions'
 import { setCenterJobLimit, setCenterJobsEnabled } from '@/app/actions/jobs.actions'
 import { setCenterChildFilesEnabled, setCenterRosterEnabled } from '@/app/actions/child-files-admin.actions'
 import { purgeCenter } from '@/app/actions/data-cleanup.actions'
-import { setCenterMenuPlanningEnabled, setCenterCacfpEnabled, setCenterLessonPlansEnabled, setCenterParentPortalEnabled } from '@/app/actions/center-modules.actions'
+import { setCenterMenuPlanningEnabled, setCenterCacfpEnabled, setCenterLessonPlansEnabled, setCenterParentPortalEnabled, setCenterAnnouncementsEnabled } from '@/app/actions/center-modules.actions'
 import { CenterDetailsDialog, moduleSummary } from '@/components/admin/CenterDetailsDialog'
 import { PurgeDialog } from '@/components/admin/PurgeDialog'
 import { showAlert, showConfirm, showPrompt } from '@/lib/dialog'
@@ -224,6 +224,19 @@ export default function AdminCentersPage() {
     const res = await setCenterParentPortalEnabled(center.id, enabling)
     if (!res.success) { showAlert(res.error); return }
     setCenters(prev => prev.map(c => c.id === center.id ? { ...c, parent_portal_enabled: enabling } : c))
+  }
+
+  const toggleAnnouncements = async (center: { id: string; name: string; announcements_enabled?: boolean }) => {
+    const enabling = !center.announcements_enabled
+    if (!await showConfirm(
+      enabling
+        ? `Turn on Announcements for ${center.name}? Its owner and administrators can email one note to parents of the whole center or chosen classes, and to staff.`
+        : `Turn off Announcements for ${center.name}? Anything still sending stops and links in sent emails close. Past announcements are kept.`,
+      { title: 'Announcements', confirmLabel: enabling ? 'Turn on' : 'Turn off', tone: 'default' },
+    )) return
+    const res = await setCenterAnnouncementsEnabled(center.id, enabling)
+    if (!res.success) { showAlert(res.error); return }
+    setCenters(prev => prev.map(c => c.id === center.id ? { ...c, announcements_enabled: enabling } : c))
   }
 
   const exportChecklist = async (center: { id: string; name: string }) => {
@@ -427,7 +440,7 @@ export default function AdminCentersPage() {
           onClose={() => setDetailsId(null)}
           statusLabel={detailsCenter.subscriptions?.[0]?.status || 'No subscription'}
           jobLimitLabel={describeJobLimit(detailsCenter.job_limit_override)}
-          actions={{ toggleJobs, changeJobLimit, toggleChildFiles, toggleRoster, toggleLessonPlans, toggleMenu, toggleCacfp, toggleParentPortal }}
+          actions={{ toggleJobs, changeJobLimit, toggleChildFiles, toggleRoster, toggleLessonPlans, toggleMenu, toggleCacfp, toggleParentPortal, toggleAnnouncements }}
         />
       )}
 
