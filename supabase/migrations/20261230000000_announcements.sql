@@ -354,6 +354,9 @@ $$;
 -- Claim deliveries to send. With an announcement id: its not-yet-tried deliveries (the app, right after Send).
 -- Without: the cron retry — deliveries still queued 10 minutes after their last try; after 3 tries, failed; and
 -- anything queued at a center whose module was turned off, failed. Rows are locked so two runs never share one.
+-- Dropped first: an earlier version of this migration returned fewer columns, and CREATE OR REPLACE
+-- cannot change a function's result columns
+DROP FUNCTION IF EXISTS public.announcement_claim(uuid, integer);
 CREATE OR REPLACE FUNCTION public.announcement_claim(p_announcement_id uuid DEFAULT NULL, p_limit integer DEFAULT 100)
 RETURNS TABLE (delivery_id uuid, recipient_id uuid, announcement_id uuid, center_id uuid, channel text, kind text,
                name text, email text, subject text, body text, urgent boolean, requires_ack boolean,
