@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { LayoutGrid, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { RosterBoard } from '@/app/center/(dashboard)/roster/_components/RosterBoard'
+import { MyDayStrip } from '@/components/schedule/MyDayStrip'
 
 type State =
   | { kind: 'loading' }
@@ -64,7 +65,12 @@ export function TeacherRoster() {
       </div>
     )
   }
-  return <RosterBoard centerId={state.centerId} mode="teacher" homeRoomId={state.homeRoomId} viewerName={state.name} />
+  return (
+    <>
+      <MyDayStrip centerId={state.centerId} />
+      <RosterBoard centerId={state.centerId} mode="teacher" homeRoomId={state.homeRoomId} viewerName={state.name} />
+    </>
+  )
 }
 
 /** Whether the signed-in regular teacher's center has the roster on (for showing the menu item) */

@@ -16,6 +16,7 @@ export interface NotifyPayload {
   referenceId?: string
   url: string             // path inside the app, e.g. /staff/requests
   emailCta?: string       // button label in the email
+  skipEmail?: boolean     // in-app and push only (frequent, low-stakes notices such as the daily schedule)
 }
 
 const admin = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
@@ -147,7 +148,7 @@ export async function notifyUsers(userIds: string[], payload: NotifyPayload, dom
       }
     }
 
-    if (pref.email_enabled !== false && resend) {
+    if (pref.email_enabled !== false && resend && !payload.skipEmail) {
       const { data: userData } = await supabase.auth.admin.getUserById(userId)
       const email = userData?.user?.email
       if (email) {

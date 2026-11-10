@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, LayoutDashboard, Users, UserPlus, Info, Calendar, Tags, LifeBuoy, ClipboardCheck, Truck, Baby, Building2, UserCircle, Inbox, ShieldCheck, Briefcase, CalendarCheck, LayoutGrid, PanelLeftClose, PanelLeftOpen, NotebookPen, Utensils, Megaphone } from 'lucide-react'
+import { LogOut, LayoutDashboard, Users, UserPlus, Info, Calendar, Tags, LifeBuoy, ClipboardCheck, Truck, Baby, Building2, UserCircle, Inbox, ShieldCheck, Briefcase, CalendarCheck, LayoutGrid, PanelLeftClose, PanelLeftOpen, NotebookPen, Utensils, Megaphone, CalendarClock } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
-import { CenterContext, canOpenChildFiles, canOpenRoster } from './context'
+import { CenterContext, canManageSchedule, canOpenChildFiles, canOpenRoster } from './context'
 import type { DomainKey } from '@/lib/domain-config'
 
 // Dev/demo tool: jumps the browser to another vertical's domain (it does not change the
@@ -38,6 +38,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
   const [menuPlanningEnabled, setMenuPlanningEnabled] = useState(false)
   const [lessonPlansEnabled, setLessonPlansEnabled] = useState(true)
   const [announcementsEnabled, setAnnouncementsEnabled] = useState(false)
+  const [scheduleEnabled, setScheduleEnabled] = useState(false)
   // Narrow icon-only sidebar; remembered in this browser
   const [collapsed, setCollapsed] = useState(false)
 
@@ -96,11 +97,13 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
       // Read on its own so a database without the menu planning migration only hides Menu, not the whole header
       const adminCenterId = (data as { center_id?: string } | null)?.center_id
       if (adminCenterId) {
-        const [menuFlag, lessonFlag, announcementsFlag] = await Promise.all([
+        const [menuFlag, lessonFlag, announcementsFlag, scheduleFlag] = await Promise.all([
           supabase.from('centers').select('menu_planning_enabled').eq('id', adminCenterId).maybeSingle(),
           supabase.from('centers').select('lesson_plans_enabled').eq('id', adminCenterId).maybeSingle(),
           supabase.from('centers').select('announcements_enabled').eq('id', adminCenterId).maybeSingle(),
+          supabase.from('centers').select('schedule_enabled').eq('id', adminCenterId).maybeSingle(),
         ])
+        setScheduleEnabled(!!(scheduleFlag.data as { schedule_enabled?: boolean } | null)?.schedule_enabled)
         setMenuPlanningEnabled(!!(menuFlag.data as { menu_planning_enabled?: boolean } | null)?.menu_planning_enabled)
         // On by default: only an explicit false (set by a super admin) hides Lesson Plans
         setLessonPlansEnabled((lessonFlag.data as { lesson_plans_enabled?: boolean } | null)?.lesson_plans_enabled !== false)
@@ -136,6 +139,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
   // Modules a super admin switches on per center live in the header, so the sidebar keeps the everyday pages
   const HEADER_NAVIGATION = [
     ...(canOpenRoster({ domainKey, role, childFilesEnabled, rosterEnabled }) ? [{ name: 'Live roster', href: '/center/roster', icon: LayoutGrid }] : []),
+    ...(canManageSchedule({ role, scheduleEnabled }) ? [{ name: 'Schedule', href: '/center/schedule', icon: CalendarClock }] : []),
     ...(canOpenChildFiles({ domainKey, role, childFilesEnabled }) ? [{ name: 'Children', href: '/center/children', icon: Baby }] : []),
     ...(domainKey === 'childcare' && lessonPlansEnabled ? [{ name: 'Lesson Plans', href: '/center/lesson-plans/weekly', icon: NotebookPen }] : []),
     ...(domainKey === 'childcare' && menuPlanningEnabled ? [{ name: 'Menu', href: '/center/menu', icon: Utensils }] : []),
@@ -162,7 +166,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <CenterContext.Provider value={{ staffTerm, workAreaTerm, domainKey, centerId, role, childFilesEnabled, rosterEnabled, menuPlanningEnabled, lessonPlansEnabled, announcementsEnabled }}>
+    <CenterContext.Provider value={{ staffTerm, workAreaTerm, domainKey, centerId, role, childFilesEnabled, rosterEnabled, menuPlanningEnabled, lessonPlansEnabled, announcementsEnabled, scheduleEnabled }}>
       <div className="center-shell min-h-screen bg-surface flex font-sans">
       {/* ── Sidebar ── */}
       <aside className={`${collapsed ? 'w-16' : 'w-64'} bg-brand-900 text-white flex flex-col fixed inset-y-0 z-10 transition-[width] duration-200`}>

@@ -17,7 +17,8 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { useCenterContext } from '../../context'
+import { canManageSchedule, useCenterContext } from '../../context'
+import { FixedScheduleCard } from '@/components/schedule/FixedScheduleCard'
 import { StaffAvatar } from '@/components/StaffAvatar'
 import { ComplianceRecord } from './_components/ComplianceRecord'
 import { RequestDocumentsDialog } from '@/components/center/RequestDocumentsDialog'
@@ -62,7 +63,8 @@ type TabId = 'overview' | 'education' | 'experience' | 'references' | 'credentia
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function StaffReviewPage() {
-  const { staffTerm, menuPlanningEnabled } = useCenterContext()
+  const centerCtx = useCenterContext()
+  const { staffTerm, menuPlanningEnabled } = centerCtx
   const { data: roleLookups } = useLookups('Role')
   const { data: paymentLookups } = useLookups('Payment Method')
   const { id: staffId } = useParams()
@@ -99,6 +101,7 @@ export default function StaffReviewPage() {
   const [homeRoom, setHomeRoom] = useState('')
   const [rooms, setRooms] = useState<{ id: string; name: string }[]>([])
   const [menuEditor, setMenuEditor] = useState(false)
+  const [centerStaffId, setCenterStaffId] = useState<string | null>(null)
   
 
   useEffect(() => { loadData() }, [staffId])
@@ -133,7 +136,7 @@ export default function StaffReviewPage() {
       // 2. Employment class at this center + requirements that apply to it
       const { data: membership } = await supabase
         .from('center_staff')
-        .select('status, employment_class, employment_start_date, requested_employment_class, home_work_area_id')
+        .select('id, status, employment_class, employment_start_date, requested_employment_class, home_work_area_id')
         .eq('center_id', admin.center_id)
         .eq('staff_id', staffId)
         .maybeSingle()
@@ -144,6 +147,7 @@ export default function StaffReviewPage() {
       setApproveClass((membership?.requested_employment_class as EmploymentClass | null) ?? memberClass)
       setStartDate(membership?.employment_start_date ?? '')
       setHomeRoom((membership as { home_work_area_id?: string | null } | null)?.home_work_area_id ?? '')
+      setCenterStaffId((membership as { id?: string } | null)?.id ?? null)
       // Separate read so a database without the menu planning migration doesn't break this page
       const { data: menuRow } = await supabase.from('center_staff').select('menu_editor')
         .eq('center_id', admin.center_id).eq('staff_id', staffId).maybeSingle()
@@ -561,6 +565,11 @@ export default function StaffReviewPage() {
               <p className="text-subtle italic text-sm">No bio provided.</p>
             )}
           </div>
+
+          {/* Fixed weekly schedule (the daily board fills each day from it) */}
+          {canManageSchedule(centerCtx) && centerId && centerStaffId && employmentClass === 'regular' && memberStatus === 'active' && (
+            <FixedScheduleCard centerId={centerId} centerStaffId={centerStaffId} />
+          )}
 
           {/* Payment preferences */}
           {(profile as any).preferred_payment_methods?.length > 0 && (
