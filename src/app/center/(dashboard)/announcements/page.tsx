@@ -19,7 +19,7 @@ export default function CenterAnnouncementsPage() {
     <div className="max-w-5xl pb-24">
       <div className="mb-8">
         <h1 className="text-3xl font-extrabold text-heading mb-2 flex items-center gap-3">
-          <Megaphone className="w-8 h-8 text-brand-600" /> Announcements
+          <Megaphone className="w-8 h-8 text-brand-600" /> Messages
         </h1>
         <p className="text-muted">
           {domainKey === 'childcare'
@@ -30,11 +30,11 @@ export default function CenterAnnouncementsPage() {
 
       {!announcementsEnabled ? (
         <div className="max-w-2xl rounded-2xl border border-border bg-white p-10 text-center text-muted shadow-sm">
-          Announcements aren&apos;t turned on for this center. Contact CareLocal support to try it.
+          Messages aren&apos;t turned on for this center. Contact CareLocal support to try it.
         </div>
       ) : !canSend ? (
         <div className="max-w-2xl rounded-2xl border border-border bg-white p-10 text-center text-muted shadow-sm">
-          Only the center owner and administrators can send announcements.
+          Only the center owner and administrators can send messages.
         </div>
       ) : centerId && (
         view.kind === 'compose'

@@ -143,8 +143,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
     ...(canOpenChildFiles({ domainKey, role, childFilesEnabled }) ? [{ name: 'Children', href: '/center/children', icon: Baby }] : []),
     ...(domainKey === 'childcare' && lessonPlansEnabled ? [{ name: 'Lesson Plans', href: '/center/lesson-plans/weekly', icon: NotebookPen }] : []),
     ...(domainKey === 'childcare' && menuPlanningEnabled ? [{ name: 'Menu', href: '/center/menu', icon: Utensils }] : []),
-    ...(jobsEnabled ? [{ name: 'Jobs', href: '/center/jobs', icon: Briefcase }] : []),
-    ...(announcementsEnabled && (role === 'owner' || role === 'admin') ? [{ name: 'Announcements', href: '/center/announcements', icon: Megaphone }] : []),
+    ...(announcementsEnabled && (role === 'owner' || role === 'admin') ? [{ name: 'Messages', href: '/center/announcements', icon: Megaphone }] : []),
   ]
 
   const NAVIGATION = [
@@ -158,6 +157,8 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
     // Receipts has no menu item of its own: it opens from a vendor's receipts link
     { name: 'Vendors', href: '/center/vendors', icon: Truck, also: ['/center/receipts'] },
     { name: 'Support', href: '/center/support', icon: LifeBuoy },
+    // Jobs has its own pages (new, edit, applications), so it stays highlighted on all of them
+    ...(jobsEnabled ? [{ name: 'Jobs', href: '/center/jobs', icon: Briefcase, prefix: true }] : []),
     { name: 'About', href: '/center/about', icon: Info, also: ['/center/lesson-plans'] },
   ]
 
@@ -215,7 +216,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
 
         <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-1">
           {NAVIGATION.map((item) => {
-            const isActive = pathname === item.href || ('also' in item && item.also?.includes(pathname))
+            const isActive = pathname === item.href || ('also' in item && item.also?.includes(pathname)) || ('prefix' in item && item.prefix && pathname.startsWith(`${item.href}/`))
             return (
               <Link
                 key={item.name}
