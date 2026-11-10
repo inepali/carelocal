@@ -2,12 +2,27 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, CheckCheck, Loader2, Megaphone } from 'lucide-react'
+import { AlertTriangle, CheckCheck, ExternalLink, Loader2, Megaphone, Users } from 'lucide-react'
 import { parentAcknowledgeAnnouncement } from '@/app/actions/parent-portal.actions'
 import type { ReceivedAnnouncement } from '@/lib/announcements'
 
+/** Join the center's all-parents GroupMe group (when the center added its invite link) */
+function JoinGroup({ url, centerName }: { url: string; centerName: string }) {
+  return (
+    <a href={url} target="_blank" rel="noreferrer"
+      className="flex items-center gap-3 rounded-2xl border border-border bg-white p-4 shadow-sm hover:bg-surface">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-50"><Users className="h-5 w-5 text-brand-600" /></span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[15px] font-bold">Join our parents’ GroupMe</span>
+        <span className="block text-xs text-muted">{centerName}’s group for all families</span>
+      </span>
+      <ExternalLink className="h-4 w-4 shrink-0 text-subtle" />
+    </a>
+  )
+}
+
 /** The Notices tab: announcements from the center (newest first), with "I've read this" where asked */
-export function Notices({ items, centerName }: { items: ReceivedAnnouncement[]; centerName: string }) {
+export function Notices({ items, centerName, groupUrl }: { items: ReceivedAnnouncement[]; centerName: string; groupUrl?: string | null }) {
   const router = useRouter()
   const [acking, setAcking] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -15,12 +30,15 @@ export function Notices({ items, centerName }: { items: ReceivedAnnouncement[]; 
 
   if (items.length === 0) {
     return (
+      <div className="space-y-3">
+      {groupUrl && <JoinGroup url={groupUrl} centerName={centerName} />}
       <section className="rounded-2xl border border-border bg-white p-4 shadow-sm">
         <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-text-muted">
           <Megaphone className="h-8 w-8 text-subtle" />
           No announcements from {centerName} in the last 60 days.
         </div>
       </section>
+      </div>
     )
   }
 
@@ -37,6 +55,7 @@ export function Notices({ items, centerName }: { items: ReceivedAnnouncement[]; 
 
   return (
     <div className="space-y-3">
+      {groupUrl && <JoinGroup url={groupUrl} centerName={centerName} />}
       {error && <p role="alert" className="rounded-xl bg-[#fce4e2] px-3 py-2 text-sm font-semibold text-[#a3221b]">{error}</p>}
       {items.map(a => (
         <article key={a.id} className={`overflow-hidden rounded-2xl border bg-white shadow-sm ${a.unread ? 'border-brand-600' : 'border-border'}`}>

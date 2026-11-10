@@ -28,6 +28,8 @@ export interface GroupMeStatus {
   choosingGroup: boolean
   /** The bot name this center gets */
   suggestedBotName: string
+  /** Invite link to the center's all-parents GroupMe group, shown to parents on the parent page */
+  parentGroupUrl: string | null
 }
 
 /** The caller must be an owner or admin of a center; returns that center */
@@ -67,11 +69,14 @@ export async function getGroupMeStatus(): Promise<Result<{ status: GroupMeStatus
   if (!groupMeServerReady()) {
     return { success: false, setup: true, error: 'GroupMe is not set up on this server yet (missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY).' }
   }
-  const { data: row } = await serviceDb()
-    .from('center_groupme')
-    .select('group_name, bot_name, enabled, last_posted_at, last_error, share_url')
-    .eq('center_id', me.centerId)
-    .maybeSingle()
+  const [{ data: row }, parentGroupUrl] = await Promise.all([
+    serviceDb()
+      .from('center_groupme')
+      .select('group_name, bot_name, enabled, last_posted_at, last_error, share_url')
+      .eq('center_id', me.centerId)
+      .maybeSingle(),
+    readParentGroupUrl(me.centerId),
+  ])
   return {
     success: true,
     status: {
@@ -86,8 +91,51 @@ export async function getGroupMeStatus(): Promise<Result<{ status: GroupMeStatus
       shareUrl: row?.share_url ?? null,
       choosingGroup: !!(await readToken()),
       suggestedBotName: botNameFor(me.centerName),
+      parentGroupUrl,
     },
   }
+}
+
+/** The all-parents invite link (null before the 20261231000000 migration is applied, rather than breaking the card) */
+async function readParentGroupUrl(centerId: string): Promise<string | null> {
+  const { data, error } = await serviceDb().from('centers').select('parent_groupme_url').eq('id', centerId).maybeSingle()
+  if (error) return null
+  return (data as { parent_groupme_url?: string | null } | null)?.parent_groupme_url ?? null
+}
+
+/**
+ * "https://groupme.com/join_group/12345678/AbCdEf" from what a director pastes: trims, adds https://, drops
+ * ?query and #hash. Null when it is not a GroupMe invite link.
+ */
+function cleanParentGroupUrl(raw: string): string | null {
+  let text = raw.trim()
+  if (!/^https?:\/\//i.test(text)) text = `https://${text}`
+  let url: URL
+  try { url = new URL(text) } catch { return null }
+  const host = url.hostname.toLowerCase()
+  if (!['groupme.com', 'www.groupme.com', 'web.groupme.com'].includes(host)) return null
+  const m = url.pathname.match(/^\/join_group\/(\d+)\/([A-Za-z0-9_-]+)\/?$/)
+  return m ? `https://groupme.com/join_group/${m[1]}/${m[2]}` : null
+}
+
+/**
+ * Save (or, with an empty link, remove) the invite link to the center's all-parents GroupMe group. It is shown to
+ * parents on the parent page so they can join; the staff shift-alert group is separate.
+ */
+export async function setParentGroupMeLink(raw: string): Promise<Result<{ status: GroupMeStatus }>> {
+  const me = await requireCenterAdmin()
+  if (!me) return NOT_ALLOWED
+  const url = raw.trim() ? cleanParentGroupUrl(raw) : null
+  if (raw.trim() && !url) {
+    return { success: false, error: 'That doesn’t look like a GroupMe invite link. In GroupMe, open the group → Settings → Share group, and copy the link (it starts with https://groupme.com/join_group/).' }
+  }
+  const { error } = await serviceDb().from('centers').update({ parent_groupme_url: url }).eq('id', me.centerId)
+  if (error) {
+    console.error('[groupme] saving parent link failed:', error.message)
+    return { success: false, error: 'Could not save the link. Please try again.' }
+  }
+  const res = await getGroupMeStatus()
+  return res.success ? res : { success: false, error: res.error }
 }
 
 /**

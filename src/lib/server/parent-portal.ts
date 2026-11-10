@@ -159,6 +159,17 @@ export async function loadPortalAnnouncements(tokenHash: string, markSeen = fals
   return (data as ReceivedAnnouncement[] | null) ?? null
 }
 
+/**
+ * The invite link to the center's all-parents GroupMe group (Center Profile → GroupMe Notification), or null.
+ * Only called after the parent is signed in to this center.
+ */
+export async function loadParentGroupUrl(centerId: string): Promise<string | null> {
+  const { data, error } = await parentDb().from('centers').select('parent_groupme_url').eq('id', centerId).maybeSingle()
+  if (error) return null
+  const url = (data as { parent_groupme_url?: string | null } | null)?.parent_groupme_url
+  return url && url.startsWith('https://groupme.com/join_group/') ? url : null
+}
+
 export async function loadPortalThreads(tokenHash: string, childId: string) {
   const { data, error } = await parentDb().rpc('parent_portal_threads', { p_token_hash: tokenHash, p_child_id: childId })
   if (error) throw new Error(`parent_portal_threads: ${error.message}`)

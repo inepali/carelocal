@@ -1,9 +1,9 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { Camera, ChevronLeft, ChevronRight, Clock, ImageOff, MessageSquarePlus, Phone } from 'lucide-react'
+import { Camera, ChevronLeft, ChevronRight, Clock, ImageOff, MessageSquarePlus, Phone, Users } from 'lucide-react'
 import { reportDate, reportSections, reportTime } from '@/lib/daily-report'
 import {
-  loadPortalAnnouncements, loadPortalDay, loadPortalHome, loadPortalPhotos, loadPortalThread, loadPortalThreads, parentTokenHash, rememberedCenterKey, signPortalPhotos,
+  loadParentGroupUrl, loadPortalAnnouncements, loadPortalDay, loadPortalHome, loadPortalPhotos, loadPortalThread, loadPortalThreads, parentTokenHash, rememberedCenterKey, signPortalPhotos,
   type PortalHome,
 } from '@/lib/server/parent-portal'
 import { NoCenterLink } from './_components/SignInForm'
@@ -62,10 +62,11 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
   const child = home.children.find(c => sp.child && UUID.test(sp.child) && c.id === sp.child) ?? home.children[0]
   const asked: Tab = sp.tab === 'photos' ? 'photos' : sp.tab === 'messages' ? 'messages' : sp.tab === 'notices' ? 'notices' : 'today'
   // Announcements are for the whole center, so the same on every child; opening the tab marks them seen
-  const [faces, threads, notices] = await Promise.all([
+  const [faces, threads, notices, groupUrl] = await Promise.all([
     signPortalPhotos(home.center.id, home.children.map(c => c.photo_key)),
     loadPortalThreads(tokenHash, child.id),
     loadPortalAnnouncements(tokenHash, asked === 'notices'),
+    loadParentGroupUrl(home.center.id),
   ])
   const tab: Tab = asked === 'notices' && notices === null ? 'today' : asked
   const tabs = TABS.filter(t => t.id !== 'notices' || notices !== null)
@@ -125,13 +126,20 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
               : <ThreadList threads={threads} childId={child.id} childName={child.first_name} tz={home.center.timezone} />
       )}
 
-      {tab === 'notices' && notices && <Notices items={notices} centerName={home.center.name} />}
+      {tab === 'notices' && notices && <Notices items={notices} centerName={home.center.name} groupUrl={groupUrl} />}
 
       <footer className="mt-10 text-center text-xs text-muted">
         {home.center.phone && (
           <a href={`tel:${home.center.phone}`} className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-border bg-white px-3 py-1.5 font-semibold text-text-main">
             <Phone className="h-3.5 w-3.5" /> Call {home.center.name}
           </a>
+        )}
+        {groupUrl && tab !== 'notices' && (
+          <p className="mb-2">
+            <a href={groupUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white px-3 py-1.5 font-semibold text-text-main">
+              <Users className="h-3.5 w-3.5" /> Join our parents’ GroupMe
+            </a>
+          </p>
         )}
         <p>Shared by your child’s teachers with CareLocal.</p>
       </footer>
