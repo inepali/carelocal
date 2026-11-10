@@ -9,6 +9,12 @@ export type DayOp =
   | { op: 'update'; id: string; room_id?: string | null; start?: string; end?: string; note?: string | null }
   | { op: 'remove'; id: string }
   | { op: 'split'; id: string; at: string; room_id: string | null }
+  /** a break cut out of a working box; cover (default true) also adds an empty break cover in that room */
+  | { op: 'break'; id: string; start: string; end: string; cover?: boolean }
+  /** a break cover in a room, empty or with someone on it */
+  | { op: 'cover'; room_id: string; start: string; end: string; staff_id?: string | null }
+  /** put someone on a break cover, or take them off (null) */
+  | { op: 'assign'; id: string; staff_id: string | null }
 
 /**
  * One day of the board. Opening builds the day the first time (from fixed schedules) and picks up substitute

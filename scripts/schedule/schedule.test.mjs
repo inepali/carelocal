@@ -9,7 +9,7 @@ import {
   toMinutes, fromMinutes, snapMinutes, formatTime, formatRange, timeOptions, blockHours, checkPattern, copyDay,
   packLanes, boxPosition, hourMarks, shortName, weekdayOf, addDays, scheduleWeekdays, sortBlocks,
   teachersNeeded, coverage, coverageTone, dragMinutes, minutesAt, applyDrag, dropBlock, overlapsOwn,
-  describeMyDay, currentBlockIndex,
+  describeMyDay, currentBlockIndex, suggestBreak, withBreaks, countsForRatio, BREAK_MINUTES,
 } from '../../src/lib/schedule.ts'
 
 let passed = 0
@@ -90,6 +90,26 @@ const myDay = { blocks: [{ room_name: 'Infant A', start: '07:00', end: '11:00' }
 check('describe my day', describeMyDay(myDay) === 'Infant A 7–11 · Floater 11–3:30')
 check('current block: running', currentBlockIndex(myDay.blocks, '10:59') === 0 && currentBlockIndex(myDay.blocks, '11:00') === 1)
 check('current block: next up, then none', currentBlockIndex(myDay.blocks, '06:30') === 0 && currentBlockIndex(myDay.blocks, '16:00') === -1)
+
+console.log('breaks and covers')
+const wk = (weekday, start, end, room_id = 'r', kind = 'work') => ({ weekday, start, end, room_id, kind })
+check('break inside work ok', checkPattern([wk(1, '07:00', '15:00'), wk(1, '11:00', '12:00', null, 'break')], S) === null)
+check('break outside work', /inside their working hours/.test(checkPattern([wk(1, '07:00', '12:00'), wk(1, '12:00', '13:00', null, 'break')], S) ?? ''))
+check('break = whole block', /inside their working hours/.test(checkPattern([wk(1, '07:00', '12:00'), wk(1, '07:00', '12:00', null, 'break')], S) ?? ''))
+check('two breaks overlap', /two breaks overlap/.test(checkPattern([wk(1, '07:00', '15:00'), wk(1, '11:00', '12:00', null, 'break'), wk(1, '11:30', '12:30', null, 'break')], S) ?? ''))
+check('hours minus breaks', blockHours([wk(1, '07:00', '15:00'), wk(1, '11:00', '12:00', null, 'break')]) === 7)
+check('default break is an hour', BREAK_MINUTES === 60)
+check('suggest noon', eq(suggestBreak([wk(1, '07:00', '15:00')], 60, 15), { start: '12:00', end: '13:00' }))
+check('suggest middle when noon is taken', eq(suggestBreak([wk(1, '07:00', '11:00')], 60, 15), { start: '08:30', end: '09:30' }))
+check('suggest none when too short', suggestBreak([wk(1, '07:00', '07:45')], 60, 15) === null)
+check('suggest skips an existing break', eq(suggestBreak([wk(1, '07:00', '15:00'), wk(1, '12:00', '13:00', null, 'break')], 60, 15), { start: '10:30', end: '11:30' }))
+const drawn = withBreaks([wk(1, '07:00', '15:00', 'A'), wk(1, '11:00', '12:00', null, 'break')])
+check('withBreaks cuts the break out, in that room', eq(drawn.map(x => `${x.kind} ${x.start}-${x.end} ${x.room_id}`), ['work 07:00-11:00 A', 'break 11:00-12:00 A', 'work 12:00-15:00 A']))
+check('counts for ratio', countsForRatio({ kind: 'work', staff_id: 'a' }) && countsForRatio({ kind: 'cover', staff_id: 'a' })
+  && !countsForRatio({ kind: 'cover', staff_id: null }) && !countsForRatio({ kind: 'break', staff_id: 'a' }))
+check('describe a day with a break and a cover', describeMyDay({ blocks: [{ room_name: 'Infant A', start: '07:00', end: '11:00', kind: 'work' },
+  { room_name: 'Infant A', start: '11:00', end: '12:00', kind: 'break' }, { room_name: 'Toddler', start: '12:00', end: '13:00', kind: 'cover' }] })
+  === 'Infant A 7–11 · Break 11–12 · Break cover · Toddler 12–1')
 
 console.log(failures.length ? `\n${failures.length} FAILED: ${failures.join(', ')}` : `\nALL ${passed} PASSED`)
 process.exit(failures.length ? 1 : 0)

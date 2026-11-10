@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowRightLeft, Loader2, Trash2, UserCog, X } from 'lucide-react'
+import { ArrowRightLeft, Coffee, Loader2, Trash2, UserCog, X } from 'lucide-react'
 import {
-  formatTime, overlapsOwn, shortName, timeOptions, toMinutes,
+  BREAK_LENGTHS, BREAK_MINUTES, formatTime, fromMinutes, overlapsOwn, shortName, suggestBreak, timeOptions, toMinutes,
   type DayBlock, type DayPayload, type DayPerson,
 } from '@/lib/schedule'
 import type { DayOp } from './useScheduleDay'
@@ -31,6 +31,15 @@ export function BlockDialog({ block, person, data, onApply, onPerson, onClose }:
   const [moveTo, setMoveTo] = useState(() => data.rooms.find(r => r.id !== block.room_id)?.id ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  // Add a break: an hour by default (noon when it fits), inside this box
+  const breakLengths = BREAK_LENGTHS.filter(m => m < toMinutes(block.end) - toMinutes(block.start))
+  const [breakLen, setBreakLen] = useState<number>(() => breakLengths.includes(BREAK_MINUTES as never) ? BREAK_MINUTES : breakLengths.at(-1) ?? 0)
+  const [breakAt, setBreakAt] = useState(() => suggestBreak([{ start: block.start, end: block.end, kind: 'work' }], breakLen || 15, s.slot_minutes)?.start ?? block.start)
+  const [withCover, setWithCover] = useState(!!block.room_id)
+  const breakStarts = breakLen ? timeOptions(block.start, fromMinutes(toMinutes(block.end) - breakLen), s.slot_minutes)
+    .filter(t => !(t === block.start && toMinutes(t) + breakLen === toMinutes(block.end))) : []
+  const breakEnd = breakLen ? fromMinutes(toMinutes(breakAt) + breakLen) : breakAt
+  const roomLabel = data.rooms.find(r => r.id === block.room_id)?.name
 
   const options = (keep: string) => timeOptions(s.day_start, s.day_end, s.slot_minutes, [keep])
   const changed = start !== block.start || end !== block.end || (room || null) !== block.room_id || (note.trim() || null) !== (block.note ?? null)
@@ -109,6 +118,35 @@ export function BlockDialog({ block, person, data, onApply, onPerson, onClose }:
               <button type="button" disabled={busy || !at || (moveTo || null) === block.room_id} onClick={() => run([{ op: 'split', id: block.id, at, room_id: moveTo || null }])}
                 className="mt-2 inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-border px-3 text-sm font-bold text-text-main hover:bg-surface disabled:opacity-50">
                 Move from {at ? formatTime(at) : '…'} until {formatTime(block.end)}
+              </button>
+            </div>
+          )}
+
+          {breakStarts.length > 0 && (
+            <div className="rounded-2xl border border-dashed border-border bg-surface p-3">
+              <div className="mb-2 flex items-center gap-2 text-sm font-bold text-heading"><Coffee className="h-4 w-4 text-muted" /> Add a break</div>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="text-[12px] font-semibold text-muted">From
+                  <select value={breakStarts.includes(breakAt) ? breakAt : breakStarts[0]} onChange={e => setBreakAt(e.target.value)} className={`${FIELD} mt-1`}>
+                    {breakStarts.map(t => <option key={t} value={t}>{formatTime(t)}</option>)}
+                  </select>
+                </label>
+                <label className="text-[12px] font-semibold text-muted">For
+                  <select value={breakLen} onChange={e => setBreakLen(Number(e.target.value))} className={`${FIELD} mt-1`}>
+                    {breakLengths.map(m => <option key={m} value={m}>{m < 60 ? `${m} min` : m === 60 ? '1 hour' : `${m / 60} hours`}</option>)}
+                  </select>
+                </label>
+              </div>
+              {block.room_id && (
+                <label className="mt-2 flex items-center gap-2 text-[13px] text-text-main">
+                  <input type="checkbox" checked={withCover} onChange={e => setWithCover(e.target.checked)} className="h-4 w-4 accent-[#dc2626]" />
+                  Also add a break cover in {roomLabel ?? 'this room'}
+                </label>
+              )}
+              <button type="button" disabled={busy || !breakStarts.length}
+                onClick={() => { const at = breakStarts.includes(breakAt) ? breakAt : breakStarts[0]; run([{ op: 'break', id: block.id, start: at, end: fromMinutes(toMinutes(at) + breakLen), cover: withCover && !!block.room_id }]) }}
+                className="mt-2 inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-border bg-white px-3 text-sm font-bold text-text-main hover:bg-surface disabled:opacity-50">
+                Add break {formatTime(breakStarts.includes(breakAt) ? breakAt : breakStarts[0])}–{formatTime(breakStarts.includes(breakAt) ? breakEnd : fromMinutes(toMinutes(breakStarts[0]) + breakLen))}
               </button>
             </div>
           )}

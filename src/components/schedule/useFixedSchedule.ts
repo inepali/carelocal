@@ -27,7 +27,7 @@ export function useFixedSchedule(centerId: string, on: string | null) {
    * before and after. Resolves to an error message, or null when saved.
    */
   const save = useCallback(async (centerStaffId: string, effectiveFrom: string, blocks: FixedBlock[], effectiveTo: string | null = null): Promise<string | null> => {
-    const p_blocks = blocks.map(b => ({ weekday: b.weekday, start: b.start, end: b.end, room_id: b.room_id, notes: b.notes?.trim() || null }))
+    const p_blocks = blocks.map(b => ({ weekday: b.weekday, start: b.start, end: b.end, room_id: b.kind === 'break' ? null : b.room_id, kind: b.kind ?? 'work', notes: b.notes?.trim() || null }))
     const { error: err } = effectiveTo
       ? await supabase.rpc('schedule_fixed_save_window', { p_center_staff_id: centerStaffId, p_effective_from: effectiveFrom, p_effective_to: effectiveTo, p_blocks })
       : await supabase.rpc('schedule_fixed_save', { p_center_staff_id: centerStaffId, p_effective_from: effectiveFrom, p_blocks })

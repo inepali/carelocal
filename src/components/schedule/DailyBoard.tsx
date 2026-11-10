@@ -1,16 +1,17 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { BellRing, ChevronLeft, ChevronRight, Loader2, Send, UserX, X } from 'lucide-react'
+import { BellRing, ChevronLeft, ChevronRight, Coffee, Loader2, Send, UserX, X } from 'lucide-react'
 import {
-  ABSENCE_LABELS, addDays, applyDrag, boxPosition, coverage, coverageTone, dragMinutes, dropBlock, formatDate, formatRange,
-  formatTime, hourMarks, minutesAt, overlapsOwn, packLanes, shortName, teachersNeeded,
+  ABSENCE_LABELS, BREAK_MINUTES, addDays, applyDrag, boxPosition, countsForRatio, coverage, coverageTone, dragMinutes, dropBlock,
+  formatDate, formatRange, formatTime, fromMinutes, hourMarks, minutesAt, overlapsOwn, packLanes, shortName, teachersNeeded, toMinutes,
   type DayBlock, type DayPayload, type DayPerson, type DragMode,
 } from '@/lib/schedule'
 import { useScheduleDay, type DayOp } from './useScheduleDay'
 import { notifySchedule } from '@/app/actions/schedule.actions'
 import { BlockDialog } from './BlockDialog'
 import { PersonDialog } from './PersonDialog'
+import { BreakCoverDialog } from './BreakCoverDialog'
 
 const LANE_H = 40
 const ROW_PAD = 8
@@ -22,6 +23,9 @@ type Preview = { start: string; end: string; rowKey: string }
 type Drag =
   | { kind: 'block'; block: DayBlock; mode: DragMode; x0: number; y0: number; moved: boolean; preview: Preview }
   | { kind: 'person'; person: DayPerson; x0: number; y0: number; x: number; y: number; moved: boolean; preview: Preview | null }
+  /** the red Break cover box from the Substitutes tray: every drop makes a new cover */
+  | { kind: 'cover-source'; x0: number; y0: number; x: number; y: number; moved: boolean; preview: Preview | null }
+type Pending = { blockId?: string; preview: Preview; staffId: string | null; cover?: boolean }
 
 const rowKeyOf = (roomId: string | null) => roomId ?? FLOATER
 const roomOfKey = (key: string) => (key === FLOATER ? null : key)
@@ -32,10 +36,19 @@ function rowAt(x: number, y: number): { key: string; rect: DOMRect } | null {
   return el ? { key: el.dataset.rowKey!, rect: el.getBoundingClientRect() } : null
 }
 
+/** A new break cover dropped at `at`: an hour (the usual break), kept inside the day */
+function dropCover(at: string, slot: number, dayStart: string, dayEnd: string): { start: string; end: string } {
+  const lo = toMinutes(dayStart), hi = toMinutes(dayEnd)
+  const a = Math.max(lo, Math.min(toMinutes(at), hi - BREAK_MINUTES))
+  const snapped = Math.round(a / slot) * slot
+  return { start: fromMinutes(Math.max(lo, snapped)), end: fromMinutes(Math.min(hi, Math.max(lo, snapped) + BREAK_MINUTES)) }
+}
+
 /**
  * Owner/admin: one day's schedule. Rooms top to bottom (plus Floaters), the day left to right, one box per person
  * block. Drag a box to move it (another room and/or time), drag an edge to change its hours, drag someone from
- * Available onto a room to add them. Tap a box or a person for times, moves, call-outs and resets.
+ * Available onto a room to add them, drag the red Break cover box onto a room (as often as needed) for a break
+ * cover. Tap a box or a person for times, moves, breaks, covers, call-outs and resets.
  */
 export default function DailyBoard({ centerId }: { centerId: string }) {
   const [date, setDate] = useState<string | null>(null)
@@ -46,7 +59,7 @@ export default function DailyBoard({ centerId }: { centerId: string }) {
   const [drag, setDrag] = useState<Drag | null>(null)
   const dragRef = useRef<Drag | null>(null)
   dragRef.current = drag
-  const [pending, setPending] = useState<{ blockId?: string; preview: Preview; staffId: string } | null>(null)
+  const [pending, setPending] = useState<Pending | null>(null)
   const [openBlockId, setOpenBlockId] = useState<string | null>(null)
   const [openStaffId, setOpenStaffId] = useState<string | null>(null)
   const timelineRef = useRef<HTMLDivElement | null>(null)
@@ -65,7 +78,7 @@ export default function DailyBoard({ centerId }: { centerId: string }) {
   }, [centerId, reload])
 
   /** One change from a drag; the box stays where it was dropped until the answer comes back */
-  const commit = useCallback(async (ops: DayOp[], shown: { blockId?: string; preview: Preview; staffId: string }) => {
+  const commit = useCallback(async (ops: DayOp[], shown: Pending) => {
     setPending(shown)
     const err = await apply(ops)
     setPending(null)
@@ -82,14 +95,19 @@ export default function DailyBoard({ centerId }: { centerId: string }) {
       const moved = d.moved || Math.abs(e.clientX - d.x0) > MOVE_PX || Math.abs(e.clientY - d.y0) > MOVE_PX
       if (d.kind === 'block') {
         const width = timelineRef.current?.getBoundingClientRect().width ?? 0
-        const sub = !!d.block.shift_claim_id
-        const times = sub ? { start: d.block.start, end: d.block.end }
+        // A sub's working hours are the shift's; a break stays in its room (it moves in time only)
+        const lockedTimes = !!d.block.shift_claim_id && d.block.kind === 'work'
+        const times = lockedTimes ? { start: d.block.start, end: d.block.end }
           : applyDrag(d.block, d.mode, dragMinutes(e.clientX - d.x0, width, s.day_start, s.day_end), s.slot_minutes, s.day_start, s.day_end)
-        const row = d.mode === 'move' ? rowAt(e.clientX, e.clientY)?.key ?? d.preview.rowKey : rowKeyOf(d.block.room_id)
+        const row = d.mode === 'move' && d.block.kind !== 'break' ? rowAt(e.clientX, e.clientY)?.key ?? d.preview.rowKey : rowKeyOf(d.block.room_id)
         setDrag({ ...d, moved, preview: { ...times, rowKey: row } })
       } else {
         const row = rowAt(e.clientX, e.clientY)
-        const preview = row ? { ...dropBlock(minutesAt(e.clientX - row.rect.left, row.rect.width, s.day_start, s.day_end, s.slot_minutes), s.slot_minutes, s.day_start, s.day_end), rowKey: row.key } : null
+        const at = row ? minutesAt(e.clientX - row.rect.left, row.rect.width, s.day_start, s.day_end, s.slot_minutes) : null
+        const preview = row && at ? {
+          ...(d.kind === 'cover-source' ? dropCover(at, s.slot_minutes, s.day_start, s.day_end) : dropBlock(at, s.slot_minutes, s.day_start, s.day_end)),
+          rowKey: row.key,
+        } : null
         setDrag({ ...d, moved, x: e.clientX, y: e.clientY, preview })
       }
     }
@@ -99,13 +117,29 @@ export default function DailyBoard({ centerId }: { centerId: string }) {
       if (!d) return
       if (!d.moved) {
         if (d.kind === 'block') setOpenBlockId(d.block.id)
-        else setOpenStaffId(d.person.staff_id)
+        else if (d.kind === 'person') setOpenStaffId(d.person.staff_id)
+        else report('Drag the red Break cover box onto a room, at the time of the break.')
+        return
+      }
+      if (d.kind === 'cover-source') {
+        if (!d.preview) return
+        if (d.preview.rowKey === FLOATER) { report('A break cover goes in a room. Drop it on the room whose teacher is on break.'); return }
+        commit([{ op: 'cover', room_id: d.preview.rowKey, start: d.preview.start, end: d.preview.end }], { preview: d.preview, staffId: null, cover: true })
         return
       }
       if (d.kind === 'block') {
         const b = d.block, p = d.preview
         const room = roomOfKey(p.rowKey)
         if (p.start === b.start && p.end === b.end && room === b.room_id) return
+        if (b.kind === 'break') {
+          commit([{ op: 'update', id: b.id, start: p.start, end: p.end }], { blockId: b.id, preview: p, staffId: b.staff_id })
+          return
+        }
+        if (b.kind === 'cover') {
+          if (!room) { report('A break cover goes in a room.'); return }
+          commit([{ op: 'update', id: b.id, room_id: room, start: p.start, end: p.end }], { blockId: b.id, preview: p, staffId: b.staff_id })
+          return
+        }
         if (overlapsOwn(data.blocks, b.staff_id, p.start, p.end, b.id)) { report('That would overlap another of their boxes.'); return }
         const op: DayOp = b.shift_claim_id ? { op: 'update', id: b.id, room_id: room } : { op: 'update', id: b.id, room_id: room, start: p.start, end: p.end }
         commit([op], { blockId: b.id, preview: p, staffId: b.staff_id })
@@ -147,6 +181,11 @@ export default function DailyBoard({ centerId }: { centerId: string }) {
     if (e.button !== 0 || busy) return
     e.preventDefault()
     setDrag({ kind: 'person', person, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, moved: false, preview: null })
+  }
+  const startCoverDrag = (e: React.PointerEvent) => {
+    if (e.button !== 0 || busy) return
+    e.preventDefault()
+    setDrag({ kind: 'cover-source', x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, moved: false, preview: null })
   }
 
   return (
@@ -203,22 +242,27 @@ export default function DailyBoard({ centerId }: { centerId: string }) {
       <Board data={data} drag={drag} pending={pending} timelineRef={timelineRef} onBlockPointerDown={startBlockDrag}
         onBlockKey={id => setOpenBlockId(id)} />
 
-      <Tray data={data} drag={drag} onPersonPointerDown={startPersonDrag} onOpen={id => setOpenStaffId(id)} />
+      <Tray data={data} drag={drag} onPersonPointerDown={startPersonDrag} onCoverPointerDown={startCoverDrag} onOpen={id => setOpenStaffId(id)} />
 
       <p className="text-[12px] text-muted">
-        Drag a box to move it, drag its edge to change the hours, or drag someone from Available onto a room. Tap a box or a name for more.
+        Drag a box to move it, drag its edge to change the hours, or drag someone from Available onto a room. Tap a box to add a break.
+        Drag the red Break cover box onto a room for each break that needs covering, then tap it to put someone on it.
         The strip under each room is green when the ratio is covered for its enrolled children, amber when short, red when no one is there.
+        Breaks don&apos;t count; break covers with someone on them do.
       </p>
 
-      {drag?.kind === 'person' && drag.moved && (
-        <div aria-hidden className="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-1/2 rounded-full border border-brand-600 bg-white px-3 py-1 text-[13px] font-bold text-brand-800 shadow-lg"
+      {drag && drag.kind !== 'block' && drag.moved && (
+        <div aria-hidden className={`pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 bg-white px-3 py-1 text-[13px] font-bold shadow-lg ${drag.kind === 'cover-source' ? 'border-[#dc2626] text-[#a3221b]' : 'border-brand-600 text-brand-800'}`}
           style={{ left: drag.x, top: drag.y }}>
-          {shortName(drag.person)}{drag.preview ? ` · ${formatRange(drag.preview.start, drag.preview.end)}` : ''}
+          {drag.kind === 'cover-source' ? 'Break cover' : shortName(drag.person)}{drag.preview ? ` · ${formatRange(drag.preview.start, drag.preview.end)}` : ''}
         </div>
       )}
 
       {openBlockId && (() => {
         const block = data.blocks.find(b => b.id === openBlockId)
+        if (block && block.kind !== 'work') {
+          return <BreakCoverDialog key={block.id} block={block} data={data} onApply={apply} onClose={() => setOpenBlockId(null)} />
+        }
         const person = block && data.people.find(p => p.staff_id === block.staff_id)
         if (!block || !person) return null
         return (
@@ -250,7 +294,7 @@ export default function DailyBoard({ centerId }: { centerId: string }) {
 export function Board({ data, drag = null, pending = null, timelineRef, onBlockPointerDown, onBlockKey, readOnly = false, highlightStaffId = null }: {
   data: DayPayload
   drag?: Drag | null
-  pending?: { blockId?: string; preview: Preview; staffId: string } | null
+  pending?: Pending | null
   timelineRef?: React.MutableRefObject<HTMLDivElement | null>
   onBlockPointerDown?: (e: React.PointerEvent, block: DayBlock, mode: DragMode) => void
   onBlockKey?: (id: string) => void
@@ -259,7 +303,7 @@ export function Board({ data, drag = null, pending = null, timelineRef, onBlockP
 }) {
   const s = data.settings
   const marks = hourMarks(s.day_start, s.day_end)
-  const people = useMemo(() => new Map(data.people.map(p => [p.staff_id, p])), [data.people])
+  const people = useMemo(() => new Map<string | null, DayPerson>(data.people.map(p => [p.staff_id, p])), [data.people])
 
   // Where each box is drawn right now: being dragged, waiting for the save, or where it is saved
   const shown = useMemo(() => {
@@ -275,7 +319,8 @@ export function Board({ data, drag = null, pending = null, timelineRef, onBlockP
     ...data.rooms.map(r => ({ key: r.id, name: r.name, room: r, floater: false })),
     { key: FLOATER, name: 'Floaters', room: null, floater: true },
   ]
-  const dropping = drag?.kind === 'person' ? drag.preview : !pending?.blockId && pending ? pending.preview : null
+  const dropping = drag && drag.kind !== 'block' ? drag.preview : !pending?.blockId && pending ? pending.preview : null
+  const droppingCover = (drag?.kind === 'cover-source') || (!!pending && !pending.blockId && !!pending.cover)
 
   return (
     <div className="rounded-2xl border border-border bg-white shadow-sm">
@@ -295,7 +340,7 @@ export function Board({ data, drag = null, pending = null, timelineRef, onBlockP
             const mine = shown.filter(b => (row.floater ? b.rowKey === FLOATER || (b.rowKey !== FLOATER && !known.has(b.rowKey)) : b.rowKey === row.key))
             const { lanes, placed } = packLanes(mine)
             const needed = row.room ? teachersNeeded(row.room) : 0
-            const runs = row.room ? coverage(mine.filter(b => !b.ghost || b.rowKey === row.key), s.day_start, s.day_end) : []
+            const runs = row.room ? coverage(mine.filter(countsForRatio), s.day_start, s.day_end) : []
             const hover = (drag?.kind === 'block' && drag.moved && drag.mode === 'move' && drag.preview.rowKey === row.key) || (dropping?.rowKey === row.key)
             return (
               <div key={row.key} className={`flex border-b border-border last:border-b-0 ${row.floater ? 'bg-[#fffaf0]' : ''}`}>
@@ -316,22 +361,31 @@ export function Board({ data, drag = null, pending = null, timelineRef, onBlockP
                     const person = people.get(b.staff_id)
                     const { left, width } = boxPosition(b.start, b.end, s.day_start, s.day_end)
                     const sub = !!b.shift_claim_id
-                    const name = person ? shortName(person) : 'Staff'
-                    const label = `${name}${sub ? ' (substitute)' : ''}, ${formatTime(b.start)} to ${formatTime(b.end)}${b.note ? `, ${b.note}` : ''}`
-                    const mine = highlightStaffId === b.staff_id
-                    const tone = mine ? 'border-brand-700 bg-brand-600 text-white'
+                    const name = person ? shortName(person) : b.kind === 'cover' ? 'Needs someone' : 'Staff'
+                    const what = b.kind === 'break' ? `${name} on break` : b.kind === 'cover' ? `Break cover: ${name}` : `${name}${sub ? ' (substitute)' : ''}`
+                    const label = `${what}, ${formatTime(b.start)} to ${formatTime(b.end)}${b.note ? `, ${b.note}` : ''}`
+                    const mine = !!b.staff_id && highlightStaffId === b.staff_id
+                    const tone = b.kind === 'cover'
+                      ? (b.staff_id ? 'border-2 border-[#dc2626] bg-[#fdecec] text-[#a3221b]' : 'border-2 border-dashed border-[#dc2626] bg-white text-[#a3221b]')
+                        + (mine ? ' ring-2 ring-brand-500' : '')
+                      : b.kind === 'break' ? `border-dashed border-[#a1a1aa] bg-[repeating-linear-gradient(45deg,#f4f4f5_0,#f4f4f5_4px,#ffffff_4px,#ffffff_8px)] text-[#52525b]${mine ? ' ring-2 ring-brand-500' : ''}`
+                      : mine ? 'border-brand-700 bg-brand-600 text-white'
                       : sub ? 'border-[#c4b5fd] bg-[#f3efff] text-[#4c1d95]'
                       : row.floater ? 'border-dashed border-amber-500 bg-[#fff3d6] text-[#7a4b00]'
                       : 'border-brand-200 bg-brand-50 text-brand-800'
+                    const text = b.kind === 'break' ? (mine ? 'Your break' : `Break · ${name}`)
+                      : b.kind === 'cover' ? (b.staff_id ? (mine ? 'You · break cover' : `${name} · cover`) : 'Break cover · needs someone')
+                      : mine ? 'You' : name
+                    const resizable = !(sub && b.kind === 'work')
                     const editable = !readOnly && !!onBlockPointerDown
                     if (!editable) {
                       return (
-                        <div key={b.id} title={label} aria-label={`${mine ? 'You' : name}, ${formatTime(b.start)} to ${formatTime(b.end)}`}
+                        <div key={b.id} title={label} aria-label={mine ? label.replace(name, 'You') : label}
                           className={`absolute flex items-center gap-1.5 overflow-hidden rounded-lg border px-2 text-[12px] font-bold shadow-sm ${tone}`}
                           style={{ left: `${left}%`, width: `calc(${width}% - 2px)`, top: ROW_PAD + lane * LANE_H, height: LANE_H - 6 }}>
-                          <span className="truncate">{mine ? 'You' : name}</span>
+                          <span className="truncate">{text}</span>
                           <span className="shrink-0 font-semibold opacity-80">{formatRange(b.start, b.end)}</span>
-                          {sub && !mine && <span className="shrink-0 rounded bg-[#ddd6fe] px-1 text-[10px] uppercase">Sub</span>}
+                          {sub && !mine && b.kind === 'work' && <span className="shrink-0 rounded bg-[#ddd6fe] px-1 text-[10px] uppercase">Sub</span>}
                         </div>
                       )
                     }
@@ -341,18 +395,19 @@ export function Board({ data, drag = null, pending = null, timelineRef, onBlockP
                         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onBlockKey?.(b.id) } }}
                         className={`group absolute flex touch-none items-center gap-1.5 overflow-hidden rounded-lg border px-2 text-[12px] font-bold shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${tone} ${b.ghost ? 'z-10 opacity-80 shadow-lg ring-2 ring-brand-500' : 'cursor-grab hover:shadow-md'}`}
                         style={{ left: `${left}%`, width: `calc(${width}% - 2px)`, top: ROW_PAD + lane * LANE_H, height: LANE_H - 6 }}>
-                        {!sub && <span aria-hidden onPointerDown={e => onBlockPointerDown(e, b, 'start')} className="absolute inset-y-0 left-0 w-2 cursor-ew-resize rounded-l-lg group-hover:bg-black/10" />}
-                        <span className="truncate pl-0.5">{name}</span>
+                        {resizable && <span aria-hidden onPointerDown={e => onBlockPointerDown(e, b, 'start')} className="absolute inset-y-0 left-0 w-2 cursor-ew-resize rounded-l-lg group-hover:bg-black/10" />}
+                        {b.kind === 'break' && <Coffee aria-hidden className="h-3.5 w-3.5 shrink-0" />}
+                        <span className="truncate pl-0.5">{text}</span>
                         <span className="shrink-0 font-semibold opacity-70">{formatRange(b.start, b.end)}</span>
-                        {sub && <span className="shrink-0 rounded bg-[#ddd6fe] px-1 text-[10px] uppercase">Sub</span>}
-                        {!sub && <span aria-hidden onPointerDown={e => onBlockPointerDown(e, b, 'end')} className="absolute inset-y-0 right-0 w-2 cursor-ew-resize rounded-r-lg group-hover:bg-black/10" />}
+                        {sub && b.kind === 'work' && <span className="shrink-0 rounded bg-[#ddd6fe] px-1 text-[10px] uppercase">Sub</span>}
+                        {resizable && <span aria-hidden onPointerDown={e => onBlockPointerDown(e, b, 'end')} className="absolute inset-y-0 right-0 w-2 cursor-ew-resize rounded-r-lg group-hover:bg-black/10" />}
                       </div>
                     )
                   })}
 
                   {dropping?.rowKey === row.key && (() => {
                     const { left, width } = boxPosition(dropping.start, dropping.end, s.day_start, s.day_end)
-                    return <div aria-hidden className="absolute rounded-lg border-2 border-dashed border-brand-500 bg-brand-50/60"
+                    return <div aria-hidden className={`absolute rounded-lg border-2 border-dashed ${droppingCover ? 'border-[#dc2626] bg-[#fdecec]/70' : 'border-brand-500 bg-brand-50/60'}`}
                       style={{ left: `${left}%`, width: `calc(${width}% - 2px)`, top: ROW_PAD + lanes * LANE_H, height: LANE_H - 6 }} />
                   })()}
 
@@ -374,18 +429,20 @@ export function Board({ data, drag = null, pending = null, timelineRef, onBlockP
   )
 }
 
-function Tray({ data, drag, onPersonPointerDown, onOpen }: {
+function Tray({ data, drag, onPersonPointerDown, onCoverPointerDown, onOpen }: {
   data: DayPayload
   drag: Drag | null
   onPersonPointerDown: (e: React.PointerEvent, p: DayPerson) => void
+  onCoverPointerDown: (e: React.PointerEvent) => void
   onOpen: (staffId: string) => void
 }) {
-  const onBoard = new Set(data.blocks.map(b => b.staff_id))
+  const onBoard = new Set(data.blocks.map(b => b.staff_id).filter(Boolean))
+  const openCovers = data.blocks.filter(b => b.kind === 'cover' && !b.staff_id).length
   const regulars = data.people.filter(p => p.kind === 'regular')
   const available = regulars.filter(p => !onBoard.has(p.staff_id) && !(p.absence && p.absence.start === null))
   const out = regulars.filter(p => p.absence)
   const subs = data.people.filter(p => p.kind === 'sub')
-  const subTimes = (p: DayPerson) => data.blocks.filter(b => b.staff_id === p.staff_id).map(b => formatRange(b.start, b.end)).join(', ')
+  const subTimes = (p: DayPerson) => data.blocks.filter(b => b.staff_id === p.staff_id && b.kind === 'work').map(b => formatRange(b.start, b.end)).join(', ')
 
   return (
     <div className="grid gap-3 md:grid-cols-3">
@@ -417,7 +474,13 @@ function Tray({ data, drag, onPersonPointerDown, onOpen }: {
       <section className="rounded-2xl border border-border bg-white p-3 shadow-sm">
         <h3 className="mb-2 text-[11px] font-black uppercase tracking-widest text-muted">Substitutes today</h3>
         <div className="flex flex-wrap gap-1.5">
-          {subs.length === 0 && <span className="text-sm text-muted">No confirmed substitute shifts.</span>}
+          <button type="button" onPointerDown={onCoverPointerDown}
+            title="Drag onto a room for each break that needs covering (an hour; drag its edge to change it)"
+            className={`inline-flex min-h-9 touch-none cursor-grab items-center gap-1.5 rounded-full border-2 border-[#dc2626] bg-[#fdecec] px-3 text-[13px] font-bold text-[#a3221b] hover:bg-[#fbd5d5] ${drag?.kind === 'cover-source' && drag.moved ? 'opacity-50' : ''}`}>
+            <Coffee className="h-4 w-4" /> Break cover · drag onto a room
+          </button>
+          {openCovers > 0 && <span className="self-center text-[12px] font-semibold text-[#a3221b]">{openCovers} {openCovers === 1 ? 'cover needs' : 'covers need'} someone</span>}
+          {subs.length === 0 && <span className="w-full text-sm text-muted">No confirmed substitute shifts.</span>}
           {subs.map(p => (
             <span key={p.staff_id} className="rounded-full border border-[#c4b5fd] bg-[#f3efff] px-3 py-1.5 text-[13px] font-semibold text-[#4c1d95]">
               {shortName(p)} · {subTimes(p)}

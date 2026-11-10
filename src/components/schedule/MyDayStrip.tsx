@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { CalendarClock, ChevronRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { currentBlockIndex, formatRange, formatTime, fromMinutes, type MyScheduleDay } from '@/lib/schedule'
+import { currentBlockIndex, formatRange, formatTime, fromMinutes, myBlockLabel, type MyScheduleDay } from '@/lib/schedule'
 
 /**
  * Regular teachers, on the Live Roster: today's rooms and hours in order, the current one highlighted, with an
@@ -53,9 +53,12 @@ export function MyDayStrip({ centerId }: { centerId: string }) {
         )}
         {day?.blocks.map((b, i) => (
           <span key={b.start}
-            className={`rounded-full border px-3 py-1 text-[13px] font-semibold ${i === current ? 'border-brand-700 bg-brand-600 text-white' : 'border-border bg-surface text-text-main'}`}
-            title={`${b.room_name ?? 'Floater'}, ${formatTime(b.start)} to ${formatTime(b.end)}${b.note ? ` · ${b.note}` : ''}`}>
-            {b.room_name ?? 'Floater'} {formatRange(b.start, b.end)}{i === current && <span className="sr-only"> (now)</span>}
+            className={`rounded-full border px-3 py-1 text-[13px] font-semibold ${i === current ? 'border-brand-700 bg-brand-600 text-white'
+              : b.kind === 'cover' ? 'border-2 border-[#dc2626] bg-[#fdecec] text-[#a3221b]'
+              : b.kind === 'break' ? 'border-dashed border-[#a1a1aa] bg-white text-[#52525b]'
+              : 'border-border bg-surface text-text-main'}`}
+            title={`${myBlockLabel(b)}, ${formatTime(b.start)} to ${formatTime(b.end)}${b.note ? ` · ${b.note}` : ''}`}>
+            {myBlockLabel(b)} {formatRange(b.start, b.end)}{i === current && <span className="sr-only"> (now)</span>}
           </span>
         ))}
         {day?.off && day.off.start && day.blocks.length > 0 && <span className="text-[12px] text-muted">Off {formatRange(day.off.start, day.off.end!)}</span>}

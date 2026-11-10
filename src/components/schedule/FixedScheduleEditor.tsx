@@ -1,10 +1,10 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { CalendarClock, Copy, Loader2, Plus, Trash2, X } from 'lucide-react'
+import { CalendarClock, Coffee, Copy, Loader2, Plus, Trash2, X } from 'lucide-react'
 import {
-  WEEKDAY_NAMES, blockHours, checkPattern, copyDay, formatDate, formatHours, formatTime, fromMinutes, scheduleWeekdays,
-  shortName, sortBlocks, timeOptions, toMinutes,
+  BREAK_MINUTES, WEEKDAY_NAMES, blockHours, checkPattern, copyDay, formatDate, formatHours, formatTime, fromMinutes, scheduleWeekdays,
+  shortName, sortBlocks, suggestBreak, timeOptions, toMinutes,
   type FixedBlock, type FixedStaff, type ScheduleRoom, type ScheduleSettings, type Weekday,
 } from '@/lib/schedule'
 
@@ -25,7 +25,7 @@ export function FixedScheduleEditor({ person, rooms, settings, viewingOn, onSave
 }) {
   const days = scheduleWeekdays(settings.weekends)
   const [blocks, setBlocks] = useState<FixedBlock[]>(() =>
-    person.blocks.map(b => ({ weekday: b.weekday, start: b.start, end: b.end, room_id: b.room_id, notes: b.notes ?? '' })))
+    person.blocks.map(b => ({ weekday: b.weekday, start: b.start, end: b.end, room_id: b.room_id, kind: b.kind ?? 'work', notes: b.notes ?? '' })))
   const [from, setFrom] = useState(viewingOn < settings.today ? settings.today : viewingOn)
   const [until, setUntil] = useState('')
   const [busy, setBusy] = useState(false)
@@ -41,15 +41,24 @@ export function FixedScheduleEditor({ person, rooms, settings, viewingOn, onSave
   const update = (i: number, patch: Partial<FixedBlock>) => setBlocks(prev => prev.map((b, j) => (j === i ? { ...b, ...patch } : b)))
   const remove = (i: number) => setBlocks(prev => prev.filter((_, j) => j !== i))
 
+  /** Their usual break that day: an hour by default (noon if it fits), inside their working hours */
+  function addBreak(day: Weekday) {
+    setBlocks(prev => {
+      const at = suggestBreak(prev.filter(b => b.weekday === day), BREAK_MINUTES, settings.slot_minutes)
+        ?? suggestBreak(prev.filter(b => b.weekday === day), 30, settings.slot_minutes)
+      return at ? sortBlocks([...prev, { weekday: day, start: at.start, end: at.end, room_id: null, kind: 'break', notes: '' }]) : prev
+    })
+  }
+
   function addBlock(day: Weekday) {
     setBlocks(prev => {
-      const mine = prev.filter(b => b.weekday === day)
+      const mine = prev.filter(b => b.weekday === day && (b.kind ?? 'work') === 'work')
       const dayEnd = toMinutes(settings.day_end)
       const start = mine.length ? Math.max(...mine.map(b => toMinutes(b.end))) : toMinutes(settings.day_start)
       if (start >= dayEnd) return prev
       // A new day starts as a full 8-hour shift; a second block fills 2 hours after the last one
       const end = Math.min(dayEnd, start + (mine.length ? 120 : 480))
-      return sortBlocks([...prev, { weekday: day, start: fromMinutes(start), end: fromMinutes(end), room_id: mine.at(-1)?.room_id ?? defaultRoom, notes: '' }])
+      return sortBlocks([...prev, { weekday: day, start: fromMinutes(start), end: fromMinutes(end), room_id: mine.at(-1)?.room_id ?? defaultRoom, kind: 'work', notes: '' }])
     })
   }
 
@@ -112,10 +121,24 @@ export function FixedScheduleEditor({ person, rooms, settings, viewingOn, onSave
                 <li key={day} className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-start sm:px-4">
                   <div className="flex w-full items-center justify-between sm:w-28 sm:flex-col sm:items-start sm:pt-2">
                     <span className="text-sm font-bold text-heading">{WEEKDAY_NAMES[day]}</span>
-                    <span className="text-xs text-muted">{list.length ? formatHours(blockHours(list.map(x => x.b))) : 'Floater'}</span>
+                    <span className="text-xs text-muted">{list.some(x => x.b.kind !== 'break') ? formatHours(blockHours(list.map(x => x.b))) : 'Floater'}</span>
                   </div>
                   <div className="flex-1 space-y-2">
-                    {list.map(({ b, i }) => (
+                    {list.map(({ b, i }) => b.kind === 'break' ? (
+                      <div key={i} className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-border bg-surface px-2 py-1.5">
+                        <span className="inline-flex w-20 items-center gap-1.5 text-[13px] font-bold text-text-main"><Coffee className="h-4 w-4 text-muted" /> Break</span>
+                        <select aria-label={`${WEEKDAY_NAMES[day]} break start`} value={b.start} onChange={e => update(i, { start: e.target.value })} className={FIELD}>
+                          {options([b.start]).filter(t => toMinutes(t) < toMinutes(settings.day_end)).map(t => <option key={t} value={t}>{formatTime(t)}</option>)}
+                        </select>
+                        <span className="text-sm text-muted">to</span>
+                        <select aria-label={`${WEEKDAY_NAMES[day]} break end`} value={b.end} onChange={e => update(i, { end: e.target.value })} className={FIELD}>
+                          {options([b.end]).filter(t => toMinutes(t) > toMinutes(settings.day_start)).map(t => <option key={t} value={t}>{formatTime(t)}</option>)}
+                        </select>
+                        <span className="text-[12px] text-muted">{Math.max(0, toMinutes(b.end) - toMinutes(b.start))} min, in the room they&apos;re in</span>
+                        <button type="button" onClick={() => remove(i)} aria-label={`Remove ${WEEKDAY_NAMES[day]} break`}
+                          className="ml-auto rounded-lg p-2 text-muted hover:bg-[#fce4e2] hover:text-[#a3221b]"><Trash2 className="h-4 w-4" /></button>
+                      </div>
+                    ) : (
                       <div key={i} className="flex flex-wrap items-center gap-2">
                         <select aria-label={`${WEEKDAY_NAMES[day]} start`} value={b.start} onChange={e => update(i, { start: e.target.value })} className={FIELD}>
                           {options([b.start]).filter(t => toMinutes(t) < toMinutes(settings.day_end)).map(t => <option key={t} value={t}>{formatTime(t)}</option>)}
@@ -134,12 +157,20 @@ export function FixedScheduleEditor({ person, rooms, settings, viewingOn, onSave
                           className="rounded-lg p-2 text-muted hover:bg-[#fce4e2] hover:text-[#a3221b]"><Trash2 className="h-4 w-4" /></button>
                       </div>
                     ))}
-                    {list.length < 6 && (
-                      <button type="button" onClick={() => addBlock(day)}
-                        className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-[13px] font-bold text-brand-700 hover:bg-brand-50">
-                        <Plus className="h-4 w-4" /> {list.length ? 'Add another block' : 'Add hours'}
-                      </button>
-                    )}
+                    <div className="flex flex-wrap gap-1">
+                      {list.filter(x => x.b.kind !== 'break').length < 6 && (
+                        <button type="button" onClick={() => addBlock(day)}
+                          className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-[13px] font-bold text-brand-700 hover:bg-brand-50">
+                          <Plus className="h-4 w-4" /> {list.some(x => x.b.kind !== 'break') ? 'Add another block' : 'Add hours'}
+                        </button>
+                      )}
+                      {list.some(x => x.b.kind !== 'break') && list.filter(x => x.b.kind === 'break').length < 3 && (
+                        <button type="button" onClick={() => addBreak(day)}
+                          className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-[13px] font-bold text-text-main hover:bg-surface">
+                          <Coffee className="h-4 w-4" /> Add break
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </li>
               )

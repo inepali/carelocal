@@ -52,7 +52,7 @@ export function PersonDialog({ person, data, onCallOut, onUndo, onReset, onClose
           <div>
             <h2 id="person-h" className="text-xl font-black text-heading">{shortName(person)}</h2>
             <p className="mt-1 text-[13px] text-muted">
-              {mine.length ? mine.map(b => `${roomName(b.room_id)} ${formatRange(b.start, b.end)}`).join(' · ') : 'Not on the board today'}
+              {mine.length ? mine.map(b => `${b.kind === 'break' ? 'Break' : b.kind === 'cover' ? `Break cover · ${roomName(b.room_id)}` : roomName(b.room_id)} ${formatRange(b.start, b.end)}`).join(' · ') : 'Not on the board today'}
             </p>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 text-muted hover:bg-surface"><X className="h-5 w-5" /></button>

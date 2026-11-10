@@ -2,7 +2,7 @@
 
 import { ChevronRight } from 'lucide-react'
 import {
-  WEEKDAY_SHORT, blockHours, boxPosition, formatDate, formatHours, formatRange, scheduleWeekdays, shortName,
+  WEEKDAY_SHORT, blockHours, boxPosition, formatDate, formatHours, formatRange, scheduleWeekdays, shortName, withBreaks,
   type FixedList, type FixedStaff,
 } from '@/lib/schedule'
 
@@ -55,18 +55,23 @@ export function WeekBars({ person, data, className = '' }: { person: FixedStaff;
   return (
     <div className={`grid gap-1.5 ${className}`} style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}>
       {days.map(d => {
-        const list = person.blocks.filter(b => b.weekday === d)
-        const title = list.length ? list.map(b => `${formatRange(b.start, b.end)} ${roomName(b.room_id)}`).join(', ') : 'Floater'
+        const list = withBreaks(person.blocks.filter(b => b.weekday === d))
+        const work = list.filter(b => b.kind === 'work')
+        const title = list.length ? list.map(b => `${formatRange(b.start, b.end)} ${b.kind === 'break' ? 'Break' : roomName(b.room_id)}`).join(', ') : 'Floater'
         return (
           <div key={d} title={`${WEEKDAY_SHORT[d]}: ${title}`}>
             <div className="mb-0.5 text-[10px] font-black uppercase tracking-widest text-muted">{WEEKDAY_SHORT[d]}</div>
             <div className="relative h-5 overflow-hidden rounded-md bg-surface">
               {list.map(b => {
                 const { left, width } = boxPosition(b.start, b.end, settings.day_start, settings.day_end)
+                if (b.kind === 'break') return null
                 return <span key={b.start} className={`absolute inset-y-0 rounded ${b.room_id ? 'bg-brand-400' : 'bg-amber-400'}`} style={{ left: `${left}%`, width: `${width}%` }} />
               })}
             </div>
-            <div className="mt-0.5 truncate text-[11px] text-muted">{list.length ? `${formatRange(list[0].start, list.at(-1)!.end)} · ${roomName(list[0].room_id)}` : '—'}</div>
+            <div className="mt-0.5 truncate text-[11px] text-muted">
+              {work.length ? `${formatRange(work[0].start, work.at(-1)!.end)} · ${roomName(work[0].room_id)}` : '—'}
+              {list.some(b => b.kind === 'break') && ` · break ${list.filter(b => b.kind === 'break').map(b => formatRange(b.start, b.end)).join(', ')}`}
+            </div>
           </div>
         )
       })}

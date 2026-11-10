@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import {
-  WEEKDAY_NAMES, boxPosition, formatRange, formatTime, hourMarks, packLanes, shortName,
+  WEEKDAY_NAMES, boxPosition, formatRange, formatTime, hourMarks, packLanes, shortName, withBreaks,
   type FixedBlock, type FixedList, type FixedStaff, type Weekday,
 } from '@/lib/schedule'
 
@@ -24,7 +24,7 @@ export function WeekdayBoard({ data, weekday, onPick }: {
   const marks = hourMarks(settings.day_start, settings.day_end)
 
   const { rows, unscheduled } = useMemo(() => {
-    const boxes: Box[] = staff.flatMap(p => p.blocks.filter(b => b.weekday === weekday).map(b => ({ person: p, block: b, start: b.start, end: b.end })))
+    const boxes: Box[] = staff.flatMap(p => withBreaks(p.blocks.filter(b => b.weekday === weekday)).map(b => ({ person: p, block: b, start: b.start, end: b.end })))
     const known = new Set(rooms.map(r => r.id))
     const byRoom = (id: string | null) => boxes.filter(b => (id === null ? b.block.room_id === null || !known.has(b.block.room_id) : b.block.room_id === id))
     return {
@@ -68,12 +68,13 @@ export function WeekdayBoard({ data, weekday, onPick }: {
                 })}
                 {row.placed.map(({ item, lane }) => {
                   const { left, width } = boxPosition(item.start, item.end, settings.day_start, settings.day_end)
-                  const label = `${shortName(item.person)}, ${formatTime(item.start)} to ${formatTime(item.end)}${item.block.notes ? ` (${item.block.notes})` : ''}`
+                  const isBreak = item.block.kind === 'break'
+                  const label = `${shortName(item.person)}${isBreak ? ' on break' : ''}, ${formatTime(item.start)} to ${formatTime(item.end)}${item.block.notes ? ` (${item.block.notes})` : ''}`
                   return (
                     <button key={`${item.person.center_staff_id}-${item.start}`} type="button" onClick={() => onPick(item.person)} title={label} aria-label={label}
-                      className={`absolute flex items-center gap-1.5 overflow-hidden rounded-lg border px-2 text-left text-[12px] font-bold shadow-sm transition hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${row.floater ? 'border-dashed border-amber-500 bg-[#fff3d6] text-[#7a4b00]' : 'border-brand-200 bg-brand-50 text-brand-800'}`}
+                      className={`absolute flex items-center gap-1.5 overflow-hidden rounded-lg border px-2 text-left text-[12px] font-bold shadow-sm transition hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${isBreak ? 'border-dashed border-border bg-[repeating-linear-gradient(45deg,#f4f4f5_0,#f4f4f5_4px,#ffffff_4px,#ffffff_8px)] text-muted' : row.floater ? 'border-dashed border-amber-500 bg-[#fff3d6] text-[#7a4b00]' : 'border-brand-200 bg-brand-50 text-brand-800'}`}
                       style={{ left: `${left}%`, width: `calc(${width}% - 2px)`, top: ROW_PAD + lane * LANE_H, height: LANE_H - 6 }}>
-                      <span className="truncate">{shortName(item.person)}</span>
+                      <span className="truncate">{isBreak ? 'Break' : shortName(item.person)}</span>
                       <span className="shrink-0 font-semibold opacity-70">{formatRange(item.start, item.end)}</span>
                     </button>
                   )

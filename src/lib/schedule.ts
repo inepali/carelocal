@@ -29,7 +29,9 @@ export interface FixedBlock {
   weekday: Weekday
   start: string        // 'HH:MI'
   end: string
-  room_id: string | null   // null = floater for those hours
+  room_id: string | null   // null = floater for those hours (always null for a break)
+  /** 'break' = their usual break, inside one of that day's working blocks; default 'work' */
+  kind?: 'work' | 'break'
   notes?: string | null
   from?: string
   to?: string | null
@@ -107,10 +109,58 @@ export function timeOptions(dayStart: string, dayEnd: string, slot: number, keep
   return [...out].sort((a, b) => toMinutes(a) - toMinutes(b))
 }
 
-/** Hours of the blocks (overlaps are not expected; each block counts in full) */
-export function blockHours(blocks: Pick<FixedBlock, 'start' | 'end'>[]): number {
-  const min = blocks.reduce((sum, b) => sum + Math.max(0, toMinutes(b.end) - toMinutes(b.start)), 0)
-  return Math.round(min / 6) / 10
+/** Working hours of the blocks: working time minus breaks (a block with no kind is working time) */
+export function blockHours(blocks: (Pick<FixedBlock, 'start' | 'end'> & { kind?: string })[]): number {
+  const min = blocks.reduce((sum, b) => {
+    const len = Math.max(0, toMinutes(b.end) - toMinutes(b.start))
+    return b.kind === 'break' ? sum - len : b.kind === 'cover' || !b.kind || b.kind === 'work' ? sum + len : sum
+  }, 0)
+  return Math.round(Math.max(0, min) / 6) / 10
+}
+
+/** Default length of a new break, in minutes */
+export const BREAK_MINUTES = 60
+export const BREAK_LENGTHS = [15, 30, 45, 60, 90, 120] as const
+
+/**
+ * Where a new break of `minutes` goes in a day's working blocks: noon when it fits, else the middle of the longest
+ * block, snapped, never the whole block. null when no block is long enough.
+ */
+export function suggestBreak(blocks: Pick<FixedBlock, 'start' | 'end' | 'kind'>[], minutes: number, slot: number): { start: string; end: string } | null {
+  const work = blocks.filter(b => (b.kind ?? 'work') === 'work')
+  const breaks = blocks.filter(b => b.kind === 'break')
+  const free = (a: number, z: number) => work.some(w => toMinutes(w.start) <= a && toMinutes(w.end) >= z && (toMinutes(w.start) < a || toMinutes(w.end) > z))
+    && !breaks.some(x => toMinutes(x.start) < z && toMinutes(x.end) > a)
+  if (free(12 * 60, 12 * 60 + minutes)) return { start: '12:00', end: fromMinutes(12 * 60 + minutes) }
+  const sorted = [...work].sort((x, y) => (toMinutes(y.end) - toMinutes(y.start)) - (toMinutes(x.end) - toMinutes(x.start)))
+  for (const w of sorted) {
+    const a = toMinutes(w.start), z = toMinutes(w.end)
+    if (z - a <= minutes) continue
+    const s = snapMinutes(a + (z - a - minutes) / 2, slot, a, z - minutes)
+    if (free(s, s + minutes)) return { start: fromMinutes(s), end: fromMinutes(s + minutes) }
+  }
+  return null
+}
+
+/**
+ * A person's day cut into what to draw: working pieces with their breaks taken out, and each break placed in the
+ * room of the working block it falls in (fixed schedules store breaks without a room).
+ */
+export function withBreaks<T extends { start: string; end: string; room_id: string | null; kind?: string }>(blocks: T[]): (T & { kind: string })[] {
+  const breaks = blocks.filter(b => b.kind === 'break')
+  const out: (T & { kind: string })[] = []
+  for (const b of blocks) {
+    if (b.kind === 'break') continue
+    if (b.kind === 'cover') { out.push({ ...b, kind: 'cover' }); continue }
+    let pieces = [{ a: toMinutes(b.start), z: toMinutes(b.end) }]
+    for (const x of breaks) {
+      const xa = toMinutes(x.start), xz = toMinutes(x.end)
+      pieces = pieces.flatMap(p => (xz <= p.a || xa >= p.z) ? [p] : [{ a: p.a, z: xa }, { a: xz, z: p.z }].filter(q => q.z > q.a))
+      if (xa >= toMinutes(b.start) && xz <= toMinutes(b.end)) out.push({ ...x, room_id: b.room_id, kind: 'break' })
+    }
+    for (const p of pieces) out.push({ ...b, start: fromMinutes(p.a), end: fromMinutes(p.z), kind: 'work' })
+  }
+  return out.sort((x, y) => toMinutes(x.start) - toMinutes(y.start))
 }
 
 /** '37.5 h', '8 h' */
@@ -121,20 +171,29 @@ export function formatHours(h: number): string {
 /** First problem with a teacher's pattern, the way the database would refuse it, or null when it can be saved */
 export function checkPattern(blocks: FixedBlock[], s: Pick<ScheduleSettings, 'day_start' | 'day_end' | 'weekends'>): string | null {
   const lo = toMinutes(s.day_start), hi = toMinutes(s.day_end)
-  const byDay = new Map<number, { a: number; b: number }[]>()
+  const byDay = new Map<string, { a: number; b: number }[]>()
   for (const b of blocks) {
+    const kind = b.kind ?? 'work'
     const day = WEEKDAY_NAMES[b.weekday] ?? 'A day'
     const a = toMinutes(b.start), z = toMinutes(b.end)
     if (!s.weekends && (b.weekday === 0 || b.weekday === 6)) return `${day}: this center's schedule is Monday to Friday.`
     if (Number.isNaN(a) || Number.isNaN(z) || z <= a) return `${day}: each block has to end after it starts.`
     if (a % 15 || z % 15) return `${day}: times go in 15-minute steps.`
     if (a < lo || z > hi) return `${day}: ${formatTime(b.start)} to ${formatTime(b.end)} is outside the center's day (${formatTime(s.day_start)} to ${formatTime(s.day_end)}).`
-    const list = byDay.get(b.weekday) ?? []
+    const list = byDay.get(`${b.weekday}:${kind}`) ?? []
     const clash = list.find(o => a < o.b && z > o.a)
-    if (clash) return `${day}: two blocks overlap (${formatTime(fromMinutes(clash.a))} to ${formatTime(fromMinutes(clash.b))} and ${formatTime(b.start)} to ${formatTime(b.end)}).`
-    if (list.length >= 6) return `${day}: 6 blocks a day at most.`
+    if (clash) return `${day}: two ${kind === 'break' ? 'breaks' : 'blocks'} overlap (${formatTime(fromMinutes(clash.a))} to ${formatTime(fromMinutes(clash.b))} and ${formatTime(b.start)} to ${formatTime(b.end)}).`
+    if (list.length >= 6) return `${day}: 6 ${kind === 'break' ? 'breaks' : 'blocks'} a day at most.`
     list.push({ a, b: z })
-    byDay.set(b.weekday, list)
+    byDay.set(`${b.weekday}:${kind}`, list)
+  }
+  // A break sits inside one of that day's working blocks, and isn't the whole block
+  for (const b of blocks) {
+    if (b.kind !== 'break') continue
+    const a = toMinutes(b.start), z = toMinutes(b.end)
+    const inside = blocks.some(w => (w.kind ?? 'work') === 'work' && w.weekday === b.weekday && toMinutes(w.start) <= a && toMinutes(w.end) >= z
+      && (toMinutes(w.start) < a || toMinutes(w.end) > z))
+    if (!inside) return `${WEEKDAY_NAMES[b.weekday]}: a break has to be inside their working hours.`
   }
   return null
 }
@@ -143,7 +202,7 @@ export function checkPattern(blocks: FixedBlock[], s: Pick<ScheduleSettings, 'da
 export function copyDay(blocks: FixedBlock[], from: Weekday, to: Weekday[]): FixedBlock[] {
   const source = blocks.filter(b => b.weekday === from)
   const kept = blocks.filter(b => b.weekday === from || !to.includes(b.weekday))
-  const copies = to.filter(d => d !== from).flatMap(d => source.map(b => ({ weekday: d, start: b.start, end: b.end, room_id: b.room_id, notes: b.notes ?? null })))
+  const copies = to.filter(d => d !== from).flatMap(d => source.map(b => ({ weekday: d, start: b.start, end: b.end, room_id: b.room_id, kind: b.kind ?? 'work', notes: b.notes ?? null })))
   return sortBlocks([...kept, ...copies])
 }
 
@@ -229,16 +288,26 @@ export interface DayPerson {
   absence: { kind: AbsenceKind; start: string | null; end: string | null; note: string | null } | null
 }
 
+export type DayBlockKind = 'work' | 'break' | 'cover'
+
 export interface DayBlock {
   id: string
-  staff_id: string
+  /** null only for a break cover nobody is on yet */
+  staff_id: string | null
   center_staff_id: string | null
   shift_claim_id: string | null
   room_id: string | null
   start: string
   end: string
   source: 'fixed' | 'added' | 'sub'
+  /** work = in a room or Floaters; break = their break (counts as away); cover = covering someone's break */
+  kind: DayBlockKind
   note: string | null
+}
+
+/** Whether a box counts toward a room's ratio: working boxes and covers with someone on them */
+export function countsForRatio(b: Pick<DayBlock, 'kind' | 'staff_id'>): boolean {
+  return b.kind === 'work' || (b.kind === 'cover' && !!b.staff_id)
 }
 
 export interface DayPayload {
@@ -319,7 +388,8 @@ export function dropBlock(at: string, slot: number, dayStart: string, dayEnd: st
 }
 
 /** Would this person's box overlap another of theirs? (the board pre-checks what the database refuses) */
-export function overlapsOwn(blocks: Pick<DayBlock, 'id' | 'staff_id' | 'start' | 'end'>[], staffId: string, start: string, end: string, ignoreId?: string): boolean {
+export function overlapsOwn(blocks: Pick<DayBlock, 'id' | 'staff_id' | 'start' | 'end'>[], staffId: string | null, start: string, end: string, ignoreId?: string): boolean {
+  if (!staffId) return false
   const a = toMinutes(start), z = toMinutes(end)
   return blocks.some(b => b.staff_id === staffId && b.id !== ignoreId && toMinutes(b.start) < z && toMinutes(b.end) > a)
 }
@@ -337,12 +407,19 @@ export interface MyScheduleDay {
   seen: boolean
   /** they are off part or all of the day (no reason shown); start/end null = all day */
   off: { start: string | null; end: string | null } | null
-  blocks: { room_id: string | null; room_name: string | null; start: string; end: string; note: string | null; sub: boolean }[]
+  blocks: { room_id: string | null; room_name: string | null; start: string; end: string; note: string | null; sub: boolean; kind?: DayBlockKind }[]
+}
+
+/** How one of my boxes reads: "Infant A", "Floater", "Break", "Break cover · Toddler" */
+export function myBlockLabel(b: { room_name: string | null; kind?: DayBlockKind }): string {
+  if (b.kind === 'break') return 'Break'
+  if (b.kind === 'cover') return `Break cover · ${b.room_name ?? 'a room'}`
+  return b.room_name ?? 'Floater'
 }
 
 /** "Infant A 7–11 · Toddler 11–3" */
 export function describeMyDay(day: Pick<MyScheduleDay, 'blocks'>): string {
-  return day.blocks.map(b => `${b.room_name ?? 'Floater'} ${formatRange(b.start, b.end)}`).join(' · ')
+  return day.blocks.map(b => `${myBlockLabel(b)} ${formatRange(b.start, b.end)}`).join(' · ')
 }
 
 /** Index of the box running at `now` ('HH:MI'), else the next one coming up, else -1 */
