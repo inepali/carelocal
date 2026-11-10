@@ -1,4 +1,4 @@
--- Rollback for 20261230000000_parent_menu.sql: the menu function goes; parent_portal_home as it was
+-- Rollback for 20261229120000_parent_menu.sql: the menu function goes; parent_portal_home as it was
 DROP FUNCTION IF EXISTS public.parent_portal_menu(text, date);
 
 CREATE OR REPLACE FUNCTION public.parent_portal_home(p_token_hash text)

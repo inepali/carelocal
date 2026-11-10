@@ -166,7 +166,7 @@ export function linkHash(token: string | undefined | null) {
   return token && /^[A-Za-z0-9_-]{40,64}$/.test(token) ? hashToken(token) : null
 }
 
-// ── Menu (20261230000000_parent_menu.sql) ────────────────────────────────────────────────────────────────────
+// ── Menu (20261229120000_parent_menu.sql) ────────────────────────────────────────────────────────────────────
 
 export interface PortalMenuFood { name: string; serving_note: string | null; allergens: string[] }
 export interface PortalMenu {

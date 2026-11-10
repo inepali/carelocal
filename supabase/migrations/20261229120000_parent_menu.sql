@@ -6,7 +6,7 @@
 --  - What a parent sees per meal: the foods, serving notes, allergens and the note. Not the CACFP details.
 --  - Closed days show as closed, with the reason.
 --  - parent_portal_home now says whether the center has Menu planning on (so the page shows the Menu tab).
--- Rollback: supabase/rollbacks/20261230000000_parent_menu.down.sql
+-- Rollback: supabase/rollbacks/20261229120000_parent_menu.down.sql
 -- ============================================================
 
 -- The first screen, as before, plus center.menu (Menu planning on)

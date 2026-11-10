@@ -1,6 +1,6 @@
--- Database tests for the parent page menu (20261230000000_parent_menu.sql), on a throwaway local Postgres:
+-- Database tests for the parent page menu (20261229120000_parent_menu.sql), on a throwaway local Postgres:
 --   createdb pmenu && psql -d pmenu -f scripts/parent/portal-stub.sql -f scripts/parent/menu-stub.sql \
---     -f supabase/migrations/20261228000000_parent_portal.sql -f supabase/migrations/20261230000000_parent_menu.sql \
+--     -f supabase/migrations/20261228000000_parent_portal.sql -f supabase/migrations/20261229120000_parent_menu.sql \
 --     -f scripts/parent/menu.test.sql
 -- It prints ALL PASSED or stops at the first failed check.
 \set ON_ERROR_STOP on
