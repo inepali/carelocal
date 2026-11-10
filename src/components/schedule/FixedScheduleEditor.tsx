@@ -20,18 +20,21 @@ export function FixedScheduleEditor({ person, rooms, settings, viewingOn, onSave
   settings: ScheduleSettings
   /** The day the page is showing; the start date defaults to it */
   viewingOn: string
-  onSave: (effectiveFrom: string, blocks: FixedBlock[]) => Promise<string | null>
+  onSave: (effectiveFrom: string, blocks: FixedBlock[], effectiveTo: string | null) => Promise<string | null>
   onClose: () => void
 }) {
   const days = scheduleWeekdays(settings.weekends)
   const [blocks, setBlocks] = useState<FixedBlock[]>(() =>
     person.blocks.map(b => ({ weekday: b.weekday, start: b.start, end: b.end, room_id: b.room_id, notes: b.notes ?? '' })))
   const [from, setFrom] = useState(viewingOn < settings.today ? settings.today : viewingOn)
+  const [until, setUntil] = useState('')
   const [busy, setBusy] = useState(false)
   const [serverError, setServerError] = useState('')
 
-  const problem = useMemo(() => checkPattern(blocks, settings), [blocks, settings])
-  const replacesLater = person.next_change && person.next_change > from ? person.next_change : null
+  const untilProblem = until && until < from ? 'The end date has to be on or after the start date.' : null
+  const problem = useMemo(() => checkPattern(blocks, settings), [blocks, settings]) ?? untilProblem
+  const replacesLater = !until && person.next_change && person.next_change > from ? person.next_change : null
+  const currentEnds = person.blocks.find(b => b.to)?.to ?? null
   const weekHours = blockHours(blocks)
   const defaultRoom = person.home_room_id && rooms.some(r => r.id === person.home_room_id) ? person.home_room_id : null
 
@@ -54,7 +57,7 @@ export function FixedScheduleEditor({ person, rooms, settings, viewingOn, onSave
     if (problem) return
     setBusy(true)
     setServerError('')
-    const err = await onSave(from, sortBlocks(blocks))
+    const err = await onSave(from, sortBlocks(blocks), until || null)
     setBusy(false)
     if (err) setServerError(err)
     else onClose()
@@ -80,6 +83,12 @@ export function FixedScheduleEditor({ person, rooms, settings, viewingOn, onSave
             <label className="text-[13px] font-semibold text-text-main">Starts on
               <input type="date" value={from} min={settings.today} onChange={e => setFrom(e.target.value || settings.today)} className={`${FIELD} mt-1 block`} />
             </label>
+            <label className="text-[13px] font-semibold text-text-main">Until <span className="font-normal text-muted">(optional)</span>
+              <span className="mt-1 flex items-center gap-1">
+                <input type="date" value={until} min={from} onChange={e => setUntil(e.target.value)} className={`${FIELD} block`} />
+                {until && <button type="button" onClick={() => setUntil('')} aria-label="No end date" className="rounded-lg p-2 text-muted hover:bg-surface"><X className="h-4 w-4" /></button>}
+              </span>
+            </label>
             {firstDay !== undefined && (
               <button type="button" onClick={() => setBlocks(prev => copyDay(prev, firstDay, days))}
                 className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border px-3 text-sm font-semibold text-text-main hover:bg-surface">
@@ -89,8 +98,11 @@ export function FixedScheduleEditor({ person, rooms, settings, viewingOn, onSave
             <span className="ml-auto text-sm font-bold text-text-main">{formatHours(weekHours)} a week</span>
           </div>
           <p className="text-[13px] text-muted">
-            Days before {formatDate(from)} keep the schedule they had.
+            {until
+              ? <>Applies {formatDate(from)} to {formatDate(until)} only. Before and after, the schedule they have stays (if there is none after, they&apos;re a floater from then).</>
+              : <>Applies from {formatDate(from)} on, with no end date. Days before keep the schedule they had.</>}
             {replacesLater && <strong className="text-[#8a5a00]"> A change already saved for {formatDate(replacesLater)} will be replaced.</strong>}
+            {currentEnds && !until && <> Their current schedule runs until {formatDate(currentEnds)}.</>}
           </p>
 
           <ul className="divide-y divide-border rounded-2xl border border-border">
@@ -148,7 +160,7 @@ export function FixedScheduleEditor({ person, rooms, settings, viewingOn, onSave
             <button type="button" onClick={onClose} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-4 text-sm font-bold text-text-main hover:bg-surface">Cancel</button>
             <button type="button" disabled={busy || !!problem} onClick={save}
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 text-sm font-bold text-white hover:bg-brand-800 disabled:opacity-50">
-              {busy && <Loader2 className="h-4 w-4 animate-spin" />} Save from {formatDate(from)}
+              {busy && <Loader2 className="h-4 w-4 animate-spin" />} Save {until ? `${formatDate(from)} – ${formatDate(until)}` : `from ${formatDate(from)}`}
             </button>
           </div>
         </div>

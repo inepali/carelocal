@@ -91,7 +91,7 @@ export default function ScheduleAdmin({ centerId }: { centerId: string }) {
 
       {editing && (
         <FixedScheduleEditor key={editing.center_staff_id} person={editing} rooms={data.rooms} settings={settings} viewingOn={data.on}
-          onSave={(from, blocks) => save(editing.center_staff_id, from, blocks)} onClose={() => setEditingId(null)} />
+          onSave={(from, blocks, until) => save(editing.center_staff_id, from, blocks, until)} onClose={() => setEditingId(null)} />
       )}
       {settingsOpen && <ScheduleSettingsDialog settings={settings} onSave={saveSettings} onClose={() => setSettingsOpen(false)} />}
     </div>

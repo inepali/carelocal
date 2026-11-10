@@ -8,8 +8,7 @@ import {
 
 /** Every regular teacher with a small bar per weekday; a row opens that teacher's schedule */
 export function FixedScheduleList({ data, onPick }: { data: FixedList; onPick: (person: FixedStaff) => void }) {
-  const { settings, rooms, staff } = data
-  const days = scheduleWeekdays(settings.weekends)
+  const { rooms, staff } = data
   const roomName = (id: string | null) => (id ? rooms.find(r => r.id === id)?.name ?? 'Floater' : 'Floater')
 
   if (staff.length === 0) {
@@ -38,29 +37,39 @@ export function FixedScheduleList({ data, onPick }: { data: FixedList; onPick: (
                   {p.next_change && <span className="rounded-full bg-[#eef2ff] px-2 py-0.5 font-semibold text-[#3730a3]">Changes {formatDate(p.next_change)}</span>}
                 </div>
               </div>
-              <div className="grid flex-1 gap-1.5" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}>
-                {days.map(d => {
-                  const list = p.blocks.filter(b => b.weekday === d)
-                  const title = list.length ? list.map(b => `${formatRange(b.start, b.end)} ${roomName(b.room_id)}`).join(', ') : 'Floater'
-                  return (
-                    <div key={d} title={`${WEEKDAY_SHORT[d]}: ${title}`}>
-                      <div className="mb-0.5 text-[10px] font-black uppercase tracking-widest text-muted">{WEEKDAY_SHORT[d]}</div>
-                      <div className="relative h-5 overflow-hidden rounded-md bg-surface">
-                        {list.map(b => {
-                          const { left, width } = boxPosition(b.start, b.end, settings.day_start, settings.day_end)
-                          return <span key={b.start} className={`absolute inset-y-0 rounded ${b.room_id ? 'bg-brand-400' : 'bg-amber-400'}`} style={{ left: `${left}%`, width: `${width}%` }} />
-                        })}
-                      </div>
-                      <div className="mt-0.5 truncate text-[11px] text-muted">{list.length ? `${formatRange(list[0].start, list.at(-1)!.end)} · ${roomName(list[0].room_id)}` : '—'}</div>
-                    </div>
-                  )
-                })}
-              </div>
+              <WeekBars person={p} data={data} className="flex-1" />
               <ChevronRight className="hidden h-5 w-5 shrink-0 text-muted lg:block" />
             </button>
           </li>
         )
       })}
     </ul>
+  )
+}
+
+/** One teacher's week as a small bar per day (hours across the center's day), with the times and room under it */
+export function WeekBars({ person, data, className = '' }: { person: FixedStaff; data: FixedList; className?: string }) {
+  const { settings, rooms } = data
+  const days = scheduleWeekdays(settings.weekends)
+  const roomName = (id: string | null) => (id ? rooms.find(r => r.id === id)?.name ?? 'Floater' : 'Floater')
+  return (
+    <div className={`grid gap-1.5 ${className}`} style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}>
+      {days.map(d => {
+        const list = person.blocks.filter(b => b.weekday === d)
+        const title = list.length ? list.map(b => `${formatRange(b.start, b.end)} ${roomName(b.room_id)}`).join(', ') : 'Floater'
+        return (
+          <div key={d} title={`${WEEKDAY_SHORT[d]}: ${title}`}>
+            <div className="mb-0.5 text-[10px] font-black uppercase tracking-widest text-muted">{WEEKDAY_SHORT[d]}</div>
+            <div className="relative h-5 overflow-hidden rounded-md bg-surface">
+              {list.map(b => {
+                const { left, width } = boxPosition(b.start, b.end, settings.day_start, settings.day_end)
+                return <span key={b.start} className={`absolute inset-y-0 rounded ${b.room_id ? 'bg-brand-400' : 'bg-amber-400'}`} style={{ left: `${left}%`, width: `${width}%` }} />
+              })}
+            </div>
+            <div className="mt-0.5 truncate text-[11px] text-muted">{list.length ? `${formatRange(list[0].start, list.at(-1)!.end)} · ${roomName(list[0].room_id)}` : '—'}</div>
+          </div>
+        )
+      })}
+    </div>
   )
 }
