@@ -8,6 +8,7 @@
 import {
   toMinutes, fromMinutes, snapMinutes, formatTime, formatRange, timeOptions, blockHours, checkPattern, copyDay,
   packLanes, boxPosition, hourMarks, shortName, weekdayOf, addDays, scheduleWeekdays, sortBlocks,
+  teachersNeeded, coverage, coverageTone, dragMinutes, minutesAt, applyDrag, dropBlock, overlapsOwn,
 } from '../../src/lib/schedule.ts'
 
 let passed = 0
@@ -62,6 +63,26 @@ console.log('names and dates')
 check('shortName', shortName({ first_name: 'Ana', last_name: 'Lee' }) === 'Ana L.' && shortName({ first_name: ' ', last_name: null }) === 'Staff')
 check('weekdayOf', weekdayOf('2026-11-10') === 2 && weekdayOf('2026-11-15') === 0)
 check('addDays across a month', addDays('2026-11-29', 3) === '2026-12-02' && addDays('2026-03-08', 1) === '2026-03-09')
+
+console.log('daily board')
+check('teachers needed', teachersNeeded({ ratio: 4, enrolled: 5 }) === 2 && teachersNeeded({ ratio: null, enrolled: 5 }) === 0 && teachersNeeded({ ratio: 4, enrolled: 0 }) === 0)
+check('coverage runs', eq(coverage([{ start: '07:00', end: '15:00' }, { start: '09:00', end: '18:00' }], '07:00', '18:00'),
+  [{ start: '07:00', end: '09:00', count: 1 }, { start: '09:00', end: '15:00', count: 2 }, { start: '15:00', end: '18:00', count: 1 }]))
+check('coverage gap and merge', eq(coverage([{ start: '07:00', end: '09:00' }, { start: '09:00', end: '10:00' }], '07:00', '11:00'),
+  [{ start: '07:00', end: '10:00', count: 1 }, { start: '10:00', end: '11:00', count: 0 }]))
+check('coverage empty room', eq(coverage([], '07:00', '18:00'), [{ start: '07:00', end: '18:00', count: 0 }]))
+check('coverage tone', coverageTone(0, 2) === 'empty' && coverageTone(1, 2) === 'short' && coverageTone(2, 2) === 'ok' && coverageTone(0, 0) === 'none')
+check('drag minutes', dragMinutes(110, 660, '07:00', '18:00') === 110)
+check('minutes at pointer, snapped', minutesAt(127, 660, '07:00', '18:00', 15) === '09:00' && minutesAt(-50, 660, '07:00', '18:00', 30) === '07:00')
+check('move keeps length, snaps', eq(applyDrag({ start: '07:00', end: '15:00' }, 'move', 68, 15, '07:00', '18:00'), { start: '08:15', end: '16:15' }))
+check('move stops at the day end', eq(applyDrag({ start: '07:00', end: '15:00' }, 'move', 600, 15, '07:00', '18:00'), { start: '10:00', end: '18:00' }))
+check('move stops at the day start', eq(applyDrag({ start: '08:00', end: '09:00' }, 'move', -200, 30, '07:00', '18:00'), { start: '07:00', end: '08:00' }))
+check('resize start, min one slot', eq(applyDrag({ start: '07:00', end: '08:00' }, 'start', 120, 15, '07:00', '18:00'), { start: '07:45', end: '08:00' }))
+check('resize end, snapped', eq(applyDrag({ start: '07:00', end: '15:00' }, 'end', 50, 30, '07:00', '18:00'), { start: '07:00', end: '16:00' }))
+check('drop from tray: 8 hours', eq(dropBlock('09:05', 15, '07:00', '18:00'), { start: '09:00', end: '17:00' }))
+check('drop late: until close, at least an hour', eq(dropBlock('17:45', 15, '07:00', '18:00'), { start: '17:00', end: '18:00' }))
+const own = [{ id: 'a', staff_id: 's', start: '07:00', end: '12:00' }, { id: 'b', staff_id: 't', start: '12:00', end: '13:00' }]
+check('overlap own', overlapsOwn(own, 's', '11:00', '13:00') && !overlapsOwn(own, 's', '12:00', '13:00') && !overlapsOwn(own, 's', '08:00', '09:00', 'a'))
 
 console.log(failures.length ? `\n${failures.length} FAILED: ${failures.join(', ')}` : `\nALL ${passed} PASSED`)
 process.exit(failures.length ? 1 : 0)

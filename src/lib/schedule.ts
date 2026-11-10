@@ -210,3 +210,114 @@ export function formatDate(date: string): string {
   const [y, m, d] = date.split('-').map(Number)
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
 }
+
+// ── Daily board (phase 2) ────────────────────────────────────────────────────────────────────────────────────
+
+export type AbsenceKind = 'called_out' | 'sick' | 'pto' | 'other'
+export const ABSENCE_LABELS: Record<AbsenceKind, string> = { called_out: 'Called out', sick: 'Sick', pto: 'PTO', other: 'Other' }
+
+export interface DayRoom extends ScheduleRoom { ratio: number | null; enrolled: number }
+
+export interface DayPerson {
+  staff_id: string
+  center_staff_id: string | null   // null for a substitute
+  kind: 'regular' | 'sub'
+  first_name: string | null
+  last_name: string | null
+  avatar_url: string | null
+  home_room_id: string | null
+  absence: { kind: AbsenceKind; start: string | null; end: string | null; note: string | null } | null
+}
+
+export interface DayBlock {
+  id: string
+  staff_id: string
+  center_staff_id: string | null
+  shift_claim_id: string | null
+  room_id: string | null
+  start: string
+  end: string
+  source: 'fixed' | 'added' | 'sub'
+  note: string | null
+}
+
+export interface DayPayload {
+  settings: ScheduleSettings
+  day: { id: string; date: string; weekday: Weekday; status: 'draft' | 'published'; version: number; published_at: string | null }
+  rooms: DayRoom[]
+  people: DayPerson[]
+  blocks: DayBlock[]
+}
+
+/** Teachers a room needs by its ratio for the children whose home room it is (0 = not ratio-checked) */
+export function teachersNeeded(room: Pick<DayRoom, 'ratio' | 'enrolled'>): number {
+  return room.ratio && room.enrolled > 0 ? Math.ceil(room.enrolled / room.ratio) : 0
+}
+
+/** How many people are scheduled in a room through the day, as runs of equal count: [{start, end, count}] */
+export function coverage(blocks: Pick<DayBlock, 'start' | 'end'>[], dayStart: string, dayEnd: string): { start: string; end: string; count: number }[] {
+  const lo = toMinutes(dayStart), hi = toMinutes(dayEnd)
+  const cuts = new Set<number>([lo, hi])
+  for (const b of blocks) {
+    const a = Math.max(lo, toMinutes(b.start)), z = Math.min(hi, toMinutes(b.end))
+    if (z > a) { cuts.add(a); cuts.add(z) }
+  }
+  const points = [...cuts].sort((x, y) => x - y)
+  const runs: { start: string; end: string; count: number }[] = []
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i], z = points[i + 1]
+    const count = blocks.filter(b => toMinutes(b.start) <= a && toMinutes(b.end) >= z).length
+    const last = runs.at(-1)
+    if (last && last.count === count && toMinutes(last.end) === a) last.end = fromMinutes(z)
+    else runs.push({ start: fromMinutes(a), end: fromMinutes(z), count })
+  }
+  return runs
+}
+
+/** Coverage tone for one run: short of the ratio, empty, or fine */
+export function coverageTone(count: number, needed: number): 'short' | 'empty' | 'ok' | 'none' {
+  if (needed > 0) return count === 0 ? 'empty' : count < needed ? 'short' : 'ok'
+  return count > 0 ? 'ok' : 'none'
+}
+
+/** Minutes moved for a horizontal drag of dx pixels across a timeline `width` pixels wide */
+export function dragMinutes(dx: number, width: number, dayStart: string, dayEnd: string): number {
+  return width > 0 ? (dx / width) * (toMinutes(dayEnd) - toMinutes(dayStart)) : 0
+}
+
+/** The time under a pointer at x pixels into a timeline, snapped */
+export function minutesAt(x: number, width: number, dayStart: string, dayEnd: string, slot: number): string {
+  const lo = toMinutes(dayStart), hi = toMinutes(dayEnd)
+  return fromMinutes(snapMinutes(lo + dragMinutes(x, width, dayStart, dayEnd), slot, lo, hi))
+}
+
+export type DragMode = 'move' | 'start' | 'end'
+
+/**
+ * Where a box lands after a drag: 'move' shifts both ends (keeping the length, stopping at the day's edges), 'start'
+ * and 'end' resize one edge (never shorter than one slot). Times snap to the slot.
+ */
+export function applyDrag(block: Pick<DayBlock, 'start' | 'end'>, mode: DragMode, deltaMin: number, slot: number, dayStart: string, dayEnd: string): { start: string; end: string } {
+  const lo = toMinutes(dayStart), hi = toMinutes(dayEnd)
+  const a = toMinutes(block.start), z = toMinutes(block.end)
+  if (mode === 'move') {
+    const len = z - a
+    const next = Math.max(lo, Math.min(hi - len, snapMinutes(a + deltaMin, slot, lo, hi)))
+    return { start: fromMinutes(next), end: fromMinutes(next + len) }
+  }
+  if (mode === 'start') return { start: fromMinutes(Math.min(z - slot, snapMinutes(a + deltaMin, slot, lo, hi))), end: block.end }
+  return { start: block.start, end: fromMinutes(Math.max(a + slot, snapMinutes(z + deltaMin, slot, lo, hi))) }
+}
+
+/** A new box for someone dropped from the tray at `at`: 8 hours (or up to the day's end), at least one hour */
+export function dropBlock(at: string, slot: number, dayStart: string, dayEnd: string): { start: string; end: string } {
+  const hi = toMinutes(dayEnd)
+  const a = Math.min(snapMinutes(toMinutes(at), slot, toMinutes(dayStart), hi), hi - 60)
+  return { start: fromMinutes(Math.max(toMinutes(dayStart), a)), end: fromMinutes(Math.min(hi, a + 8 * 60)) }
+}
+
+/** Would this person's box overlap another of theirs? (the board pre-checks what the database refuses) */
+export function overlapsOwn(blocks: Pick<DayBlock, 'id' | 'staff_id' | 'start' | 'end'>[], staffId: string, start: string, end: string, ignoreId?: string): boolean {
+  const a = toMinutes(start), z = toMinutes(end)
+  return blocks.some(b => b.staff_id === staffId && b.id !== ignoreId && toMinutes(b.start) < z && toMinutes(b.end) > a)
+}

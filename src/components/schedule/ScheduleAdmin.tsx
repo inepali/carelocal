@@ -1,24 +1,26 @@
 'use client'
 
 import { useState } from 'react'
-import { LayoutGrid, Loader2, Settings2, Users } from 'lucide-react'
+import { CalendarDays, LayoutGrid, Loader2, Settings2, Users } from 'lucide-react'
 import { WEEKDAY_SHORT, formatTime, scheduleWeekdays, weekdayOf, type Weekday } from '@/lib/schedule'
 import { useFixedSchedule } from './useFixedSchedule'
 import { FixedScheduleList } from './FixedScheduleList'
 import { FixedScheduleEditor } from './FixedScheduleEditor'
 import { WeekdayBoard } from './WeekdayBoard'
 import { ScheduleSettingsDialog } from './ScheduleSettingsDialog'
+import DailyBoard from './DailyBoard'
 
-type View = 'teachers' | 'board'
+type View = 'day' | 'teachers' | 'board'
 
 /**
- * Owner/admin: fixed weekly schedules (phase 1). Two views of the same data: by teacher (edit a week), and by room
- * for one weekday (who covers which room when). A teacher with no fixed hours on a day is a floater that day.
+ * Owner/admin: the daily board (each day, built from fixed schedules, then adjusted by drag and drop), and the fixed
+ * weekly schedules it builds from: by teacher (edit a week) and by room for one weekday. A teacher with no fixed hours
+ * on a day is available that day, not in a room.
  */
 export default function ScheduleAdmin({ centerId }: { centerId: string }) {
   const [on, setOn] = useState<string | null>(null)
   const { data, loading, error, save, saveSettings } = useFixedSchedule(centerId, on)
-  const [view, setView] = useState<View>('teachers')
+  const [view, setView] = useState<View>('day')
   const [weekday, setWeekday] = useState<Weekday | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -43,11 +45,12 @@ export default function ScheduleAdmin({ centerId }: { centerId: string }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="inline-flex w-fit rounded-2xl bg-surface p-1">
-          {TAB('teachers', 'By teacher', Users)}
-          {TAB('board', 'By room', LayoutGrid)}
+        <div className="inline-flex w-fit flex-wrap rounded-2xl bg-surface p-1">
+          {TAB('day', 'Daily board', CalendarDays)}
+          {TAB('teachers', 'Fixed: by teacher', Users)}
+          {TAB('board', 'Fixed: by room', LayoutGrid)}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className={`flex flex-wrap items-center gap-2 ${view === 'day' ? 'hidden' : ''}`}>
           <label className="flex items-center gap-2 text-[13px] font-semibold text-text-main">
             In effect on
             <input type="date" value={data.on} onChange={e => setOn(e.target.value || null)}
@@ -63,12 +66,14 @@ export default function ScheduleAdmin({ centerId }: { centerId: string }) {
         </div>
       </div>
 
-      <p className="text-sm text-muted">
+      {view === 'day' && <DailyBoard centerId={centerId} />}
+
+      {view !== 'day' && <p className="text-sm text-muted">
         {data.staff.length} regular {data.staff.length === 1 ? 'teacher' : 'teachers'}
         {floaters > 0 && <> · <strong className="text-[#7a4b00]">{floaters} with no fixed schedule</strong> (they come in as floaters)</>}
-      </p>
+      </p>}
 
-      {view === 'teachers' ? (
+      {view === 'day' ? null : view === 'teachers' ? (
         <FixedScheduleList data={data} onPick={p => setEditingId(p.center_staff_id)} />
       ) : (
         <>
