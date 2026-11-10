@@ -72,7 +72,7 @@ export const DOMAIN_CONFIGS: Record<DomainKey, DomainConfig> = {
     themeClass: 'theme-childcare',
     appName: 'CareLocal',
     title: 'CareLocal | Childcare Staffing & Compliance Software',
-    description: 'Text open daycare shifts to your own staff pool and keep staff files, training records and inspections current. 3-month free trial.',
+    description: 'Fill daycare shifts by text, keep staff files current, and run classrooms with live ratios, daily reports and NC lesson plans. 3-month free trial.',
     staffTerm: 'Staffs',
     workAreaTerm: 'Classrooms',
     logoShort: 'CL',
