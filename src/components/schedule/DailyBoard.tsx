@@ -248,7 +248,7 @@ export default function DailyBoard({ centerId }: { centerId: string }) {
         Drag a box to move it, drag its edge to change the hours, or drag someone from Available onto a room. Tap a box to add a break.
         Drag the red Break cover box onto a room for each break that needs covering, then tap it to put someone on it.
         The strip under each room is green when the ratio is covered for its enrolled children, amber when short, red when no one is there.
-        Breaks don&apos;t count; break covers with someone on them do.
+        Breaks don&apos;t count and aren&apos;t paid (adding one moves the rest of that person&apos;s day later); break covers with someone on them do.
       </p>
 
       {drag && drag.kind !== 'block' && drag.moved && (

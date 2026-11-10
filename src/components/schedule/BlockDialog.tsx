@@ -137,6 +137,11 @@ export function BlockDialog({ block, person, data, onApply, onPerson, onClose }:
                   </select>
                 </label>
               </div>
+              <p className="mt-2 text-[12px] text-muted">
+                {sub
+                  ? 'Substitute hours come from their shift, so the break doesn’t change when they leave.'
+                  : `Breaks aren’t paid, so ${shortName(person)}’s time after the break runs ${breakLen < 60 ? `${breakLen} min` : breakLen === 60 ? '1 hour' : `${breakLen / 60} hours`} later (as far as the center’s day allows).`}
+              </p>
               {block.room_id && (
                 <label className="mt-2 flex items-center gap-2 text-[13px] text-text-main">
                   <input type="checkbox" checked={withCover} onChange={e => setWithCover(e.target.checked)} className="h-4 w-4 accent-[#dc2626]" />
