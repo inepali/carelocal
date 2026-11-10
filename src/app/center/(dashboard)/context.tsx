@@ -17,6 +17,8 @@ type CenterContextType = {
   menuPlanningEnabled: boolean;
   /** Lesson Plans is switched on for this center (on unless a super admin turns it off) */
   lessonPlansEnabled: boolean;
+  /** Staff schedule is switched on for this center (a super admin turns it on) */
+  scheduleEnabled: boolean;
 }
 
 export const CenterContext = createContext<CenterContextType>({
@@ -29,6 +31,7 @@ export const CenterContext = createContext<CenterContextType>({
   rosterEnabled: false,
   menuPlanningEnabled: false,
   lessonPlansEnabled: true,
+  scheduleEnabled: false,
 })
 
 export const useCenterContext = () => useContext(CenterContext)
@@ -43,3 +46,7 @@ export const canOpenChildFiles = (ctx: Pick<CenterContextType, 'domainKey' | 'ro
 /** The Live Roster needs Child Files and its own switch; owners and administrators open it here (teachers get their own view) */
 export const canOpenRoster = (ctx: Pick<CenterContextType, 'domainKey' | 'role' | 'childFilesEnabled' | 'rosterEnabled'>) =>
   canOpenChildFiles(ctx) && ctx.rosterEnabled
+
+/** The staff schedule is for the owner and administrators to plan (teachers see it read-only in the staff portal) */
+export const canManageSchedule = (ctx: Pick<CenterContextType, 'role' | 'scheduleEnabled'>) =>
+  ctx.scheduleEnabled && (ctx.role === 'owner' || ctx.role === 'admin')

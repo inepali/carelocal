@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import {
   X, Building2, MapPin, Phone, Mail, User, ShieldCheck, CreditCard, Calendar, Users, LogIn,
-  Briefcase, Baby, LayoutGrid, NotebookPen, Utensils, ClipboardList, KeyRound,
+  Briefcase, Baby, LayoutGrid, NotebookPen, Utensils, ClipboardList, KeyRound, CalendarClock,
 } from 'lucide-react'
 import { TIER_LABELS, type SubscriptionTier } from '@/lib/types'
 
@@ -24,6 +24,8 @@ export interface CenterModuleActions {
   toggleMenu: Toggle
   toggleCacfp: Toggle
   toggleParentPortal: Toggle
+  toggleSchedule: Toggle
+  changeScheduleSlot: Toggle
 }
 
 interface ModuleRow {
@@ -63,6 +65,11 @@ export function CenterDetailsDialog({ center, onClose, actions, statusLabel, job
       key: 'jobs', label: 'Jobs', icon: Briefcase, on: !!center.jobs_enabled, toggle: actions.toggleJobs,
       description: 'Post regular full- and part-time jobs and take applications.',
       extra: { label: 'Job limit', value: jobLimitLabel, onClick: actions.changeJobLimit },
+    },
+    {
+      key: 'schedule', label: 'Staff schedule', icon: CalendarClock, on: !!center.schedule_enabled, toggle: actions.toggleSchedule,
+      description: 'Fixed weekly schedules for regular staff and the daily room board. Teachers see theirs read-only.',
+      extra: { label: 'Snap to', value: `${center.schedule_slot_minutes === 30 ? 30 : 15} min`, onClick: actions.changeScheduleSlot },
     },
     ...(childcare ? [
       {
@@ -202,6 +209,7 @@ export function moduleSummary(center: AdminCenter): string[] {
   const childcare = (center.domain_key ?? 'childcare') === 'childcare'
   return [
     center.jobs_enabled && 'Jobs',
+    center.schedule_enabled && 'Schedule',
     childcare && center.child_files_enabled && 'Children',
     childcare && center.roster_enabled && 'Roster',
     childcare && center.lesson_plans_enabled !== false && 'Lessons',

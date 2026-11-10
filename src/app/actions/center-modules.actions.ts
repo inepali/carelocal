@@ -87,3 +87,37 @@ export async function setCenterParentPortalEnabled(centerId: string, enabled: bo
   console.warn(`[parent-portal] super admin ${user.id} turned the parent portal ${enabled ? 'on' : 'off'} for center ${centerId}`)
   return { success: true }
 }
+
+/**
+ * Super admin: turn the staff schedule (fixed weekly schedules and the daily room board) on or off. Off by default.
+ * Turning it off hides the schedule from everyone at the center and deletes nothing.
+ */
+export async function setCenterScheduleEnabled(centerId: string, enabled: boolean): Promise<Result> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user?.app_metadata?.is_super_admin !== true) return { success: false, error: 'Not allowed' }
+
+  const db = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  const { data: center } = await db.from('centers').select('id').eq('id', centerId).maybeSingle()
+  if (!center) return { success: false, error: 'Center not found' }
+
+  const { error } = await db.from('centers').update({ schedule_enabled: enabled }).eq('id', centerId)
+  if (error) return { success: false, error: error.message }
+  console.warn(`[schedule] super admin ${user.id} turned the staff schedule ${enabled ? 'on' : 'off'} for center ${centerId}`)
+  return { success: true }
+}
+
+/** Super admin: how far a drag on the schedule board snaps, 15 (default) or 30 minutes. Saved times stay as they are. */
+export async function setCenterScheduleSlot(centerId: string, minutes: number): Promise<Result> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user?.app_metadata?.is_super_admin !== true) return { success: false, error: 'Not allowed' }
+  if (minutes !== 15 && minutes !== 30) return { success: false, error: 'Snap is 15 or 30 minutes.' }
+
+  const db = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  const { error, count } = await db.from('centers').update({ schedule_slot_minutes: minutes }, { count: 'exact' }).eq('id', centerId)
+  if (error) return { success: false, error: error.message }
+  if (!count) return { success: false, error: 'Center not found' }
+  console.warn(`[schedule] super admin ${user.id} set the schedule snap to ${minutes} minutes for center ${centerId}`)
+  return { success: true }
+}
