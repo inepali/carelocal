@@ -247,6 +247,8 @@ export interface DayPayload {
   rooms: DayRoom[]
   people: DayPerson[]
   blocks: DayBlock[]
+  /** Published day: people whose boxes changed since they were last notified (staff ids) */
+  unnotified?: string[]
 }
 
 /** Teachers a room needs by its ratio for the children whose home room it is (0 = not ratio-checked) */
@@ -320,4 +322,33 @@ export function dropBlock(at: string, slot: number, dayStart: string, dayEnd: st
 export function overlapsOwn(blocks: Pick<DayBlock, 'id' | 'staff_id' | 'start' | 'end'>[], staffId: string, start: string, end: string, ignoreId?: string): boolean {
   const a = toMinutes(start), z = toMinutes(end)
   return blocks.some(b => b.staff_id === staffId && b.id !== ignoreId && toMinutes(b.start) < z && toMinutes(b.end) > a)
+}
+
+// ── Teachers (phase 3) ───────────────────────────────────────────────────────────────────────────────────────
+
+/** One published day of the signed-in person (my_schedule) */
+export interface MyScheduleDay {
+  center_id: string
+  center_name: string
+  date: string
+  weekday: Weekday
+  published_at: string | null
+  /** false = their boxes changed since they last looked ("Updated") */
+  seen: boolean
+  /** they are off part or all of the day (no reason shown); start/end null = all day */
+  off: { start: string | null; end: string | null } | null
+  blocks: { room_id: string | null; room_name: string | null; start: string; end: string; note: string | null; sub: boolean }[]
+}
+
+/** "Infant A 7–11 · Toddler 11–3" */
+export function describeMyDay(day: Pick<MyScheduleDay, 'blocks'>): string {
+  return day.blocks.map(b => `${b.room_name ?? 'Floater'} ${formatRange(b.start, b.end)}`).join(' · ')
+}
+
+/** Index of the box running at `now` ('HH:MI'), else the next one coming up, else -1 */
+export function currentBlockIndex(blocks: Pick<DayBlock, 'start' | 'end'>[], now: string): number {
+  const t = toMinutes(now)
+  const running = blocks.findIndex(b => toMinutes(b.start) <= t && t < toMinutes(b.end))
+  if (running !== -1) return running
+  return blocks.findIndex(b => toMinutes(b.start) > t)
 }

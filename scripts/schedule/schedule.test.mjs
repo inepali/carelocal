@@ -9,6 +9,7 @@ import {
   toMinutes, fromMinutes, snapMinutes, formatTime, formatRange, timeOptions, blockHours, checkPattern, copyDay,
   packLanes, boxPosition, hourMarks, shortName, weekdayOf, addDays, scheduleWeekdays, sortBlocks,
   teachersNeeded, coverage, coverageTone, dragMinutes, minutesAt, applyDrag, dropBlock, overlapsOwn,
+  describeMyDay, currentBlockIndex,
 } from '../../src/lib/schedule.ts'
 
 let passed = 0
@@ -83,6 +84,12 @@ check('drop from tray: 8 hours', eq(dropBlock('09:05', 15, '07:00', '18:00'), { 
 check('drop late: until close, at least an hour', eq(dropBlock('17:45', 15, '07:00', '18:00'), { start: '17:00', end: '18:00' }))
 const own = [{ id: 'a', staff_id: 's', start: '07:00', end: '12:00' }, { id: 'b', staff_id: 't', start: '12:00', end: '13:00' }]
 check('overlap own', overlapsOwn(own, 's', '11:00', '13:00') && !overlapsOwn(own, 's', '12:00', '13:00') && !overlapsOwn(own, 's', '08:00', '09:00', 'a'))
+
+console.log('teacher view')
+const myDay = { blocks: [{ room_name: 'Infant A', start: '07:00', end: '11:00' }, { room_name: null, start: '11:00', end: '15:30' }] }
+check('describe my day', describeMyDay(myDay) === 'Infant A 7–11 · Floater 11–3:30')
+check('current block: running', currentBlockIndex(myDay.blocks, '10:59') === 0 && currentBlockIndex(myDay.blocks, '11:00') === 1)
+check('current block: next up, then none', currentBlockIndex(myDay.blocks, '06:30') === 0 && currentBlockIndex(myDay.blocks, '16:00') === -1)
 
 console.log(failures.length ? `\n${failures.length} FAILED: ${failures.join(', ')}` : `\nALL ${passed} PASSED`)
 process.exit(failures.length ? 1 : 0)

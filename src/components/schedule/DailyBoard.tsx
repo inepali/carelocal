@@ -1,13 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, Loader2, Send, UserX, X } from 'lucide-react'
+import { BellRing, ChevronLeft, ChevronRight, Loader2, Send, UserX, X } from 'lucide-react'
 import {
   ABSENCE_LABELS, addDays, applyDrag, boxPosition, coverage, coverageTone, dragMinutes, dropBlock, formatDate, formatRange,
   formatTime, hourMarks, minutesAt, overlapsOwn, packLanes, shortName, teachersNeeded,
   type DayBlock, type DayPayload, type DayPerson, type DragMode,
 } from '@/lib/schedule'
 import { useScheduleDay, type DayOp } from './useScheduleDay'
+import { notifySchedule } from '@/app/actions/schedule.actions'
 import { BlockDialog } from './BlockDialog'
 import { PersonDialog } from './PersonDialog'
 
@@ -38,8 +39,10 @@ function rowAt(x: number, y: number): { key: string; rect: DOMRect } | null {
  */
 export default function DailyBoard({ centerId }: { centerId: string }) {
   const [date, setDate] = useState<string | null>(null)
-  const { data, loading, error, busy, apply, callOut, undoCallOut, resetPerson, publish } = useScheduleDay(centerId, date)
+  const { data, loading, error, busy, reload, apply, callOut, undoCallOut, resetPerson, publish } = useScheduleDay(centerId, date)
   const [message, setMessage] = useState('')
+  const [notice, setNotice] = useState('')
+  const [notifying, setNotifying] = useState(false)
   const [drag, setDrag] = useState<Drag | null>(null)
   const dragRef = useRef<Drag | null>(null)
   dragRef.current = drag
@@ -48,7 +51,18 @@ export default function DailyBoard({ centerId }: { centerId: string }) {
   const [openStaffId, setOpenStaffId] = useState<string | null>(null)
   const timelineRef = useRef<HTMLDivElement | null>(null)
 
-  const report = useCallback((err: string | null) => { setMessage(err ?? '') }, [])
+  const report = useCallback((err: string | null) => { setMessage(err ?? ''); if (err) setNotice('') }, [])
+
+  /** Tell everyone whose day changed since their last notice (on the first publish: everyone on the day) */
+  const notify = useCallback(async (day: string, after?: string) => {
+    setNotifying(true)
+    const res = await notifySchedule(centerId, day)
+    setNotifying(false)
+    if (!res.success) { setMessage(res.error); return }
+    setMessage('')
+    setNotice(`${after ? `${after} ` : ''}${res.count === 0 ? 'Nobody needed a notice.' : `${res.count} ${res.count === 1 ? 'person was' : 'people were'} notified.`}`)
+    await reload()
+  }, [centerId, reload])
 
   /** One change from a drag; the box stays where it was dropped until the answer comes back */
   const commit = useCallback(async (ops: DayOp[], shown: { blockId?: string; preview: Preview; staffId: string }) => {
@@ -151,8 +165,21 @@ export default function DailyBoard({ centerId }: { centerId: string }) {
           {day.status === 'published'
             ? <span className="rounded-full bg-[#e2f2ea] px-3 py-1 text-[12px] font-bold text-[#17603f]">Published · changes go live</span>
             : <span className="rounded-full bg-[#fff3d6] px-3 py-1 text-[12px] font-bold text-[#7a4b00]">Draft · teachers can&apos;t see it yet</span>}
+          
+          {day.status === 'published' && (data.unnotified?.length ?? 0) > 0 && (
+            <button type="button" disabled={busy || notifying} onClick={() => notify(day.date)}
+              title="Send a notice to everyone whose boxes changed since their last notice"
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-brand-600 bg-white px-3 text-sm font-bold text-brand-700 hover:bg-brand-50 disabled:opacity-50">
+              {notifying ? <Loader2 className="h-4 w-4 animate-spin" /> : <BellRing className="h-4 w-4" />}
+              Notify {data.unnotified!.length} {data.unnotified!.length === 1 ? 'person' : 'people'} of changes
+            </button>
+          )}
           {day.status === 'draft' && (
-            <button type="button" disabled={busy} onClick={async () => report(await publish())}
+            <button type="button" disabled={busy || notifying} onClick={async () => {
+              const err = await publish()
+              report(err)
+              if (!err) await notify(day.date, 'Published.')
+            }}
               className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-brand-600 px-4 text-sm font-bold text-white hover:bg-brand-800 disabled:opacity-50">
               <Send className="h-4 w-4" /> Publish day
             </button>
@@ -160,6 +187,12 @@ export default function DailyBoard({ centerId }: { centerId: string }) {
         </div>
       </div>
 
+      {notice && !message && (
+        <div role="status" className="flex items-start justify-between gap-3 rounded-xl bg-[#e2f2ea] px-3 py-2 text-sm font-semibold text-[#17603f]">
+          <span>{notice}</span>
+          <button type="button" aria-label="Dismiss" onClick={() => setNotice('')} className="rounded p-0.5 hover:bg-white/50"><X className="h-4 w-4" /></button>
+        </div>
+      )}
       {(message || (error && data)) && (
         <div role="alert" className="flex items-start justify-between gap-3 rounded-xl bg-[#fce4e2] px-3 py-2 text-sm font-semibold text-[#a3221b]">
           <span>{message || error}</span>
@@ -210,13 +243,19 @@ export default function DailyBoard({ centerId }: { centerId: string }) {
   )
 }
 
-function Board({ data, drag, pending, timelineRef, onBlockPointerDown, onBlockKey }: {
+/**
+ * The day as a board. Editable for the admin (drag handlers passed in); read-only for teachers (`readOnly`): no
+ * dragging, no ratio strip, and the viewer's own boxes highlighted.
+ */
+export function Board({ data, drag = null, pending = null, timelineRef, onBlockPointerDown, onBlockKey, readOnly = false, highlightStaffId = null }: {
   data: DayPayload
-  drag: Drag | null
-  pending: { blockId?: string; preview: Preview; staffId: string } | null
-  timelineRef: React.MutableRefObject<HTMLDivElement | null>
-  onBlockPointerDown: (e: React.PointerEvent, block: DayBlock, mode: DragMode) => void
-  onBlockKey: (id: string) => void
+  drag?: Drag | null
+  pending?: { blockId?: string; preview: Preview; staffId: string } | null
+  timelineRef?: React.MutableRefObject<HTMLDivElement | null>
+  onBlockPointerDown?: (e: React.PointerEvent, block: DayBlock, mode: DragMode) => void
+  onBlockKey?: (id: string) => void
+  readOnly?: boolean
+  highlightStaffId?: string | null
 }) {
   const s = data.settings
   const marks = hourMarks(s.day_start, s.day_end)
@@ -262,11 +301,11 @@ function Board({ data, drag, pending, timelineRef, onBlockPointerDown, onBlockKe
               <div key={row.key} className={`flex border-b border-border last:border-b-0 ${row.floater ? 'bg-[#fffaf0]' : ''}`}>
                 <div className="w-40 shrink-0 border-r border-border px-3 py-2">
                   <div className="truncate text-sm font-bold text-heading" title={row.name}>{row.name}</div>
-                  <div className="text-[11px] leading-tight text-muted">
+                  {!readOnly && <div className="text-[11px] leading-tight text-muted">
                     {row.floater ? 'No room yet'
                       : needed ? `Needs ${needed} · ${row.room!.enrolled} ${row.room!.enrolled === 1 ? 'child' : 'children'} · 1:${row.room!.ratio}`
                       : row.room!.ratio ? `1:${row.room!.ratio} · no children yet` : 'No ratio set'}
-                  </div>
+                  </div>}
                 </div>
                 <div ref={i === 0 ? timelineRef : undefined} data-row-key={row.key}
                   className={`relative flex-1 transition-colors ${hover ? 'bg-brand-50/70' : ''}`}
@@ -279,13 +318,27 @@ function Board({ data, drag, pending, timelineRef, onBlockPointerDown, onBlockKe
                     const sub = !!b.shift_claim_id
                     const name = person ? shortName(person) : 'Staff'
                     const label = `${name}${sub ? ' (substitute)' : ''}, ${formatTime(b.start)} to ${formatTime(b.end)}${b.note ? `, ${b.note}` : ''}`
-                    const tone = sub ? 'border-[#c4b5fd] bg-[#f3efff] text-[#4c1d95]'
+                    const mine = highlightStaffId === b.staff_id
+                    const tone = mine ? 'border-brand-700 bg-brand-600 text-white'
+                      : sub ? 'border-[#c4b5fd] bg-[#f3efff] text-[#4c1d95]'
                       : row.floater ? 'border-dashed border-amber-500 bg-[#fff3d6] text-[#7a4b00]'
                       : 'border-brand-200 bg-brand-50 text-brand-800'
+                    const editable = !readOnly && !!onBlockPointerDown
+                    if (!editable) {
+                      return (
+                        <div key={b.id} title={label} aria-label={`${mine ? 'You' : name}, ${formatTime(b.start)} to ${formatTime(b.end)}`}
+                          className={`absolute flex items-center gap-1.5 overflow-hidden rounded-lg border px-2 text-[12px] font-bold shadow-sm ${tone}`}
+                          style={{ left: `${left}%`, width: `calc(${width}% - 2px)`, top: ROW_PAD + lane * LANE_H, height: LANE_H - 6 }}>
+                          <span className="truncate">{mine ? 'You' : name}</span>
+                          <span className="shrink-0 font-semibold opacity-80">{formatRange(b.start, b.end)}</span>
+                          {sub && !mine && <span className="shrink-0 rounded bg-[#ddd6fe] px-1 text-[10px] uppercase">Sub</span>}
+                        </div>
+                      )
+                    }
                     return (
                       <div key={b.id} role="button" tabIndex={0} aria-label={label} title={label}
                         onPointerDown={e => onBlockPointerDown(e, b, 'move')}
-                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onBlockKey(b.id) } }}
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onBlockKey?.(b.id) } }}
                         className={`group absolute flex touch-none items-center gap-1.5 overflow-hidden rounded-lg border px-2 text-[12px] font-bold shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${tone} ${b.ghost ? 'z-10 opacity-80 shadow-lg ring-2 ring-brand-500' : 'cursor-grab hover:shadow-md'}`}
                         style={{ left: `${left}%`, width: `calc(${width}% - 2px)`, top: ROW_PAD + lane * LANE_H, height: LANE_H - 6 }}>
                         {!sub && <span aria-hidden onPointerDown={e => onBlockPointerDown(e, b, 'start')} className="absolute inset-y-0 left-0 w-2 cursor-ew-resize rounded-l-lg group-hover:bg-black/10" />}
@@ -303,7 +356,7 @@ function Board({ data, drag, pending, timelineRef, onBlockPointerDown, onBlockKe
                       style={{ left: `${left}%`, width: `calc(${width}% - 2px)`, top: ROW_PAD + lanes * LANE_H, height: LANE_H - 6 }} />
                   })()}
 
-                  {row.room && runs.map(r => {
+                  {!readOnly && row.room && runs.map(r => {
                     const tone = coverageTone(r.count, needed)
                     if (tone === 'none') return null
                     const { left, width } = boxPosition(r.start, r.end, s.day_start, s.day_end)

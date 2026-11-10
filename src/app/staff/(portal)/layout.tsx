@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, Calendar, FileText, UserCircle, Globe, Search, CreditCard, Building, LayoutDashboard, Inbox, Briefcase, ClipboardList, LayoutGrid, NotebookPen, Utensils } from 'lucide-react'
+import { LogOut, Calendar, FileText, UserCircle, Globe, Search, CreditCard, Building, LayoutDashboard, Inbox, Briefcase, ClipboardList, LayoutGrid, NotebookPen, Utensils, CalendarClock } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { useIsRegularOnly, isSubstituteOnlyRoute, isRegularOnlyRoute } from '@/lib/hooks/useIsRegularOnly'
@@ -11,6 +11,7 @@ import { GettingStartedBanner } from '@/components/staff/GettingStarted'
 import { teacherRosterEnabled } from '@/components/roster/TeacherRoster'
 import { staffMenuEnabled } from '@/components/menu/staffMenuCenter'
 import { staffLessonPlansEnabled } from '@/lib/staff-lesson-plans'
+import { staffScheduleEnabled } from '@/components/schedule/staffSchedule'
 
 export default function StaffPortalLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -25,11 +26,13 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
   const [rosterOn, setRosterOn] = useState(false)
   const [menuOn, setMenuOn] = useState(false)
   const [lessonPlansOn, setLessonPlansOn] = useState(false)
+  const [scheduleOn, setScheduleOn] = useState(false)
   useEffect(() => {
     if (!classLoading && isRegularOnly) {
       teacherRosterEnabled().then(setRosterOn)
       staffMenuEnabled().then(setMenuOn)
       staffLessonPlansEnabled().then(setLessonPlansOn)
+      staffScheduleEnabled().then(setScheduleOn)
     }
   }, [classLoading, isRegularOnly])
 
@@ -78,6 +81,7 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
   const NAVIGATION = [
     { name: 'My Center', href: '/staff/center', icon: Building },
     { name: 'My Room', href: '/staff/roster', icon: LayoutGrid },
+    { name: 'My Schedule', href: '/staff/schedule', icon: CalendarClock },
     { name: 'Lesson Plans', href: '/staff/lesson-plans', icon: NotebookPen },
     { name: 'Menu', href: '/staff/menu', icon: Utensils },
     { name: 'My Centers', href: '/staff/centers', icon: Globe },
@@ -93,6 +97,7 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
    .filter(item => item.href !== '/staff/roster' || rosterOn)
    .filter(item => item.href !== '/staff/lesson-plans' || (isChildcare && lessonPlansOn))
    .filter(item => item.href !== '/staff/menu' || menuOn)
+   .filter(item => item.href !== '/staff/schedule' || scheduleOn)
 
   if (loading || classLoading || blockedRoute) {
      return <div className="min-h-screen bg-surface flex items-center justify-center">Loading...</div>
