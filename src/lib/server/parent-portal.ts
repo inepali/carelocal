@@ -5,6 +5,7 @@ import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { r2 } from '@/lib/r2'
 import type { ReportData } from '@/lib/daily-report'
+import type { ReceivedAnnouncement } from '@/lib/announcements'
 
 /**
  * The parent portal's server side: no Supabase account, so everything here runs with the service role and the
@@ -144,6 +145,31 @@ export interface PortalThread {
 }
 
 /** null = messages are not available to this parent (signed out, or the center turned messages off for them) */
+/**
+ * Announcements the center sent this parent (60 days), newest first; null when the center has announcements off
+ * (the page hides the tab). markSeen when the parent is looking at them; 'unread' is how it was before.
+ */
+export async function loadPortalAnnouncements(tokenHash: string, markSeen = false) {
+  const { data, error } = await parentDb().rpc('parent_portal_announcements', { p_token_hash: tokenHash, p_mark_seen: markSeen })
+  if (error) {
+    // Hide the tab rather than break the page (e.g. a database without the announcements migration)
+    console.error('[parent-portal] announcements failed:', error.message)
+    return null
+  }
+  return (data as ReceivedAnnouncement[] | null) ?? null
+}
+
+/**
+ * The invite link to the center's all-parents GroupMe group (Center Profile → GroupMe Notification), or null.
+ * Only called after the parent is signed in to this center.
+ */
+export async function loadParentGroupUrl(centerId: string): Promise<string | null> {
+  const { data, error } = await parentDb().from('centers').select('parent_groupme_url').eq('id', centerId).maybeSingle()
+  if (error) return null
+  const url = (data as { parent_groupme_url?: string | null } | null)?.parent_groupme_url
+  return url && url.startsWith('https://groupme.com/join_group/') ? url : null
+}
+
 export async function loadPortalThreads(tokenHash: string, childId: string) {
   const { data, error } = await parentDb().rpc('parent_portal_threads', { p_token_hash: tokenHash, p_child_id: childId })
   if (error) throw new Error(`parent_portal_threads: ${error.message}`)

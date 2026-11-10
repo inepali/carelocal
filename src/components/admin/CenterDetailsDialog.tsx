@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import {
   X, Building2, MapPin, Phone, Mail, User, ShieldCheck, CreditCard, Calendar, Users, LogIn,
-  Briefcase, Baby, LayoutGrid, NotebookPen, Utensils, ClipboardList, KeyRound,
+  Briefcase, Baby, LayoutGrid, NotebookPen, Utensils, ClipboardList, KeyRound, Megaphone,
 } from 'lucide-react'
 import { TIER_LABELS, type SubscriptionTier } from '@/lib/types'
 
@@ -24,6 +24,7 @@ export interface CenterModuleActions {
   toggleMenu: Toggle
   toggleCacfp: Toggle
   toggleParentPortal: Toggle
+  toggleAnnouncements: Toggle
 }
 
 interface ModuleRow {
@@ -93,6 +94,12 @@ export function CenterDetailsDialog({ center, onClose, actions, statusLabel, job
         needs: !center.roster_enabled && !center.parent_portal_enabled ? 'Turn on Live roster first' : undefined,
       },
     ] : []),
+    {
+      key: 'announcements', label: 'Announcements', icon: Megaphone, on: !!center.announcements_enabled, toggle: actions.toggleAnnouncements,
+      description: childcare
+        ? 'Email one note to all parents, chosen classes’ parents, or staff. GroupMe and text messages later.'
+        : 'Email one note to all active staff or regular staff.',
+    },
   ]
   const onCount = modules.filter(m => m.on).length
 
@@ -208,6 +215,7 @@ export function moduleSummary(center: AdminCenter): string[] {
     childcare && center.menu_planning_enabled && 'Menu',
     childcare && center.cacfp_enabled && 'CACFP',
     childcare && center.parent_portal_enabled && 'Parents',
+    center.announcements_enabled && 'Announcements',
   ].filter((x): x is string => typeof x === 'string')
 }
 

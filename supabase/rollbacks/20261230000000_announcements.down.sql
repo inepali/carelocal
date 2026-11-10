@@ -1,0 +1,25 @@
+-- Rollback for 20261230000000_announcements.sql (deletes every announcement and its delivery log)
+DROP FUNCTION IF EXISTS public.my_announcement_ack(uuid);
+DROP FUNCTION IF EXISTS public.my_announcements(boolean);
+DROP FUNCTION IF EXISTS public.parent_portal_announcement_ack(text, uuid);
+DROP FUNCTION IF EXISTS public.parent_portal_announcements(text, boolean);
+DROP FUNCTION IF EXISTS public.announcement_detail(uuid, uuid);
+DROP FUNCTION IF EXISTS public.announcements_list(uuid, integer);
+DROP FUNCTION IF EXISTS public.announcement_acknowledge(text);
+DROP FUNCTION IF EXISTS public.announcement_open(text);
+DROP FUNCTION IF EXISTS public.announcement_delivery_event(text, text);
+DROP FUNCTION IF EXISTS public.announcement_delivery_result(uuid, boolean, text, text, text);
+DROP FUNCTION IF EXISTS public.announcement_claim(uuid, integer);
+DROP FUNCTION IF EXISTS public.announcement_refresh(uuid);
+DROP FUNCTION IF EXISTS public.announcement_create(uuid, text, text, jsonb, text[], boolean, boolean, uuid);
+DROP FUNCTION IF EXISTS public.announcement_preview(uuid, jsonb);
+DROP FUNCTION IF EXISTS public.announcement_people(uuid, jsonb);
+DROP FUNCTION IF EXISTS public.announcement_audience_label(uuid, jsonb);
+DROP FUNCTION IF EXISTS public.announcement_audience_clean(uuid, jsonb);
+DROP FUNCTION IF EXISTS public.announcement_check(uuid);
+DROP TABLE IF EXISTS public.announcement_deliveries;
+DROP TABLE IF EXISTS public.announcement_recipients;
+DROP TABLE IF EXISTS public.announcements;
+DROP TRIGGER IF EXISTS trg_guard_announcements_flag ON public.centers;
+DROP FUNCTION IF EXISTS public.guard_announcements_flag();
+ALTER TABLE public.centers DROP COLUMN IF EXISTS announcements_enabled;

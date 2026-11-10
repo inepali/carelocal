@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, Calendar, FileText, UserCircle, Globe, Search, CreditCard, Building, LayoutDashboard, Inbox, Briefcase, ClipboardList, LayoutGrid, NotebookPen, Utensils } from 'lucide-react'
+import { LogOut, Calendar, FileText, UserCircle, Globe, Search, CreditCard, Building, LayoutDashboard, Inbox, Briefcase, ClipboardList, LayoutGrid, NotebookPen, Utensils, Megaphone } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { useIsRegularOnly, isSubstituteOnlyRoute, isRegularOnlyRoute } from '@/lib/hooks/useIsRegularOnly'
@@ -11,6 +11,7 @@ import { GettingStartedBanner } from '@/components/staff/GettingStarted'
 import { teacherRosterEnabled } from '@/components/roster/TeacherRoster'
 import { staffMenuEnabled } from '@/components/menu/staffMenuCenter'
 import { staffLessonPlansEnabled } from '@/lib/staff-lesson-plans'
+import { loadMyAnnouncements } from '@/lib/announcements'
 
 export default function StaffPortalLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -19,6 +20,8 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
   const [userName, setUserName] = useState('Loading...')
   const [isCenterAdmin, setIsCenterAdmin] = useState(false)
   const [openRequestCount, setOpenRequestCount] = useState(0)
+  // Announcements sent to me: the menu item shows once there are any; the badge counts new ones
+  const [announcements, setAnnouncements] = useState<{ total: number; unread: number }>({ total: 0, unread: 0 })
   const [loading, setLoading] = useState(true)
   const [isChildcare, setIsChildcare] = useState(true)
   const { isRegularOnly, loading: classLoading } = useIsRegularOnly()
@@ -67,7 +70,13 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
     }
 
     loadUser()
+    const countAnnouncements = () => loadMyAnnouncements(supabase).then(list => {
+      if (list) setAnnouncements({ total: list.length, unread: list.filter(a => a.unread).length })
+    })
+    countAnnouncements()
+    window.addEventListener('announcements-seen', countAnnouncements)
     setIsChildcare(getDomainKey(window.location.host) === 'childcare')
+    return () => window.removeEventListener('announcements-seen', countAnnouncements)
   }, [])
 
   async function handleSignOut() {
@@ -87,12 +96,14 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
     { name: 'Applications', href: '/staff/applications', icon: ClipboardList },
     { name: 'My Documents', href: '/staff/documents', icon: FileText },
     { name: 'Requests', href: '/staff/requests', icon: Inbox },
+    { name: 'Announcements', href: '/staff/announcements', icon: Megaphone },
     { name: 'My Profile', href: '/staff/profile', icon: UserCircle },
     { name: 'My Account', href: '/staff/account', icon: CreditCard },
   ].filter(item => isRegularOnly ? !isSubstituteOnlyRoute(item.href) : !isRegularOnlyRoute(item.href))
    .filter(item => item.href !== '/staff/roster' || rosterOn)
    .filter(item => item.href !== '/staff/lesson-plans' || (isChildcare && lessonPlansOn))
    .filter(item => item.href !== '/staff/menu' || menuOn)
+   .filter(item => item.href !== '/staff/announcements' || announcements.total > 0 || pathname === '/staff/announcements')
 
   if (loading || classLoading || blockedRoute) {
      return <div className="min-h-screen bg-surface flex items-center justify-center">Loading...</div>
@@ -131,6 +142,9 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
               >
                 <item.icon className={`w-5 h-5 ${isActive ? 'text-brand-300' : 'text-brand-200'}`} />
                 <span className="flex-1">{item.name}</span>
+                {item.href === '/staff/announcements' && announcements.unread > 0 && (
+                  <span className="rounded-full bg-brand-600 px-1.5 py-0.5 text-[10px] font-bold text-white">{announcements.unread}</span>
+                )}
                 {item.href === '/staff/requests' && openRequestCount > 0 && (
                   <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">{openRequestCount}</span>
                 )}
@@ -202,6 +216,9 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
                     <item.icon className="w-6 h-6" />
                     <span className="relative">
                       {item.name.replace('My ', '')}
+                      {item.href === '/staff/announcements' && announcements.unread > 0 && (
+                        <span className="absolute -right-3 -top-5 rounded-full bg-brand-600 px-1.5 text-[9px] font-bold text-white">{announcements.unread}</span>
+                      )}
                       {item.href === '/staff/requests' && openRequestCount > 0 && (
                         <span className="absolute -right-3 -top-5 rounded-full bg-red-500 px-1.5 text-[9px] font-bold text-white">{openRequestCount}</span>
                       )}

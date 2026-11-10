@@ -1,26 +1,28 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { Camera, ChevronLeft, ChevronRight, Clock, ImageOff, MessageSquarePlus, Phone } from 'lucide-react'
+import { Camera, ChevronLeft, ChevronRight, Clock, ImageOff, MessageSquarePlus, Phone, Users } from 'lucide-react'
 import { reportDate, reportSections, reportTime } from '@/lib/daily-report'
 import {
-  loadPortalDay, loadPortalHome, loadPortalPhotos, loadPortalThread, loadPortalThreads, parentTokenHash, rememberedCenterKey, signPortalPhotos, type PortalHome,
+  loadParentGroupUrl, loadPortalAnnouncements, loadPortalDay, loadPortalHome, loadPortalPhotos, loadPortalThread, loadPortalThreads, parentTokenHash, rememberedCenterKey, signPortalPhotos,
+  type PortalHome,
 } from '@/lib/server/parent-portal'
 import { NoCenterLink } from './_components/SignInForm'
 import { SignOutButton } from './_components/SignOutButton'
 import { Conversation, NewMessageForm } from './_components/Messages'
 import { MenuView } from './_components/MenuView'
+import { Notices } from './_components/Notices'
 
 /**
  * /parent: a parent's view of their child's day, opened with a 6-digit PIN on the center’s link (no account). Server rendered;
  * every read goes through the parent_portal_* database functions with this device's session.
- *   ?child=<id>  which child (siblings share one code)   ?tab=today|photos|messages   ?day=YYYY-MM-DD
+ *   ?child=<id>  which child (siblings share one code)   ?tab=today|photos|messages|notices|menu   ?day=YYYY-MM-DD
  *   ?before=<iso> (photos)   ?thread=<id> | ?compose=1 (messages)   ?tab=menu&week=YYYY-MM-DD (the center's menu, Sunday–Saturday)
  */
 
 type Search = { child?: string; tab?: string; day?: string; before?: string; thread?: string; compose?: string; week?: string }
-type Tab = 'today' | 'photos' | 'messages' | 'menu'
+type Tab = 'today' | 'photos' | 'messages' | 'notices' | 'menu'
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'today', label: 'Activities' }, { id: 'photos', label: 'Photos' }, { id: 'messages', label: 'Messages' }, { id: 'menu', label: 'Menu' },
+  { id: 'today', label: 'Activities' }, { id: 'photos', label: 'Photos' }, { id: 'messages', label: 'Messages' }, { id: 'notices', label: 'Notices' }, { id: 'menu', label: 'Menu' },
 ]
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -60,13 +62,18 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
 
   const child = home.children.find(c => sp.child && UUID.test(sp.child) && c.id === sp.child) ?? home.children[0]
   const menuOn = home.center.menu === true
-  const tabs = TABS.filter(t => t.id !== 'menu' || menuOn)
-  const tab: Tab = tabs.find(t => t.id === sp.tab)?.id ?? 'today'
-  const [faces, threads] = await Promise.all([
+  const asked: Tab = TABS.find(t => t.id === sp.tab)?.id ?? 'today'
+  // Announcements are for the whole center, so the same on every child; opening the tab marks them seen
+  const [faces, threads, notices, groupUrl] = await Promise.all([
     signPortalPhotos(home.center.id, home.children.map(c => c.photo_key)),
     loadPortalThreads(tokenHash, child.id),
+    loadPortalAnnouncements(tokenHash, asked === 'notices'),
+    loadParentGroupUrl(home.center.id),
   ])
+  const tab: Tab = (asked === 'notices' && notices === null) || (asked === 'menu' && !menuOn) ? 'today' : asked
+  const tabs = TABS.filter(t => (t.id !== 'notices' || notices !== null) && (t.id !== 'menu' || menuOn))
   const unread = (threads ?? []).reduce((n, t) => n + t.unread, 0)
+  const newNotices = tab === 'notices' ? 0 : (notices ?? []).filter(n => n.unread).length
 
   return (
     <>
@@ -98,12 +105,13 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
         <h1 className="text-2xl font-bold">{child.first_name}</h1>
       </div>
 
-      <nav aria-label="Sections" className={`mb-5 grid gap-1 rounded-2xl border border-border bg-white p-1 font-semibold ${tabs.length > 3 ? 'grid-cols-4 text-[13px]' : 'grid-cols-3 text-sm'}`}>
+      <nav aria-label="Sections" className={`mb-5 grid gap-1 rounded-2xl border border-border bg-white p-1 font-semibold ${tabs.length >= 5 ? 'grid-cols-5 text-xs' : tabs.length === 4 ? 'grid-cols-4 text-[13px]' : 'grid-cols-3 text-sm'}`}>
         {tabs.map(t => (
           <Link key={t.id} href={href({ child: child.id, tab: t.id === 'today' ? null : t.id })} aria-current={tab === t.id ? 'page' : undefined}
             className={`flex items-center justify-center gap-1.5 rounded-xl py-2 ${tab === t.id ? 'bg-brand-50 text-brand-700' : 'text-text-muted'}`}>
             {t.label}
             {t.id === 'messages' && unread > 0 && <span className="rounded-full bg-brand-600 px-1.5 text-[11px] leading-5 text-white" aria-label={`${unread} unread`}>{unread}</span>}
+            {t.id === 'notices' && newNotices > 0 && <span className="rounded-full bg-brand-600 px-1.5 text-[11px] leading-5 text-white" aria-label={`${newNotices} new`}>{newNotices}</span>}
           </Link>
         ))}
       </nav>
@@ -120,6 +128,7 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
               : <ThreadList threads={threads} childId={child.id} childName={child.first_name} tz={home.center.timezone} />
       )}
 
+      {tab === 'notices' && notices && <Notices items={notices} centerName={home.center.name} groupUrl={groupUrl} />}
       {tab === 'menu' && <MenuView tokenHash={tokenHash} childId={child.id} week={sp.week && DAY.test(sp.week) ? sp.week : null} />}
 
       <footer className="mt-10 text-center text-xs text-muted">
@@ -127,6 +136,13 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
           <a href={`tel:${home.center.phone}`} className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-border bg-white px-3 py-1.5 font-semibold text-text-main">
             <Phone className="h-3.5 w-3.5" /> Call {home.center.name}
           </a>
+        )}
+        {groupUrl && tab !== 'notices' && (
+          <p className="mb-2">
+            <a href={groupUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white px-3 py-1.5 font-semibold text-text-main">
+              <Users className="h-3.5 w-3.5" /> Join our parents’ GroupMe
+            </a>
+          </p>
         )}
         <p>Shared by your child’s teachers with CareLocal.</p>
       </footer>

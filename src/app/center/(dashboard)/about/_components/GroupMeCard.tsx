@@ -1,10 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { AlertCircle, CheckCircle2, Copy, Loader2, MessageSquare, Plus, Send, Unplug } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Copy, ExternalLink, Loader2, MessageSquare, Plus, Send, Unplug, Users } from 'lucide-react'
 import {
   cancelGroupMeConnect, connectGroupMeBotId, connectGroupMeGroup, createCenterGroupMe, disconnectGroupMe, getGroupMeStatus,
-  listGroupMeGroups, sendGroupMeTest, setGroupMeEnabled, startGroupMeConnect, type GroupMeStatus,
+  listGroupMeGroups, sendGroupMeTest, setGroupMeEnabled, setParentGroupMeLink, startGroupMeConnect, type GroupMeStatus,
 } from '@/app/actions/groupme.actions'
 import { showAlert, showConfirm } from '@/lib/dialog'
 
@@ -15,8 +15,11 @@ const BTN = 'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.
 const FIELD = 'w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm text-text-main focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30'
 
 /**
- * Center Profile → GroupMe. Connecting creates a bot named "<Center Name>_Notification" in the center's staff
- * group; every new shift is then posted there, alongside push and email alerts.
+ * Center Profile → GroupMe Notification. Two links to GroupMe:
+ *  - Staff shift alerts: connecting creates a bot named "<Center Name>_Notification" in the center's staff group;
+ *    every new shift is then posted there, alongside push and email alerts.
+ *  - All parents announcements: the invite link to the center's parents' group, shown to parents on the parent
+ *    page so they can join.
  */
 export default function GroupMeCard() {
   const [status, setStatus] = useState<GroupMeStatus | null>(null)
@@ -28,6 +31,8 @@ export default function GroupMeCard() {
   const [newGroupName, setNewGroupName] = useState('')
   const [manual, setManual] = useState(false)
   const [botId, setBotId] = useState('')
+  const [parentLink, setParentLink] = useState('')
+  const [editingParent, setEditingParent] = useState(false)
 
   const loadGroups = useCallback(async () => {
     const res = await listGroupMeGroups()
@@ -44,6 +49,7 @@ export default function GroupMeCard() {
       return
     }
     setStatus(res.status)
+    setParentLink(res.status.parentGroupUrl ?? '')
     if (res.status.choosingGroup) loadGroups()
   }, [loadGroups])
 
@@ -102,6 +108,37 @@ export default function GroupMeCard() {
     setStatus(res.status); setManual(false); setBotId('')
   }
 
+  async function saveParentLink() {
+    const res = await run(() => setParentGroupMeLink(parentLink))
+    if (!res.success) { showAlert(res.error); return }
+    setStatus(res.status)
+    setParentLink(res.status.parentGroupUrl ?? '')
+    setEditingParent(false)
+  }
+
+  async function removeParentLink() {
+    const ok = await showConfirm(
+      'Remove the parents’ GroupMe link? Parents will no longer see it on the parent page. The group itself stays in GroupMe.',
+      { title: 'Remove parents’ link', tone: 'danger', confirmLabel: 'Remove' },
+    )
+    if (!ok) return
+    const res = await run(() => setParentGroupMeLink(''))
+    if (!res.success) { showAlert(res.error); return }
+    setStatus(res.status)
+    setParentLink('')
+    setEditingParent(false)
+  }
+
+  async function copyParentLink() {
+    if (!status?.parentGroupUrl) return
+    try {
+      await navigator.clipboard.writeText(status.parentGroupUrl)
+      showAlert('Parents’ link copied. Share it with families, for example in your welcome email.')
+    } catch {
+      showAlert(`Copy this link and share it with families: ${status.parentGroupUrl}`)
+    }
+  }
+
   async function test() {
     const res = await run(sendGroupMeTest)
     showAlert(res.success ? 'Test message sent. Check your GroupMe group.' : res.error)
@@ -132,15 +169,23 @@ export default function GroupMeCard() {
     <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
       <div className="flex items-center gap-3 border-b border-border bg-surface/50 p-5">
         <MessageSquare className="h-5 w-5 text-brand-600" />
-        <h2 className="text-base font-semibold text-text-main">GroupMe shift alerts</h2>
-        {status?.connected && (
-          <span className={`ml-auto rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider ${status.enabled ? 'bg-brand-50 text-brand-600' : 'bg-slate-100 text-slate-500'}`}>
-            {status.enabled ? 'On' : 'Paused'}
-          </span>
-        )}
+        <h2 className="text-base font-semibold text-text-main">GroupMe Notification</h2>
       </div>
 
       <div className="space-y-5 p-6">
+        {!setupError && (
+          <p className="text-sm text-muted">
+            Connect your staff group to post new shifts, and add your all-parents group link so families can join it from the parent page.
+          </p>
+        )}
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-bold text-heading">Staff shift alerts</h3>
+          {status?.connected && (
+            <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider ${status.enabled ? 'bg-brand-50 text-brand-600' : 'bg-slate-100 text-slate-500'}`}>
+              {status.enabled ? 'On' : 'Paused'}
+            </span>
+          )}
+        </div>
         {setupError ? (
           <div className="flex items-start gap-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {setupError}
@@ -261,6 +306,52 @@ export default function GroupMeCard() {
               </div>
             )}
           </>
+        )}
+
+        {status && !groups && (
+          // ── All parents announcements ──
+          <div className="space-y-3 border-t border-border pt-5">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-brand-600" />
+              <h3 className="text-sm font-bold text-heading">All parents announcements</h3>
+              {status.parentGroupUrl && <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-brand-600">Added</span>}
+            </div>
+            <p className="text-sm text-muted">
+              Paste the invite link to your parents&rsquo; GroupMe group. Families see a <strong className="text-text-main">Join our parents&rsquo; GroupMe</strong> button on the parent page.
+            </p>
+            {status.parentGroupUrl && !editingParent ? (
+              <>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input readOnly value={status.parentGroupUrl} aria-label="Parents' GroupMe link" onFocus={e => e.currentTarget.select()} className={`${FIELD} font-mono`} />
+                  <button type="button" onClick={copyParentLink} className={`${BTN} shrink-0 border border-brand-600 text-brand-600 hover:bg-brand-50`}>
+                    <Copy className="h-4 w-4" /> Copy
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <a href={status.parentGroupUrl} target="_blank" rel="noreferrer" className={`${BTN} border border-border text-text-main hover:bg-surface`}>
+                    <ExternalLink className="h-4 w-4" /> Open in GroupMe
+                  </a>
+                  <button type="button" onClick={() => setEditingParent(true)} disabled={busy} className={`${BTN} border border-border text-text-main hover:bg-surface`}>Change link</button>
+                  <button type="button" onClick={removeParentLink} disabled={busy} className={`${BTN} text-red-600 hover:bg-red-50`}>Remove</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input value={parentLink} onChange={e => setParentLink(e.target.value)} maxLength={300}
+                    placeholder="https://groupme.com/join_group/…" aria-label="Parents' GroupMe link" className={`${FIELD} font-mono`} />
+                  <button type="button" onClick={saveParentLink} disabled={busy || !parentLink.trim()} className={`${BTN} shrink-0 bg-brand-600 text-white hover:bg-brand-800`}>
+                    {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Save link
+                  </button>
+                  {editingParent && (
+                    <button type="button" onClick={() => { setEditingParent(false); setParentLink(status.parentGroupUrl ?? '') }} className={`${BTN} shrink-0 border border-border text-text-main hover:bg-surface`}>Cancel</button>
+                  )}
+                </div>
+                <p className="text-xs text-subtle">In GroupMe, open the parents&rsquo; group → Settings → <strong>Share group</strong>, and copy the link.</p>
+              </>
+            )}
+            <p className="text-xs text-subtle">Anyone with the link can ask to join. In GroupMe, you can turn on member approval and remove families who leave the center.</p>
+          </div>
         )}
       </div>
     </div>

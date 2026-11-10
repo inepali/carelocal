@@ -17,6 +17,8 @@ type CenterContextType = {
   menuPlanningEnabled: boolean;
   /** Lesson Plans is switched on for this center (on unless a super admin turns it off) */
   lessonPlansEnabled: boolean;
+  /** Announcements is switched on for this center (a super admin turns it on) */
+  announcementsEnabled: boolean;
 }
 
 export const CenterContext = createContext<CenterContextType>({
@@ -29,6 +31,7 @@ export const CenterContext = createContext<CenterContextType>({
   rosterEnabled: false,
   menuPlanningEnabled: false,
   lessonPlansEnabled: true,
+  announcementsEnabled: false,
 })
 
 export const useCenterContext = () => useContext(CenterContext)
