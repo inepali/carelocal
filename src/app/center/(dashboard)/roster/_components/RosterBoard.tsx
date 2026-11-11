@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, Camera, ClipboardList, FileSpreadsheet, Mail, Moon, Sun, Utensils, Loader2, Radio, RefreshCw, Send, Users, X } from 'lucide-react'
+import { AlertTriangle, Camera, ClipboardList, FileSpreadsheet, Mail, Moon, Sun, Utensils, Loader2, Maximize2, Minimize2, Radio, RefreshCw, Send, Users, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { applyPresence, loadRoster, moveOnRoster, type PresenceRow, type RosterMove } from '@/lib/roster'
 import {
@@ -33,6 +33,7 @@ const TINTS = ['#f8dccb', '#d6e4fa', '#d9efd3', '#e7daf7', '#f8e6b0', '#cbedee',
 const PHOTO_REFRESH_MS = 50 * 60 * 1000
 const FOCUS_KEY = 'carelocal.roster.focus'
 const VIEW_KEY = 'carelocal.roster.view'
+const FULL_KEY = 'carelocal.roster.fullscreen'
 
 type Live = 'connecting' | 'live' | 'offline'
 
@@ -67,6 +68,9 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
   }
   /** Teacher view: a real teacher, or a director who switched to it */
   const teacherView = teacher || adminView === 'teacher'
+  // Something open on top (a dialog, a child's card, the selected panel): Esc closes that, not full screen
+  const overlayOpen = useRef(false)
+  const [fullScreen, setFullScreen] = useFullScreen(teacher, overlayOpen)
   const supabase = useMemo(() => createClient(), [])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -91,6 +95,9 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
   const [reportDialog, setReportDialog] = useState(false)
   const [roomNaps, setRoomNaps] = useState<RoomNap[]>([])
   const [clock, setClock] = useState(() => new Date())
+  useEffect(() => {
+    overlayOpen.current = !!(selectedId || exporting || classAction || napAction || classPhoto || reportDialog)
+  }, [selectedId, exporting, classAction, napAction, classPhoto, reportDialog])
   const dayRef = useRef('')
   const peopleRef = useRef<RosterPerson[]>([])
   useEffect(() => { peopleRef.current = people }, [people])
@@ -420,8 +427,10 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
       <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-[minmax(0,0.5fr)_minmax(0,3.1fr)_minmax(0,0.5fr)]">
         <section
           aria-label={`${focusRoom.name} room`}
-          className="col-span-2 min-w-0 rounded-3xl border border-border bg-white px-4 pb-6 pt-5 sm:px-7 lg:[grid-column:2] lg:[grid-row:1/span_var(--rows)]"
-          style={{ ['--rows' as string]: rows }}
+          className={fullScreen
+            ? 'fixed inset-0 z-[25] flex flex-col overflow-hidden bg-white px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-5'
+            : 'col-span-2 min-w-0 rounded-3xl border border-border bg-white px-4 pb-6 pt-5 sm:px-7 lg:[grid-column:2] lg:[grid-row:1/span_var(--rows)]'}
+          style={fullScreen ? undefined : { ['--rows' as string]: rows }}
         >
           {/* Header: room on the left, the numbers in the middle, status on the right (numbers wrap below on narrow screens) */}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
@@ -441,6 +450,16 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
               <Metric label="Ratio" value={fs.effectiveRatio ? `1:${fs.effectiveRatio}` : '—'} />
             </div>
             <StatusPill code={fs.code} label={fs.label} className="ml-auto !px-3.5 !py-1.5 !text-sm md:ml-0" />
+            {teacher && (
+              <div className="flex items-center gap-2">
+                {fullScreen && busy > 0 && <Loader2 className="h-4 w-4 animate-spin text-muted" aria-label="Saving" />}
+                <button type="button" onClick={() => setFullScreen(!fullScreen)} aria-pressed={fullScreen}
+                  title={fullScreen ? 'Exit full screen' : 'Full screen: show only this room'}
+                  className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border bg-white px-3.5 text-xs font-bold text-text-main hover:bg-surface">
+                  {fullScreen ? <><Minimize2 className="h-4 w-4 text-brand-600" /> Exit</> : <><Maximize2 className="h-4 w-4 text-brand-600" /> Full screen</>}
+                </button>
+              </div>
+            )}
           </div>
           {fs.effectiveRatio != null && focusRoom.ratio_children != null && fs.effectiveRatio < focusRoom.ratio_children && (
             <p className="mt-3 rounded-lg bg-[#fff0d1] px-3 py-2 text-sm text-[#7a4b00]">
@@ -467,8 +486,9 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
                 )}
               </>
             ) : undefined}
+            oval={teacher} fill={fullScreen}
             ix={ix} />
-          <Legend />
+          {!fullScreen && <Legend />}
         </section>
 
         {others.map((r, i) => {
@@ -678,6 +698,60 @@ function LiveBadge({ live, onRetry }: { live: Live; onRetry: () => void }) {
       <RefreshCw className="h-3.5 w-3.5" /> Reconnecting… tap to refresh
     </button>
   )
+}
+
+/**
+ * Teacher full screen: the room card covers the whole page (no side menu, no other rooms). Remembered on this
+ * device. On a tap it also asks the browser to go full screen, hiding the address bar where that is allowed
+ * (iPad Safari); if the browser says no, the card still covers the page. Esc or Exit leaves.
+ */
+function useFullScreen(enabled: boolean, overlayOpen: React.RefObject<boolean>): [boolean, (on: boolean) => void] {
+  const [on, setOn] = useState(false)
+  useEffect(() => {
+    if (!enabled) return
+    try { if (window.localStorage.getItem(FULL_KEY) === '1') setOn(true) } catch { /* storage blocked */ }
+  }, [enabled])
+
+  const set = useCallback((next: boolean) => {
+    setOn(next)
+    try { window.localStorage.setItem(FULL_KEY, next ? '1' : '0') } catch { /* storage blocked */ }
+    type FsDoc = Document & { webkitFullscreenElement?: Element | null; webkitExitFullscreen?: () => Promise<void> | void }
+    type FsEl = HTMLElement & { webkitRequestFullscreen?: () => Promise<void> | void }
+    const doc = document as FsDoc
+    const el = document.documentElement as FsEl
+    const current = doc.fullscreenElement ?? doc.webkitFullscreenElement
+    try {
+      if (next && !current) {
+        // The whole page, not just the card, so dialogs and the drag picture still show on top
+        const req = el.requestFullscreen?.bind(el) ?? el.webkitRequestFullscreen?.bind(el)
+        Promise.resolve(req?.()).catch(() => { /* not allowed: the card still covers the page */ })
+      } else if (!next && current) {
+        const exit = doc.exitFullscreen?.bind(doc) ?? doc.webkitExitFullscreen?.bind(doc)
+        Promise.resolve(exit?.()).catch(() => {})
+      }
+    } catch { /* not supported */ }
+  }, [])
+
+  const active = enabled && on
+  useEffect(() => {
+    if (!active) return
+    // Esc closes an open dialog or card first; only a bare Esc leaves full screen
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return
+      if (overlayOpen.current || document.querySelector('[role="dialog"], [aria-modal="true"]')) return
+      set(false)
+    }
+    window.addEventListener('keydown', onKey)
+    // The page behind must not scroll under a finger dragging a child
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prev
+    }
+  }, [active, set, overlayOpen])
+
+  return [active, set]
 }
 
 /** Keeps a room tablet's screen on while the teacher view is open (where the browser supports it) */
