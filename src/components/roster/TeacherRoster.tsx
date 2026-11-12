@@ -60,7 +60,7 @@ export function TeacherRoster() {
     return (
       <div className="max-w-2xl rounded-2xl border border-border bg-white p-10 text-center shadow-sm">
         <LayoutGrid className="mx-auto mb-3 h-10 w-10 text-brand-200" />
-        <h1 className="mb-2 text-xl font-bold text-heading">My room</h1>
+        <h1 className="mb-2 text-lg font-bold text-heading">My room</h1>
         <p className="text-muted">{state.message}</p>
       </div>
     )

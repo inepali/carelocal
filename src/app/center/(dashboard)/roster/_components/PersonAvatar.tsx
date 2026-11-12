@@ -23,7 +23,7 @@ export function describePerson(p: RosterPerson, visitingFrom?: string | null) {
 export function Face({ person, url, tint, size, border }: { person: RosterPerson; url?: string | null; tint: string; size: number | '100%'; border: string }) {
   return (
     <span
-      className="relative box-border flex shrink-0 items-center justify-center overflow-hidden rounded-full font-bold text-heading"
+      className="relative box-border flex shrink-0 items-center justify-center overflow-hidden rounded-full text-heading"
       style={{
         ...(size === '100%' ? { width: '100%', aspectRatio: '1 / 1' } : { width: size, height: size }),
         background: person.kind === 'staff' ? '#dce3ea' : tint,
@@ -91,7 +91,7 @@ export function PersonAvatar({
         <MessageDot childId={isStaff ? null : person.person_id} size={Math.max(12, Math.round(size / 5))} />
       </span>
       {label === 'below' && (
-        <span className={`mt-1 max-w-[88px] truncate whitespace-nowrap rounded-full px-1.5 text-[11px] font-semibold leading-4 ${isStaff ? 'border border-border bg-white text-heading' : 'text-text-main'}`}>
+        <span className={`mt-1 max-w-[88px] truncate whitespace-nowrap rounded-full px-1.5 text-[11px] leading-4 ${isStaff ? 'border border-border bg-white text-heading' : 'text-text-main'}`}>
           {person.first_name} {person.last_initial}.
         </span>
       )}
@@ -123,7 +123,7 @@ export function Chip({ person, url, tint, size, dashed, ix }: { person: RosterPe
         <Face person={person} url={url} tint={tint} size={faceSize} border={`2px ${dashed ? 'dashed' : 'solid'} ${isStaff ? '#16202a' : dashed ? '#7e1a14' : '#ffffff'}`} />
         <MessageDot childId={isStaff ? null : person.person_id} size={12} />
       </span>
-      <span className="max-w-[52px] truncate text-[10px] font-semibold text-heading">{person.first_name} {person.last_initial}.</span>
+      <span className="max-w-[52px] truncate text-[10px] text-heading">{person.first_name} {person.last_initial}.</span>
     </button>
   )
 }

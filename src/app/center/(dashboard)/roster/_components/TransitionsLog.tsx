@@ -84,13 +84,13 @@ export function TransitionsLog({
     <section aria-labelledby="transitions-h" className="rounded-3xl border border-border bg-white p-4 sm:p-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 id="transitions-h" className="flex items-center gap-2 text-lg font-bold text-heading"><History className="h-5 w-5 text-brand-600" /> Transitions</h2>
+          <h2 id="transitions-h" className="flex items-center gap-2 text-base font-bold text-heading"><History className="h-5 w-5 text-brand-600" /> Transitions</h2>
           <p className="mt-0.5 text-[13px] text-muted">
             {events.length} {events.length === 1 ? 'entry' : 'entries'} · {counts.in} check-ins · {counts.out} check-outs
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-2 text-[13px] font-semibold text-text-main">
+          <label className="flex items-center gap-2 text-[13px] text-text-main">
             Day
             <input
               type="date"
@@ -101,7 +101,7 @@ export function TransitionsLog({
             />
           </label>
           {picked && (
-            <button type="button" onClick={() => { setLoading(true); setPicked(null) }} className="min-h-10 rounded-xl border border-border px-3 text-[13px] font-bold text-brand-600 hover:bg-brand-50">
+            <button type="button" onClick={() => { setLoading(true); setPicked(null) }} className="min-h-10 rounded-xl border border-border px-3 text-[13px] text-brand-600 hover:bg-brand-50">
               Today
             </button>
           )}
@@ -122,13 +122,13 @@ export function TransitionsLog({
             return (
               <li key={e.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5">
                 <time dateTime={e.at} className="w-[172px] shrink-0 text-[13px] tabular-nums text-text-main">
-                  <span className="font-semibold text-heading">{shortDate(e.at)}</span> · {clock(e.at)}
+                  <span className="text-heading">{shortDate(e.at)}</span> · {clock(e.at)}
                 </time>
-                <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${a.tone}`}>
+                <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] ${a.tone}`}>
                   <Icon className="h-3 w-3" /> {a.label}
                 </span>
                 <span className="min-w-0 flex-1 basis-56 text-sm text-text-main">
-                  <span className="font-semibold text-heading">{nameOf(e)}</span>
+                  <span className="text-heading">{nameOf(e)}</span>
                   {isStaff(e) && <span className="text-muted"> (teacher)</span>}
                   <span className="text-muted"> · {detail(e)}</span>
                 </span>

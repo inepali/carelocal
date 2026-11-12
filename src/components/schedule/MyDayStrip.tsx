@@ -42,9 +42,9 @@ export function MyDayStrip({ centerId }: { centerId: string }) {
 
   return (
     <div className="mb-4 flex flex-col gap-2 rounded-2xl border border-border bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center">
-      <div className="flex items-center gap-2 text-sm font-bold text-heading">
+      <div className="flex items-center gap-2 text-sm text-heading">
         <CalendarClock className="h-5 w-5 text-brand-600" /> My day
-        {updated && <span className="rounded-full bg-[#eef2ff] px-2 py-0.5 text-[11px] font-bold text-[#3730a3]">Updated</span>}
+        {updated && <span className="rounded-full bg-[#eef2ff] px-2 py-0.5 text-[11px] text-[#3730a3]">Updated</span>}
       </div>
       <div className="flex flex-1 flex-wrap items-center gap-1.5">
         {!day && <span className="text-sm text-muted">Today&apos;s schedule isn&apos;t published yet.</span>}
@@ -53,7 +53,7 @@ export function MyDayStrip({ centerId }: { centerId: string }) {
         )}
         {day?.blocks.map((b, i) => (
           <span key={b.start}
-            className={`rounded-full border px-3 py-1 text-[13px] font-semibold ${i === current ? 'border-brand-700 bg-brand-600 text-white'
+            className={`rounded-full border px-3 py-1 text-[13px] ${i === current ? 'border-brand-700 bg-brand-600 text-white'
               : b.kind === 'cover' ? 'border-2 border-[#dc2626] bg-[#fdecec] text-[#a3221b]'
               : b.kind === 'break' ? 'border-dashed border-[#a1a1aa] bg-white text-[#52525b]'
               : 'border-border bg-surface text-text-main'}`}
@@ -63,7 +63,7 @@ export function MyDayStrip({ centerId }: { centerId: string }) {
         ))}
         {day?.off && day.off.start && day.blocks.length > 0 && <span className="text-[12px] text-muted">Off {formatRange(day.off.start, day.off.end!)}</span>}
       </div>
-      <Link href="/staff/schedule" className="inline-flex items-center gap-1 text-[13px] font-bold text-brand-700 hover:underline">
+      <Link href="/staff/schedule" className="inline-flex items-center gap-1 text-[13px] text-brand-700 hover:underline">
         Full schedule <ChevronRight className="h-4 w-4" />
       </Link>
     </div>

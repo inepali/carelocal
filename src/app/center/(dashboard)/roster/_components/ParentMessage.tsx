@@ -89,7 +89,7 @@ export function ParentMessageForm({ supabase, centerId, childId, childName, onSe
       <fieldset>
         <legend className="mb-1.5 text-xs font-bold uppercase tracking-wider text-muted">Send to</legend>
         {loadError ? (
-          <p role="alert" className="text-sm font-semibold text-[#a3221b]">{loadError}</p>
+          <p role="alert" className="text-sm text-[#a3221b]">{loadError}</p>
         ) : !contacts ? (
           <p className="flex items-center gap-2 text-sm text-muted"><Loader2 className="h-4 w-4 animate-spin" /> Loading contacts…</p>
         ) : contacts.length === 0 ? (
@@ -105,7 +105,7 @@ export function ParentMessageForm({ supabase, centerId, childId, childName, onSe
                     {on && <Check className="h-3.5 w-3.5" />}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-bold text-heading">{c.name}{c.is_primary ? ' · Primary' : ''}</span>
+                    <span className="block truncate text-sm text-heading">{c.name}{c.is_primary ? ' · Primary' : ''}</span>
                     <span className="block text-xs text-muted">{c.has_email ? (c.relationship || 'Authorized pick-up') : 'No email on file'}</span>
                   </span>
                 </button>
@@ -122,7 +122,7 @@ export function ParentMessageForm({ supabase, centerId, childId, childName, onSe
             <div className="flex flex-wrap gap-1.5">
               {MESSAGE_TEMPLATES.map(t => (
                 <button key={t.label} type="button" onClick={() => { setSubject(t.subject); setBody(t.body(childName)) }}
-                  className="min-h-9 rounded-full border border-border bg-white px-3 text-xs font-bold text-text-main hover:bg-surface">
+                  className="min-h-9 rounded-full border border-border bg-white px-3 text-xs text-text-main hover:bg-surface">
                   {t.label}
                 </button>
               ))}
@@ -141,12 +141,12 @@ export function ParentMessageForm({ supabase, centerId, childId, childName, onSe
         </>
       )}
 
-      {error && <p role="alert" className="rounded-lg bg-[#fce4e2] px-3 py-2 text-sm font-semibold text-[#a3221b]">{error}</p>}
+      {error && <p role="alert" className="rounded-lg bg-[#fce4e2] px-3 py-2 text-sm text-[#a3221b]">{error}</p>}
 
       <div className="grid grid-cols-2 gap-2">
-        <button type="button" onClick={onCancel} className="min-h-12 rounded-xl border border-border bg-white text-sm font-bold text-text-main hover:bg-surface">Cancel</button>
+        <button type="button" onClick={onCancel} className="min-h-12 rounded-xl border border-border bg-white text-sm text-text-main hover:bg-surface">Cancel</button>
         <button type="submit" disabled={!ready}
-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand-600 text-sm font-bold text-white hover:bg-brand-800 disabled:opacity-50">
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand-600 text-sm text-white hover:bg-brand-800 disabled:opacity-50">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} Send{picked.size > 1 ? ` to ${picked.size}` : ''}
         </button>
       </div>
@@ -241,9 +241,9 @@ export function ParentMessageList({ supabase, centerId, childId, refreshKey }: {
           <li key={t.id}>
             <button type="button" onClick={() => toggle(t)} aria-expanded={open === t.id}
               className="flex w-full items-start gap-3 px-3 py-2 text-left text-sm hover:bg-surface">
-              <span className="w-16 shrink-0 pt-0.5 text-xs font-semibold text-muted">{when(t.last_at)}</span>
+              <span className="w-16 shrink-0 pt-0.5 text-xs text-muted">{when(t.last_at)}</span>
               <span className="min-w-0 flex-1">
-                <span className={`flex items-center gap-1.5 truncate text-heading ${t.unread ? 'font-extrabold' : 'font-bold'}`}>
+                <span className={`flex items-center gap-1.5 truncate text-heading ${t.unread ? 'font-semibold' : 'font-normal'}`}>
                   {t.unread > 0 && <span aria-label="Unread" className="h-2 w-2 shrink-0 rounded-full bg-[#2357d9]" />}
                   <span className="truncate">{t.subject}</span>
                 </span>
@@ -252,8 +252,8 @@ export function ParentMessageList({ supabase, centerId, childId, refreshKey }: {
                 </span>
               </span>
               {fromParent
-                ? <span className="shrink-0 rounded-full bg-[#e3ebfb] px-2 text-[11px] font-bold text-[#1d4bb8]">Parent</span>
-                : worst ? <span className={`shrink-0 rounded-full px-2 text-[11px] font-bold ${STATUS_STYLE[worst]}`}>{MESSAGE_STATUS_LABEL[worst]}</span> : null}
+                ? <span className="shrink-0 rounded-full bg-[#e3ebfb] px-2 text-[11px] text-[#1d4bb8]">Parent</span>
+                : worst ? <span className={`shrink-0 rounded-full px-2 text-[11px] ${STATUS_STYLE[worst]}`}>{MESSAGE_STATUS_LABEL[worst]}</span> : null}
             </button>
             {open === t.id && (
               <div className="flex flex-col gap-2 px-3 pb-3">
@@ -261,7 +261,7 @@ export function ParentMessageList({ supabase, centerId, childId, refreshKey }: {
                   const parents = m.recipients.filter(r => r.kind === 'parent')
                   return (
                     <div key={m.id} className={`rounded-xl px-3 py-2 text-sm ${m.author_kind === 'parent' ? 'mr-6 border border-[#c9d8f6] bg-[#f2f6fe]' : 'ml-6 border border-border bg-white'}`}>
-                      <p className="mb-0.5 text-xs font-semibold text-muted">
+                      <p className="mb-0.5 text-xs text-muted">
                         {m.sender_label}{m.author_kind === 'parent' ? ' (parent)' : ''} · {when(m.created_at)}
                       </p>
                       <p className="whitespace-pre-wrap text-text-main">{m.body}</p>
@@ -278,9 +278,9 @@ export function ParentMessageList({ supabase, centerId, childId, refreshKey }: {
                   <form className="mt-1 flex flex-col gap-2" onSubmit={e => { e.preventDefault(); sendReply(t.id) }}>
                     <textarea value={reply} onChange={e => setReply(e.target.value)} maxLength={MESSAGE_MAX} rows={3}
                       className={`${FIELD} resize-none py-2`} placeholder="Reply to the parents in this conversation" aria-label="Reply" />
-                    {replyError && <p role="alert" className="rounded-lg bg-[#fce4e2] px-3 py-2 text-sm font-semibold text-[#a3221b]">{replyError}</p>}
+                    {replyError && <p role="alert" className="rounded-lg bg-[#fce4e2] px-3 py-2 text-sm text-[#a3221b]">{replyError}</p>}
                     <button type="submit" disabled={!reply.trim() || sending}
-                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-600 text-sm font-bold text-white hover:bg-brand-800 disabled:opacity-50">
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-600 text-sm text-white hover:bg-brand-800 disabled:opacity-50">
                       {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} Reply
                     </button>
                   </form>

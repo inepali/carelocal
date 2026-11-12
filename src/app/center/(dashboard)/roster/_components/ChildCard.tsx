@@ -232,9 +232,9 @@ export function ChildCard({
         <div className="flex items-start gap-3">
           <Face person={person} url={photo} tint={tint} size={64} border="3px solid #ffffff" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xl font-bold text-heading">{person.first_name} {person.last_initial}.</p>
+            <p className="truncate text-base font-bold text-heading">{person.first_name} {person.last_initial}.</p>
             <p className="text-[13px] text-muted">{ageLabel(person.age_months)}{home ? ` · ${home.name}` : ' · No home room'}</p>
-            <p className="mt-0.5 text-[13px] font-semibold text-text-main">
+            <p className="mt-0.5 text-[13px] text-text-main">
               {onSite ? `${current!.name} · ${ZONE_LABEL[person.zone]}${home && home.id !== current!.id ? ' (visiting)' : ''}` : 'Not checked in'}
             </p>
           </div>
@@ -244,7 +244,7 @@ export function ChildCard({
         </div>
 
         {person.care_alert && (
-          <p role="note" className="mt-3 flex items-start gap-2 rounded-xl bg-[#fce4e2] px-3 py-2 text-sm font-bold text-[#a3221b]">
+          <p role="note" className="mt-3 flex items-start gap-2 rounded-xl bg-[#fce4e2] px-3 py-2 text-sm font-semibold text-[#a3221b]">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {person.care_alert}
           </p>
         )}
@@ -252,18 +252,18 @@ export function ChildCard({
         <div className="mt-3">
           {onSite ? (
             <button type="button" disabled={busy} onClick={() => onMove(person, { work_area_id: null, zone: 'home' })}
-              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-[#b42318] bg-white text-base font-bold text-[#a3221b] hover:bg-[#fce4e2] disabled:opacity-50">
+              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-[#b42318] bg-white text-base text-[#a3221b] hover:bg-[#fce4e2] disabled:opacity-50">
               <LogOut className="h-5 w-5" /> Check out
             </button>
           ) : (
             <button type="button" disabled={busy || !base} onClick={() => base && onMove(person, { work_area_id: base.id, zone: 'classroom' })}
-              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 text-base font-bold text-white hover:bg-brand-800 disabled:opacity-50">
+              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 text-base text-white hover:bg-brand-800 disabled:opacity-50">
               <LogIn className="h-5 w-5" /> Check in{base ? ` to ${base.name}` : ''}
             </button>
           )}
           {!messaging && (
             <button type="button" onClick={() => { setAdding(null); setVoiding(null); setMessaging(true) }}
-              className="mt-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-white text-sm font-bold text-heading hover:bg-surface">
+              className="mt-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-white text-sm text-heading hover:bg-surface">
               <Mail className="h-4 w-4 text-brand-600" /> Message to parent
             </button>
           )}
@@ -295,7 +295,7 @@ export function ChildCard({
 
         <section aria-labelledby="daily-h">
           <h3 id="daily-h" className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">Add to today</h3>
-          {saved && <p role="status" className="mb-2 rounded-lg bg-[#e2f2ea] px-3 py-2 text-sm font-semibold text-[#17603f]">{saved}</p>}
+          {saved && <p role="status" className="mb-2 rounded-lg bg-[#e2f2ea] px-3 py-2 text-sm text-[#17603f]">{saved}</p>}
           {!onSite && <p className="mb-2 text-sm text-muted">Check {person.first_name} in to add to today.</p>}
           {nap && onSite && !adding && (
             <NapBanner nap={nap} minutes={status?.check_minutes ?? 15} required={required} now={now} busy={working}
@@ -320,7 +320,7 @@ export function ChildCard({
             <div className="grid grid-cols-3 gap-2">
               {QUICK.map(({ kind, label, icon: Icon }) => (
                 <button key={kind} type="button" disabled={!onSite} onClick={() => open(kind)}
-                  className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-white text-sm font-bold text-heading shadow-sm hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:hover:bg-white">
+                  className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-white text-sm text-heading shadow-sm hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:hover:bg-white">
                   <Icon className="h-5 w-5 text-brand-600" /> {label}
                 </button>
               ))}
@@ -338,8 +338,8 @@ export function ChildCard({
                 if (!r.entry) {
                   return (
                     <li key={r.id} className="flex items-center gap-3 px-3 py-2 text-sm">
-                      <span className="w-16 shrink-0 text-xs font-semibold text-muted">{clock(r.at)}</span>
-                      <span className="font-semibold text-text-main">{r.action === 'check_in' ? 'Checked in' : 'Checked out'}</span>
+                      <span className="w-16 shrink-0 text-xs text-muted">{clock(r.at)}</span>
+                      <span className="text-text-main">{r.action === 'check_in' ? 'Checked in' : 'Checked out'}</span>
                     </li>
                   )
                 }
@@ -349,12 +349,12 @@ export function ChildCard({
                 return (
                   <li key={r.id} className="px-3 py-2 text-sm">
                     <div className="flex items-start gap-3">
-                      <span className="w-16 shrink-0 pt-0.5 text-xs font-semibold text-muted">{clock(e.at)}</span>
+                      <span className="w-16 shrink-0 pt-0.5 text-xs text-muted">{clock(e.at)}</span>
                       <div className={`min-w-0 flex-1 ${gone ? 'text-subtle line-through' : ''}`}>
-                        <p><span className="font-bold text-heading">{d.title}</span>{d.detail && <span className="text-text-main"> · {d.detail}</span>}</p>
+                        <p><span className="text-heading">{d.title}</span>{d.detail && <span className="text-text-main"> · {d.detail}</span>}</p>
                         {e.details.note && <p className="text-xs text-muted">{e.details.note}</p>}
                         {e.kind === 'photo' && e.approved === false && !gone && (
-                          <p className="mt-0.5 inline-block rounded-full bg-[#fff0d1] px-2 text-[11px] font-bold text-[#7a4b00]">Waiting for approval</p>
+                          <p className="mt-0.5 inline-block rounded-full bg-[#fff0d1] px-2 text-[11px] text-[#7a4b00]">Waiting for approval</p>
                         )}
                         {e.kind === 'photo' && e.details.photo_key && photoUrls[e.details.photo_key] && !gone && (
                           <button type="button" onClick={() => setViewing({ url: photoUrls[e.details.photo_key!], caption: e.details.caption })}
@@ -368,7 +368,7 @@ export function ChildCard({
                       </div>
                       {e.can_void && voiding !== e.id && (
                         <button type="button" onClick={() => { setAdding(null); setFormError(null); setVoiding(e.id) }}
-                          className="min-h-9 shrink-0 rounded-lg px-2 text-xs font-bold text-[#a3221b] hover:bg-[#fce4e2]">Remove</button>
+                          className="min-h-9 shrink-0 rounded-lg px-2 text-xs text-[#a3221b] hover:bg-[#fce4e2]">Remove</button>
                       )}
                     </div>
                     {gone && <p className="ml-[76px] text-[11px] text-subtle">Removed: {e.void_reason}</p>}
@@ -392,13 +392,13 @@ export function ChildCard({
           <div role="radiogroup" aria-label="Diapers or bathroom" className="grid grid-cols-2 gap-1 rounded-xl bg-surface p-1">
             {(['diaper', 'bathroom'] as const).map(m => (
               <button key={m} type="button" role="radio" aria-checked={mode === m} disabled={saving} onClick={() => switchMode(m)}
-                className={`min-h-11 rounded-lg text-sm font-bold ${mode === m ? 'bg-white text-heading shadow-sm' : 'text-muted'}`}>
+                className={`min-h-11 rounded-lg text-sm ${mode === m ? 'bg-white text-heading shadow-sm' : 'text-muted'}`}>
                 {m === 'diaper' ? 'Diapers' : 'Toilet trained'}
               </button>
             ))}
           </div>
           {saving && <p className="mt-1 flex items-center gap-1 text-xs text-muted"><Loader2 className="h-3 w-3 animate-spin" /> Saving…</p>}
-          {error && <p className="mt-1 text-xs font-semibold text-[#a3221b]">{error}</p>}
+          {error && <p className="mt-1 text-xs text-[#a3221b]">{error}</p>}
         </section>
 
       </div>
@@ -409,5 +409,5 @@ export function ChildCard({
 }
 
 function Chip({ children }: { children: React.ReactNode }) {
-  return <span className="rounded-full bg-surface px-3 py-1 text-[13px] font-semibold text-text-main">{children}</span>
+  return <span className="rounded-full bg-surface px-3 py-1 text-[13px] text-text-main">{children}</span>
 }
