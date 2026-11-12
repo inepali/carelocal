@@ -27,6 +27,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...centerCities.map(c => ({ url: `${baseUrl}/centers/in/${c.slug}`, changeFrequency: 'weekly' as const, priority: 0.7 })),
     ...centers.map(c => ({ url: `${baseUrl}/centers/${c.handle}`, lastModified: new Date(c.updatedAt), changeFrequency: 'weekly' as const, priority: 0.7 })),
     ...jobs.map(j => ({ url: `${baseUrl}/jobs/${j.center.slug}/${j.slug}`, lastModified: new Date(j.updated_at), changeFrequency: 'weekly' as const, priority: 0.7 })),
+    // Guides (child care site only)
+    ...(domain === 'childcare' ? [{ url: `${baseUrl}/guides/nc-child-care-staff-file-checklist`, changeFrequency: 'monthly' as const, priority: 0.7 }] : []),
     { url: `${baseUrl}/register`, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${baseUrl}/contact`, changeFrequency: 'monthly', priority: 0.7 },
     { url: `${baseUrl}/privacy`, changeFrequency: 'yearly', priority: 0.3 },
