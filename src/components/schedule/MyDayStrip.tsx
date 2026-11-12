@@ -11,7 +11,11 @@ import { currentBlockIndex, formatRange, formatTime, fromMinutes, myBlockLabel, 
  * "Updated" badge when the day changed since they last looked. Hidden when the center has no staff schedule.
  * Showing it counts as having looked.
  */
-export function MyDayStrip({ centerId }: { centerId: string }) {
+export function MyDayStrip({ centerId, inline = false }: {
+  centerId: string
+  /** Drop the card chrome so the strip can sit inside another header (the Live Roster's) */
+  inline?: boolean
+}) {
   const supabase = useMemo(() => createClient(), [])
   const [state, setState] = useState<{ today: string; day: MyScheduleDay | null } | null>(null)
   const [updated, setUpdated] = useState(false)
@@ -41,7 +45,9 @@ export function MyDayStrip({ centerId }: { centerId: string }) {
   const current = day ? currentBlockIndex(day.blocks, now) : -1
 
   return (
-    <div className="mb-4 flex flex-col gap-2 rounded-2xl border border-border bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center">
+    <div className={inline
+      ? 'flex flex-col gap-2 sm:flex-row sm:items-center sm:border-l sm:border-border sm:pl-5'
+      : 'mb-4 flex flex-col gap-2 rounded-2xl border border-border bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center'}>
       <div className="flex items-center gap-2 text-sm text-heading">
         <CalendarClock className="h-5 w-5 text-brand-600" /> My day
         {updated && <span className="rounded-full bg-[#eef2ff] px-2 py-0.5 text-[11px] text-[#3730a3]">Updated</span>}

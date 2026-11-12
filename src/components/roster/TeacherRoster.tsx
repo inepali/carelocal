@@ -66,10 +66,8 @@ export function TeacherRoster() {
     )
   }
   return (
-    <>
-      <MyDayStrip centerId={state.centerId} />
-      <RosterBoard centerId={state.centerId} mode="teacher" homeRoomId={state.homeRoomId} viewerName={state.name} />
-    </>
+    <RosterBoard centerId={state.centerId} mode="teacher" homeRoomId={state.homeRoomId} viewerName={state.name}
+      headerExtra={<MyDayStrip centerId={state.centerId} inline />} />
   )
 }
 

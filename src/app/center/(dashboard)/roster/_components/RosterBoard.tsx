@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { AlertTriangle, Camera, ClipboardList, FileSpreadsheet, Mail, Moon, Sun, Utensils, Loader2, Maximize2, Minimize2, Radio, RefreshCw, Send, Users, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -47,13 +47,15 @@ type Live = 'connecting' | 'live' | 'offline'
  * Moves (drag and drop, the selected panel, "Send floater") go through roster_apply(). The board moves the
  * person at once and puts them back, with a message, if the database refuses.
  */
-export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewerName }: {
+export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewerName, headerExtra }: {
   centerId: string
   /** 'teacher': the regular teacher's view (staff portal, phone app, room tablet) */
   mode?: 'admin' | 'teacher'
   /** Teacher view: the room it opens on and stays with; null for a floater, who picks a room */
   homeRoomId?: string | null
   viewerName?: string
+  /** Shown inside the page header, between the title and the status badges (e.g. the teacher's My Day strip) */
+  headerExtra?: ReactNode
 }) {
   const teacher = mode === 'teacher'
   useWakeLock(teacher)
@@ -349,11 +351,13 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
   return (
     <UnreadMessagesContext.Provider value={unreadValue}>
     <div className="flex w-full flex-col gap-5">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
+      <header className={headerExtra
+        ? 'flex flex-wrap items-center gap-x-5 gap-y-3 rounded-2xl border border-border bg-white px-4 py-3 shadow-sm'
+        : 'flex flex-wrap items-end justify-between gap-4'}>
+        <div className="shrink-0">
           <p className="text-xs font-bold uppercase tracking-wider text-muted">{formatDay(day)}</p>
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-xl font-bold tracking-tight text-heading">{teacher ? 'My room' : 'Live roster'}</h1>
+            <h1 className="!text-xl font-bold tracking-tight text-heading">{teacher ? 'My room' : 'Live roster'}</h1>
             {!teacher && (
               <div role="radiogroup" aria-label="View" className="flex rounded-full bg-surface-2 p-1">
                 {(['admin', 'teacher'] as const).map(v => (
@@ -366,7 +370,8 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        {headerExtra && <div className="min-w-0 flex-1 basis-96">{headerExtra}</div>}
+        <div className={`flex items-center gap-2 ${headerExtra ? 'ml-auto' : ''}`}>
           {busy > 0 && <span className="inline-flex items-center gap-1.5 text-xs text-muted"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</span>}
           {!teacher && (
             <Link href="/center/roster/photos"
