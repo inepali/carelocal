@@ -6,6 +6,7 @@ import { JobsShell, verticalNoun } from './_components/JobsShell'
 import { FinalCta, HiringStrip, HowItWorks, JobsFaq, JobsHero, OpenJobs, WhyCareLocal, jobsFaq } from './_components/JobsLanding'
 import { jobsCrumbs, jobsListJsonLd, shareTags } from '@/lib/jobs-seo'
 import { jsonLdString } from '@/lib/center-seo'
+import { registerHref } from '@/lib/attribution'
 
 async function siteDomain() {
   return getDomainKey((await headers()).get('host') || '')
@@ -29,17 +30,6 @@ export async function generateMetadata(_props: unknown, parent: ResolvingMetadat
   }
 }
 
-/** Ad and campaign tags on the visit (utm_*), carried onto the sign-up links so a sign-up can be traced to its ad */
-function joinLink(sp: Record<string, string | string[] | undefined>) {
-  const q = new URLSearchParams({ type: 'staff' })
-  for (const key of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']) {
-    const v = sp[key]
-    const value = Array.isArray(v) ? v[0] : v
-    if (value && /^[\w.\- ]{1,80}$/.test(value)) q.set(key, value)
-  }
-  return `/register?${q.toString()}`
-}
-
 /**
  * Public: the jobs landing page (the page ads and shared links point to) and every open job on this site.
  * Hero, the open jobs right under it, then why CareLocal, how it works, questions and a last call to join.
@@ -48,7 +38,7 @@ export default async function PublicJobsPage({ searchParams }: { searchParams: P
   const domain = await siteDomain()
   const [jobs, cities, roles, sp] = await Promise.all([listPublicJobs(domain), listJobCities(domain), publicRoleLabels(domain), searchParams])
   const noun = verticalNoun(domain)
-  const joinHref = joinLink(sp)
+  const joinHref = registerHref('staff', sp)
   const stats = { jobs: jobs.length, centers: new Set(jobs.map(j => j.center.slug)).size, cities: cities.length }
   const topCity = cities[0] ? `${cities[0].city}${cities[0].state ? `, ${cities[0].state}` : ''}` : null
 
