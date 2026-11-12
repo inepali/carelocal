@@ -3,7 +3,7 @@ import { headers } from 'next/headers'
 import { getDomainConfig, getDomainKey, type DomainKey } from '@/lib/domain-config'
 
 // Social share card (Open Graph / X / LinkedIn / Slack previews), one per domain.
-export const alt = 'CareLocal — staffing and compliance in one platform'
+export const alt = 'CareLocal — staffing, compliance and family updates in one platform'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
