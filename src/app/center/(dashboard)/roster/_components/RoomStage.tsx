@@ -29,7 +29,6 @@ export function RoomStage({
   circleUrl,
   circleEditor,
   centerActions,
-  oval = false,
   fill = false,
   ix,
 }: {
@@ -49,8 +48,6 @@ export function RoomStage({
   circleEditor?: React.ReactNode
   /** Small room buttons (Activities, Photo, Nap) in the middle of the circle, between the teachers */
   centerActions?: React.ReactNode
-  /** Teacher view: the Classroom is a wide oval instead of a circle, so the children get the room left and right */
-  oval?: boolean
   /** Full screen: the stage fills the height it is given instead of keeping a fixed shape */
   fill?: boolean
   ix: RosterInteract
@@ -105,9 +102,6 @@ export function RoomStage({
       {empty && people.length === 0 && <span className="text-center text-xs font-semibold opacity-80">{empty}</span>}
     </div>
   )
-  // The oval leaves narrower strips beside it for the Home, Playground and Lobby chips
-  const homeW = oval ? 'calc(13% - 10px)' : 'calc(16% - 10px)'
-  const zoneW = oval ? 'calc(13% - 10px)' : 'calc(22% - 10px)'
   const even = (xs: RosterPerson[]) => xs.filter((_, i) => i % 2 === 0)
   const odd = (xs: RosterPerson[]) => xs.filter((_, i) => i % 2 === 1)
 
@@ -124,8 +118,8 @@ export function RoomStage({
           <span className="inline-flex items-center gap-2 text-sm font-bold"><Home className="h-[18px] w-[18px]" />Home · checked out or absent</span>
           <span className="text-xs font-bold">{plural(homeKids, 'child', 'children')}</span>
         </div>
-        {column(even(seats.home), 'left', '52px', '8px', homeW, true, 'Everyone is here')}
-        {column(odd(seats.home), 'right', '52px', '8px', homeW, true)}
+        {column(even(seats.home), 'left', '52px', '8px', 'calc(16% - 10px)', true, 'Everyone is here')}
+        {column(odd(seats.home), 'right', '52px', '8px', 'calc(16% - 10px)', true)}
       </div>
 
       {/* Playground */}
@@ -134,7 +128,7 @@ export function RoomStage({
         className="absolute bottom-0 left-0 h-1/2 w-1/2 border-r-2 border-t-[3px] border-r-[rgba(22,32,42,0.25)] border-t-[#a86b00] text-[#5c3b00] transition-colors"
         style={{ background: tone(isOver(keys.playground) ? '#f1d27f' : '#f8e2a8'), boxShadow: zoneShadow(keys.playground) }}
       >
-        {column(seats.playground, 'left', '12px', '64px', zoneW, false, 'Nobody outside')}
+        {column(seats.playground, 'left', '12px', '64px', 'calc(22% - 10px)', false, 'Nobody outside')}
         <div className="absolute inset-x-3 bottom-2.5 flex flex-col items-start gap-1">
           <span className="inline-flex items-center gap-1.5 text-sm font-bold"><Sun className="h-[18px] w-[18px]" />Playground</span>
           <span className="inline-flex flex-wrap items-center gap-1.5 text-xs font-bold">
@@ -150,7 +144,7 @@ export function RoomStage({
         className="absolute bottom-0 right-0 h-1/2 w-1/2 border-t-[3px] border-t-[#2c5c9a] text-[#1d3f6e] transition-colors"
         style={{ background: tone(isOver(keys.lobby) ? '#b3cdee' : '#cfe0f5'), boxShadow: zoneShadow(keys.lobby) }}
       >
-        {column([...seats.lobby, ...waiting], 'right', '12px', waitingLabel ? '84px' : '64px', zoneW, p => waiting.includes(p), 'Pickups, drop-offs')}
+        {column([...seats.lobby, ...waiting], 'right', '12px', waitingLabel ? '84px' : '64px', 'calc(22% - 10px)', p => waiting.includes(p), 'Pickups, drop-offs')}
         <div className="absolute inset-x-3 bottom-2.5 flex flex-col items-end gap-1">
           <span className="inline-flex items-center gap-1.5 text-sm font-bold"><DoorOpen className="h-[18px] w-[18px]" />Lobby</span>
           <span className="inline-flex flex-wrap items-center justify-end gap-1.5 text-xs font-bold">
@@ -164,7 +158,7 @@ export function RoomStage({
       {/* Classroom circle */}
       <div
         data-drop={keys.classroom}
-        className={`absolute left-1/2 top-1/2 z-[2] -translate-x-1/2 -translate-y-1/2 transition-colors ${oval ? 'h-[80%] w-[74%] rounded-[50%] lg:h-[88%]' : 'aspect-square h-[76%] rounded-full lg:h-[88%]'}`}
+        className="absolute left-1/2 top-1/2 z-[2] aspect-square h-[76%] -translate-x-1/2 -translate-y-1/2 rounded-full lg:h-[88%] transition-colors"
         style={{
           background: circleUrl
             ? `linear-gradient(${isOver(keys.classroom) ? 'rgba(168,217,186,0.6)' : 'rgba(191,227,204,0.4)'}, ${isOver(keys.classroom) ? 'rgba(168,217,186,0.6)' : 'rgba(191,227,204,0.4)'}), url("${circleUrl}") center / cover`

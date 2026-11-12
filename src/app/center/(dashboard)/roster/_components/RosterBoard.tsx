@@ -486,7 +486,7 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
                 )}
               </>
             ) : undefined}
-            oval={teacher} fill={fullScreen}
+            fill={fullScreen}
             ix={ix} />
           {!fullScreen && <Legend />}
         </section>
