@@ -10,8 +10,8 @@ export const contentType = 'image/png'
 const CARD: Record<DomainKey, { bg: string; accent: string; headline: string; points: string[] }> = {
   childcare: {
     bg: '#0a3d3a', accent: '#f4b860',
-    headline: 'The all-in-one platform for childcare staffing and compliance',
-    points: ['Fill shifts by text', 'Staff files & training', 'Inspections & vendors'],
+    headline: 'Run your child care center from one login',
+    points: ['Fill shifts by text', 'Live ratios & daily reports', 'Parent page & messages'],
   },
   healthcare: {
     bg: '#312e81', accent: '#a5b4fc',
