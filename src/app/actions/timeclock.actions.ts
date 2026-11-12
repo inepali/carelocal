@@ -41,11 +41,12 @@ export async function checkInStaff(shiftId: string, staffId: string) {
     if (shift?.center_id) {
       const { data: center } = await supabaseAdmin
         .from('centers')
-        .select('metro_area_id')
+        .select('metro_area_id, domain_key')
         .eq('id', shift.center_id)
         .single()
 
-      if (center?.metro_area_id) {
+      // Child care staff never pay a fee (the childcare site and Terms promise "no per-shift fees")
+      if (center?.metro_area_id && center.domain_key !== 'childcare') {
         const { data: metro } = await supabaseAdmin
           .from('metro_areas')
           .select('staff_maintenance_fee')
