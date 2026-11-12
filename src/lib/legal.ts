@@ -4,7 +4,7 @@ import type { DomainKey } from '@/lib/domain-config'
  * Shared by the Terms & Conditions and the Privacy Policy. Change LEGAL_UPDATED whenever the text of either
  * document changes: a legal page must show the date it was actually revised, not today's date.
  */
-export const LEGAL_UPDATED = 'October 22, 2026'
+export const LEGAL_UPDATED = 'November 12, 2026'
 
 export interface LegalVocab {
   /** "Center" / "Facility" / "Organization" and the plural */

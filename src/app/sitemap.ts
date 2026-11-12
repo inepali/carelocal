@@ -22,11 +22,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/jobs`, lastModified: latest(jobs.map(j => j.updated_at)), changeFrequency: 'daily', priority: 0.9 },
     ...cities.map(c => ({ url: `${baseUrl}/jobs/in/${c.slug}`, lastModified: latest(jobsIn(c.slug)), changeFrequency: 'daily' as const, priority: 0.8 })),
     ...cityRoles.map(r => ({ url: `${baseUrl}/jobs/in/${r.citySlug}/${r.roleSlug}`, lastModified: latest(jobsIn(r.citySlug, r.roleSlug)), changeFrequency: 'daily' as const, priority: 0.75 })),
-    // Centers with a public page that has something to read (thin pages are noindex and left out)
-    ...(centers.length > 0 ? [{ url: `${baseUrl}/centers`, lastModified: latest(centers.map(c => c.updatedAt)), changeFrequency: 'daily' as const, priority: 0.8 }] : []),
+    // The centers landing page, then centers with a public page that has something to read (thin pages are noindex and left out)
+    { url: `${baseUrl}/centers`, lastModified: latest(centers.map(c => c.updatedAt)), changeFrequency: 'daily', priority: 0.9 },
     ...centerCities.map(c => ({ url: `${baseUrl}/centers/in/${c.slug}`, changeFrequency: 'weekly' as const, priority: 0.7 })),
     ...centers.map(c => ({ url: `${baseUrl}/centers/${c.handle}`, lastModified: new Date(c.updatedAt), changeFrequency: 'weekly' as const, priority: 0.7 })),
     ...jobs.map(j => ({ url: `${baseUrl}/jobs/${j.center.slug}/${j.slug}`, lastModified: new Date(j.updated_at), changeFrequency: 'weekly' as const, priority: 0.7 })),
+    // Guides (child care site only)
+    ...(domain === 'childcare' ? [{ url: `${baseUrl}/guides/nc-child-care-staff-file-checklist`, changeFrequency: 'monthly' as const, priority: 0.7 }] : []),
     { url: `${baseUrl}/register`, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${baseUrl}/contact`, changeFrequency: 'monthly', priority: 0.7 },
     { url: `${baseUrl}/privacy`, changeFrequency: 'yearly', priority: 0.3 },
