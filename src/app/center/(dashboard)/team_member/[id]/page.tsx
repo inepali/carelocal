@@ -27,6 +27,7 @@ import { openStoredFile } from '@/lib/files'
 import { snapshotAcceptedDocuments } from '@/app/actions/document-snapshots.actions'
 import { useLookups } from '@/hooks/use-lookups'
 import { lookupLabel } from '@/lib/lookups'
+import { assignableRoles, centerRoleLabel, isLeadershipRole } from '@/lib/center-roles'
 import { showAlert, showConfirm } from '@/lib/dialog'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -94,6 +95,8 @@ export default function StaffReviewPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [targetCenterRole, setTargetCenterRole] = useState<string | null>(null)
   const [savingAccess, setSavingAccess] = useState(false)
+  // Their role at this center (center_staff.center_role): Owner, Director, Assistant Director, Teacher, ...
+  const [centerRole, setCenterRole] = useState<string | null>(null)
   const [openRequests, setOpenRequests] = useState<DocumentRequest[]>([])
   const [requestFor, setRequestFor] = useState<{ requirementId?: string } | null>(null)
   const [savingClass, setSavingClass] = useState(false)
@@ -152,6 +155,10 @@ export default function StaffReviewPage() {
       const { data: menuRow } = await supabase.from('center_staff').select('menu_editor')
         .eq('center_id', admin.center_id).eq('staff_id', staffId).maybeSingle()
       setMenuEditor(!!(menuRow as { menu_editor?: boolean } | null)?.menu_editor)
+      // Separate read so a database without the center roles migration doesn't break this page
+      const { data: roleRow } = await supabase.from('center_staff').select('center_role')
+        .eq('center_id', admin.center_id).eq('staff_id', staffId).maybeSingle()
+      setCenterRole((roleRow as { center_role?: string | null } | null)?.center_role ?? null)
       const { data: roomRows } = await supabase.from('work_areas').select('id, name')
         .eq('center_id', admin.center_id).eq('is_active', true).order('sort_order').order('name')
       setRooms((roomRows ?? []) as { id: string; name: string }[])
@@ -299,16 +306,23 @@ export default function StaffReviewPage() {
     else showAlert('Failed to update employee class: ' + error.message)
   }
 
-  async function handleToggleAdmin(makeAdmin: boolean) {
+  async function handleChangeRole(next: string) {
     if (!centerId || !profile) return
+    const value = next || null
+    if (value === centerRole) return
     const name = `${profile.first_name} ${profile.last_name}`
-    const message = makeAdmin
-      ? `Make ${name} an Admin? They will be able to manage this center, including staff documents and confidential medical files. Their own checklist still applies and they cannot approve their own documents.`
-      : `Remove Admin access for ${name}? They will remain an employee.`
-    if (!await showConfirm(message)) return
+    const label = centerRoleLabel(value, roleLookups)
+    const gainsAccess = isLeadershipRole(value) && !isLeadershipRole(centerRole)
+    const losesAccess = isLeadershipRole(centerRole) && !isLeadershipRole(value)
+    if (gainsAccess || losesAccess) {
+      const message = gainsAccess
+        ? `Make ${name} ${label}? They will be able to manage this center, including staff documents and confidential medical files. Their own checklist still applies and they cannot approve their own documents.`
+        : `Change ${name} to ${label || 'no role'}? They lose access to manage this center and remain an employee.`
+      if (!await showConfirm(message)) return
+    }
 
     setSavingAccess(true)
-    const { error } = await supabase.rpc('set_center_admin_access', { p_center_id: centerId, p_staff_id: staffId, p_is_admin: makeAdmin })
+    const { error } = await supabase.rpc('set_center_role', { p_center_id: centerId, p_staff_id: staffId, p_role: value })
     setSavingAccess(false)
     if (error) showAlert(error.message)
     else loadData()
@@ -459,30 +473,61 @@ export default function StaffReviewPage() {
                   <Utensils className="w-3.5 h-3.5" /> {menuEditor ? 'Menu editor' : 'Make menu editor'}
                 </button>
               )}
-              {targetCenterRole === 'owner' ? (
-                <span className="inline-flex items-center gap-1.5 bg-brand-900 text-white px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest">
-                  <ShieldCheck className="w-3.5 h-3.5" /> Owner
-                </span>
-              ) : viewerRole === 'owner' ? (
-                <button
-                  type="button"
-                  disabled={savingAccess || (targetCenterRole !== 'admin' && employmentClass !== 'regular')}
-                  onClick={() => handleToggleAdmin(targetCenterRole !== 'admin')}
-                  title={targetCenterRole !== 'admin' && employmentClass !== 'regular' ? 'Only Regular employees can be made Admin' : undefined}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border transition-colors disabled:opacity-50 ${
-                    targetCenterRole === 'admin'
-                      ? 'bg-brand-900 text-white border-brand-900 hover:bg-brand-600'
-                      : 'bg-white text-brand-600 border-brand-100 hover:bg-brand-50'
-                  }`}
-                >
-                  {savingAccess ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
-                  {targetCenterRole === 'admin' ? 'Admin · Remove' : 'Make Admin'}
-                </button>
-              ) : targetCenterRole === 'admin' ? (
-                <span className="inline-flex items-center gap-1.5 bg-brand-900 text-white px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest">
-                  <ShieldCheck className="w-3.5 h-3.5" /> Admin
-                </span>
-              ) : null}
+              {(() => {
+                // Owners are added by CareLocal support. Owners can name Directors and Assistant Directors;
+                // owners and directors can give everyone else a role from the center's Role list.
+                const isOwnerTarget = targetCenterRole === 'owner' || centerRole === 'owner'
+                const isSelf = !!currentUserId && profile.user_id === currentUserId
+                const targetIsLeader = isLeadershipRole(centerRole) || !!targetCenterRole
+                const canEdit = !isOwnerTarget && !isSelf && (viewerRole === 'owner' || (viewerRole === 'admin' && !targetIsLeader))
+                const options = assignableRoles(viewerRole, roleLookups)
+                const leaderNeedsRegular = employmentClass !== 'regular'
+                if (isOwnerTarget) {
+                  return (
+                    <span className="inline-flex items-center gap-1.5 bg-brand-900 text-white px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest">
+                      <ShieldCheck className="w-3.5 h-3.5" /> Owner
+                    </span>
+                  )
+                }
+                if (!canEdit) {
+                  return centerRole ? (
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest ${targetIsLeader ? 'bg-brand-900 text-white' : 'bg-white text-brand-600 border border-brand-100'}`}>
+                      {targetIsLeader && <ShieldCheck className="w-3.5 h-3.5" />} {centerRoleLabel(centerRole, roleLookups)}
+                    </span>
+                  ) : null
+                }
+                const current = centerRole ?? (targetCenterRole === 'admin' ? 'director' : '')
+                return (
+                  <label
+                    className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-bold border ${targetIsLeader ? 'bg-brand-900 text-white border-brand-900' : 'bg-white text-muted border-brand-100'}`}
+                    title="Their role at this center. Directors and Assistant Directors can manage the center."
+                  >
+                    {savingAccess ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                    Role
+                    <select
+                      value={current}
+                      disabled={savingAccess}
+                      onChange={(e) => handleChangeRole(e.target.value)}
+                      className={`bg-transparent font-black focus:outline-none ${targetIsLeader ? 'text-white' : 'text-brand-600'}`}
+                    >
+                      <option value="" className="text-heading">No role</option>
+                      {current && !options.some(o => o.value === current) && (
+                        <option value={current} className="text-heading">{centerRoleLabel(current, roleLookups)}</option>
+                      )}
+                      {options.map(o => (
+                        <option
+                          key={o.value}
+                          value={o.value}
+                          disabled={isLeadershipRole(o.value) && leaderNeedsRegular}
+                          className="text-heading"
+                        >
+                          {o.label}{isLeadershipRole(o.value) && leaderNeedsRegular ? ' (Regular employees only)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )
+              })()}
               {totalReqs > 0 && (
                 <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border ${
                   acceptedCount === totalReqs ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'

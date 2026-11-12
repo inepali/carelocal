@@ -18,7 +18,8 @@ import {
   Calendar,
   FileDown,
   Trash2,
-  Settings2
+  Settings2,
+  Plus
 } from 'lucide-react'
 import Link from 'next/link'
 import { exportCenterRequirementsAsTemplate } from '@/app/actions/requirement-templates.actions'
@@ -29,6 +30,7 @@ import { purgeCenter } from '@/app/actions/data-cleanup.actions'
 import { setCenterMenuPlanningEnabled, setCenterCacfpEnabled, setCenterLessonPlansEnabled, setCenterParentPortalEnabled, setCenterAnnouncementsEnabled, setCenterScheduleEnabled, setCenterScheduleSlot } from '@/app/actions/center-modules.actions'
 import { CenterDetailsDialog, moduleSummary } from '@/components/admin/CenterDetailsDialog'
 import { PurgeDialog } from '@/components/admin/PurgeDialog'
+import { NewCenterDialog } from '@/components/admin/CenterOwners'
 import { showAlert, showConfirm, showPrompt } from '@/lib/dialog'
 
 export default function AdminCentersPage() {
@@ -39,6 +41,9 @@ export default function AdminCentersPage() {
   const [purging, setPurging] = useState<{ id: string; name: string } | null>(null)
   // Center whose details pop-up is open; looked up in `centers` so its switches update in place
   const [detailsId, setDetailsId] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
+  const [metros, setMetros] = useState<{ id: string; name: string }[]>([])
+  const [reloadKey, setReloadKey] = useState(0)
   const detailsCenter = detailsId ? centers.find(c => c.id === detailsId) ?? null : null
   // The row menu is drawn at a fixed spot under its button so the table's scroll area cannot clip it
   const [menu, setMenu] = useState<{ center: { id: string; name: string; is_active?: boolean; job_limit_override?: number | null }; top: number; right: number } | null>(null)
@@ -81,7 +86,14 @@ export default function AdminCentersPage() {
     }
 
     loadCenters()
-  }, [])
+  }, [reloadKey])
+
+  // Metro areas for the New center form, loaded when it opens
+  useEffect(() => {
+    if (!creating || metros.length) return
+    supabase.from('metro_areas').select('id, name').order('name')
+      .then(({ data }) => setMetros((data ?? []) as { id: string; name: string }[]))
+  }, [creating])
 
   const filteredCenters = centers.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -305,6 +317,9 @@ export default function AdminCentersPage() {
            <button className="p-2.5 bg-white border border-slate-200 rounded-2xl text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-sm">
              <Filter className="w-5 h-5" />
            </button>
+           <button onClick={() => setCreating(true)} className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-2xl text-sm font-bold hover:bg-slate-800 shadow-sm">
+             <Plus className="w-4 h-4" /> New center
+           </button>
         </div>
       </div>
 
@@ -466,6 +481,14 @@ export default function AdminCentersPage() {
           statusLabel={detailsCenter.subscriptions?.[0]?.status || 'No subscription'}
           jobLimitLabel={describeJobLimit(detailsCenter.job_limit_override)}
           actions={{ toggleJobs, changeJobLimit, toggleChildFiles, toggleRoster, toggleLessonPlans, toggleMenu, toggleCacfp, toggleParentPortal, toggleAnnouncements, toggleSchedule, changeScheduleSlot }}
+        />
+      )}
+
+      {creating && (
+        <NewCenterDialog
+          metros={metros}
+          onClose={() => setCreating(false)}
+          onCreated={(id) => { setCreating(false); setReloadKey(k => k + 1); setDetailsId(id) }}
         />
       )}
 
