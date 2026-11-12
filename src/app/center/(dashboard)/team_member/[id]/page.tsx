@@ -491,7 +491,7 @@ export default function StaffReviewPage() {
                 }
                 if (!canEdit) {
                   return centerRole ? (
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest ${targetIsLeader ? 'bg-brand-900 text-white' : 'bg-white text-brand-600 border border-brand-100'}`}>
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest ${targetIsLeader ? 'bg-brand-50 text-brand-700 border border-brand-200' : 'bg-white text-brand-600 border border-brand-100'}`}>
                       {targetIsLeader && <ShieldCheck className="w-3.5 h-3.5" />} {centerRoleLabel(centerRole, roleLookups)}
                     </span>
                   ) : null
@@ -499,7 +499,7 @@ export default function StaffReviewPage() {
                 const current = centerRole ?? (targetCenterRole === 'admin' ? 'director' : '')
                 return (
                   <label
-                    className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-bold border ${targetIsLeader ? 'bg-brand-900 text-white border-brand-900' : 'bg-white text-muted border-brand-100'}`}
+                    className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-bold border ${targetIsLeader ? 'bg-brand-50 text-brand-700 border-brand-200' : 'bg-white text-muted border-brand-100'}`}
                     title="Their role at this center. Directors and Assistant Directors can manage the center."
                   >
                     {savingAccess ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
@@ -508,7 +508,7 @@ export default function StaffReviewPage() {
                       value={current}
                       disabled={savingAccess}
                       onChange={(e) => handleChangeRole(e.target.value)}
-                      className={`bg-transparent font-black focus:outline-none ${targetIsLeader ? 'text-white' : 'text-brand-600'}`}
+                      className={`bg-transparent font-black focus:outline-none ${targetIsLeader ? 'text-brand-900' : 'text-brand-600'}`}
                     >
                       <option value="" className="text-heading">No role</option>
                       {current && !options.some(o => o.value === current) && (
