@@ -33,6 +33,7 @@ export function RoomTile({
   preview,
   themeUrl,
   themeEditor,
+  compact = false,
   style,
 }: {
   room: RosterRoom
@@ -53,6 +54,8 @@ export function RoomTile({
   themeUrl?: string | null
   /** Admin's pencil for the picture; sits in the card's top corner, outside the tile's own button */
   themeEditor?: React.ReactNode
+  /** Full screen: always in its side column (any screen width), and shrinks to the row height it is given */
+  compact?: boolean
   style?: React.CSSProperties
 }) {
   const Tag = onOpen ? 'button' : 'div'
@@ -61,13 +64,13 @@ export function RoomTile({
   const border = over ? 'border-2 border-dashed border-[#2357d9]' : status.code === 'out' ? 'border-2 border-[#d14b3f]' : 'border border-border'
   const fill = over ? '#eef3ff' : '#ffffff'
   return (
-    <div className="relative flex lg:[grid-column:var(--c)] lg:[grid-row:var(--r)]" style={style}>
+    <div className={`relative flex ${compact ? 'min-h-0 [grid-column:var(--c)] [grid-row:var(--r)]' : 'lg:[grid-column:var(--c)] lg:[grid-row:var(--r)]'}`} style={style}>
     <Tag
       {...(onOpen ? { type: 'button' as const, onClick: onOpen } : { role: 'group' })}
       data-drop={key}
       style={themeUrl ? { backgroundImage: `linear-gradient(${fill}d9, ${fill}d9), url("${themeUrl}")`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
       aria-label={`${room.name}: ${status.childrenIn} of ${enrolled} children in, ${status.teachersIn} of ${assigned} teachers in, ${status.label}.${onOpen ? ' Open room.' : ''}`}
-      className={`flex min-h-[150px] w-full flex-col rounded-2xl p-2.5 text-left shadow-sm transition ${onOpen ? 'hover:shadow-md' : ''} focus-visible:outline-3 focus-visible:outline-brand-600 ${over ? 'bg-[#eef3ff]' : 'bg-white'} ${border}`}
+      className={`flex ${compact ? 'min-h-0 overflow-hidden' : 'min-h-[150px]'} w-full flex-col rounded-2xl p-2.5 text-left shadow-sm transition ${onOpen ? 'hover:shadow-md' : ''} focus-visible:outline-3 focus-visible:outline-brand-600 ${over ? 'bg-[#eef3ff]' : 'bg-white'} ${border}`}
     >
       <span className="flex flex-col items-start gap-1.5">
         <span className="text-[15px] font-bold leading-tight text-heading">{room.name}</span>

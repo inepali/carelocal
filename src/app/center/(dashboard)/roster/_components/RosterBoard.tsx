@@ -424,13 +424,19 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
         )
       })}
 
-      <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-[minmax(0,0.5fr)_minmax(0,3.1fr)_minmax(0,0.5fr)]">
+      {/* Full screen (teacher): this grid covers the page, the room in the middle and the other rooms down both sides */}
+      <div
+        className={fullScreen
+          ? `fixed inset-0 z-[25] grid gap-3 overflow-hidden bg-surface px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] ${others.length ? 'grid-cols-[minmax(132px,0.55fr)_minmax(0,3.1fr)_minmax(132px,0.55fr)]' : 'grid-cols-1'}`
+          : 'grid grid-cols-2 gap-3.5 lg:grid-cols-[minmax(0,0.5fr)_minmax(0,3.1fr)_minmax(0,0.5fr)]'}
+        style={fullScreen ? { gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))` } : undefined}
+      >
         <section
           aria-label={`${focusRoom.name} room`}
           className={fullScreen
-            ? 'fixed inset-0 z-[25] flex flex-col overflow-hidden bg-white px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-5'
+            ? `flex min-h-0 min-w-0 flex-col overflow-hidden rounded-3xl border border-border bg-white px-3 pb-3 pt-3 sm:px-5 [grid-row:1/span_var(--rows)] ${others.length ? '[grid-column:2]' : ''}`
             : 'col-span-2 min-w-0 rounded-3xl border border-border bg-white px-4 pb-6 pt-5 sm:px-7 lg:[grid-column:2] lg:[grid-row:1/span_var(--rows)]'}
-          style={fullScreen ? undefined : { ['--rows' as string]: rows }}
+          style={{ ['--rows' as string]: rows }}
         >
           {/* Header: room on the left, the numbers in the middle, status on the right (numbers wrap below on narrow screens) */}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
@@ -508,6 +514,7 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
               preview={tilePreview(r)}
               themeUrl={themes[r.id]}
               themeEditor={canTheme ? <RoomThemeButton areaId={r.id} roomName={r.name} hasImage={!!themes[r.id]} onChanged={reloadThemes} /> : undefined}
+              compact={fullScreen}
               style={{ ['--c' as string]: s.col, ['--r' as string]: s.row }}
             />
           )
@@ -701,7 +708,7 @@ function LiveBadge({ live, onRetry }: { live: Live; onRetry: () => void }) {
 }
 
 /**
- * Teacher full screen: the room card covers the whole page (no side menu, no other rooms). Remembered on this
+ * Teacher full screen: the room and the rooms beside it cover the whole page (no side menu, no header). Remembered on this
  * device. On a tap it also asks the browser to go full screen, hiding the address bar where that is allowed
  * (iPad Safari); if the browser says no, the card still covers the page. Esc or Exit leaves.
  */
