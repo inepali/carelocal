@@ -21,7 +21,7 @@ export function MessageDot({ childId, size = 14 }: { childId: string | null; siz
   if (!n) return null
   return (
     <span aria-label={`${n} unread message${n === 1 ? '' : 's'} from a parent`} title="New message from a parent"
-      className="absolute -left-0.5 -top-0.5 z-10 flex items-center justify-center rounded-full border-2 border-white bg-[#2357d9] text-[9px] font-bold text-white"
+      className="absolute -left-0.5 -top-0.5 z-10 flex items-center justify-center rounded-full border-2 border-white bg-[#2357d9] text-[9px] text-white"
       style={{ minWidth: size, height: size }}>
       {n > 1 ? n : ''}
     </span>

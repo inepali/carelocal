@@ -13,7 +13,7 @@ export const STATUS_PILL: Record<StatusCode, string> = {
 }
 
 export function StatusPill({ code, label, className = '' }: { code: StatusCode; label: string; className?: string }) {
-  return <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold ${STATUS_PILL[code]} ${className}`}>{label}</span>
+  return <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] ${STATUS_PILL[code]} ${className}`}>{label}</span>
 }
 
 /**
@@ -86,9 +86,9 @@ export function RoomTile({
       <span className="mt-2.5 grid grid-cols-[repeat(4,minmax(0,24px))] gap-[5px]">
         {present.map(p => <MiniAvatar key={p.person_id} person={p} url={photos[p.person_id]} tint={tintOf(p)} ix={ix} />)}
       </span>
-      {status.visiting > 0 && <span className="mt-2 block text-xs font-semibold text-[#8a4a00]">{status.visiting} visiting</span>}
-      {preview && <span className={`mt-2 block rounded-lg px-2 py-1 text-xs font-bold ${STATUS_PILL[preview.code]}`}>{preview.text}</span>}
-      {onOpen && <span className="mt-auto flex items-center gap-1 pt-2.5 text-xs font-bold text-brand-600">Open room <ChevronRight className="h-3.5 w-3.5" /></span>}
+      {status.visiting > 0 && <span className="mt-2 block text-xs text-[#8a4a00]">{status.visiting} visiting</span>}
+      {preview && <span className={`mt-2 block rounded-lg px-2 py-1 text-xs ${STATUS_PILL[preview.code]}`}>{preview.text}</span>}
+      {onOpen && <span className="mt-auto flex items-center gap-1 pt-2.5 text-xs text-brand-600">Open room <ChevronRight className="h-3.5 w-3.5" /></span>}
     </Tag>
     {themeEditor && <div className="absolute right-2 top-2 z-[2]">{themeEditor}</div>}
     </div>

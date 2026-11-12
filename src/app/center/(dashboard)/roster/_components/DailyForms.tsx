@@ -30,7 +30,7 @@ export function Choices<T extends string | number>({ label, options, value, onCh
           const on = o.value === value
           return (
             <button key={String(o.value)} type="button" role="radio" aria-checked={on} onClick={() => onChange(o.value)}
-              className={`min-h-11 rounded-xl border px-2 text-sm font-bold ${on ? 'border-brand-600 bg-brand-600 text-white' : 'border-border bg-white text-text-main hover:bg-surface'}`}>
+              className={`min-h-11 rounded-xl border px-2 text-sm ${on ? 'border-brand-600 bg-brand-600 text-white' : 'border-border bg-white text-text-main hover:bg-surface'}`}>
               {o.label}
             </button>
           )
@@ -142,18 +142,18 @@ export function EntryForm({ kind, busy, error, onSave, onCancel, centerId, roomI
         <input value={note} onChange={e => setNote(e.target.value)} maxLength={200} className={FIELD} placeholder="Note (optional)" />
       )}
 
-      <label className="flex items-center gap-2 text-sm font-semibold text-text-main">
+      <label className="flex items-center gap-2 text-sm text-text-main">
         Time
         <input type="time" value={time} onChange={e => { setTime(e.target.value); setTimeTouched(true) }} className={`${FIELD} w-auto`} />
         {!timeTouched && <span className="text-xs font-normal text-muted">now</span>}
       </label>
 
-      {error && <p role="alert" className="rounded-lg bg-[#fce4e2] px-3 py-2 text-sm font-semibold text-[#a3221b]">{error}</p>}
+      {error && <p role="alert" className="rounded-lg bg-[#fce4e2] px-3 py-2 text-sm text-[#a3221b]">{error}</p>}
 
       <div className="grid grid-cols-2 gap-2">
-        <button type="button" onClick={onCancel} className="min-h-12 rounded-xl border border-border bg-white text-sm font-bold text-text-main hover:bg-surface">Cancel</button>
+        <button type="button" onClick={onCancel} className="min-h-12 rounded-xl border border-border bg-white text-sm text-text-main hover:bg-surface">Cancel</button>
         <button type="submit" disabled={!(details || lessonReady) || busy}
-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand-600 text-sm font-bold text-white hover:bg-brand-800 disabled:opacity-50">
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand-600 text-sm text-white hover:bg-brand-800 disabled:opacity-50">
           {busy && <Loader2 className="h-4 w-4 animate-spin" />} Save
         </button>
       </div>
@@ -176,15 +176,15 @@ export function VoidForm({ busy, error, onConfirm, onCancel }: {
       <div className="flex flex-wrap gap-1.5">
         {QUICK_REASONS.map(r => (
           <button key={r} type="button" onClick={() => setReason(r)} aria-pressed={reason === r}
-            className={`min-h-9 rounded-full border px-3 text-xs font-bold ${reason === r ? 'border-[#a3221b] bg-[#a3221b] text-white' : 'border-border bg-white text-text-main'}`}>{r}</button>
+            className={`min-h-9 rounded-full border px-3 text-xs ${reason === r ? 'border-[#a3221b] bg-[#a3221b] text-white' : 'border-border bg-white text-text-main'}`}>{r}</button>
         ))}
       </div>
       <input value={reason} onChange={e => setReason(e.target.value)} maxLength={200} className={FIELD} placeholder="Why is it being removed?" />
-      {error && <p role="alert" className="text-xs font-semibold text-[#a3221b]">{error}</p>}
+      {error && <p role="alert" className="text-xs text-[#a3221b]">{error}</p>}
       <div className="grid grid-cols-2 gap-2">
-        <button type="button" onClick={onCancel} className="min-h-11 rounded-xl border border-border bg-white text-sm font-bold">Keep</button>
+        <button type="button" onClick={onCancel} className="min-h-11 rounded-xl border border-border bg-white text-sm">Keep</button>
         <button type="button" disabled={!reason.trim() || busy} onClick={() => onConfirm(reason.trim())}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#b42318] text-sm font-bold text-white disabled:opacity-50">
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#b42318] text-sm text-white disabled:opacity-50">
           {busy && <Loader2 className="h-4 w-4 animate-spin" />} Remove
         </button>
       </div>

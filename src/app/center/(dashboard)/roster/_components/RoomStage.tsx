@@ -99,7 +99,7 @@ export function RoomStage({
   const column = (people: RosterPerson[], side: 'left' | 'right', top: string, bottom: string, width: string, dashed: boolean | ((p: RosterPerson) => boolean), empty?: string) => (
     <div className="absolute flex flex-wrap content-start justify-center gap-1.5 overflow-y-auto" style={{ [side]: 8, width, top, bottom }}>
       {people.map(p => <Chip key={p.person_id} person={p} url={photos[p.person_id]} tint={tintOf(p)} size={chipSize} dashed={typeof dashed === 'function' ? dashed(p) : dashed} ix={ix} />)}
-      {empty && people.length === 0 && <span className="text-center text-xs font-semibold opacity-80">{empty}</span>}
+      {empty && people.length === 0 && <span className="text-center text-xs opacity-80">{empty}</span>}
     </div>
   )
   const even = (xs: RosterPerson[]) => xs.filter((_, i) => i % 2 === 0)
@@ -115,8 +115,8 @@ export function RoomStage({
         style={{ background: tone(isOver(keys.home) ? '#edb0a9' : '#f3c6c1'), boxShadow: zoneShadow(keys.home) }}
       >
         <div className="absolute inset-x-3.5 top-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-          <span className="inline-flex items-center gap-2 text-sm font-bold"><Home className="h-[18px] w-[18px]" />Home · checked out or absent</span>
-          <span className="text-xs font-bold">{plural(homeKids, 'child', 'children')}</span>
+          <span className="inline-flex items-center gap-2 text-sm"><Home className="h-[18px] w-[18px]" />Home · checked out or absent</span>
+          <span className="text-xs">{plural(homeKids, 'child', 'children')}</span>
         </div>
         {column(even(seats.home), 'left', '52px', '8px', 'calc(16% - 10px)', true, 'Everyone is here')}
         {column(odd(seats.home), 'right', '52px', '8px', 'calc(16% - 10px)', true)}
@@ -130,8 +130,8 @@ export function RoomStage({
       >
         {column(seats.playground, 'left', '12px', '64px', 'calc(22% - 10px)', false, 'Nobody outside')}
         <div className="absolute inset-x-3 bottom-2.5 flex flex-col items-start gap-1">
-          <span className="inline-flex items-center gap-1.5 text-sm font-bold"><Sun className="h-[18px] w-[18px]" />Playground</span>
-          <span className="inline-flex flex-wrap items-center gap-1.5 text-xs font-bold">
+          <span className="inline-flex items-center gap-1.5 text-sm"><Sun className="h-[18px] w-[18px]" />Playground</span>
+          <span className="inline-flex flex-wrap items-center gap-1.5 text-xs">
             {plural(play.children, 'child', 'children')} · {plural(play.teachers, 'teacher', 'teachers')}
             <StatusPill code={play.code} label={play.label} />
           </span>
@@ -146,12 +146,12 @@ export function RoomStage({
       >
         {column([...seats.lobby, ...waiting], 'right', '12px', waitingLabel ? '84px' : '64px', 'calc(22% - 10px)', p => waiting.includes(p), 'Pickups, drop-offs')}
         <div className="absolute inset-x-3 bottom-2.5 flex flex-col items-end gap-1">
-          <span className="inline-flex items-center gap-1.5 text-sm font-bold"><DoorOpen className="h-[18px] w-[18px]" />Lobby</span>
-          <span className="inline-flex flex-wrap items-center justify-end gap-1.5 text-xs font-bold">
+          <span className="inline-flex items-center gap-1.5 text-sm"><DoorOpen className="h-[18px] w-[18px]" />Lobby</span>
+          <span className="inline-flex flex-wrap items-center justify-end gap-1.5 text-xs">
             {plural(lobby.children, 'child', 'children')} · {plural(lobby.teachers, 'teacher', 'teachers')}
             <StatusPill code={lobby.code} label={lobby.label} />
           </span>
-          {waitingLabel && <span className="text-[11px] font-semibold opacity-90">Waiting (not checked in): {waitingLabel}</span>}
+          {waitingLabel && <span className="text-[11px] opacity-90">Waiting (not checked in): {waitingLabel}</span>}
         </div>
       </div>
 
@@ -169,12 +169,12 @@ export function RoomStage({
         role="group"
         aria-label={`${room.name} classroom: ${plural(status.groups.classroom.children, 'child', 'children')}, ${plural(status.groups.classroom.teachers, 'teacher', 'teachers')}`}
       >
-        <span className="pointer-events-none absolute left-1/2 top-0 z-[3] -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-[#1e7a47] px-3 py-1 text-xs font-bold text-white">
+        <span className="pointer-events-none absolute left-1/2 top-0 z-[3] -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-[#1e7a47] px-3 py-1 text-xs text-white">
           Classroom · {plural(status.groups.classroom.children, 'child', 'children')} · {plural(status.groups.classroom.teachers, 'teacher', 'teachers')}
         </span>
         {circleEditor && <div className="absolute bottom-[3%] left-1/2 z-[4] -translate-x-1/2">{circleEditor}</div>}
         {teachers.length === 0 && n > 0 && (
-          <div className="pointer-events-none absolute left-1/2 flex h-[120px] w-[120px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-dashed border-[#d14b3f] p-3 text-center text-xs font-bold text-[#a3221b]"
+          <div className="pointer-events-none absolute left-1/2 flex h-[120px] w-[120px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-dashed border-[#d14b3f] p-3 text-center text-xs text-[#a3221b]"
             style={{ left: centerActions ? '36%' : '50%', top: '50%' }}>
             No teacher checked in
           </div>

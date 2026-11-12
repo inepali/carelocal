@@ -282,7 +282,7 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
     return (
       <div className="max-w-xl rounded-2xl border border-border bg-white p-8 shadow-sm">
         <p className="mb-4 text-text-main">{error}</p>
-        <button type="button" onClick={() => { setLoading(true); reload() }} className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-bold text-muted hover:bg-surface">
+        <button type="button" onClick={() => { setLoading(true); reload() }} className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm text-muted hover:bg-surface">
           <RefreshCw className="h-4 w-4" /> Try again
         </button>
       </div>
@@ -292,7 +292,7 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
     return (
       <div className="max-w-xl rounded-2xl border border-border bg-white p-8 text-center shadow-sm">
         <Users className="mx-auto mb-3 h-10 w-10 text-brand-200" />
-        <h2 className="mb-2 text-lg font-bold text-heading">No rooms on the roster yet</h2>
+        <h2 className="mb-2 text-base font-bold text-heading">No rooms on the roster yet</h2>
         <p className="text-muted">Add your classrooms under About → Manage Data, then give each one a teacher-to-child ratio.</p>
       </div>
     )
@@ -353,12 +353,12 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-muted">{formatDay(day)}</p>
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-3xl font-bold tracking-tight text-heading">{teacher ? 'My room' : 'Live roster'}</h1>
+            <h1 className="text-xl font-bold tracking-tight text-heading">{teacher ? 'My room' : 'Live roster'}</h1>
             {!teacher && (
               <div role="radiogroup" aria-label="View" className="flex rounded-full bg-surface-2 p-1">
                 {(['admin', 'teacher'] as const).map(v => (
                   <button key={v} type="button" role="radio" aria-checked={adminView === v} onClick={() => chooseView(v)}
-                    className={`min-h-9 rounded-full px-3.5 text-xs font-bold ${adminView === v ? 'bg-white text-heading shadow-sm' : 'text-muted hover:text-heading'}`}>
+                    className={`min-h-9 rounded-full px-3.5 text-xs ${adminView === v ? 'bg-white text-heading shadow-sm' : 'text-muted hover:text-heading'}`}>
                     {v === 'admin' ? 'Admin' : 'Teacher view'}
                   </button>
                 ))}
@@ -367,22 +367,22 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {busy > 0 && <span className="inline-flex items-center gap-1.5 text-xs font-bold text-muted"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</span>}
+          {busy > 0 && <span className="inline-flex items-center gap-1.5 text-xs text-muted"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</span>}
           {!teacher && (
             <Link href="/center/roster/photos"
-              className={`inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-bold hover:bg-surface ${toReview ? 'border-[#e8a33d] bg-[#fff0d1] text-[#7a4b00]' : 'border-border bg-white text-text-main'}`}>
+              className={`inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-xs hover:bg-surface ${toReview ? 'border-[#e8a33d] bg-[#fff0d1] text-[#7a4b00]' : 'border-border bg-white text-text-main'}`}>
               <Camera className="h-3.5 w-3.5 text-brand-600" /> Photo review{toReview ? ` (${toReview})` : ''}
             </Link>
           )}
           {!teacher && reportsOn != null && (
             <button type="button" onClick={() => setReportDialog(true)}
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border bg-white px-3 text-xs font-bold text-text-main hover:bg-surface">
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border bg-white px-3 text-xs text-text-main hover:bg-surface">
               <Mail className="h-3.5 w-3.5 text-brand-600" /> Parent reports: {reportsOn ? 'On' : 'Off'}
             </button>
           )}
           {!teacherView && (
             <button type="button" onClick={() => setExporting(true)}
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border bg-white px-3 text-xs font-bold text-text-main hover:bg-surface">
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border bg-white px-3 text-xs text-text-main hover:bg-surface">
               <FileSpreadsheet className="h-3.5 w-3.5 text-brand-600" /> Export attendance
             </button>
           )}
@@ -413,10 +413,10 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
         return (
           <div key={r.id} role="alert" className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#f2b8b3] bg-[#fce4e2] px-4 py-3 text-[#7e1a14]">
             <AlertTriangle className="h-5 w-5 shrink-0" />
-            <span className="flex-1 basis-64 text-sm font-semibold">{describeAlert(r)}</span>
+            <span className="flex-1 basis-64 text-sm">{describeAlert(r)}</span>
             {floater && shortZone && (
               <button type="button" onClick={() => move(floater, { work_area_id: r.id, zone: shortZone })}
-                className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-[#a3221b] px-4 text-[13px] font-bold text-white hover:bg-[#7e1a14]">
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-[#a3221b] px-4 text-[13px] text-white hover:bg-[#7e1a14]">
                 <Send className="h-4 w-4" /> Send {floater.first_name} {floater.last_initial}.
               </button>
             )}
@@ -445,7 +445,7 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
                 {focusRoom.min_age_months != null && focusRoom.max_age_months != null ? `${ageRange(focusRoom)} · ` : ''}1:{fs.effectiveRatio ?? '—'}
               </p>
               <div className="mt-1 flex items-center gap-2">
-                <h2 className="text-[28px] !font-bold leading-tight tracking-tight text-heading">{focusRoom.name}</h2>
+                <h2 className="text-xl !font-bold leading-tight tracking-tight text-heading">{focusRoom.name}</h2>
                 {canTheme && <RoomThemeButton areaId={focusRoom.id} roomName={focusRoom.name} hasImage={!!themes[focusRoom.id]} onChanged={reloadThemes} />}
               </div>
             </div>
@@ -461,7 +461,7 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
                 {fullScreen && busy > 0 && <Loader2 className="h-4 w-4 animate-spin text-muted" aria-label="Saving" />}
                 <button type="button" onClick={() => setFullScreen(!fullScreen)} aria-pressed={fullScreen}
                   title={fullScreen ? 'Exit full screen' : 'Full screen: show only this room'}
-                  className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border bg-white px-3.5 text-xs font-bold text-text-main hover:bg-surface">
+                  className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border bg-white px-3.5 text-xs text-text-main hover:bg-surface">
                   {fullScreen ? <><Minimize2 className="h-4 w-4 text-brand-600" /> Exit</> : <><Maximize2 className="h-4 w-4 text-brand-600" /> Full screen</>}
                 </button>
               </div>
@@ -637,7 +637,7 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
       {exporting && <ExportDialog supabase={supabase} centerId={centerId} today={day} onClose={() => setExporting(false)} />}
 
       {toast && (
-        <div role="status" className="fixed left-1/2 top-4 z-50 flex max-w-[92vw] -translate-x-1/2 items-center gap-3 rounded-2xl bg-[#7e1a14] px-4 py-3 text-sm font-semibold text-white shadow-2xl">
+        <div role="status" className="fixed left-1/2 top-4 z-50 flex max-w-[92vw] -translate-x-1/2 items-center gap-3 rounded-2xl bg-[#7e1a14] px-4 py-3 text-sm text-white shadow-2xl">
           <span>{toast}</span>
           <button type="button" onClick={() => setToast(null)} aria-label="Dismiss" className="rounded-full p-1 hover:bg-white/15"><X className="h-4 w-4" /></button>
         </div>
@@ -661,9 +661,9 @@ function ageRange(r: RosterRoom) {
 function Stat({ label, value, of }: { label: string; value: number; of?: number }) {
   return (
     <div className="rounded-2xl border border-border bg-white px-4 py-3.5">
-      <p className="text-xs font-semibold text-muted">{label}</p>
-      <p className="mt-1 text-[26px] font-bold tracking-tight text-heading">
-        {value}{of != null && <span className="text-sm font-medium text-muted"> of {of}</span>}
+      <p className="text-xs text-muted">{label}</p>
+      <p className="mt-1 text-[26px] tracking-tight text-heading">
+        {value}{of != null && <span className="text-sm text-muted"> of {of}</span>}
       </p>
     </div>
   )
@@ -674,7 +674,7 @@ function Metric({ label, value, hint }: { label: string; value: string; hint?: s
   return (
     <div className="min-w-[78px] rounded-lg bg-surface px-2.5 py-1 text-center">
       <p className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-wide text-muted">{label}</p>
-      <p className="whitespace-nowrap text-base font-bold leading-tight text-heading">{value}{hint && <span className="ml-1 text-[11px] font-semibold text-muted">{hint}</span>}</p>
+      <p className="whitespace-nowrap text-base leading-tight text-heading">{value}{hint && <span className="ml-1 text-[11px] text-muted">{hint}</span>}</p>
     </div>
   )
 }
@@ -682,7 +682,7 @@ function Metric({ label, value, hint }: { label: string; value: string; hint?: s
 function Legend() {
   const item = (swatch: React.ReactNode, text: string) => <span className="inline-flex items-center gap-2">{swatch}{text}</span>
   return (
-    <div className="flex flex-wrap gap-x-4 gap-y-2 border-t border-border pt-4 text-xs font-semibold text-text-main">
+    <div className="flex flex-wrap gap-x-4 gap-y-2 border-t border-border pt-4 text-xs text-text-main">
       {item(<span className="h-4 w-4 rounded border-[3px] border-[#b42318] bg-[#f3c6c1]" />, 'Home')}
       {item(<span className="h-4 w-4 rounded-full border-[3px] border-[#1e7a47] bg-[#bfe3cc]" />, 'Classroom')}
       {item(<span className="h-4 w-4 rounded border-[3px] border-[#a86b00] bg-[#f8e2a8]" />, 'Playground')}
@@ -695,13 +695,13 @@ function Legend() {
 
 function LiveBadge({ live, onRetry }: { live: Live; onRetry: () => void }) {
   if (live === 'live') {
-    return <span className="inline-flex items-center gap-2 rounded-full bg-[#e2f2ea] px-3 py-1.5 text-xs font-bold text-[#17603f]"><Radio className="h-3.5 w-3.5" /> Live</span>
+    return <span className="inline-flex items-center gap-2 rounded-full bg-[#e2f2ea] px-3 py-1.5 text-xs text-[#17603f]"><Radio className="h-3.5 w-3.5" /> Live</span>
   }
   if (live === 'connecting') {
-    return <span className="inline-flex items-center gap-2 rounded-full bg-surface px-3 py-1.5 text-xs font-bold text-muted"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Connecting…</span>
+    return <span className="inline-flex items-center gap-2 rounded-full bg-surface px-3 py-1.5 text-xs text-muted"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Connecting…</span>
   }
   return (
-    <button type="button" onClick={onRetry} className="inline-flex items-center gap-2 rounded-full bg-[#fff0d1] px-3 py-1.5 text-xs font-bold text-[#7a4b00]">
+    <button type="button" onClick={onRetry} className="inline-flex items-center gap-2 rounded-full bg-[#fff0d1] px-3 py-1.5 text-xs text-[#7a4b00]">
       <RefreshCw className="h-3.5 w-3.5" /> Reconnecting… tap to refresh
     </button>
   )
@@ -787,7 +787,7 @@ function useWakeLock(enabled: boolean) {
 function CircleButton({ onClick, icon, label, alert = false, title }: { onClick: () => void; icon: React.ReactNode; label: string; alert?: boolean; title?: string }) {
   return (
     <button type="button" onClick={onClick} title={title} aria-label={title ? `${label}: ${title}` : label}
-      className={`inline-flex min-h-7 items-center justify-center gap-1 whitespace-nowrap rounded-full px-2.5 text-[11px] font-bold shadow-sm focus-visible:outline-2 focus-visible:outline-[#1e7a47] ${
+      className={`inline-flex min-h-7 items-center justify-center gap-1 whitespace-nowrap rounded-full px-2.5 text-[11px] shadow-sm focus-visible:outline-2 focus-visible:outline-[#1e7a47] ${
         alert ? 'animate-pulse bg-[#b56a00] text-white' : 'border border-[#1e7a47]/30 bg-white/95 text-heading hover:bg-white'}`}>
       {icon} {label}
     </button>

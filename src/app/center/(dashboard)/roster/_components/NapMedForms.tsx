@@ -10,7 +10,7 @@ function useTime() {
   const [time, setTime] = useState(nowHHMM())
   const [touched, setTouched] = useState(false)
   const field = (
-    <label className="flex items-center gap-2 text-sm font-semibold text-text-main">
+    <label className="flex items-center gap-2 text-sm text-text-main">
       Time
       <input type="time" value={time} onChange={e => { setTime(e.target.value); setTouched(true) }} className={`${FIELD} w-auto`} />
       {!touched && <span className="text-xs font-normal text-muted">now</span>}
@@ -22,9 +22,9 @@ function useTime() {
 function Buttons({ busy, disabled, label, onCancel }: { busy: boolean; disabled?: boolean; label: string; onCancel: () => void }) {
   return (
     <div className="grid grid-cols-2 gap-2">
-      <button type="button" onClick={onCancel} className="min-h-12 rounded-xl border border-border bg-white text-sm font-bold text-text-main hover:bg-surface">Cancel</button>
+      <button type="button" onClick={onCancel} className="min-h-12 rounded-xl border border-border bg-white text-sm text-text-main hover:bg-surface">Cancel</button>
       <button type="submit" disabled={disabled || busy}
-        className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand-600 text-sm font-bold text-white hover:bg-brand-800 disabled:opacity-50">
+        className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand-600 text-sm text-white hover:bg-brand-800 disabled:opacity-50">
         {busy && <Loader2 className="h-4 w-4 animate-spin" />} {label}
       </button>
     </div>
@@ -32,7 +32,7 @@ function Buttons({ busy, disabled, label, onCancel }: { busy: boolean; disabled?
 }
 
 const ErrorLine = ({ error }: { error: string | null }) =>
-  error ? <p role="alert" className="rounded-lg bg-[#fce4e2] px-3 py-2 text-sm font-semibold text-[#a3221b]">{error}</p> : null
+  error ? <p role="alert" className="rounded-lg bg-[#fce4e2] px-3 py-2 text-sm text-[#a3221b]">{error}</p> : null
 
 const FORM = 'flex flex-col gap-4 rounded-2xl border border-border bg-surface/40 p-3'
 
@@ -55,7 +55,7 @@ export function NapBanner({ nap, minutes, required, now, busy, onCheck, onWake }
         <Moon className="h-5 w-5 text-[#3b5bab]" /> Sleeping since {clockTime(nap.at)}
         <span className="text-sm font-normal text-muted">· {duration(nap.at, now.toISOString())}</span>
       </p>
-      <p className={`mt-1 text-sm ${due ? 'font-bold text-[#7a4b00]' : 'text-text-main'}`}>
+      <p className={`mt-1 text-sm ${due ? 'text-[#7a4b00]' : 'text-text-main'}`}>
         {nap.last_check_at ? `Last check ${clockTime(nap.last_check_at)}${status ? ` · ${status}` : ''}` : 'No sleep check yet'}
         {' · '}
         {required
@@ -64,11 +64,11 @@ export function NapBanner({ nap, minutes, required, now, busy, onCheck, onWake }
       </p>
       <div className="mt-3 grid grid-cols-2 gap-2">
         <button type="button" onClick={onCheck} disabled={busy}
-          className={`min-h-12 rounded-xl text-sm font-bold disabled:opacity-50 ${due ? 'bg-[#b56a00] text-white' : 'border border-border bg-white text-heading'}`}>
+          className={`min-h-12 rounded-xl text-sm disabled:opacity-50 ${due ? 'bg-[#b56a00] text-white' : 'border border-border bg-white text-heading'}`}>
           Sleep check
         </button>
         <button type="button" onClick={onWake} disabled={busy}
-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-white text-sm font-bold text-heading disabled:opacity-50">
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-white text-sm text-heading disabled:opacity-50">
           <Sun className="h-4 w-4 text-[#b56a00]" /> Woke up
         </button>
       </div>
@@ -111,7 +111,7 @@ export function SleepCheckForm({ required, busy, error, onSave, onCancel }: {
       <p className="text-base font-bold text-heading">Sleep check</p>
       <Choices label="How is the child sleeping" options={SLEEP_STATUSES} value={status} onChange={setStatus} cols={2} />
       {status === 'other' && required && (
-        <p className="flex items-start gap-2 rounded-xl bg-[#fff0d1] px-3 py-2 text-sm font-bold text-[#7a4b00]">
+        <p className="flex items-start gap-2 rounded-xl bg-[#fff0d1] px-3 py-2 text-sm text-[#7a4b00]">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> Place the baby on their back to sleep, then save.
         </p>
       )}
@@ -145,7 +145,7 @@ export function MedicineForm({ medications, busy, error, onSave, onCancel }: {
           return (
             <button key={m.id} type="button" role="radio" aria-checked={on} onClick={() => { setPicked(m); setDose(m.dose) }}
               className={`rounded-xl border p-3 text-left ${on ? 'border-brand-600 bg-brand-50 ring-1 ring-brand-600' : 'border-border bg-white hover:bg-surface'}`}>
-              <p className="text-sm font-bold text-heading">{m.name} <span className="font-semibold text-text-main">· {m.dose}</span></p>
+              <p className="text-sm text-heading">{m.name} <span className="text-text-main">· {m.dose}</span></p>
               {m.schedule && <p className="text-xs text-text-main">{m.schedule}</p>}
               {m.instructions && <p className="mt-0.5 text-xs text-muted">{m.instructions}</p>}
             </button>
@@ -153,7 +153,7 @@ export function MedicineForm({ medications, busy, error, onSave, onCancel }: {
         })}
       </div>
       {picked && (
-        <label className="text-sm font-semibold text-text-main">Dose given
+        <label className="text-sm text-text-main">Dose given
           <input value={dose} onChange={e => setDose(e.target.value)} maxLength={60} className={`${FIELD} mt-1`} />
         </label>
       )}
