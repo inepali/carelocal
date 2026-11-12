@@ -225,9 +225,25 @@ function useUnfinishedProgress(pathname: string) {
 }
 
 /** A slim reminder above the page content until every item is ticked */
-export function GettingStartedBanner({ href, pathname }: { href: string; pathname: string }) {
+export function GettingStartedBanner({ href, pathname, compact = false }: {
+  href: string
+  pathname: string
+  /** A small pill for the top bar instead of the full-width banner above the page */
+  compact?: boolean
+}) {
   const progress = useUnfinishedProgress(pathname)
   if (!progress || pathname === href) return null
+  if (compact) {
+    return (
+      <Link href={href} title={`Getting started: ${progress.done} of ${progress.total} done`}
+        className="inline-flex items-center gap-2 rounded-lg border border-brand-100 bg-brand-50 px-3 py-2 text-sm text-brand-800 transition-colors hover:bg-brand-100">
+        <ListChecks className="h-4 w-4 shrink-0 text-brand-600" />
+        <span className="hidden lg:inline font-semibold">Getting started:</span>
+        <span className="whitespace-nowrap">{progress.done} of {progress.total}<span className="hidden lg:inline"> done</span></span>
+        <ArrowRight className="h-4 w-4 text-brand-600" />
+      </Link>
+    )
+  }
   return (
     <Link href={href} className="mb-6 flex max-w-5xl items-center gap-3 rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-800 hover:bg-brand-100">
       <ListChecks className="h-5 w-5 shrink-0 text-brand-600" />
