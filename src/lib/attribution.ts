@@ -34,3 +34,28 @@ export function registerHref(type: 'staff' | 'center', sp: ParamSource, extra: R
   for (const [k, v] of Object.entries(pickUtm(sp))) if (v) q.set(k, v)
   return `/register?${q.toString()}`
 }
+
+/** Browser only: first-touch tags kept for 30 days, so a visitor who browses before signing up is still attributed */
+const STORE_KEY = 'cl_utm'
+const KEEP_MS = 30 * 24 * 60 * 60 * 1000
+
+export function rememberUtm(search: string) {
+  const utm = pickUtm(new URLSearchParams(search))
+  if (Object.keys(utm).length === 0) return
+  try {
+    if (recallUtm()) return // first touch wins
+    window.localStorage.setItem(STORE_KEY, JSON.stringify({ utm, at: Date.now(), landing: window.location.pathname }))
+  } catch { /* storage blocked: the URL tags still reach /register directly */ }
+}
+
+export function recallUtm(): { utm: Utm; landing?: string } | null {
+  try {
+    const raw = window.localStorage.getItem(STORE_KEY)
+    if (!raw) return null
+    const saved = JSON.parse(raw) as { utm?: Utm; at?: number; landing?: string }
+    if (!saved.at || Date.now() - saved.at > KEEP_MS || !saved.utm) return null
+    return { utm: pickUtm(saved.utm as Record<string, string>), landing: typeof saved.landing === 'string' ? saved.landing.slice(0, 200) : undefined }
+  } catch {
+    return null
+  }
+}

@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff, ArrowRight, Loader2, Building2, User } from 'lucide-react'
 import { getDomainConfig, getDomainKey, type DomainKey } from '@/lib/domain-config'
 import { EMPLOYMENT_CLASS_LABELS, type EmploymentClass } from '@/lib/types'
+import { pickUtm, recallUtm } from '@/lib/attribution'
 
 /** A same-site path from ?redirect=, or null (never an absolute URL or a protocol-relative "//host") */
 function safeRedirect(value: string | null) {
@@ -20,6 +21,8 @@ function RegisterForm() {
   const isStaffInvite = !!inviteSlug
   // /register?type=staff opens straight on the staff sign-up (no invite needed; they apply to centers afterwards)
   const startsAsStaff = isStaffInvite || searchParams.get('type') === 'staff'
+  // /register?type=center (the /centers landing page and center ads) opens straight on the center details
+  const startsAsCenter = !startsAsStaff && searchParams.get('type') === 'center'
 
   const supabase = createClient()
   
@@ -35,8 +38,8 @@ function RegisterForm() {
   const config = getDomainConfig(domainKey)
 
   // New State
-  const [accountType, setAccountType] = useState<'center' | 'staff' | null>(startsAsStaff ? 'staff' : null)
-  const [step, setStep] = useState(startsAsStaff ? 2 : 0) // Step 0 is selection
+  const [accountType, setAccountType] = useState<'center' | 'staff' | null>(startsAsStaff ? 'staff' : startsAsCenter ? 'center' : null)
+  const [step, setStep] = useState(startsAsStaff ? 2 : startsAsCenter ? 1 : 0) // Step 0 is selection
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -80,9 +83,22 @@ function RegisterForm() {
     setError('')
 
     // 1. Create auth user
+    // Where the sign-up came from (ad tags on this link, else the first visit's), kept on the account for attribution
+    const urlUtm = pickUtm(searchParams)
+    const saved = recallUtm()
+    const utm = Object.keys(urlUtm).length > 0 ? urlUtm : saved?.utm ?? {}
+    const plan = searchParams.get('plan')
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          signup_type: accountType,
+          ...(Object.keys(utm).length > 0 ? { signup_utm: utm } : {}),
+          ...(saved?.landing ? { signup_landing: saved.landing } : {}),
+          ...(plan && /^[a-z]{1,20}$/.test(plan) ? { signup_plan: plan } : {}),
+        },
+      },
     })
 
     if (authError) {
