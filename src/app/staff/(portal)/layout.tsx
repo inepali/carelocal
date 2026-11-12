@@ -180,6 +180,7 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <GettingStartedBanner href="/staff/getting-started" pathname={pathname} compact />
             {isCenterAdmin && (
               <Link
                 href="/center/dashboard"
@@ -199,7 +200,6 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
           </div>
         </header>
         <div className="p-4 md:p-8 flex-1">
-          <GettingStartedBanner href="/staff/getting-started" pathname={pathname} />
           {children}
         </div>
       </main>
