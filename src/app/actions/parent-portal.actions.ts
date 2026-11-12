@@ -92,9 +92,15 @@ async function actor(link: string | null | undefined) {
   return token ? { token, link: null } : null
 }
 
-function friendly(error: { message?: string } | null) {
+// Error codes our own parent_portal_* functions raise with parent-friendly wording. Anything else
+// (Postgres internals, permission errors, constraint names) gets the generic message so nothing leaks.
+const FRIENDLY_CODES = new Set(['22023', '42501', '54000', 'P0002'])
+const INTERNAL = /permission denied|relation|column|function|constraint|violates|syntax|schema|null value/i
+
+function friendly(error: { message?: string; code?: string } | null) {
   const msg = error?.message?.replace(/^.*?ERROR:\s*/, '')
-  return msg && msg.length < 200 ? msg : 'Something went wrong. Please try again.'
+  if (msg && msg.length < 200 && error?.code && FRIENDLY_CODES.has(error.code) && !INTERNAL.test(msg)) return msg
+  return 'Something went wrong. Please try again.'
 }
 
 /**
