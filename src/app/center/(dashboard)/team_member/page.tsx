@@ -9,6 +9,7 @@ import Link from 'next/link'
 import { useCenterContext } from '../context'
 import { StaffAvatar } from '@/components/StaffAvatar'
 import { useLookups } from '@/hooks/use-lookups'
+import { centerRoleLabel } from '@/lib/center-roles'
 import { lookupLabel } from '@/lib/lookups'
 import { showAlert } from '@/lib/dialog'
 
@@ -75,7 +76,14 @@ export default function StaffPoolPage() {
         .eq('center_id', adminData.center_id)
         .order('added_at', { ascending: false })
 
-      setStaff(staffData || [])
+      // Center roles in their own read, so a database without that migration still lists the team
+      const { data: roleRows } = await supabase.from('center_staff').select('staff_id, center_role')
+        .eq('center_id', adminData.center_id)
+      const roles = new Map(((roleRows ?? []) as { staff_id: string; center_role: string | null }[]).map(r => [r.staff_id, r.center_role]))
+      setStaff((staffData || []).map(row => ({
+        ...row,
+        center_role: roles.get((row.staff_profiles as unknown as { id?: string } | null)?.id ?? '') ?? null,
+      })))
       
       // Load nearby staff (discovery)
       const { data: nearby } = await supabase
@@ -290,7 +298,7 @@ export default function StaffPoolPage() {
                       <td className="px-4 py-4">
                         <div className="flex flex-wrap gap-1.5">
                           <span className="inline-flex rounded-full border border-border bg-surface px-2.5 py-1 text-xs text-text-muted">
-                            {lookupLabel(roleLookups, profile.staff_type)}
+                            {item.center_role ? centerRoleLabel(item.center_role, roleLookups) : lookupLabel(roleLookups, profile.staff_type)}
                           </span>
                           {shownClass && (
                             <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs ${

@@ -8,6 +8,7 @@ import {
   Briefcase, Baby, LayoutGrid, NotebookPen, Utensils, ClipboardList, KeyRound, Megaphone, CalendarClock,
 } from 'lucide-react'
 import { TIER_LABELS, type SubscriptionTier } from '@/lib/types'
+import { CenterOwnersSection } from './CenterOwners'
 
 /** The center row as the super admin centers page loads it (centers.* plus joins) */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -165,6 +166,8 @@ export function CenterDetailsDialog({ center, onClose, actions, statusLabel, job
               ))}
             </dl>
           </section>
+
+          <CenterOwnersSection centerId={center.id} />
 
           {/* Modules */}
           <section>
