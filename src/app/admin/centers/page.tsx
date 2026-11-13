@@ -177,7 +177,7 @@ export default function AdminCentersPage() {
     const enabling = !center.roster_enabled
     if (!await showConfirm(
       enabling
-        ? `Turn on the live roster for ${center.name}? Its owner, administrators and regular teachers will see where every child and teacher is, and can check children in and out.`
+        ? `Turn on the live roster for ${center.name}? Its owner, administrators and full-time and part-time teachers will see where every child and teacher is, and can check children in and out.`
         : `Turn off the live roster for ${center.name}? The roster page closes for everyone at the center. Today's check-ins and the history are kept.`,
       { title: 'Live roster pilot', confirmLabel: enabling ? 'Turn on' : 'Turn off', tone: 'default' },
     )) return
@@ -216,7 +216,7 @@ export default function AdminCentersPage() {
     const enabling = center.lesson_plans_enabled === false
     if (!await showConfirm(
       enabling
-        ? `Turn on Lesson Plans for ${center.name}? Its admins and regular teachers can build and approve weekly lesson plans again.`
+        ? `Turn on Lesson Plans for ${center.name}? Its admins and full-time and part-time teachers can build and approve weekly lesson plans again.`
         : `Turn off Lesson Plans for ${center.name}? Lesson Plans closes for everyone at the center. Plans and goals are kept.`,
       { title: 'Lesson Plans', confirmLabel: enabling ? 'Turn on' : 'Turn off', tone: 'default' },
     )) return

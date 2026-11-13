@@ -31,7 +31,7 @@ export default function StaffLessonPlansPage() {
       const enabled = membership ? await lessonPlansOn(membership.center_id as string) : true
       if (cancelled) return
       if (!membership) {
-        setState({ kind: 'blocked', message: 'Lesson plans are for regular teachers of a center. Ask your director to add you as a regular employee.' })
+        setState({ kind: 'blocked', message: 'Lesson plans are for full-time and part-time teachers of a center. Ask your director to add you as a full-time or part-time employee.' })
       } else if (!enabled) {
         setState({ kind: 'blocked', message: 'Lesson plans aren’t turned on for your center.' })
       } else {

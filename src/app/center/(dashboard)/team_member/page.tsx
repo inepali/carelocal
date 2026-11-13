@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { StaffProfile, CenterStaff, EMPLOYMENT_CLASS_LABELS, EmploymentClass } from '@/lib/types'
+import { StaffProfile, CenterStaff, EMPLOYMENT_CLASS_LABELS, EmploymentClass, EMPLOYMENT_TYPE_LABELS, employmentTypeOf, type EmploymentType } from '@/lib/types'
 import { Users, Search, Filter, ShieldCheck, Mail, Phone, ArrowRight, CheckCircle2, Clock, Loader2, Sparkles, UserPlus } from 'lucide-react'
 import { getStaffInviteLink } from '@/lib/api/invites'
 import Link from 'next/link'
@@ -23,7 +23,7 @@ export default function StaffPoolPage() {
   const [activeTab, setActiveTab] = useState<'pool' | 'onboarding' | 'discover'>('pool')
   const [centerInfo, setCenterInfo] = useState<{ id: string, slug: string, city: string, zip: string } | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [classFilter, setClassFilter] = useState<'all' | EmploymentClass>('all')
+  const [classFilter, setClassFilter] = useState<'all' | EmploymentType>('all')
   const [inviting, setInviting] = useState<string | null>(null)
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
@@ -80,9 +80,13 @@ export default function StaffPoolPage() {
       const { data: roleRows } = await supabase.from('center_staff').select('staff_id, center_role')
         .eq('center_id', adminData.center_id)
       const roles = new Map(((roleRows ?? []) as { staff_id: string; center_role: string | null }[]).map(r => [r.staff_id, r.center_role]))
+      const { data: partTimeRows } = await supabase.from('center_staff').select('staff_id, part_time')
+        .eq('center_id', adminData.center_id)
+      const partTimers = new Set(((partTimeRows ?? []) as { staff_id: string; part_time: boolean }[]).filter(r => r.part_time).map(r => r.staff_id))
       setStaff((staffData || []).map(row => ({
         ...row,
         center_role: roles.get((row.staff_profiles as unknown as { id?: string } | null)?.id ?? '') ?? null,
+        part_time: partTimers.has((row.staff_profiles as unknown as { id?: string } | null)?.id ?? ''),
       })))
       
       // Load nearby staff (discovery)
@@ -166,7 +170,7 @@ export default function StaffPoolPage() {
       const searchStr = searchTerm.toLowerCase()
       return list.filter(item => {
         const profile = item.staff_profiles || item
-        if (activeTab !== 'discover' && classFilter !== 'all' && item.employment_class !== classFilter) return false
+        if (activeTab !== 'discover' && classFilter !== 'all' && employmentTypeOf(item.employment_class, item.part_time) !== classFilter) return false
         return (
           profile.first_name?.toLowerCase().includes(searchStr) ||
           profile.last_name?.toLowerCase().includes(searchStr) ||
@@ -236,12 +240,12 @@ export default function StaffPoolPage() {
         {activeTab !== 'discover' && (
           <select
             value={classFilter}
-            onChange={(e) => setClassFilter(e.target.value as 'all' | EmploymentClass)}
-            title="Filter by employee class"
+            onChange={(e) => setClassFilter(e.target.value as 'all' | EmploymentType)}
+            title="Filter by employee type"
             className="px-4 py-2.5 rounded-xl border border-border bg-white text-sm font-medium text-text-main focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600"
           >
-            <option value="all">All Classes</option>
-            {(Object.entries(EMPLOYMENT_CLASS_LABELS) as [EmploymentClass, string][]).map(([value, label]) => (
+            <option value="all">All Types</option>
+            {(Object.entries(EMPLOYMENT_TYPE_LABELS) as [EmploymentType, string][]).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}
           </select>
@@ -304,7 +308,9 @@ export default function StaffPoolPage() {
                             <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs ${
                               shownClass === 'regular' ? 'bg-brand-50 text-brand-600 border-brand-100' : 'bg-white text-muted border-border'
                             }`}>
-                              {EMPLOYMENT_CLASS_LABELS[shownClass as EmploymentClass]}{item.status !== 'active' && ' (requested)'}
+                              {item.status === 'active'
+                                ? EMPLOYMENT_TYPE_LABELS[employmentTypeOf(shownClass as EmploymentClass, item.part_time)]
+                                : EMPLOYMENT_CLASS_LABELS[shownClass as EmploymentClass]}{item.status !== 'active' && ' (requested)'}
                             </span>
                           )}
                         </div>

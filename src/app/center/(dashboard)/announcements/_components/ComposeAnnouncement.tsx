@@ -153,8 +153,8 @@ export function ComposeAnnouncement({ centerId, childcare, onCancel, onSent }: {
             <legend className="mb-2 text-sm font-bold text-heading">Staff</legend>
             <div className="flex flex-col gap-1.5">
               <Choice on={staff === 'none'} onClick={() => setStaff('none')} label="No staff" />
-              <Choice on={staff === 'all'} onClick={() => setStaff('all')} label="All active staff" hint="Regular staff and substitutes" />
-              <Choice on={staff === 'regular'} onClick={() => setStaff('regular')} label="Regular staff only" />
+              <Choice on={staff === 'all'} onClick={() => setStaff('all')} label="All active staff" hint="Full-time, part-time and substitutes" />
+              <Choice on={staff === 'regular'} onClick={() => setStaff('regular')} label="Full-time and part-time only" />
             </div>
           </fieldset>
         </div>
