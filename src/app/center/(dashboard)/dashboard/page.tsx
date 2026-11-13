@@ -261,7 +261,7 @@ export default function DashboardOverview() {
               {stats.avgRating > 0 ? stats.avgRating.toFixed(1) : stats.totalReviews > 0 ? 'New' : '—'}
               <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
             </div>
-            <Link href="/center/care-score" className="text-sm font-bold text-muted hover:text-brand-600 hover:underline">{stats.totalReviews} {staffTerm} Review{stats.totalReviews !== 1 ? 's' : ''} · View &amp; reply</Link>
+            <Link href="/center/about#carescore" className="text-sm font-bold text-muted hover:text-brand-600 hover:underline">{stats.totalReviews} {staffTerm} Review{stats.totalReviews !== 1 ? 's' : ''} · View &amp; reply</Link>
           </div>
         </div>
       </div>

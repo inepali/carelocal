@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { CenterProgram, CenterTeamMember, CenterAboutItem, WorkArea } from '@/lib/types'
-import { Building2, BookOpen, Users, ListPlus, Clock, Mail, CreditCard, Database, ExternalLink, FileText, Globe, Home, Target, CalendarDays } from 'lucide-react'
+import { CenterProgram, CenterTeamMember, WorkArea } from '@/lib/types'
+import { Building2, BookOpen, Users, Star, Clock, Mail, CreditCard, Database, ExternalLink, FileText, Globe, Home, Target, CalendarDays } from 'lucide-react'
 import CenterProfileTab from './_components/CenterProfileTab'
 import AboutListEditor from './_components/AboutListEditor'
 import SubscriptionTab from './_components/SubscriptionTab'
@@ -13,6 +13,7 @@ import DocumentsTab from './_components/DocumentsTab'
 import ChildDocumentsTab from './_components/ChildDocumentsTab'
 import { canOpenChildFiles, useCenterContext } from '../context'
 import PublicPageTab from './_components/PublicPageTab'
+import { CenterCareScoreSection } from '@/components/care-score/CenterCareScoreSection'
 import { useLookups } from '@/hooks/use-lookups'
 import { lookupLabel } from '@/lib/lookups'
 import { normalizeWebUrl } from '@/lib/utils'
@@ -25,7 +26,7 @@ const TABS = [
   { id: 'documents', name: 'Documents', icon: FileText },
   { id: 'public', name: 'Public Page', icon: Globe },
   { id: 'subscription', name: 'Subscription', icon: CreditCard },
-  { id: 'others', name: 'Others', icon: ListPlus },
+  { id: 'carescore', name: 'Care Score', icon: Star },
 ] as const
 
 type TabId = typeof TABS[number]['id']
@@ -112,7 +113,7 @@ export default function CenterAboutPage() {
     <div className="max-w-6xl pb-24">
       <div className="mb-8">
         <h1 className="text-3xl font-extrabold text-heading mb-2">About</h1>
-        <p className="text-muted">Manage your center profile, programs, leadership team, and additional information.</p>
+        <p className="text-muted">Manage your center profile, programs, leadership team, subscription, and Care Score.</p>
       </div>
 
       <div role="tablist" aria-label="About sections" className="flex gap-1 border-b border-border mb-10 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -271,29 +272,6 @@ export default function CenterAboutPage() {
             />
           </div>
 
-          <div role="tabpanel" id="about-panel-others" aria-labelledby="about-tab-others" hidden={activeTab !== 'others'}>
-            <AboutListEditor<CenterAboutItem & { [key: string]: unknown }>
-              table="center_about_items"
-              centerId={centerId}
-              itemLabel="Item"
-              icon={ListPlus}
-              layout="list"
-              description="Add any other information about your center, such as philosophy, accreditations, meals, or policies."
-              emptyTitle="No additional information yet"
-              emptyText="Add free-form entries for anything that doesn't fit elsewhere."
-              fields={[
-                { key: 'title', label: 'Title', placeholder: 'e.g. Our Philosophy', required: true },
-                { key: 'content', label: 'Details', type: 'textarea', placeholder: 'Write anything you want to share.' },
-              ]}
-              renderItem={(item) => (
-                <>
-                  <h3 className="text-lg font-black text-heading tracking-tight mb-1">{item.title}</h3>
-                  {item.content && <p className="text-sm text-text-muted leading-relaxed whitespace-pre-line">{item.content}</p>}
-                </>
-              )}
-            />
-          </div>
-
           <div role="tabpanel" id="about-panel-data" aria-labelledby="about-tab-data" hidden={activeTab !== 'data'}>
             {activeTab === 'data' && <ManageDataTab />}
           </div>
@@ -327,6 +305,10 @@ export default function CenterAboutPage() {
 
           <div role="tabpanel" id="about-panel-subscription" aria-labelledby="about-tab-subscription" hidden={activeTab !== 'subscription'}>
             <SubscriptionTab />
+          </div>
+
+          <div role="tabpanel" id="about-panel-carescore" aria-labelledby="about-tab-carescore" hidden={activeTab !== 'carescore'}>
+            {activeTab === 'carescore' && <CenterCareScoreSection />}
           </div>
         </>
       )}

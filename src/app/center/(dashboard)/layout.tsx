@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, LayoutDashboard, Users, UserPlus, Info, Calendar, Tags, LifeBuoy, ClipboardCheck, Truck, Baby, Building2, UserCircle, Inbox, ShieldCheck, Briefcase, CalendarCheck, LayoutGrid, PanelLeftClose, PanelLeftOpen, NotebookPen, Utensils, Megaphone, CalendarClock, Star } from 'lucide-react'
+import { LogOut, LayoutDashboard, Users, UserPlus, Info, Calendar, Tags, LifeBuoy, ClipboardCheck, Truck, Baby, Building2, UserCircle, Inbox, ShieldCheck, Briefcase, CalendarCheck, LayoutGrid, PanelLeftClose, PanelLeftOpen, NotebookPen, Utensils, Megaphone, CalendarClock } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { CenterContext, canManageSchedule, canOpenChildFiles, canOpenRoster } from './context'
@@ -153,7 +153,6 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
     { name: 'Requests', href: '/center/requests', icon: Inbox },
     { name: 'Tours', href: '/center/tours', icon: CalendarCheck },
     { name: 'Compliance', href: '/center/compliance', icon: ShieldCheck },
-    { name: 'Care Score', href: '/center/care-score', icon: Star },
     { name: 'Inspections', href: '/center/inspections', icon: ClipboardCheck },
     // Receipts has no menu item of its own: it opens from a vendor's receipts link
     { name: 'Vendors', href: '/center/vendors', icon: Truck, also: ['/center/receipts'] },
