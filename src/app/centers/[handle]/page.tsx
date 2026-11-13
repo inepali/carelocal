@@ -119,20 +119,10 @@ export default async function PublicCenterPage({ params }: Props) {
           </div>
         </header>
 
-        {(center.description || center.about.length > 0) && (
+        {center.description && (
           <section aria-labelledby="about-heading" className={SECTION}>
             <h2 id="about-heading" className={SECTION_TITLE}>About {center.name}</h2>
-            {center.description && <p className="whitespace-pre-line leading-relaxed text-text-muted">{center.description}</p>}
-            {center.about.length > 0 && (
-              <div className={`space-y-5 ${center.description ? 'mt-6 border-t border-border pt-6' : ''}`}>
-                {center.about.map(item => (
-                  <div key={item.id}>
-                    <h3 className="font-bold text-text-main">{item.title}</h3>
-                    {item.content && <p className="mt-1 whitespace-pre-line leading-relaxed text-text-muted">{item.content}</p>}
-                  </div>
-                ))}
-              </div>
-            )}
+            <p className="whitespace-pre-line leading-relaxed text-text-muted">{center.description}</p>
           </section>
         )}
 

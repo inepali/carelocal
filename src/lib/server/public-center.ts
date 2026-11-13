@@ -33,11 +33,10 @@ export interface PublicCenterPage {
   toursEnabled: boolean
   /** Newest change across the center, its programs, team and About items (sitemap lastmod, dateModified) */
   lastModified: string
-  /** Nothing to read yet (no description, programs, team or About items): kept out of search until it has content */
+  /** Nothing to read yet (no description, programs or team): kept out of search until it has content */
   thin: boolean
   programs: { id: string; name: string; ageRange: string | null; schedule: string | null; capacity: number | null; description: string | null; moreInfoUrl: string | null }[]
   team: { id: string; name: string; title: string | null; role: string | null; bio: string | null }[]
-  about: { id: string; title: string; content: string | null }[]
 }
 
 /** A center in a public list (directory, city page, "more centers nearby") */
@@ -64,12 +63,11 @@ export const getPublicCenter = cache(async (domain: DomainKey, handle: string): 
     .maybeSingle()
   if (!c) return null
 
-  const [programs, team, about, reviews] = await Promise.all([
+  // About "Others" items (center_about_items) are no longer shown publicly; the data is kept for a later clean-up.
+  const [programs, team, reviews] = await Promise.all([
     client.from('center_programs').select('id, name, age_range, schedule, capacity, description, more_info_url, updated_at')
       .eq('center_id', c.id).eq('is_active', true).order('sort_order').order('created_at'),
     client.from('center_team_members').select('id, name, title, role, bio, updated_at')
-      .eq('center_id', c.id).order('sort_order').order('created_at'),
-    client.from('center_about_items').select('id, title, content, updated_at')
       .eq('center_id', c.id).order('sort_order').order('created_at'),
     c.public_show_care_score
       ? client.from('care_scores').select('score, review_count').eq('subject_type', 'center').eq('subject_id', c.id).maybeSingle()
@@ -78,7 +76,6 @@ export const getPublicCenter = cache(async (domain: DomainKey, handle: string): 
 
   const programRows = programs.data ?? []
   const teamRows = team.data ?? []
-  const aboutRows = about.data ?? []
   const care = reviews.data as { score: number | string | null; review_count: number } | null
   const description = c.public_description?.trim() || null
   return {
@@ -101,14 +98,13 @@ export const getPublicCenter = cache(async (domain: DomainKey, handle: string): 
       ? { average: Number(care.score), count: care.review_count }
       : null,
     toursEnabled: c.public_tours_enabled !== false,
-    lastModified: newest(c.updated_at, ...programRows.map(p => p.updated_at), ...teamRows.map(t => t.updated_at), ...aboutRows.map(a => a.updated_at)),
-    thin: !description && programRows.length === 0 && teamRows.length === 0 && aboutRows.length === 0,
+    lastModified: newest(c.updated_at, ...programRows.map(p => p.updated_at), ...teamRows.map(t => t.updated_at)),
+    thin: !description && programRows.length === 0 && teamRows.length === 0,
     programs: programRows.map(p => ({
       id: p.id, name: p.name, ageRange: p.age_range ?? null, schedule: p.schedule ?? null,
       capacity: p.capacity ?? null, description: p.description ?? null, moreInfoUrl: normalizeWebUrl(p.more_info_url),
     })),
     team: teamRows.map(t => ({ id: t.id, name: t.name, title: t.title ?? null, role: t.role ?? null, bio: t.bio ?? null })),
-    about: aboutRows.map(a => ({ id: a.id, title: a.title, content: a.content ?? null })),
   }
 })
 
@@ -124,17 +120,16 @@ export const listPublicCenters = cache(async (domain: DomainKey): Promise<Public
   if (!centers || centers.length === 0) return []
 
   const ids = centers.map(c => c.id as string)
-  const [programs, about, team] = await Promise.all([
+  const [programs, team] = await Promise.all([
     client.from('center_programs').select('center_id, name, updated_at').in('center_id', ids).eq('is_active', true).order('sort_order'),
-    client.from('center_about_items').select('center_id, updated_at').in('center_id', ids),
     client.from('center_team_members').select('center_id, updated_at').in('center_id', ids),
   ])
   const by = <T extends { center_id: string }>(rows: T[] | null, id: string) => (rows ?? []).filter(r => r.center_id === id)
 
   return centers.flatMap(c => {
-    const p = by(programs.data, c.id), a = by(about.data, c.id), t = by(team.data, c.id)
+    const p = by(programs.data, c.id), t = by(team.data, c.id)
     const description = c.public_description?.trim() || null
-    if (!description && p.length === 0 && a.length === 0 && t.length === 0) return []
+    if (!description && p.length === 0 && t.length === 0) return []
     return [{
       handle: c.public_handle as string,
       name: c.name as string,
@@ -142,7 +137,7 @@ export const listPublicCenters = cache(async (domain: DomainKey): Promise<Public
       state: (c.state as string | null) ?? null,
       description,
       programNames: p.map(x => x.name as string),
-      lastModified: newest(c.updated_at, ...p.map(x => x.updated_at), ...a.map(x => x.updated_at), ...t.map(x => x.updated_at)),
+      lastModified: newest(c.updated_at, ...p.map(x => x.updated_at), ...t.map(x => x.updated_at)),
     }]
   }).sort((x, y) => x.name.localeCompare(y.name))
 })

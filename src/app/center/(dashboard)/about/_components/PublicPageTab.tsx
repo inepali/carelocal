@@ -62,7 +62,6 @@ export default function PublicPageTab({ centerId }: { centerId: string }) {
     const counts = await Promise.all([
       supabase.from('center_programs').select('id', { count: 'exact', head: true }).eq('center_id', centerId).eq('is_active', true),
       supabase.from('center_team_members').select('id', { count: 'exact', head: true }).eq('center_id', centerId),
-      supabase.from('center_about_items').select('id', { count: 'exact', head: true }).eq('center_id', centerId),
     ])
     setContentCount(counts.reduce((sum, r) => sum + (r.count ?? 0), 0))
     setLoading(false)
