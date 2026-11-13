@@ -1,8 +1,10 @@
 import Link from 'next/link'
-import { Building2, LinkIcon, Star, UserRound } from 'lucide-react'
+import { Briefcase, Building2, LinkIcon, Star, UserRound } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getReviewLinkInfo, getReviewLinkOptions } from '@/app/actions/review-links.actions'
 import { LinkReviewForm } from './LinkReviewForm'
+import { SwitchAccountButton } from './SwitchAccountButton'
+import { linkIneligibleReason } from '@/lib/care-score'
 
 /**
  * /r/<code>: someone asked for a review. Anyone can open it and see who is asking; only people with a real working
@@ -46,12 +48,18 @@ export default async function ReviewLinkPage({ params }: { params: Promise<{ cod
 
       {!user && (
         <Card>
-          <h2 className="font-bold text-heading">Sign in to leave your review</h2>
-          <p className="mt-1 text-sm text-text-muted">Only people who work or worked with {info.name} can review, so we need to know who you are.</p>
-          <Link href={`/login?redirect=${encodeURIComponent(`/r/${code}`)}`} className="mt-4 flex w-full items-center justify-center rounded-xl bg-brand-600 py-3 font-semibold text-white">
-            Sign in to CareLocal
-          </Link>
-          {info.parents && <ParentLink code={code} />}
+          <h2 className="font-bold text-heading">{info.subject_type === 'center' ? `Who are you at ${info.name}?` : 'Sign in to leave your review'}</h2>
+          <div className="mt-3 grid gap-2">
+            <Choice icon={Briefcase} title={info.subject_type === 'center' ? 'I work here' : 'I work with them'}
+              text={info.subject_type === 'center'
+                ? 'Staff and teachers: sign in to your CareLocal account.'
+                : 'Centers and coworkers: sign in to your CareLocal account.'}>
+              <Link href={`/login?redirect=${encodeURIComponent(`/r/${code}`)}`} className="mt-3 flex w-full items-center justify-center rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white">
+                Sign in to CareLocal
+              </Link>
+            </Choice>
+            {info.parents && <ParentChoice code={code} />}
+          </div>
         </Card>
       )}
 
@@ -64,13 +72,14 @@ export default async function ReviewLinkPage({ params }: { params: Promise<{ cod
 
       {user && options && !options.is_self && options.options.length === 0 && (
         <Card>
-          <h2 className="font-bold text-heading">You can&apos;t review {info.name} yet</h2>
-          <p className="mt-1 text-sm text-text-muted">
-            {info.subject_type === 'center'
-              ? 'Reviews are for people who work at this center or worked a shift there in the last 6 months.'
-              : 'Reviews are for centers and coworkers who work, or worked in the last 6 months, at the same center.'}
-          </p>
-          {info.parents && <ParentLink code={code} />}
+          <h2 className="font-bold text-heading">{info.subject_type === 'center' ? `Who are you at ${info.name}?` : `You can't review ${info.name} yet`}</h2>
+          <div className="mt-3 grid gap-2">
+            <Choice icon={Briefcase} title={info.subject_type === 'center' ? 'I work here' : 'I work with them'}
+              text={linkIneligibleReason(info.subject_type, info.name, options) ?? ''}>
+              <SwitchAccountButton code={code} label={info.subject_type === 'center' ? 'Sign in with my staff account' : 'Use a different account'} />
+            </Choice>
+            {info.parents && <ParentChoice code={code} />}
+          </div>
         </Card>
       )}
 
@@ -89,10 +98,22 @@ function Card({ children }: { children: React.ReactNode }) {
   return <section className="rounded-2xl border border-border bg-white p-5 shadow-sm">{children}</section>
 }
 
-function ParentLink({ code }: { code: string }) {
+function Choice({ icon: Icon, title, text, children }: { icon: typeof Star; title: string; text: string; children?: React.ReactNode }) {
   return (
-    <a href={`/r/${code}/parent`} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-border py-3 text-sm font-semibold text-text-main">
-      <Star className="h-4 w-4 text-amber-400" /> I&apos;m a parent here
-    </a>
+    <div className="rounded-xl border border-border p-4">
+      <div className="flex items-center gap-2 font-semibold text-text-main"><Icon className="h-4 w-4 text-brand-600" /> {title}</div>
+      {text && <p className="mt-1 text-sm text-text-muted">{text}</p>}
+      {children}
+    </div>
+  )
+}
+
+function ParentChoice({ code }: { code: string }) {
+  return (
+    <Choice icon={Star} title="I'm a parent here" text="Parents rate the center through the parent portal, with the PIN your center gave you.">
+      <a href={`/r/${code}/parent`} className="mt-3 flex w-full items-center justify-center rounded-xl border border-border py-3 text-sm font-semibold text-text-main">
+        Go to the parent portal
+      </a>
+    </Choice>
   )
 }

@@ -90,6 +90,8 @@ END $$;
 SELECT pg_temp.as_user(pg_temp.id('u_admin_b'));
 DO $$ BEGIN
   ASSERT jsonb_array_length(care_review_link_options(pg_temp.code('teacher')) -> 'options') = 0, 'no relationship, no options';
+  ASSERT care_review_link_options(pg_temp.code('teacher')) -> 'viewer' = '{"email":"b@test.invalid","has_staff_profile":false,"staff_name":null,"admin_of":["Other Test"],"pending_shift_here":false}'::jsonb,
+    'viewer: center account without a staff profile';
   BEGIN PERFORM care_review_link_submit(pg_temp.code('teacher'), 'center', pg_temp.id('center_b'), 1, 'x'); RAISE EXCEPTION 'expected denial';
   EXCEPTION WHEN insufficient_privilege THEN NULL; END;
   BEGIN PERFORM care_review_link_submit(pg_temp.code('teacher'), 'center', pg_temp.id('center_a'), 1, 'x'); RAISE EXCEPTION 'expected denial';
@@ -123,6 +125,8 @@ END $$;
 SELECT pg_temp.as_user(pg_temp.id('u_o'));
 DO $$ BEGIN
   ASSERT jsonb_array_length(care_review_link_options(pg_temp.code('teacher')) -> 'options') = 0, 'outsider: no options';
+  ASSERT (care_review_link_options(pg_temp.code('center')) -> 'viewer' ->> 'has_staff_profile')::boolean
+     AND care_review_link_options(pg_temp.code('center')) -> 'viewer' ->> 'staff_name' = 'Olu A.', 'viewer: staff profile without a relationship';
   BEGIN PERFORM care_review_link_submit(pg_temp.code('teacher'), 'peer', pg_temp.id('center_a'), 1, 'x'); RAISE EXCEPTION 'expected denial';
   EXCEPTION WHEN insufficient_privilege THEN NULL; END;
   -- and no direct insert of coworker reviews

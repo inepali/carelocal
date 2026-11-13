@@ -298,6 +298,33 @@ export interface ReviewLinkOptions {
   subject_type: CareSubjectType
   is_self: boolean
   options: ReviewLinkOption[]
+  /** The signed-in person, so the page can explain why a way to review is not open */
+  viewer?: {
+    email: string | null
+    has_staff_profile: boolean
+    staff_name: string | null
+    admin_of: string[]
+    pending_shift_here: boolean
+  }
+}
+
+/** Why a signed-in person cannot review from a link, in plain words (null when they can) */
+export function linkIneligibleReason(subjectType: CareSubjectType, subjectName: string, o: ReviewLinkOptions) {
+  if (o.is_self || o.options.length > 0) return null
+  const v = o.viewer
+  const who = v?.email ? `You're signed in as ${v.email}` : `You're signed in`
+  if (!v?.has_staff_profile) {
+    const admin = v && v.admin_of.length > 0 ? `, a center account for ${v.admin_of.join(', ')}` : ''
+    return subjectType === 'center'
+      ? `${who}${admin}. To review ${subjectName} as staff, sign in with your staff account.`
+      : `${who}${admin}, which has not worked with ${subjectName}. Centers can review people who work or worked a shift there in the last 6 months.`
+  }
+  if (subjectType === 'center') {
+    return v.pending_shift_here
+      ? `${who} (${v.staff_name ?? 'staff'}). Your shift at ${subjectName} counts once it is checked out.`
+      : `${who} (${v.staff_name ?? 'staff'}), who is not on ${subjectName}'s team and has not worked a shift there in the last 6 months.`
+  }
+  return `${who} (${v.staff_name ?? 'staff'}). Coworker reviews are for people who work, or worked in the last 6 months, at the same center.`
 }
 
 /** Whether the viewer may write (new or edit) for an option now */

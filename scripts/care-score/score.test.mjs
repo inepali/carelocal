@@ -10,7 +10,7 @@ import {
   attributionLine, reviewerTypeFor, reviewWindow, reviewErrorMessage, MIN_REVIEWS_FOR_SCORE,
   personalInfoWarnings, personalInfoMessage, REPORT_REASONS, HOLD_REASON_LABELS,
   reviewerCalibration, wilsonLowerBound, compareByRank, cleanSubRatings, SUB_RATING_TOPICS, subRatingLabel, PARENT_TRUST,
-  canWriteOption, SOURCE_LABELS,
+  canWriteOption, SOURCE_LABELS, linkIneligibleReason,
 } from '../../src/lib/care-score.ts'
 
 let passed = 0
@@ -96,6 +96,13 @@ check('can write: editable', canWriteOption(opt({ editable: true, next_review_at
 check('can write: waiting', !canWriteOption(opt({ editable: false, next_review_at: '2999-01-01T00:00:00Z' })))
 check('can write: wait over', canWriteOption(opt({ editable: false, next_review_at: '2000-01-01T00:00:00Z' })))
 check('topic labels', subRatingLabel('would_return') === 'Would work here again' && subRatingLabel('mystery_key') === 'mystery key')
+
+const base = { subject_type: 'center', is_self: false, options: [] }
+const viewer = (x) => ({ email: 'me@x.co', has_staff_profile: false, staff_name: null, admin_of: [], pending_shift_here: false, ...x })
+check('reason: center account', /signed in as me@x.co, a center account for Other KA\. To review Sunrise as staff, sign in with your staff account/.test(linkIneligibleReason('center', 'Sunrise', { ...base, viewer: viewer({ admin_of: ['Other KA'] }) })))
+check('reason: shift not ended', /counts once it is checked out/.test(linkIneligibleReason('center', 'Sunrise', { ...base, viewer: viewer({ has_staff_profile: true, staff_name: 'Sam L.', pending_shift_here: true }) })))
+check('reason: not on team', /Sam L\.\), who is not on Sunrise's team/.test(linkIneligibleReason('center', 'Sunrise', { ...base, viewer: viewer({ has_staff_profile: true, staff_name: 'Sam L.' }) })))
+check('reason: none when allowed', linkIneligibleReason('center', 'Sunrise', { ...base, options: [{}] }) === null && linkIneligibleReason('center', 'S', { ...base, is_self: true }) === null)
 
 console.log(`\n${passed} passed, ${failures.length} failed`)
 if (failures.length) process.exit(1)
