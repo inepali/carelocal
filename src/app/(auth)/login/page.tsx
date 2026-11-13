@@ -113,7 +113,8 @@ export default function LoginPage() {
 
     const redirect = safeRedirect(new URLSearchParams(window.location.search).get('redirect'))
     if (centerAdmin) {
-      router.push(redirect?.startsWith('/center') ? redirect : '/center/dashboard')
+      // Review links (/r/<code>) work for every kind of account
+      router.push(redirect?.startsWith('/center') || redirect?.startsWith('/r/') ? redirect : '/center/dashboard')
     } else {
       router.push(redirect && !redirect.startsWith('/center') && !redirect.startsWith('/admin') ? redirect : '/staff/shifts')
     }

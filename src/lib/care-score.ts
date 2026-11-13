@@ -31,7 +31,7 @@ export const PARENT_REVIEW_INTERVAL_DAYS = 90
 export const REPORTS_PER_DAY = 5
 
 export type CareSubjectType = 'center' | 'staff'
-export type ReviewerType = 'center' | 'staff' | 'parent'
+export type ReviewerType = 'center' | 'staff' | 'parent' | 'peer'
 
 /** Optional 1–5 topics per reviewer side (public.care_sub_rating_keys). Shown as a breakdown, not in the score. */
 export const SUB_RATING_TOPICS: Record<ReviewerType, { key: string; label: string }[]> = {
@@ -52,6 +52,12 @@ export const SUB_RATING_TOPICS: Record<ReviewerType, { key: string; label: strin
     { key: 'safety', label: 'Safety & cleanliness' },
     { key: 'learning', label: 'Learning' },
     { key: 'caring_staff', label: 'Caring teachers' },
+  ],
+  peer: [
+    { key: 'teamwork', label: 'Teamwork' },
+    { key: 'reliability', label: 'Reliability' },
+    { key: 'communication', label: 'Communication' },
+    { key: 'classroom_skills', label: 'Classroom skills' },
   ],
 }
 
@@ -258,7 +264,46 @@ export function reviewerTypeFor(subject: CareSubjectType): 'center' | 'staff' {
   return subject === 'staff' ? 'center' : 'staff'
 }
 
-export const SOURCE_LABELS: Record<ReviewerType, string> = { center: 'Centers', staff: 'Staff', parent: 'Parents' }
+export const SOURCE_LABELS: Record<ReviewerType, string> = { center: 'Centers', staff: 'Staff', parent: 'Parents', peer: 'Coworkers' }
+
+/** Trust of a review left from an "ask for a review" link (shift reviews are 1.0, parents 0.8) */
+export const LINK_TRUST = { center: 0.9, staff: 0.9, peer: 0.7 } as const
+export const LINK_REVIEWS_PER_DAY = 10
+
+/** What /r/<code> shows before sign-in (care_review_link_info) */
+export interface ReviewLinkInfo {
+  subject_type: CareSubjectType
+  name: string
+  line: string | null
+  /** A center whose parent portal is on: parents can rate through it */
+  parents: boolean
+}
+
+/** One way the signed-in viewer may review from a link (care_review_link_options) */
+export interface ReviewLinkOption {
+  as: 'staff' | 'center' | 'peer'
+  org_id: string
+  label: string
+  existing: {
+    rating: number
+    public_comment: string | null
+    private_feedback: string | null
+    sub_ratings: SubRatings
+    editable: boolean
+    next_review_at: string
+  } | null
+}
+
+export interface ReviewLinkOptions {
+  subject_type: CareSubjectType
+  is_self: boolean
+  options: ReviewLinkOption[]
+}
+
+/** Whether the viewer may write (new or edit) for an option now */
+export function canWriteOption(o: ReviewLinkOption, now: Date = new Date()) {
+  return !o.existing || o.existing.editable || new Date(o.existing.next_review_at) <= now
+}
 
 /** A shift may be reviewed from its end (or check-out) until REVIEW_WINDOW_DAYS later */
 export function reviewWindow(endedAt: Date, now: Date = new Date()) {

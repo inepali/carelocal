@@ -10,6 +10,7 @@ import {
   attributionLine, reviewerTypeFor, reviewWindow, reviewErrorMessage, MIN_REVIEWS_FOR_SCORE,
   personalInfoWarnings, personalInfoMessage, REPORT_REASONS, HOLD_REASON_LABELS,
   reviewerCalibration, wilsonLowerBound, compareByRank, cleanSubRatings, SUB_RATING_TOPICS, subRatingLabel, PARENT_TRUST,
+  canWriteOption, SOURCE_LABELS,
 } from '../../src/lib/care-score.ts'
 
 let passed = 0
@@ -86,7 +87,14 @@ check('sub-ratings cleaned per side', eq(cleanSubRatings('parent', { communicati
 check('sub-ratings junk', eq(cleanSubRatings('staff', null), {}) && eq(cleanSubRatings('staff', [1, 2]), {}))
 check('topics match database', eq(SUB_RATING_TOPICS.center.map(t => t.key), ['punctuality', 'ratio_compliance', 'communication', 'classroom_readiness'])
   && eq(SUB_RATING_TOPICS.staff.map(t => t.key), ['organization', 'support', 'onboarding', 'would_return'])
-  && eq(SUB_RATING_TOPICS.parent.map(t => t.key), ['communication', 'safety', 'learning', 'caring_staff']))
+  && eq(SUB_RATING_TOPICS.parent.map(t => t.key), ['communication', 'safety', 'learning', 'caring_staff'])
+  && eq(SUB_RATING_TOPICS.peer.map(t => t.key), ['teamwork', 'reliability', 'communication', 'classroom_skills']))
+check('peer sub-ratings', eq(cleanSubRatings('peer', { teamwork: 5, punctuality: 4 }), { teamwork: 5 }) && SOURCE_LABELS.peer === 'Coworkers')
+const opt = (existing) => ({ as: 'peer', org_id: 'c', label: 'x', existing })
+check('can write: none yet', canWriteOption(opt(null)))
+check('can write: editable', canWriteOption(opt({ editable: true, next_review_at: '2999-01-01T00:00:00Z' })))
+check('can write: waiting', !canWriteOption(opt({ editable: false, next_review_at: '2999-01-01T00:00:00Z' })))
+check('can write: wait over', canWriteOption(opt({ editable: false, next_review_at: '2000-01-01T00:00:00Z' })))
 check('topic labels', subRatingLabel('would_return') === 'Would work here again' && subRatingLabel('mystery_key') === 'mystery key')
 
 console.log(`\n${passed} passed, ${failures.length} failed`)

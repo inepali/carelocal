@@ -22,7 +22,7 @@ interface AdminReview {
   shift_id: string
   reviewer_id: string
   reviewee_id: string
-  reviewer_type: 'center' | 'staff' | 'parent'
+  reviewer_type: 'center' | 'staff' | 'parent' | 'peer'
   rating: number
   tags: string[] | null
   public_comment: string | null
@@ -99,6 +99,7 @@ export default function AdminReviewsPage() {
     for (const r of list) {
       if (r.reviewer_type === 'center') { centerIds.add(r.reviewer_id); staffIds.add(r.reviewee_id) }
       else if (r.reviewer_type === 'staff') { staffIds.add(r.reviewer_id); centerIds.add(r.reviewee_id) }
+      else if (r.reviewer_type === 'peer') { staffIds.add(r.reviewer_id); staffIds.add(r.reviewee_id) }
       else centerIds.add(r.reviewee_id)
     }
     const [c, s] = await Promise.all([
@@ -180,7 +181,8 @@ export default function AdminReviewsPage() {
                     <div className="font-bold text-text-main">
                       {r.author_name ?? 'Unknown'}{r.author_role ? ` (${r.author_role})` : ''} · {r.reviewer_type === 'parent' ? 'parent portal' : names[r.reviewer_id] ?? r.reviewer_type}
                       <span className="mx-2 text-muted">→</span>
-                      {names[r.reviewee_id] ?? (r.reviewer_type === 'center' ? 'Staff' : 'Center')}
+                      {names[r.reviewee_id] ?? (r.reviewer_type === 'center' || r.reviewer_type === 'peer' ? 'Staff' : 'Center')}
+                      {r.reviewer_type === 'peer' && <span className="ml-2 rounded bg-violet-50 px-1.5 py-0.5 text-[10px] font-bold text-violet-700">coworker</span>}
                     </div>
                     <div className="mt-0.5 text-xs text-muted">
                       {new Date(r.created_at).toLocaleString()}

@@ -237,6 +237,8 @@ function ReviewCard({ review, canRespond, onReplied }: { review: CareReview; can
           <div className="text-xs text-muted">
             {date}{review.punctual === false && ' · Arrived late'}
             {review.source === 'parent' && <span className="ml-2 rounded bg-sky-50 px-1.5 py-0.5 font-bold text-sky-700">Parent review</span>}
+            {review.source === 'peer' && <span className="ml-2 rounded bg-violet-50 px-1.5 py-0.5 font-bold text-violet-700">Coworker review</span>}
+            {!review.shift_id && review.source !== 'parent' && review.source !== 'peer' && <span className="ml-2 rounded bg-surface px-1.5 py-0.5 font-bold text-muted">Requested</span>}
           </div>
         </div>
         <Stars value={review.rating} />

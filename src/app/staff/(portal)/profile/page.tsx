@@ -18,6 +18,7 @@ import { StaffAvatar } from '@/components/StaffAvatar'
 import { getAvatarUploadUrl, deleteAvatar } from '@/app/actions/avatar.actions'
 import { showAlert, showConfirm } from '@/lib/dialog'
 import { CareScorePanel } from '@/components/care-score/CareScorePanel'
+import { RequestReviewLinkCard } from '@/components/care-score/RequestReviewLinkCard'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -382,12 +383,15 @@ export default function StaffProfilePage() {
       )}
       {activeTab === 'reviews' && (
         profile.id ? (
+          <div className="space-y-4">
+          <RequestReviewLinkCard subjectType="staff" subjectId={profile.id} />
           <CareScorePanel
             subjectType="staff"
             subjectId={profile.id}
             canRespond
-            emptyHint="Complete shifts to build your reputation! Centers review you after each shift."
+            emptyHint="Complete shifts to build your reputation! Centers review you after each shift, and you can ask centers and coworkers for a review."
           />
+          </div>
         ) : null
       )}
     </div>

@@ -3,6 +3,7 @@
 import { Star } from 'lucide-react'
 import { CareScorePanel } from '@/components/care-score/CareScorePanel'
 import { ParentReviewQrCard } from '@/components/care-score/ParentReviewQrCard'
+import { RequestReviewLinkCard } from '@/components/care-score/RequestReviewLinkCard'
 import { useCenterContext } from '../context'
 
 /** Center admin: the center's own Care Score and staff reviews, with optional (recommended) replies */
@@ -22,6 +23,7 @@ export default function CenterCareScorePage() {
         </p>
       </div>
 
+      {ctx.centerId && canRespond && <RequestReviewLinkCard subjectType="center" subjectId={ctx.centerId} />}
       {ctx.centerId && canRespond && <ParentReviewQrCard centerId={ctx.centerId} centerName="your center" />}
 
       {ctx.centerId ? (
