@@ -213,3 +213,27 @@ export async function loadPortalMenu(tokenHash: string, month: string | null) {
   if (error) throw new Error(`parent_portal_menu: ${error.message}`)
   return (data as PortalMenu | null) ?? null
 }
+
+/** The parent's Care Score review of their center (parent_care_review_status). Null = signed out / no enrolled child. */
+export interface ParentReviewStatus {
+  center: { id: string; name: string }
+  author_name: string
+  review: {
+    id: string
+    rating: number
+    public_comment: string | null
+    sub_ratings: Record<string, number>
+    created_at: string
+    editable: boolean
+    held: boolean
+    hidden: boolean
+    response: string | null
+  } | null
+  next_review_at: string | null
+}
+
+export async function loadParentReviewStatus(tokenHash: string) {
+  const { data, error } = await parentDb().rpc('parent_care_review_status', { p_token_hash: tokenHash })
+  if (error) throw new Error(error.message)
+  return (data ?? null) as ParentReviewStatus | null
+}

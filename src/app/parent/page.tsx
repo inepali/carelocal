@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { Camera, ChevronLeft, ChevronRight, Clock, ImageOff, MessageSquarePlus, Phone, Users } from 'lucide-react'
+import { Camera, ChevronLeft, ChevronRight, Clock, ImageOff, MessageSquarePlus, Phone, Star, Users } from 'lucide-react'
 import { reportDate, reportSections, reportTime } from '@/lib/daily-report'
 import {
   loadParentGroupUrl, loadPortalAnnouncements, loadPortalDay, loadPortalHome, loadPortalPhotos, loadPortalThread, loadPortalThreads, parentTokenHash, rememberedCenterKey, signPortalPhotos,
@@ -130,6 +130,14 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
 
       {tab === 'notices' && notices && <Notices items={notices} centerName={home.center.name} groupUrl={groupUrl} />}
       {tab === 'menu' && <MenuView tokenHash={tokenHash} childId={child.id} week={sp.week && DAY.test(sp.week) ? sp.week : null} />}
+
+      <Link href="/parent/review" className="mt-8 flex items-center justify-between gap-3 rounded-2xl border border-border bg-white p-4 text-sm shadow-sm">
+        <span>
+          <span className="block font-semibold text-text-main">How is {home.center.name} doing?</span>
+          <span className="text-text-muted">Rate the center in under a minute.</span>
+        </span>
+        <Star className="h-5 w-5 shrink-0 fill-amber-400 text-amber-400" />
+      </Link>
 
       <footer className="mt-10 text-center text-xs text-muted">
         {home.center.phone && (

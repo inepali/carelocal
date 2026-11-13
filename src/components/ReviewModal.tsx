@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Star, Loader2, X, AlertTriangle } from 'lucide-react'
 import { showAlert } from '@/lib/dialog'
-import { EDIT_WINDOW_HOURS, MAX_COMMENT_LENGTH, REVIEW_WINDOW_DAYS, personalInfoMessage, personalInfoWarnings } from '@/lib/care-score'
+import { EDIT_WINDOW_HOURS, MAX_COMMENT_LENGTH, REVIEW_WINDOW_DAYS, SUB_RATING_TOPICS, personalInfoMessage, personalInfoWarnings } from '@/lib/care-score'
 
 interface ReviewModalProps {
   isOpen: boolean
@@ -21,6 +21,7 @@ export function ReviewModal({ isOpen, onClose, onSubmit, reviewerType, title }: 
   const [privateFeedback, setPrivateFeedback] = useState('')
   const [punctual, setPunctual] = useState(true)
   const [doNotReturn, setDoNotReturn] = useState(false)
+  const [subRatings, setSubRatings] = useState<Record<string, number>>({})
   const [submitting, setSubmitting] = useState(false)
 
   if (!isOpen) return null
@@ -47,6 +48,7 @@ export function ReviewModal({ isOpen, onClose, onSubmit, reviewerType, title }: 
         tags,
         public_comment: publicComment,
         private_feedback: privateFeedback,
+        sub_ratings: subRatings,
         ...(reviewerType === 'center' ? { punctual, do_not_return: doNotReturn } : {})
       })
       onClose()
@@ -57,6 +59,7 @@ export function ReviewModal({ isOpen, onClose, onSubmit, reviewerType, title }: 
       setPrivateFeedback('')
       setPunctual(true)
       setDoNotReturn(false)
+      setSubRatings({})
     } catch (error) {
       showAlert(error instanceof Error && error.message ? error.message : 'Failed to submit review.')
     } finally {
@@ -105,6 +108,31 @@ export function ReviewModal({ isOpen, onClose, onSubmit, reviewerType, title }: 
                       }`} 
                     />
                   </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Optional sub-ratings: a breakdown for others, not part of the headline score */}
+            <div>
+              <label className="block text-sm font-bold text-text-main mb-1">Rate the details <span className="font-normal text-muted">(optional)</span></label>
+              <div className="divide-y divide-border rounded-xl border border-border">
+                {SUB_RATING_TOPICS[reviewerType].map(topic => (
+                  <div key={topic.key} className="flex items-center justify-between gap-3 px-3 py-2">
+                    <span className="text-sm text-text-main">{topic.label}</span>
+                    <div className="flex gap-0.5" role="radiogroup" aria-label={topic.label}>
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <button key={star} type="button" role="radio" aria-checked={subRatings[topic.key] === star} aria-label={`${star} star${star === 1 ? '' : 's'}`}
+                          onClick={() => setSubRatings(prev => {
+                            const next = { ...prev }
+                            if (next[topic.key] === star) delete next[topic.key]; else next[topic.key] = star
+                            return next
+                          })}
+                          className="p-0.5">
+                          <Star className={`w-5 h-5 ${(subRatings[topic.key] ?? 0) >= star ? 'fill-amber-400 text-amber-400' : 'fill-transparent text-border'}`} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>

@@ -2,6 +2,7 @@
 
 import { Star } from 'lucide-react'
 import { CareScorePanel } from '@/components/care-score/CareScorePanel'
+import { ParentReviewQrCard } from '@/components/care-score/ParentReviewQrCard'
 import { useCenterContext } from '../context'
 
 /** Center admin: the center's own Care Score and staff reviews, with optional (recommended) replies */
@@ -16,10 +17,12 @@ export default function CenterCareScorePage() {
           <Star className="h-6 w-6 fill-amber-400 text-amber-400" /> Care Score
         </h1>
         <p className="mt-1 text-sm text-muted">
-          What {ctx.staffTerm.toLowerCase()} say after working shifts at your center. Every center on CareLocal can see this
-          score. Reviews appear once both sides have reviewed the shift, or 7 days after it ends.
+          What {ctx.staffTerm.toLowerCase()} say after working shifts at your center, and what parents say. Every center on
+          CareLocal can see this score. Shift reviews appear once both sides have reviewed, or 7 days after the shift.
         </p>
       </div>
+
+      {ctx.centerId && canRespond && <ParentReviewQrCard centerId={ctx.centerId} centerName="your center" />}
 
       {ctx.centerId ? (
         <CareScorePanel
@@ -27,7 +30,7 @@ export default function CenterCareScorePage() {
           subjectId={ctx.centerId}
           canRespond={canRespond}
           emptyTitle="No reviews yet."
-          emptyHint="Reviews from staff appear here after their shifts."
+          emptyHint="Reviews from staff appear here after their shifts, and from parents once they rate you."
         />
       ) : (
         <div className="h-48 animate-pulse rounded-[1.5rem] border border-border bg-white" />

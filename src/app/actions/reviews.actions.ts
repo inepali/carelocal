@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import {
-  MAX_COMMENT_LENGTH, MAX_REPLY_LENGTH, REPORT_REASONS, reviewErrorMessage,
+  MAX_COMMENT_LENGTH, MAX_REPLY_LENGTH, REPORT_REASONS, cleanSubRatings, reviewErrorMessage,
   type CareReview, type CareScoreRow, type CareSubjectType, type ReportReason, type ReviewSort,
 } from '@/lib/care-score'
 
@@ -14,6 +14,8 @@ type ReviewContent = {
   public_comment?: string
   private_feedback?: string
   do_not_return?: boolean
+  /** Optional 1–5 per topic (SUB_RATING_TOPICS for the reviewer side) */
+  sub_ratings?: Record<string, number>
 }
 
 function cleanContent(data: ReviewContent, reviewerType: 'center' | 'staff') {
@@ -34,6 +36,7 @@ function cleanContent(data: ReviewContent, reviewerType: 'center' | 'staff') {
       // Punctuality and "do not return" are a center's call about staff
       punctual: reviewerType === 'center' ? data.punctual ?? null : null,
       do_not_return: reviewerType === 'center' ? !!data.do_not_return : false,
+      sub_ratings: cleanSubRatings(reviewerType, data.sub_ratings),
     },
   } as const
 }
@@ -130,7 +133,10 @@ export async function getCareScores(subjectType: CareSubjectType, subjectIds: st
   const { data, error } = await supabase.from('care_scores').select('*').eq('subject_type', subjectType).in('subject_id', ids)
   if (error) return { scores: {} as Record<string, CareScoreRow>, error: error.message }
   const scores: Record<string, CareScoreRow> = {}
-  for (const row of (data ?? []) as CareScoreRow[]) scores[row.subject_id] = { ...row, score: row.score == null ? null : Number(row.score), average: row.average == null ? null : Number(row.average) }
+  const num = (v: unknown) => v == null ? null : Number(v)
+  for (const row of (data ?? []) as CareScoreRow[]) {
+    scores[row.subject_id] = { ...row, score: num(row.score), average: num(row.average), rank_score: num(row.rank_score), sub_scores: row.sub_scores ?? {}, by_source: row.by_source ?? {} }
+  }
   return { scores }
 }
 
@@ -205,4 +211,12 @@ export async function releaseReviewHold(reviewId: string) {
   if (error) return { error: error.message }
   revalidatePath('/admin/reviews')
   return { success: true }
+}
+
+/** Owners and admins: the parent-portal link key for the lobby QR code, or null when the portal is off */
+export async function getParentReviewKey(centerId: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('care_parent_review_key', { p_center_id: centerId })
+  if (error) return { key: null as string | null, error: error.message }
+  return { key: (data as string | null) ?? null }
 }

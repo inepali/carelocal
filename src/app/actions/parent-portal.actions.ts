@@ -7,6 +7,7 @@ import {
   parentDb, parentTokenHash, userAgent,
 } from '@/lib/server/parent-portal'
 import { sendParentMessageNow } from '@/lib/server/parent-message-send'
+import { MAX_COMMENT_LENGTH, cleanSubRatings } from '@/lib/care-score'
 
 /**
  * Parent portal sign-in (no account): the parent opens their center's link (/parent/<key>) and types the
@@ -155,4 +156,28 @@ export async function parentAcknowledgeAnnouncement(announcementId: string): Pro
   const { data, error } = await parentDb().rpc('parent_portal_announcement_ack', { p_token_hash: token, p_announcement_id: announcementId })
   if (error) console.error('[parent-portal] announcement acknowledge failed:', error.message)
   return { ok: data === true }
+}
+
+/**
+ * Rate the center (Care Score). The database allows one review per parent every 90 days and edits for 48 hours,
+ * holds comments with personal details for a check, and refuses parents without an enrolled child.
+ */
+export async function parentSubmitReview(input: { rating: number; comment?: string; subRatings?: Record<string, number> }):
+  Promise<{ ok: true; held: boolean } | { ok: false; error: string }> {
+  const token = await parentTokenHash()
+  if (!token) return { ok: false, error: 'Please sign in again.' }
+  const rating = Math.round(Number(input.rating))
+  if (!Number.isFinite(rating) || rating < 1 || rating > 5) return { ok: false, error: 'Choose a rating from 1 to 5 stars.' }
+  const comment = typeof input.comment === 'string' ? input.comment.trim() : ''
+  if (comment.length > MAX_COMMENT_LENGTH) return { ok: false, error: `Comments can be up to ${MAX_COMMENT_LENGTH} characters.` }
+  const { data, error } = await parentDb().rpc('parent_submit_care_review', {
+    p_token_hash: token, p_rating: rating, p_comment: comment || null, p_sub_ratings: cleanSubRatings('parent', input.subRatings),
+  })
+  if (error) {
+    // Messages from the database are written for parents (wait time, sign in again); anything else is generic
+    const known = /review again on|sign in again|enrolled children|1 to 5|2000 characters/i.test(error.message)
+    if (!known) console.error('[parent-portal] review failed:', error.message)
+    return { ok: false, error: known ? error.message : 'Something went wrong. Please try again.' }
+  }
+  return { ok: true, held: !!(data as { held?: boolean } | null)?.held }
 }

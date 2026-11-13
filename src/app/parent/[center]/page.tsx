@@ -6,10 +6,11 @@ import { NoCenterLink, SignInForm } from '../_components/SignInForm'
 /**
  * /parent/<key>: a center's private sign-in link. The parent types their 6-digit PIN; PINs are unique only
  * within a center, so the link says which center. Already signed in for this center: straight to /parent.
+ * ?to=review (the lobby Care Score QR code) goes to /parent/review after sign-in instead.
  */
 export default async function ParentCenterSignIn({ params, searchParams }: {
   params: Promise<{ center: string }>
-  searchParams: Promise<{ expired?: string }>
+  searchParams: Promise<{ expired?: string; to?: string }>
 }) {
   const [{ center: raw }, sp] = await Promise.all([params, searchParams])
   const key = normalizeCenterKey(raw)
@@ -18,7 +19,8 @@ export default async function ParentCenterSignIn({ params, searchParams }: {
 
   const tokenHash = await parentTokenHash()
   const home = tokenHash ? await loadPortalHome(tokenHash) : null
-  if (home && home.center.id === center.id) redirect('/parent')
+  const next = sp.to === 'review' ? '/parent/review' : '/parent'
+  if (home && home.center.id === center.id) redirect(next)
 
-  return <SignInForm centerKey={center.key} centerName={center.name} expired={sp.expired === '1'} />
+  return <SignInForm centerKey={center.key} centerName={center.name} expired={sp.expired === '1'} next={next} />
 }

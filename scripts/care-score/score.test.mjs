@@ -9,6 +9,7 @@ import {
   computeCareScore, starWeight, recencyWeight, buildHistogram, histogramRows, hasEnoughReviews, formatScore,
   attributionLine, reviewerTypeFor, reviewWindow, reviewErrorMessage, MIN_REVIEWS_FOR_SCORE,
   personalInfoWarnings, personalInfoMessage, REPORT_REASONS, HOLD_REASON_LABELS,
+  reviewerCalibration, wilsonLowerBound, compareByRank, cleanSubRatings, SUB_RATING_TOPICS, subRatingLabel, PARENT_TRUST,
 } from '../../src/lib/care-score.ts'
 
 let passed = 0
@@ -67,6 +68,26 @@ check('several', eq(personalInfoWarnings('maria@example.com or 704-555-0199'), [
 check('message', /phone number, email address/.test(personalInfoMessage(['phone', 'email'])) && /children's names/.test(personalInfoMessage(['child_name'])) && personalInfoMessage([]) === '')
 check('report reasons match database', eq(REPORT_REASONS.map(r => r.value), ['retaliation', 'false_information', 'child_info', 'harassment', 'other']))
 check('hold labels cover database reasons', ['phone', 'email', 'address', 'child_name', 'reported_child_info'].every(k => HOLD_REASON_LABELS[k]))
+
+console.log('v2: calibration, rank, sub-ratings (same numbers as care-score-v2.db.test.sql)')
+check('calibration: few subjects = full weight', reviewerCalibration([5, 5, 5, 5, 5], 5) === 1)
+check('calibration: flat rater = 0.6', reviewerCalibration(Array(8).fill(5), 8) === 0.6)
+check('calibration: spread = 1', reviewerCalibration([5, 5, 5, 5, 5, 5, 5, 5, 1, 2], 10) === 1)
+// nineteen 5★ and one 4★: sd = √0.0475 ≈ 0.218 → 0.6 + 0.4 × 0.218/0.3 ≈ 0.891
+check('calibration: partial', Math.abs(reviewerCalibration([...Array(19).fill(5), 4], 20) - (0.6 + 0.4 * Math.sqrt(0.0475) / 0.3)) < 1e-9)
+check('calibrated single 5★ = 4.10', computeCareScore([{ rating: 5, reviewerId: 'flat', ageDays: 0, calibration: 0.6 }]) === 4.1)
+check('parent trust weighs less', computeCareScore([{ rating: 1, reviewerId: 'p', ageDays: 0, trust: PARENT_TRUST }]) > computeCareScore(many(1, 1)))
+check('wilson 1/1 = 0.2065', wilsonLowerBound(1, 1) === 0.2065)
+check('wilson 38/40 = 0.8350', wilsonLowerBound(38, 40) === 0.835)
+check('wilson none = null', wilsonLowerBound(0, 0) === null)
+const ranked = [{ id: 'one', rank_score: 0.2065, review_count: 1 }, { id: 'none', rank_score: null, review_count: 0 }, { id: 'forty', rank_score: 0.835, review_count: 40 }].sort(compareByRank)
+check('rank sort: forty, one, unrated', eq(ranked.map(r => r.id), ['forty', 'one', 'none']))
+check('sub-ratings cleaned per side', eq(cleanSubRatings('parent', { communication: 5, safety: '4', punctuality: 5, learning: 6, caring_staff: 2.5 }), { communication: 5, safety: 4 }))
+check('sub-ratings junk', eq(cleanSubRatings('staff', null), {}) && eq(cleanSubRatings('staff', [1, 2]), {}))
+check('topics match database', eq(SUB_RATING_TOPICS.center.map(t => t.key), ['punctuality', 'ratio_compliance', 'communication', 'classroom_readiness'])
+  && eq(SUB_RATING_TOPICS.staff.map(t => t.key), ['organization', 'support', 'onboarding', 'would_return'])
+  && eq(SUB_RATING_TOPICS.parent.map(t => t.key), ['communication', 'safety', 'learning', 'caring_staff']))
+check('topic labels', subRatingLabel('would_return') === 'Would work here again' && subRatingLabel('mystery_key') === 'mystery key')
 
 console.log(`\n${passed} passed, ${failures.length} failed`)
 if (failures.length) process.exit(1)

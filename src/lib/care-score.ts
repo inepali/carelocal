@@ -2,13 +2,15 @@
  * Care Score: the weighted 1–5★ reputation score for centers and staff (plan: claude/care-score-plan.md).
  *
  * The database is the source of truth: public.recompute_care_score() writes care_scores on every review change
- * and nightly. This module mirrors formula v1 so the UI and tests can explain and check it. Keep the two in step.
+ * and nightly. This module mirrors formula v2 so the UI and tests can explain and check it. Keep the two in step.
  *
- *   w_i   = starWeight(r_i) × 0.5^(age_days / 365) × trust_i / n_reviewer_i
+ *   w_i   = starWeight(r_i) × 0.5^(age_days / 365) × trust_i × calibration_i / n_reviewer_i
+ *   calibration = 1, or for a reviewer who has rated more than 5 subjects: 0.6 + 0.4 × min(sd / 0.3, 1)
  *   score = (C·m + Σ w_i·r_i) / (C + Σ w_i),  C = 5, m = 4.0
+ *   rank  = Wilson lower bound (95%) of the share of 4–5★ reviews (sorting only)
  */
 
-export const CARE_SCORE_VERSION = 1
+export const CARE_SCORE_VERSION = 2
 export const PRIOR_WEIGHT = 5
 export const PRIOR_MEAN = 4.0
 export const HALF_LIFE_DAYS = 365
@@ -22,8 +24,58 @@ export const MAX_COMMENT_LENGTH = 2000
 export const MAX_REPLY_LENGTH = 1000
 
 export const STAR_WEIGHTS: Record<number, number> = { 1: 1.5, 2: 1.25, 3: 1.0, 4: 1.0, 5: 0.9 }
+/** Weight of a parent's review compared with a verified shift review */
+export const PARENT_TRUST = 0.8
+/** A parent may review their center once per this many days (and edit for EDIT_WINDOW_HOURS) */
+export const PARENT_REVIEW_INTERVAL_DAYS = 90
+export const REPORTS_PER_DAY = 5
 
 export type CareSubjectType = 'center' | 'staff'
+export type ReviewerType = 'center' | 'staff' | 'parent'
+
+/** Optional 1–5 topics per reviewer side (public.care_sub_rating_keys). Shown as a breakdown, not in the score. */
+export const SUB_RATING_TOPICS: Record<ReviewerType, { key: string; label: string }[]> = {
+  center: [
+    { key: 'punctuality', label: 'Punctuality' },
+    { key: 'ratio_compliance', label: 'Ratio compliance' },
+    { key: 'communication', label: 'Communication' },
+    { key: 'classroom_readiness', label: 'Classroom readiness' },
+  ],
+  staff: [
+    { key: 'organization', label: 'Organization' },
+    { key: 'support', label: 'Support from staff' },
+    { key: 'onboarding', label: 'Onboarding' },
+    { key: 'would_return', label: 'Would work here again' },
+  ],
+  parent: [
+    { key: 'communication', label: 'Communication' },
+    { key: 'safety', label: 'Safety & cleanliness' },
+    { key: 'learning', label: 'Learning' },
+    { key: 'caring_staff', label: 'Caring teachers' },
+  ],
+}
+
+export type SubRatings = Record<string, number>
+
+/** Only the reviewer side's topics, whole stars 1–5 */
+export function cleanSubRatings(reviewerType: ReviewerType, input: unknown): SubRatings {
+  const allowed = new Set(SUB_RATING_TOPICS[reviewerType].map(t => t.key))
+  const out: SubRatings = {}
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return out
+  for (const [k, v] of Object.entries(input as Record<string, unknown>)) {
+    const n = Number(v)
+    if (allowed.has(k) && Number.isInteger(n) && n >= 1 && n <= 5) out[k] = n
+  }
+  return out
+}
+
+export function subRatingLabel(key: string) {
+  for (const list of Object.values(SUB_RATING_TOPICS)) {
+    const hit = list.find(t => t.key === key)
+    if (hit) return hit.label
+  }
+  return key.replace(/_/g, ' ')
+}
 export type Histogram = Record<'1' | '2' | '3' | '4' | '5', number>
 
 export interface ScoreInput {
@@ -31,6 +83,8 @@ export interface ScoreInput {
   reviewerId: string
   ageDays: number
   trust?: number
+  /** From reviewerCalibration(); 1 when unknown */
+  calibration?: number
 }
 
 export interface CareScoreRow {
@@ -43,6 +97,9 @@ export interface CareScoreRow {
   histogram: Histogram
   score_version: number
   computed_at: string
+  rank_score: number | null
+  sub_scores: Record<string, { average: number; count: number }>
+  by_source: Partial<Record<ReviewerType, { average: number; count: number }>>
 }
 
 export interface CareReview {
@@ -63,6 +120,8 @@ export interface CareReview {
   like_count: number
   liked_by_me: boolean
   reported_by_me: boolean
+  source: ReviewerType
+  sub_ratings: SubRatings | null
 }
 
 export type ReviewSort = 'recent' | 'helpful'
@@ -117,7 +176,34 @@ export function recencyWeight(ageDays: number) {
   return Math.pow(0.5, Math.max(0, ageDays) / HALF_LIFE_DAYS)
 }
 
-/** Formula v1, same as public.recompute_care_score(). Null when there are no reviews. */
+/**
+ * How much a reviewer's reviews count, from all ratings they have given (one per subject is enough).
+ * Full weight until they have rated more than 5 subjects; then 0.6 with no spread, rising to 1 at sd 0.3.
+ */
+export function reviewerCalibration(ratings: number[], subjectCount: number) {
+  if (subjectCount <= 5 || ratings.length === 0) return 1
+  const mean = ratings.reduce((a, b) => a + b, 0) / ratings.length
+  const sd = Math.sqrt(ratings.reduce((a, b) => a + (b - mean) ** 2, 0) / ratings.length)
+  return 0.6 + 0.4 * Math.min(sd / 0.3, 1)
+}
+
+/** Wilson lower bound (z = 1.96) of positives/n, for ranking lists. Null with no reviews. */
+export function wilsonLowerBound(positives: number, n: number, z = 1.96) {
+  if (n <= 0) return null
+  const p = positives / n
+  const z2 = z * z
+  return Math.round(((p + z2 / (2 * n) - z * Math.sqrt((p * (1 - p) + z2 / (4 * n)) / n)) / (1 + z2 / n)) * 10_000) / 10_000
+}
+
+/** Sort helper: higher rank_score first, unrated last, then more reviews first */
+export function compareByRank(a: Pick<CareScoreRow, 'rank_score' | 'review_count'> | null | undefined, b: Pick<CareScoreRow, 'rank_score' | 'review_count'> | null | undefined) {
+  const ra = a?.rank_score ?? -1
+  const rb = b?.rank_score ?? -1
+  if (rb !== ra) return rb - ra
+  return (b?.review_count ?? 0) - (a?.review_count ?? 0)
+}
+
+/** Formula v2, same as public.recompute_care_score(). Null when there are no reviews. */
 export function computeCareScore(reviews: ScoreInput[]): number | null {
   if (reviews.length === 0) return null
   const perReviewer = new Map<string, number>()
@@ -126,7 +212,7 @@ export function computeCareScore(reviews: ScoreInput[]): number | null {
   let weightSum = 0
   let weighted = 0
   for (const r of reviews) {
-    const w = starWeight(r.rating) * recencyWeight(r.ageDays) * (r.trust ?? 1) / perReviewer.get(r.reviewerId)!
+    const w = starWeight(r.rating) * recencyWeight(r.ageDays) * (r.trust ?? 1) * (r.calibration ?? 1) / perReviewer.get(r.reviewerId)!
     weightSum += w
     weighted += w * r.rating
   }
@@ -167,10 +253,12 @@ export function attributionLine(review: Pick<CareReview, 'author_name' | 'author
   return [review.author_name, review.author_role, review.author_org].filter(Boolean).join(' · ')
 }
 
-/** Which side reviews a subject: centers review staff, staff review centers */
+/** Which side reviews a subject: centers review staff; staff (and parents) review centers */
 export function reviewerTypeFor(subject: CareSubjectType): 'center' | 'staff' {
   return subject === 'staff' ? 'center' : 'staff'
 }
+
+export const SOURCE_LABELS: Record<ReviewerType, string> = { center: 'Centers', staff: 'Staff', parent: 'Parents' }
 
 /** A shift may be reviewed from its end (or check-out) until REVIEW_WINDOW_DAYS later */
 export function reviewWindow(endedAt: Date, now: Date = new Date()) {

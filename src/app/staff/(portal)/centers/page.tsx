@@ -28,7 +28,7 @@ import { showAlert, showConfirm } from '@/lib/dialog'
 import { leaveCenter } from '@/app/actions/jobs.actions'
 import { getCareScores } from '@/app/actions/reviews.actions'
 import { CareScorePanel } from '@/components/care-score/CareScorePanel'
-import { formatScore, hasEnoughReviews, type CareScoreRow } from '@/lib/care-score'
+import { compareByRank, formatScore, hasEnoughReviews, type CareScoreRow } from '@/lib/care-score'
 
 export default function MyCentersPage() {
    return (
@@ -104,12 +104,15 @@ function CentersContent() {
          .or(`name.ilike.%${searchQuery}%,city.ilike.%${searchQuery}%`)
          .limit(10)
 
-      if (data && data.length > 0) {
-         const { scores } = await getCareScores('center', data.map(c => c.id))
+      let results = data || []
+      if (results.length > 0) {
+         const { scores } = await getCareScores('center', results.map(c => c.id))
          setCenterRatings(prev => ({ ...prev, ...scores }))
+         // Best-rated first (Wilson lower bound), unrated last
+         results = [...results].sort((a, b) => compareByRank(scores[a.id], scores[b.id]))
       }
 
-      setSearchResults(data || [])
+      setSearchResults(results)
       setSearching(false)
    }
 

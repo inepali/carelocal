@@ -22,7 +22,7 @@ interface AdminReview {
   shift_id: string
   reviewer_id: string
   reviewee_id: string
-  reviewer_type: 'center' | 'staff'
+  reviewer_type: 'center' | 'staff' | 'parent'
   rating: number
   tags: string[] | null
   public_comment: string | null
@@ -98,7 +98,8 @@ export default function AdminReviewsPage() {
     const staffIds = new Set<string>()
     for (const r of list) {
       if (r.reviewer_type === 'center') { centerIds.add(r.reviewer_id); staffIds.add(r.reviewee_id) }
-      else { staffIds.add(r.reviewer_id); centerIds.add(r.reviewee_id) }
+      else if (r.reviewer_type === 'staff') { staffIds.add(r.reviewer_id); centerIds.add(r.reviewee_id) }
+      else centerIds.add(r.reviewee_id)
     }
     const [c, s] = await Promise.all([
       centerIds.size ? supabase.from('centers').select('id, name').in('id', [...centerIds]) : Promise.resolve({ data: [] }),
@@ -177,7 +178,7 @@ export default function AdminReviewsPage() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="text-sm">
                     <div className="font-bold text-text-main">
-                      {r.author_name ?? 'Unknown'}{r.author_role ? ` (${r.author_role})` : ''} · {names[r.reviewer_id] ?? r.reviewer_type}
+                      {r.author_name ?? 'Unknown'}{r.author_role ? ` (${r.author_role})` : ''} · {r.reviewer_type === 'parent' ? 'parent portal' : names[r.reviewer_id] ?? r.reviewer_type}
                       <span className="mx-2 text-muted">→</span>
                       {names[r.reviewee_id] ?? (r.reviewer_type === 'center' ? 'Staff' : 'Center')}
                     </div>

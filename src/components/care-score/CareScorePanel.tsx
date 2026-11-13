@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Flag, Loader2, MessageSquareReply, Star, ThumbsUp } from 'lucide-react'
 import { getCareReviews, getCareScores, reportReview, respondToReview, toggleReviewLike } from '@/app/actions/reviews.actions'
 import {
-  MAX_REPLY_LENGTH, MIN_REVIEWS_FOR_SCORE, REPORT_REASONS, attributionLine, formatScore, hasEnoughReviews, histogramRows,
+  MAX_REPLY_LENGTH, MIN_REVIEWS_FOR_SCORE, REPORT_REASONS, SOURCE_LABELS, attributionLine, formatScore, hasEnoughReviews, histogramRows, subRatingLabel,
   type CareReview, type CareScoreRow, type CareSubjectType, type ReportReason, type ReviewSort,
 } from '@/lib/care-score'
 
@@ -118,6 +118,44 @@ export function CareScorePanel({
         </div>
       </div>
 
+      {score && (Object.keys(score.sub_scores ?? {}).length > 0 || Object.keys(score.by_source ?? {}).length > 1) && (
+        <div className="grid gap-4 rounded-[1.5rem] border border-border bg-white p-6 sm:grid-cols-2">
+          {Object.keys(score.by_source ?? {}).length > 1 && (
+            <div>
+              <div className="mb-2 text-xs font-black uppercase tracking-widest text-muted">By who reviewed</div>
+              <div className="space-y-1.5">
+                {Object.entries(score.by_source).map(([src, v]) => v && (
+                  <div key={src} className="flex items-center justify-between text-sm">
+                    <span className="text-text-main">{SOURCE_LABELS[src as keyof typeof SOURCE_LABELS] ?? src}</span>
+                    <span className="flex items-center gap-1 font-bold text-heading">
+                      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" /> {Number(v.average).toFixed(1)}
+                      <span className="font-medium text-muted">({v.count})</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {Object.keys(score.sub_scores ?? {}).length > 0 && (
+            <div>
+              <div className="mb-2 text-xs font-black uppercase tracking-widest text-muted">Details</div>
+              <div className="space-y-1.5">
+                {Object.entries(score.sub_scores).map(([key, v]) => (
+                  <div key={key} className="flex items-center gap-3 text-sm">
+                    <span className="w-40 shrink-0 truncate text-text-main">{subRatingLabel(key)}</span>
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface">
+                      <div className="h-full rounded-full bg-brand-500" style={{ width: `${Math.round((Number(v.average) / 5) * 100)}%` }} />
+                    </div>
+                    <span className="w-14 text-right text-xs font-bold text-muted">{Number(v.average).toFixed(1)} ({v.count})</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <p className="text-[11px] text-subtle sm:col-span-2">Breakdowns are plain averages and are not part of the Care Score.</p>
+        </div>
+      )}
+
       {canRespond && unanswered > 0 && (
         <div className="flex items-start gap-3 rounded-xl border border-brand-100 bg-brand-50 p-4 text-sm text-brand-800">
           <MessageSquareReply className="mt-0.5 h-4 w-4 shrink-0" />
@@ -196,7 +234,10 @@ function ReviewCard({ review, canRespond, onReplied }: { review: CareReview; can
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="font-bold text-text-main">{attributionLine(review) || 'CareLocal member'}</div>
-          <div className="text-xs text-muted">{date}{review.punctual === false && ' · Arrived late'}</div>
+          <div className="text-xs text-muted">
+            {date}{review.punctual === false && ' · Arrived late'}
+            {review.source === 'parent' && <span className="ml-2 rounded bg-sky-50 px-1.5 py-0.5 font-bold text-sky-700">Parent review</span>}
+          </div>
         </div>
         <Stars value={review.rating} />
       </div>
@@ -205,6 +246,14 @@ function ReviewCard({ review, canRespond, onReplied }: { review: CareReview; can
         <div className="mb-3 flex flex-wrap gap-2">
           {review.tags.map(tag => (
             <span key={tag} className="rounded-lg border border-brand-100 bg-brand-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-brand-600">{tag}</span>
+          ))}
+        </div>
+      )}
+
+      {review.sub_ratings && Object.keys(review.sub_ratings).length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+          {Object.entries(review.sub_ratings).map(([k, v]) => (
+            <span key={k}>{subRatingLabel(k)} <span className="font-bold text-text-main">{v}★</span></span>
           ))}
         </div>
       )}

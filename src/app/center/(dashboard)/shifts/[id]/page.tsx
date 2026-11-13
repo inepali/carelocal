@@ -14,6 +14,9 @@ import Link from 'next/link'
 import { useLookups } from '@/hooks/use-lookups'
 import { useCenterContext } from '../../context'
 import { showAlert } from '@/lib/dialog'
+import { getCareScores } from '@/app/actions/reviews.actions'
+import { CareScoreBadge } from '@/components/care-score/CareScorePanel'
+import { compareByRank, type CareScoreRow } from '@/lib/care-score'
 
 export default function ShiftDetailPage() {
   const { staffTerm, workAreaTerm } = useCenterContext()
@@ -28,6 +31,7 @@ export default function ShiftDetailPage() {
   const [isEditing, setIsEditing] = useState(false)
   
   const [shift, setShift] = useState<any>(null)
+  const [careScores, setCareScores] = useState<Record<string, CareScoreRow>>({})
   const [workAreas, setWorkAreas] = useState<WorkArea[]>([])
   const [claims, setClaims] = useState<any[]>([])
   const [centerId, setCenterId] = useState<string | null>(null)
@@ -98,7 +102,12 @@ export default function ShiftDetailPage() {
         .eq('shift_id', shiftId)
         .order('claimed_at', { ascending: false })
       
-      setClaims(claimsData || [])
+      // Best-rated first (Wilson lower bound: forty good reviews beat one), then newest claim
+      const { scores } = await getCareScores('staff', (claimsData || []).map((c: any) => c.staff_id))
+      setCareScores(scores)
+      setClaims([...(claimsData || [])].sort((a: any, b: any) =>
+        (a.status === 'confirmed' ? -1 : 0) - (b.status === 'confirmed' ? -1 : 0)
+        || compareByRank(scores[a.staff_id], scores[b.staff_id])))
 
       // 3. Fetch Work Areas for selector
       const { data: rooms } = await supabase
@@ -453,6 +462,7 @@ export default function ShiftDetailPage() {
                                    {claim.status}
                                 </span>
                                 <span className="text-[10px] text-subtle font-medium">Claimed {new Date(claim.claimed_at).toLocaleDateString()}</span>
+                                <CareScoreBadge score={careScores[claim.staff_id]} />
                              </div>
                           </div>
                        </div>
