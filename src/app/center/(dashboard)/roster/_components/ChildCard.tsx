@@ -237,7 +237,7 @@ export function ChildCard({
             <p className="text-[13px] text-muted">
               {ageLabel(person.age_months)}
               {onSite
-                ? <> · <span className="text-text-main">{current!.name} · {ZONE_LABEL[person.zone]}</span>{home && home.id !== current!.id ? ` (visiting from ${home.name})` : ''}</>
+                ? <> · <span className="text-text-main">{current!.name} · {ZONE_LABEL[person.zone]}</span>{home && home.id !== current!.id ? ` · From ${home.name}` : ''}</>
                 : <>{home ? ` · ${home.name}` : ' · No home room'} · <span className="text-text-main">Not checked in</span></>}
             </p>
           </div>
