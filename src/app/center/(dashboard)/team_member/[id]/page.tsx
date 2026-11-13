@@ -437,9 +437,7 @@ export default function StaffReviewPage() {
               {profile.first_name} {profile.last_name}
             </h1>
             <div className="flex flex-wrap items-center gap-3 mb-3">
-              <span className="bg-brand-50 text-brand-600 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border border-brand-100">
-                {lookupLabel(roleLookups, profile.staff_type)}
-              </span>
+              {/* The role at this center is the Role picker below; the profile's own job title (staff_type) isn't shown */}
               <select
                 value={employmentTypeOf(employmentClass, partTime)}
                 disabled={savingClass}
