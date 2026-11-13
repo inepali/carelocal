@@ -7,7 +7,8 @@ import {
   CenterStaffDocumentStatus,
   StaffExperience, StaffCredential, StaffReference, MIN_STAFF_REFERENCES,
   AGE_GROUP_LABELS, AgeGroup,
-  EmploymentClass, EMPLOYMENT_CLASS_LABELS, appliesToEmploymentClass, DocumentRequest
+  EmploymentClass, EMPLOYMENT_CLASS_LABELS, appliesToEmploymentClass, DocumentRequest,
+  EMPLOYMENT_TYPE_LABELS, employmentTypeOf, employmentTypeColumns, type EmploymentType,
 } from '@/lib/types'
 import {
   ArrowLeft, CheckCircle2, XCircle, Clock, FileText,
@@ -84,12 +85,14 @@ export default function StaffReviewPage() {
   const [showActivationModal, setShowActivationModal] = useState(false)
   const [memberStatus, setMemberStatus] = useState<string | null>(null)
   const [requestedClass, setRequestedClass] = useState<EmploymentClass | null>(null)
-  const [approveClass, setApproveClass] = useState<EmploymentClass>('substitute')
+  const [approveType, setApproveType] = useState<EmploymentType>('substitute')
   const [activating, setActivating]   = useState(false)
   const [reviews, setReviews]         = useState<any[]>([])
   const [internalDocs, setInternalDocs] = useState<any[]>([])
   const catchUpDone = useRef(false)
   const [employmentClass, setEmploymentClass] = useState<EmploymentClass>('substitute')
+  // Full-time and Part-time are both employment_class 'regular'; this tells them apart
+  const [partTime, setPartTime] = useState(false)
   const [startDate, setStartDate] = useState('')
   const [viewerRole, setViewerRole] = useState<string | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
@@ -147,7 +150,7 @@ export default function StaffReviewPage() {
       setEmploymentClass(memberClass)
       setMemberStatus(membership?.status ?? null)
       setRequestedClass((membership?.requested_employment_class as EmploymentClass | null) ?? staffProfile.requested_employment_class ?? null)
-      setApproveClass((membership?.requested_employment_class as EmploymentClass | null) ?? memberClass)
+      setApproveType(employmentTypeOf((membership?.requested_employment_class as EmploymentClass | null) ?? memberClass))
       setStartDate(membership?.employment_start_date ?? '')
       setHomeRoom((membership as { home_work_area_id?: string | null } | null)?.home_work_area_id ?? '')
       setCenterStaffId((membership as { id?: string } | null)?.id ?? null)
@@ -159,6 +162,9 @@ export default function StaffReviewPage() {
       const { data: roleRow } = await supabase.from('center_staff').select('center_role')
         .eq('center_id', admin.center_id).eq('staff_id', staffId).maybeSingle()
       setCenterRole((roleRow as { center_role?: string | null } | null)?.center_role ?? null)
+      const { data: partTimeRow } = await supabase.from('center_staff').select('part_time')
+        .eq('center_id', admin.center_id).eq('staff_id', staffId).maybeSingle()
+      setPartTime(!!(partTimeRow as { part_time?: boolean } | null)?.part_time)
       const { data: roomRows } = await supabase.from('work_areas').select('id, name')
         .eq('center_id', admin.center_id).eq('is_active', true).order('sort_order').order('name')
       setRooms((roomRows ?? []) as { id: string; name: string }[])
@@ -270,10 +276,13 @@ export default function StaffReviewPage() {
     const { data: { user } } = await supabase.auth.getUser()
     const { data: admin } = await supabase.from('center_admins').select('center_id').eq('user_id', user!.id).single()
     const starting = memberStatus === 'applying'
+    // part_time only when it is set, so this still works on a database without that column
+    const cols = employmentTypeColumns(approveType)
+    const typeCols = cols.part_time ? cols : { employment_class: cols.employment_class }
     const { error } = await supabase.from('center_staff')
       .update(starting
-        ? { status: 'invited', employment_class: approveClass }
-        : { status: 'active', employment_class: approveClass, added_at: new Date().toISOString() })
+        ? { status: 'invited', ...typeCols }
+        : { status: 'active', ...typeCols, added_at: new Date().toISOString() })
       .eq('center_id', admin!.center_id).eq('staff_id', staffId)
     setActivating(false)
     setShowActivationModal(false)
@@ -291,19 +300,26 @@ export default function StaffReviewPage() {
     else window.location.href = '/center/team_member'
   }
 
-  async function handleChangeEmploymentClass(next: EmploymentClass) {
-    if (!centerId || next === employmentClass) return
-    const message = next === 'regular'
-      ? `Mark as Regular employee? They will no longer see, claim, or be notified about open shifts at this center, any pending shift requests here will be withdrawn, and their document checklist will switch to Regular requirements.`
-      : `Mark as Substitute? They will see and be notified about open shifts at this center again, and their document checklist will switch to Substitute requirements.`
-    if (!await showConfirm(message)) return
+  async function handleChangeEmploymentType(next: EmploymentType) {
+    const current = employmentTypeOf(employmentClass, partTime)
+    if (!centerId || next === current) return
+    const cols = employmentTypeColumns(next)
+    // Full-time <-> Part-time only changes the label; switching to or from Substitute changes how they work here
+    if (cols.employment_class !== employmentClass) {
+      const message = cols.employment_class === 'regular'
+        ? `Mark as ${EMPLOYMENT_TYPE_LABELS[next]} employee? They will no longer see, claim, or be notified about open shifts at this center, any pending shift requests here will be withdrawn, and their document checklist will switch to Full-time / Part-time requirements.`
+        : `Mark as Substitute? They will see and be notified about open shifts at this center again, and their document checklist will switch to Substitute requirements.`
+      if (!await showConfirm(message)) return
+    }
 
     setSavingClass(true)
-    const { error } = await supabase.from('center_staff').update({ employment_class: next })
+    // part_time only when it changes, so this still works on a database without that column
+    const update = cols.part_time !== partTime ? cols : { employment_class: cols.employment_class }
+    const { error } = await supabase.from('center_staff').update(update)
       .eq('center_id', centerId).eq('staff_id', staffId)
     setSavingClass(false)
     if (!error) { loadData() }
-    else showAlert('Failed to update employee class: ' + error.message)
+    else showAlert('Failed to update employee type: ' + error.message)
   }
 
   async function handleChangeRole(next: string) {
@@ -425,13 +441,13 @@ export default function StaffReviewPage() {
                 {lookupLabel(roleLookups, profile.staff_type)}
               </span>
               <select
-                value={employmentClass}
+                value={employmentTypeOf(employmentClass, partTime)}
                 disabled={savingClass}
-                onChange={(e) => handleChangeEmploymentClass(e.target.value as EmploymentClass)}
-                title="Employee class at this center"
+                onChange={(e) => handleChangeEmploymentType(e.target.value as EmploymentType)}
+                title="Employee type at this center"
                 className="bg-white text-brand-600 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border border-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-600/30 disabled:opacity-50"
               >
-                {(Object.entries(EMPLOYMENT_CLASS_LABELS) as [EmploymentClass, string][]).map(([value, label]) => (
+                {(Object.entries(EMPLOYMENT_TYPE_LABELS) as [EmploymentType, string][]).map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>
                 ))}
               </select>
@@ -521,7 +537,7 @@ export default function StaffReviewPage() {
                           disabled={isLeadershipRole(o.value) && leaderNeedsRegular}
                           className="text-heading"
                         >
-                          {o.label}{isLeadershipRole(o.value) && leaderNeedsRegular ? ' (Regular employees only)' : ''}
+                          {o.label}{isLeadershipRole(o.value) && leaderNeedsRegular ? ' (Full-time / Part-time only)' : ''}
                         </option>
                       ))}
                     </select>
@@ -966,13 +982,13 @@ export default function StaffReviewPage() {
                 ? <>Accepting <span className="font-bold text-text-main">{profile.first_name} {profile.last_name}</span>&apos;s application starts their onboarding: they complete the checklist for the class you choose below. They cannot claim shifts until you approve them.</>
                 : <>By approving <span className="font-bold text-text-main">{profile.first_name} {profile.last_name}</span>, they will instantly be able to view and claim open shifts at your center.</>}
             </p>
-            <label className="block text-xs font-black text-heading uppercase tracking-widest mb-2">Employee class</label>
-            <select value={approveClass} onChange={(e) => setApproveClass(e.target.value as EmploymentClass)} className="w-full mb-2 px-4 py-3 rounded-xl border-2 border-border bg-white font-bold text-heading focus:outline-none focus:border-brand-600">
-              {(Object.entries(EMPLOYMENT_CLASS_LABELS) as [EmploymentClass, string][]).map(([value, label]) => (
-                <option key={value} value={value}>{label}{requestedClass === value ? ' (requested)' : ''}</option>
+            <label className="block text-xs font-black text-heading uppercase tracking-widest mb-2">Employee type</label>
+            <select value={approveType} onChange={(e) => setApproveType(e.target.value as EmploymentType)} className="w-full mb-2 px-4 py-3 rounded-xl border-2 border-border bg-white font-bold text-heading focus:outline-none focus:border-brand-600">
+              {(Object.entries(EMPLOYMENT_TYPE_LABELS) as [EmploymentType, string][]).map(([value, label]) => (
+                <option key={value} value={value}>{label}{requestedClass && employmentTypeColumns(value).employment_class === requestedClass && (value !== 'part_time') ? ' (requested)' : ''}</option>
               ))}
             </select>
-            <p className="text-xs text-muted mb-8">Regular employees can work at only one center and do not pick up marketplace shifts.</p>
+            <p className="text-xs text-muted mb-8">Full-time and Part-time employees can work at only one center and do not pick up marketplace shifts.</p>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowActivationModal(false)}

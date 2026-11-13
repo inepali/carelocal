@@ -169,6 +169,8 @@ export interface CenterStaff {
   staff_id: string
   status: CenterStaffStatus
   employment_class: EmploymentClass
+  /** Part-time employee (only when employment_class is regular) */
+  part_time?: boolean
   employment_start_date?: string | null  // date the due-date clock starts (admin-set)
   is_preferred: boolean
   invite_token?: string
@@ -378,9 +380,34 @@ export interface ShiftClaim {
   shift?: Shift
 }
 
+/**
+ * Class-level labels. 'regular' covers both Full-time and Part-time employees (they work exactly the same;
+ * center_staff.part_time only tells them apart). Use EMPLOYMENT_TYPE_LABELS where one person's type is shown.
+ */
 export const EMPLOYMENT_CLASS_LABELS: Record<EmploymentClass, string> = {
-  regular: 'Regular',
+  regular: 'Full-time / Part-time',
   substitute: 'Substitute',
+}
+
+/** One person's type at a center: Full-time and Part-time are both employment_class 'regular' */
+export type EmploymentType = 'full_time' | 'part_time' | 'substitute'
+
+export const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
+  full_time: 'Full-time',
+  part_time: 'Part-time',
+  substitute: 'Substitute',
+}
+
+export function employmentTypeOf(employmentClass: EmploymentClass | null | undefined, partTime?: boolean | null): EmploymentType {
+  if (employmentClass !== 'regular') return 'substitute'
+  return partTime ? 'part_time' : 'full_time'
+}
+
+/** The center_staff columns for a type */
+export function employmentTypeColumns(type: EmploymentType): { employment_class: EmploymentClass; part_time: boolean } {
+  return type === 'substitute'
+    ? { employment_class: 'substitute', part_time: false }
+    : { employment_class: 'regular', part_time: type === 'part_time' }
 }
 
 /** Whether a document requirement applies to a staff member's employment class at that center */

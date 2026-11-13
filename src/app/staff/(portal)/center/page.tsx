@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Building, Clock, Mail, MapPin, Phone, User } from 'lucide-react'
-import { Center, CenterStaff, EMPLOYMENT_CLASS_LABELS } from '@/lib/types'
+import { Center, CenterStaff, EMPLOYMENT_TYPE_LABELS, employmentTypeOf } from '@/lib/types'
 import { CenterChecklist } from '@/components/staff/CenterChecklist'
 
 type Membership = CenterStaff & { center: Center }
@@ -85,7 +85,7 @@ export default function MyCenterPage() {
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-1">
                      <h2 className="text-2xl font-black text-heading leading-tight">{center.name}</h2>
                      <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.1em] border-2 bg-brand-50 text-brand-600 border-brand-100">
-                        {EMPLOYMENT_CLASS_LABELS[membership.employment_class]} Employee
+                        {EMPLOYMENT_TYPE_LABELS[employmentTypeOf(membership.employment_class, membership.part_time)]} Employee
                      </span>
                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.1em] border-2 ${membership.status === 'active' ? 'bg-brand-50 text-brand-600 border-[#dcfce7]' : 'bg-surface text-muted border-border'}`}>
                         {membership.status}

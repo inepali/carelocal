@@ -56,7 +56,7 @@ function OwnerPicker({ centerId, domainKey, onPick, busyId, pickLabel = 'Make ow
             const blocked = p.managesOtherCenter ? 'Manages another center' : p.centerAccess === 'owner' ? 'Already an owner' : null
             const note = p.memberStatus === 'active'
               ? `On the team${p.employmentClass ? ` · ${p.employmentClass}` : ''}${p.centerAccess === 'admin' ? ' · director' : ''}`
-              : p.memberStatus ? `On the team (${p.memberStatus}) · will be activated` : centerId ? 'Not on the team yet · will be added as Regular' : null
+              : p.memberStatus ? `On the team (${p.memberStatus}) · will be activated` : centerId ? 'Not on the team yet · will be added as Full-time' : null
             return (
               <li key={p.staffId} className="flex items-center gap-3 px-3 py-2">
                 <div className="min-w-0 flex-1">
@@ -264,7 +264,7 @@ export function NewCenterDialog({ metros, onClose, onCreated }: {
             ) : (
               <OwnerPicker centerId={null} domainKey={domainKey} onPick={setOwner} pickLabel="Choose" />
             )}
-            <p className="mt-1 text-[11px] text-slate-400">They join the team as a Regular employee and can open the center dashboard right away.</p>
+            <p className="mt-1 text-[11px] text-slate-400">They join the team as a Full-time employee and can open the center dashboard right away.</p>
           </div>
         </div>
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/50">

@@ -19,7 +19,9 @@ import {
 import {
    Center,
    EmploymentClass,
-   EMPLOYMENT_CLASS_LABELS
+   EMPLOYMENT_CLASS_LABELS,
+   EMPLOYMENT_TYPE_LABELS,
+   employmentTypeOf
 } from '@/lib/types'
 import { CenterChecklist } from '@/components/staff/CenterChecklist'
 import { showAlert, showConfirm } from '@/lib/dialog'
@@ -313,7 +315,9 @@ function CentersContent() {
                               </span>
                               {(assoc.status === 'active' ? assoc.employment_class : (assoc.requested_employment_class ?? assoc.employment_class)) && (
                                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.1em] border-2 bg-brand-50 text-brand-600 border-brand-100">
-                                    {EMPLOYMENT_CLASS_LABELS[(assoc.status === 'active' ? assoc.employment_class : (assoc.requested_employment_class ?? assoc.employment_class)) as EmploymentClass]}
+                                    {assoc.status === 'active'
+                                      ? EMPLOYMENT_TYPE_LABELS[employmentTypeOf(assoc.employment_class, assoc.part_time)]
+                                      : EMPLOYMENT_CLASS_LABELS[(assoc.requested_employment_class ?? assoc.employment_class) as EmploymentClass]}
                                     {assoc.status !== 'active' && ' (requested)'}
                                  </span>
                               )}
