@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, Camera, ClipboardList, FileSpreadsheet, Mail, Moon, Sun, Utensils, Loader2, Maximize2, Minimize2, Radio, RefreshCw, Send, Users, X } from 'lucide-react'
+import { AlarmClock, AlertTriangle, Camera, ClipboardList, FileSpreadsheet, Mail, Moon, Sun, Utensils, Loader2, Maximize2, Minimize2, Radio, RefreshCw, Send, Users, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { applyPresence, loadRoster, moveOnRoster, type PresenceRow, type RosterMove } from '@/lib/roster'
 import {
@@ -482,17 +482,17 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
             circleEditor={canTheme ? <RoomThemeButton areaId={focusRoom.id} slot="circle" roomName={focusRoom.name} hasImage={!!circleThemes[focusRoom.id]} onChanged={reloadThemes} /> : undefined}
             centerActions={teacherView ? (
               <>
-                <CircleButton onClick={() => setClassAction('activity')} icon={<ClipboardList className="h-3.5 w-3.5 text-brand-600" />} label="Activities" />
-                <CircleButton onClick={() => setClassAction('meal')} icon={<Utensils className="h-3.5 w-3.5 text-brand-600" />} label="Meal" />
-                <CircleButton onClick={() => setClassPhoto(true)} icon={<Camera className="h-3.5 w-3.5 text-brand-600" />} label="Photo" />
-                <CircleButton onClick={() => setNapAction('start')} icon={<Moon className="h-3.5 w-3.5 text-[#3b5bab]" />} label="Nap" />
+                <CircleButton float={0} onClick={() => setClassAction('activity')} icon={<ClipboardList className="h-5 w-5 text-brand-600" />} label="Activities" />
+                <CircleButton float={1} onClick={() => setClassAction('meal')} icon={<Utensils className="h-5 w-5 text-brand-600" />} label="Meal" />
+                <CircleButton float={2} onClick={() => setClassPhoto(true)} icon={<Camera className="h-5 w-5 text-brand-600" />} label="Photo" />
+                <CircleButton float={3} onClick={() => setNapAction('start')} icon={<Moon className="h-5 w-5 text-[#3b5bab]" />} label="Nap" />
                 {napsHere.length > 0 && (
                   <>
-                    <CircleButton onClick={() => setNapAction('check')} alert={!!nextDue?.overdue}
+                    <CircleButton float={4} onClick={() => setNapAction('check')} alert={!!nextDue?.overdue}
                       title={`${napsHere.length} napping${nextDue ? (nextDue.overdue ? ' · sleep check due now' : ` · next check ${clockTime(nextDue.dueAt.toISOString())}`) : ''}`}
-                      icon={<Moon className={`h-3.5 w-3.5 ${nextDue?.overdue ? 'text-white' : 'text-[#3b5bab]'}`} />}
+                      icon={<AlarmClock className={`h-5 w-5 ${nextDue?.overdue ? 'text-white' : 'text-[#3b5bab]'}`} />}
                       label={nextDue && !nextDue.overdue ? `Check ${clockTime(nextDue.dueAt.toISOString())}` : 'Sleep check'} />
-                    <CircleButton onClick={() => setNapAction('wake')} icon={<Sun className="h-3.5 w-3.5 text-[#b56a00]" />} label="Wake all" />
+                    <CircleButton float={5} onClick={() => setNapAction('wake')} icon={<Sun className="h-5 w-5 text-[#b56a00]" />} label="Wake all" />
                   </>
                 )}
               </>
@@ -789,12 +789,14 @@ function useWakeLock(enabled: boolean) {
 }
 
 /** A small button in the middle of the Classroom circle */
-function CircleButton({ onClick, icon, label, alert = false, title }: { onClick: () => void; icon: React.ReactNode; label: string; alert?: boolean; title?: string }) {
+/** A round, icon-only room button in the classroom circle that bobs along with the children */
+function CircleButton({ onClick, icon, label, alert = false, title, float = 0 }: { onClick: () => void; icon: React.ReactNode; label: string; alert?: boolean; title?: string; float?: number }) {
   return (
-    <button type="button" onClick={onClick} title={title} aria-label={title ? `${label}: ${title}` : label}
-      className={`inline-flex min-h-7 items-center justify-center gap-1 whitespace-nowrap rounded-full px-2.5 text-[11px] shadow-sm focus-visible:outline-2 focus-visible:outline-[#1e7a47] ${
-        alert ? 'animate-pulse bg-[#b56a00] text-white' : 'border border-[#1e7a47]/30 bg-white/95 text-heading hover:bg-white'}`}>
-      {icon} {label}
+    <button type="button" onClick={onClick} title={title ? `${label} · ${title}` : label} aria-label={title ? `${label}: ${title}` : label}
+      className={`roster-float inline-flex h-11 w-11 items-center justify-center rounded-full shadow-md focus-visible:outline-2 focus-visible:outline-[#1e7a47] ${
+        alert ? 'bg-[#b56a00] text-white ring-4 ring-[#b56a00]/30' : 'border-2 border-[#1e7a47]/40 bg-white/95 text-heading hover:bg-white'}`}
+      style={{ animation: `roster-float ${(3.1 + (float % 4) * 0.35).toFixed(2)}s ease-in-out ${(-((float * 0.71) % 3)).toFixed(2)}s infinite` }}>
+      {icon}
     </button>
   )
 }

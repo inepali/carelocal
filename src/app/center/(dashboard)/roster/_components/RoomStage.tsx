@@ -95,7 +95,7 @@ export function RoomStage({
   circleUrl?: string | null
   /** Admin's pencil for the circle picture, shown at the bottom of the circle */
   circleEditor?: React.ReactNode
-  /** Small room buttons (Activities, Photo, Nap) in the middle of the circle, between the teachers */
+  /** Round icon buttons (Activities, Meal, Photo, Nap) in the middle of the circle, between the teachers */
   centerActions?: React.ReactNode
   /** Full screen: the stage fills the height it is given instead of keeping a fixed shape */
   fill?: boolean
@@ -236,7 +236,7 @@ export function RoomStage({
         )}
         {centerActions && (
           // Taps here are button presses, never the start of a drag
-          <div className="absolute top-1/2 z-[4] flex -translate-x-1/2 -translate-y-1/2 flex-col items-stretch gap-1"
+          <div className="absolute top-1/2 z-[4] grid -translate-x-1/2 -translate-y-1/2 grid-cols-2 place-items-center gap-2"
             style={{ left: teachers.length <= 1 ? '62%' : '50%' }}
             onPointerDown={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
             {centerActions}
