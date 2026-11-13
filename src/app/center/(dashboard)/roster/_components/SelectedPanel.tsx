@@ -1,6 +1,6 @@
 'use client'
 
-import { LogIn, LogOut, X } from 'lucide-react'
+import { Home, LogIn, LogOut, X } from 'lucide-react'
 import { ageLabel, roomStatus, simulateMove, type OnSiteZone, type RosterPerson, type RosterRoom, type StatusCode } from '@/lib/roster-ratio'
 import type { RosterMove } from '@/lib/roster'
 import { Face } from './PersonAvatar'
@@ -76,6 +76,9 @@ export function SelectedPanel({
     .map(r => option({ work_area_id: r.id, zone: 'classroom' }, r.name))
 
   const checkInTo = base
+  // A child visiting another room: one tap back to their home room's classroom
+  const visiting = !isStaff && onSite && !!home && home.id !== current!.id
+  const toHome = visiting ? option({ work_area_id: home!.id, zone: 'classroom' }, home!.name) : null
   const where = onSite ? `${current!.name} · ${ZONE_LABEL[person.zone]}${!isStaff && home && home.id !== current!.id ? ' (visiting)' : ''}` : 'Not checked in'
 
   return (
@@ -101,9 +104,16 @@ export function SelectedPanel({
       <div className="mt-3.5 flex flex-wrap items-center gap-2">
         <span className="text-[13px] text-text-main">{where}</span>
         <span className={`rounded-full px-2.5 py-0.5 text-xs ${onSite ? STATUS_PILL.ok : STATUS_PILL.empty}`}>{onSite ? 'Checked in' : 'Not checked in'}</span>
+        {toHome && (
+          <button type="button" disabled={busy} onClick={() => onMove(person, toHome.to)}
+            title={`Move to ${home!.name} · ${toHome.result.text}${toHome.warning ? ` · ${toHome.warning}` : ''}`}
+            className="ml-auto inline-flex min-h-10 items-center gap-1.5 rounded-full bg-brand-600 px-3.5 text-[13px] text-white hover:bg-brand-800 disabled:opacity-50">
+            <Home className="h-4 w-4" /> To Home Room
+          </button>
+        )}
         {onSite ? (
           <button type="button" disabled={busy} onClick={() => onMove(person, { work_area_id: null, zone: 'home' })}
-            className="ml-auto inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border bg-white px-3.5 text-[13px] text-heading hover:bg-surface disabled:opacity-50">
+            className={`${toHome ? '' : 'ml-auto '}inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border bg-white px-3.5 text-[13px] text-heading hover:bg-surface disabled:opacity-50`}>
             <LogOut className="h-4 w-4" /> Check out
           </button>
         ) : (
