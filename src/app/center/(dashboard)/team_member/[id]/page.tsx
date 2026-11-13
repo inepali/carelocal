@@ -64,6 +64,10 @@ type TabId = 'overview' | 'education' | 'experience' | 'references' | 'credentia
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
+/** Header card: the setup rows on the right (label, then a full-width control) */
+const LABEL = 'w-28 shrink-0 font-bold uppercase tracking-widest text-[10px] text-muted'
+const FIELD = 'w-full bg-transparent py-1 font-black text-xs focus:outline-none focus:ring-2 focus:ring-brand-600/30 rounded'
+
 export default function StaffReviewPage() {
   const centerCtx = useCenterContext()
   const { staffTerm, menuPlanningEnabled } = centerCtx
@@ -425,131 +429,47 @@ export default function StaffReviewPage() {
 
       {/* Header card */}
       <div className="bg-white border-2 border-border rounded-[2.5rem] shadow-sm mb-8 overflow-hidden">
-        <div className="p-8 bg-surface border-b-2 border-border flex flex-col md:flex-row items-start md:items-center gap-6">
+        <div className="p-8 bg-surface border-b-2 border-border flex flex-col md:flex-row items-start gap-6">
           <StaffAvatar
             avatarKey={profile.avatar_url}
             firstName={profile.first_name}
             lastName={profile.last_name}
             className="w-24 h-24 rounded-[2rem] bg-brand-600 text-white text-4xl font-black shadow-xl shadow-brand-600/25"
           />
-          <div className="flex-1">
-            <h1 className="text-3xl font-black text-heading tracking-tight mb-1">
-              {profile.first_name} {profile.last_name}
-            </h1>
-            <div className="flex flex-wrap items-center gap-3 mb-3">
-              {/* The role at this center is the Role picker below; the profile's own job title (staff_type) isn't shown */}
-              <select
-                value={employmentTypeOf(employmentClass, partTime)}
-                disabled={savingClass}
-                onChange={(e) => handleChangeEmploymentType(e.target.value as EmploymentType)}
-                title="Employee type at this center"
-                className="bg-white text-brand-600 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border border-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-600/30 disabled:opacity-50"
-              >
-                {(Object.entries(EMPLOYMENT_TYPE_LABELS) as [EmploymentType, string][]).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-              {requestedClass && requestedClass !== employmentClass && (
-                <span className="bg-amber-50 text-amber-700 px-3 py-1 rounded-lg text-xs font-bold border border-amber-200" title="Chosen by the employee at sign-up. Change the class here to confirm.">
-                  Requested: {EMPLOYMENT_CLASS_LABELS[requestedClass]}
-                </span>
-              )}
-              <label className="inline-flex items-center gap-2 bg-white px-3 py-1 rounded-lg text-xs font-bold text-muted border border-brand-100" title="Due dates are counted from this date">
-                Started
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => handleChangeStartDate(e.target.value)}
-                  className="bg-transparent text-brand-600 font-black focus:outline-none"
-                />
-              </label>
-              {employmentClass === 'regular' && rooms.length > 0 && (
-                <label className="inline-flex items-center gap-2 bg-white px-3 py-1 rounded-lg text-xs font-bold text-muted border border-brand-100" title="Their room on the live roster. Floaters have none.">
-                  Home room
-                  <select
-                    value={homeRoom}
-                    onChange={(e) => handleChangeHomeRoom(e.target.value)}
-                    className="bg-transparent text-brand-600 font-black focus:outline-none"
-                  >
-                    <option value="">None (floater)</option>
-                    {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                  </select>
-                </label>
-              )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-3xl font-black text-heading tracking-tight">
+                {profile.first_name} {profile.last_name}
+              </h1>
               {employmentClass === 'regular' && menuPlanningEnabled && targetCenterRole !== 'owner' && targetCenterRole !== 'admin' && (
                 <button
                   type="button"
                   onClick={handleToggleMenuEditor}
                   aria-pressed={menuEditor}
-                  title={menuEditor ? 'Can plan and publish the monthly menu. Click to remove.' : 'Let them plan and publish the monthly menu (e.g. your cook).'}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border transition-colors ${menuEditor ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-white text-muted border-brand-100 hover:text-orange-700'}`}
+                  aria-label={menuEditor ? 'Menu editor (on)' : 'Make menu editor'}
+                  title={menuEditor ? 'Menu editor: can plan and publish the monthly menu. Click to remove.' : 'Make menu editor: let them plan and publish the monthly menu (e.g. your cook).'}
+                  className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${menuEditor ? 'bg-brand-900 text-white border-brand-900 hover:bg-brand-800' : 'bg-white text-muted border-brand-100 hover:text-brand-600 hover:border-brand-600/40'}`}
                 >
-                  <Utensils className="w-3.5 h-3.5" /> {menuEditor ? 'Menu editor' : 'Make menu editor'}
+                  <Utensils className="w-4 h-4" />
                 </button>
               )}
-              {(() => {
-                // Owners are added by CareLocal support. Owners can name Directors and Assistant Directors;
-                // owners and directors can give everyone else a role from the center's Role list.
-                const isOwnerTarget = targetCenterRole === 'owner' || centerRole === 'owner'
-                const isSelf = !!currentUserId && profile.user_id === currentUserId
-                const targetIsLeader = isLeadershipRole(centerRole) || !!targetCenterRole
-                const canEdit = !isOwnerTarget && !isSelf && (viewerRole === 'owner' || (viewerRole === 'admin' && !targetIsLeader))
-                const options = assignableRoles(viewerRole, roleLookups)
-                const leaderNeedsRegular = employmentClass !== 'regular'
-                if (isOwnerTarget) {
-                  return (
-                    <span className="inline-flex items-center gap-1.5 bg-brand-900 text-white px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest">
-                      <ShieldCheck className="w-3.5 h-3.5" /> Owner
-                    </span>
-                  )
-                }
-                if (!canEdit) {
-                  return centerRole ? (
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest ${targetIsLeader ? 'bg-brand-50 text-brand-700 border border-brand-200' : 'bg-white text-brand-600 border border-brand-100'}`}>
-                      {targetIsLeader && <ShieldCheck className="w-3.5 h-3.5" />} {centerRoleLabel(centerRole, roleLookups)}
-                    </span>
-                  ) : null
-                }
-                const current = centerRole ?? (targetCenterRole === 'admin' ? 'director' : '')
-                return (
-                  <label
-                    className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-bold border ${targetIsLeader ? 'bg-brand-50 text-brand-700 border-brand-200' : 'bg-white text-muted border-brand-100'}`}
-                    title="Their role at this center. Directors and Assistant Directors can manage the center."
-                  >
-                    {savingAccess ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
-                    Role
-                    <select
-                      value={current}
-                      disabled={savingAccess}
-                      onChange={(e) => handleChangeRole(e.target.value)}
-                      className={`bg-transparent font-black focus:outline-none ${targetIsLeader ? 'text-brand-900' : 'text-brand-600'}`}
-                    >
-                      <option value="" className="text-heading">No role</option>
-                      {current && !options.some(o => o.value === current) && (
-                        <option value={current} className="text-heading">{centerRoleLabel(current, roleLookups)}</option>
-                      )}
-                      {options.map(o => (
-                        <option
-                          key={o.value}
-                          value={o.value}
-                          disabled={isLeadershipRole(o.value) && leaderNeedsRegular}
-                          className="text-heading"
-                        >
-                          {o.label}{isLeadershipRole(o.value) && leaderNeedsRegular ? ' (Full-time / Part-time only)' : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )
-              })()}
-              {totalReqs > 0 && (
-                <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border ${
-                  acceptedCount === totalReqs ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'
-                }`}>
-                  {acceptedCount}/{totalReqs} Complete
-                </span>
-              )}
             </div>
+            {(totalReqs > 0 || (requestedClass && requestedClass !== employmentClass)) && (
+              <div className="flex flex-wrap items-center gap-3 mb-3">
+                {totalReqs > 0 && (
+                  <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border ${
+                    acceptedCount === totalReqs ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'
+                  }`}>
+                    {acceptedCount}/{totalReqs} Complete
+                  </span>
+                )}
+                {requestedClass && requestedClass !== employmentClass && (
+                  <span className="bg-amber-50 text-amber-700 px-3 py-1 rounded-lg text-xs font-bold border border-amber-200" title="Chosen by the employee at sign-up. Change the type to confirm.">
+                    Requested: {EMPLOYMENT_CLASS_LABELS[requestedClass]}
+                  </span>
+                )}
+              </div>
+            )}
             <div className="flex flex-wrap gap-4 text-sm text-muted font-medium">
               <span className="flex items-center gap-1.5"><Mail className="w-4 h-4 text-subtle" />{profile.email}</span>
               {profile.phone && <span className="flex items-center gap-1.5"><Phone className="w-4 h-4 text-subtle" />{profile.phone}</span>}
@@ -558,6 +478,115 @@ export default function StaffReviewPage() {
               )}
             </div>
           </div>
+
+          {/* Their setup at this center, top to bottom */}
+          <dl className="w-full md:w-80 shrink-0 bg-white rounded-2xl border border-brand-100 divide-y divide-brand-100 text-xs">
+            <div className="flex items-center gap-3 px-4 py-2">
+              <dt className={LABEL}>Employment type</dt>
+              <dd className="flex-1 min-w-0">
+                <select
+                  aria-label="Employment type"
+                  value={employmentTypeOf(employmentClass, partTime)}
+                  disabled={savingClass}
+                  onChange={(e) => handleChangeEmploymentType(e.target.value as EmploymentType)}
+                  title="Employee type at this center"
+                  className={`${FIELD} text-brand-600 disabled:opacity-50`}
+                >
+                  {(Object.entries(EMPLOYMENT_TYPE_LABELS) as [EmploymentType, string][]).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </dd>
+            </div>
+            <div className="flex items-center gap-3 px-4 py-2">
+              <dt className={LABEL}>Role</dt>
+              <dd className="flex-1 min-w-0">
+                  {(() => {
+                    // Owners are added by CareLocal support. Owners can name Directors and Assistant Directors;
+                    // owners and directors can give everyone else a role from the center's Role list.
+                    const isOwnerTarget = targetCenterRole === 'owner' || centerRole === 'owner'
+                    const isSelf = !!currentUserId && profile.user_id === currentUserId
+                    const targetIsLeader = isLeadershipRole(centerRole) || !!targetCenterRole
+                    const canEdit = !isOwnerTarget && !isSelf && (viewerRole === 'owner' || (viewerRole === 'admin' && !targetIsLeader))
+                    const options = assignableRoles(viewerRole, roleLookups)
+                    const leaderNeedsRegular = employmentClass !== 'regular'
+                    if (isOwnerTarget) {
+                      return (
+                        <span className="inline-flex items-center gap-1.5 bg-brand-900 text-white px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest">
+                          <ShieldCheck className="w-3.5 h-3.5" /> Owner
+                        </span>
+                      )
+                    }
+                    if (!canEdit) {
+                      return centerRole ? (
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest ${targetIsLeader ? 'bg-brand-50 text-brand-700 border border-brand-200' : 'bg-white text-brand-600 border border-brand-100'}`}>
+                          {targetIsLeader && <ShieldCheck className="w-3.5 h-3.5" />} {centerRoleLabel(centerRole, roleLookups)}
+                        </span>
+                      ) : <span className="text-xs text-muted">No role</span>
+                    }
+                    const current = centerRole ?? (targetCenterRole === 'admin' ? 'director' : '')
+                    return (
+                      <span
+                        className={`flex items-center gap-1.5 ${targetIsLeader ? 'text-brand-700' : 'text-brand-600'}`}
+                        title="Their role at this center. Directors and Assistant Directors can manage the center."
+                      >
+                        {savingAccess ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" /> : targetIsLeader && <ShieldCheck className="w-3.5 h-3.5 shrink-0" />}
+                        <select
+                          aria-label="Role"
+                          value={current}
+                          disabled={savingAccess}
+                          onChange={(e) => handleChangeRole(e.target.value)}
+                          className={`${FIELD} ${targetIsLeader ? 'text-brand-900' : 'text-brand-600'}`}
+                        >
+                          <option value="" className="text-heading">No role</option>
+                          {current && !options.some(o => o.value === current) && (
+                            <option value={current} className="text-heading">{centerRoleLabel(current, roleLookups)}</option>
+                          )}
+                          {options.map(o => (
+                            <option
+                              key={o.value}
+                              value={o.value}
+                              disabled={isLeadershipRole(o.value) && leaderNeedsRegular}
+                              className="text-heading"
+                            >
+                              {o.label}{isLeadershipRole(o.value) && leaderNeedsRegular ? ' (Full-time / Part-time only)' : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </span>
+                    )
+                  })()}
+              </dd>
+            </div>
+            {employmentClass === 'regular' && rooms.length > 0 && (
+              <div className="flex items-center gap-3 px-4 py-2" title="Their room on the live roster. Floaters have none.">
+                <dt className={LABEL}>Home room</dt>
+                <dd className="flex-1 min-w-0">
+                  <select
+                    aria-label="Home room"
+                    value={homeRoom}
+                    onChange={(e) => handleChangeHomeRoom(e.target.value)}
+                    className={`${FIELD} text-brand-600`}
+                  >
+                    <option value="">None (floater)</option>
+                    {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                  </select>
+                </dd>
+              </div>
+            )}
+            <div className="flex items-center gap-3 px-4 py-2" title="Due dates are counted from this date">
+              <dt className={LABEL}>Started</dt>
+              <dd className="flex-1 min-w-0">
+                <input
+                  type="date"
+                  aria-label="Started"
+                  value={startDate}
+                  onChange={(e) => handleChangeStartDate(e.target.value)}
+                  className={`${FIELD} text-brand-600`}
+                />
+              </dd>
+            </div>
+          </dl>
           {(memberStatus === 'applying' || memberStatus === 'invited') && (
             <div className="flex items-center gap-3 shrink-0">
               {memberStatus === 'applying' && (
