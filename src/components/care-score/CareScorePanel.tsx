@@ -1,11 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Loader2, MessageSquareReply, Star } from 'lucide-react'
-import { getCareReviews, getCareScores, respondToReview } from '@/app/actions/reviews.actions'
+import { Flag, Loader2, MessageSquareReply, Star, ThumbsUp } from 'lucide-react'
+import { getCareReviews, getCareScores, reportReview, respondToReview, toggleReviewLike } from '@/app/actions/reviews.actions'
 import {
-  MAX_REPLY_LENGTH, MIN_REVIEWS_FOR_SCORE, attributionLine, formatScore, hasEnoughReviews, histogramRows,
-  type CareReview, type CareScoreRow, type CareSubjectType,
+  MAX_REPLY_LENGTH, MIN_REVIEWS_FOR_SCORE, REPORT_REASONS, attributionLine, formatScore, hasEnoughReviews, histogramRows,
+  type CareReview, type CareScoreRow, type CareSubjectType, type ReportReason, type ReviewSort,
 } from '@/lib/care-score'
 
 const PAGE_SIZE = 20
@@ -51,25 +51,26 @@ export function CareScorePanel({
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sort, setSort] = useState<ReviewSort>('recent')
 
   const load = useCallback(async () => {
     setLoading(true)
     const [s, r] = await Promise.all([
       getCareScores(subjectType, [subjectId]),
-      getCareReviews(subjectType, subjectId, PAGE_SIZE, 0),
+      getCareReviews(subjectType, subjectId, PAGE_SIZE, 0, sort),
     ])
     setScore(s.scores[subjectId] ?? null)
     setReviews(r.reviews)
     setHasMore(r.reviews.length === PAGE_SIZE)
     setError(r.error ?? s.error ?? null)
     setLoading(false)
-  }, [subjectType, subjectId])
+  }, [subjectType, subjectId, sort])
 
   useEffect(() => { load() }, [load])
 
   async function loadMore() {
     setLoadingMore(true)
-    const r = await getCareReviews(subjectType, subjectId, PAGE_SIZE, reviews.length)
+    const r = await getCareReviews(subjectType, subjectId, PAGE_SIZE, reviews.length, sort)
     setReviews(prev => [...prev, ...r.reviews])
     setHasMore(r.reviews.length === PAGE_SIZE)
     setLoadingMore(false)
@@ -135,6 +136,16 @@ export function CareScorePanel({
         </div>
       ) : (
         <div className="grid gap-4">
+          {reviews.length > 1 && (
+            <div className="flex justify-end gap-1 text-xs font-bold" role="group" aria-label="Sort reviews">
+              {(['recent', 'helpful'] as const).map(s => (
+                <button key={s} type="button" onClick={() => setSort(s)} aria-pressed={sort === s}
+                  className={`rounded-full px-3 py-1 ${sort === s ? 'bg-heading text-white' : 'border border-border bg-white text-text-main hover:bg-surface'}`}>
+                  {s === 'recent' ? 'Most recent' : 'Most helpful'}
+                </button>
+              ))}
+            </div>
+          )}
           {reviews.map(review => (
             <ReviewCard key={review.id} review={review} canRespond={canRespond} onReplied={load} />
           ))}
@@ -154,6 +165,11 @@ function ReviewCard({ review, canRespond, onReplied }: { review: CareReview; can
   const [text, setText] = useState(review.response_body ?? '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [liked, setLiked] = useState(review.liked_by_me)
+  const [likes, setLikes] = useState(review.like_count)
+  const [liking, setLiking] = useState(false)
+  const [reporting, setReporting] = useState(false)
+  const [reported, setReported] = useState(review.reported_by_me)
   const date = new Date(review.created_at).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
   const lowRating = review.rating <= 2
 
@@ -165,6 +181,14 @@ function ReviewCard({ review, canRespond, onReplied }: { review: CareReview; can
     if (res.error) { setError(res.error); return }
     setReplying(false)
     onReplied()
+  }
+
+  async function like() {
+    setLiking(true)
+    const res = await toggleReviewLike(review.id)
+    setLiking(false)
+    if ('error' in res && res.error) { setError(res.error); return }
+    if ('liked' in res) { setLiked(!!res.liked); setLikes(res.likeCount ?? 0) }
   }
 
   return (
@@ -196,6 +220,23 @@ function ReviewCard({ review, canRespond, onReplied }: { review: CareReview; can
         </div>
       )}
 
+      <div className="mt-4 flex flex-wrap items-center gap-3 text-xs">
+        {!review.is_mine && (
+          <button type="button" onClick={like} disabled={liking} aria-pressed={liked}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 font-bold disabled:opacity-50 ${liked ? 'bg-brand-50 text-brand-700' : 'text-muted hover:bg-surface'}`}>
+            <ThumbsUp className={`h-3.5 w-3.5 ${liked ? 'fill-current' : ''}`} /> Helpful{likes > 0 ? ` · ${likes}` : ''}
+          </button>
+        )}
+        {review.is_mine && likes > 0 && <span className="text-muted">{likes} found this helpful</span>}
+        {!review.is_mine && (reported
+          ? <span className="inline-flex items-center gap-1 text-muted"><Flag className="h-3.5 w-3.5" /> Reported</span>
+          : <button type="button" onClick={() => setReporting(true)} className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 font-bold text-muted hover:bg-surface"><Flag className="h-3.5 w-3.5" /> Report</button>)}
+      </div>
+
+      {error && !replying && <p className="mt-2 text-xs text-red-600">{error}</p>}
+
+      {reporting && <ReportForm reviewId={review.id} onDone={(ok) => { setReporting(false); if (ok) setReported(true) }} />}
+
       {canRespond && !replying && (
         <button type="button" onClick={() => setReplying(true)} className={`mt-4 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold ${!review.response_body && lowRating ? 'bg-brand-600 text-white hover:bg-brand-700' : 'border border-border text-text-main hover:bg-surface'}`}>
           <MessageSquareReply className="h-3.5 w-3.5" /> {review.response_body ? 'Edit reply' : 'Respond to this review'}
@@ -223,6 +264,48 @@ function ReviewCard({ review, canRespond, onReplied }: { review: CareReview; can
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function ReportForm({ reviewId, onDone }: { reviewId: string; onDone: (reported: boolean) => void }) {
+  const [reason, setReason] = useState<ReportReason | ''>('')
+  const [details, setDetails] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function submit() {
+    if (!reason) { setError('Choose a reason.'); return }
+    setSaving(true)
+    setError(null)
+    const res = await reportReview(reviewId, reason, details)
+    setSaving(false)
+    if (res.error) { setError(res.error); return }
+    onDone(true)
+  }
+
+  return (
+    <div className="mt-3 space-y-2 rounded-xl border border-border bg-surface p-4">
+      <div className="text-xs font-bold text-text-main">Report this review to CareLocal</div>
+      <div className="grid gap-1.5">
+        {REPORT_REASONS.map(r => (
+          <label key={r.value} className="flex items-center gap-2 text-sm text-text-main">
+            <input type="radio" name={`report-${reviewId}`} value={r.value} checked={reason === r.value} onChange={() => setReason(r.value)} className="accent-brand-600" />
+            {r.label}
+          </label>
+        ))}
+      </div>
+      <textarea value={details} onChange={e => setDetails(e.target.value)} maxLength={1000}
+        placeholder={reason === 'other' ? 'Tell us what is wrong (required)' : 'Anything we should know? (optional)'}
+        className="min-h-[60px] w-full rounded-xl border border-border bg-white px-3 py-2 text-sm text-text-main focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30" />
+      {reason === 'child_info' && <p className="text-xs text-muted">We take the review down right away while we check it.</p>}
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      <div className="flex justify-end gap-2">
+        <button type="button" onClick={() => onDone(false)} className="rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-bold text-muted hover:bg-surface">Cancel</button>
+        <button type="button" onClick={submit} disabled={saving} className="inline-flex items-center gap-1.5 rounded-lg bg-heading px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">
+          {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Send report
+        </button>
+      </div>
     </div>
   )
 }

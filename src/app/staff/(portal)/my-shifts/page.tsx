@@ -234,7 +234,9 @@ export default function MyShiftsPage() {
     })
     if (res.error) throw new Error(res.error)
     setReviewedShiftIds(prev => new Set([...prev, reviewingShift.id]))
-    showAlert('Thanks! Your review will appear once the center reviews you too, or after the review window closes.')
+    showAlert(res.held
+      ? 'Thanks! Your comment seems to include personal details (like a phone number or a child\'s name), so CareLocal will check it before it appears.'
+      : 'Thanks! Your review will appear once the center reviews you too, or after the review window closes.')
   }
 
   // Removed metro matching explicitly since this is purely a calendar of YOUR shifts

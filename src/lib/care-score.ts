@@ -60,6 +60,51 @@ export interface CareReview {
   response_author_name: string | null
   response_at: string | null
   is_mine: boolean
+  like_count: number
+  liked_by_me: boolean
+  reported_by_me: boolean
+}
+
+export type ReviewSort = 'recent' | 'helpful'
+
+export const REPORT_REASONS = [
+  { value: 'retaliation', label: 'Retaliation for my review' },
+  { value: 'false_information', label: 'False information' },
+  { value: 'child_info', label: "Mentions a child's information" },
+  { value: 'harassment', label: 'Harassment or abuse' },
+  { value: 'other', label: 'Something else' },
+] as const
+export type ReportReason = typeof REPORT_REASONS[number]['value']
+
+/** Why a review is held back for a super admin's look (shift_reviews.held_reasons) */
+export const HOLD_REASON_LABELS: Record<string, string> = {
+  phone: 'Phone number',
+  email: 'Email address',
+  address: 'Street address',
+  child_name: "A child's name",
+  reported_child_info: "Reported: child's information",
+}
+
+export type PersonalInfoKind = 'phone' | 'email' | 'address'
+
+// Same patterns as public.care_review_pii_reasons() (child names are only checked by the database)
+const PHONE_RE = /(\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/
+const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i
+const ADDRESS_RE = /\b\d{1,6}\s+([a-z0-9.]+\s+){0,3}(st|street|ave|avenue|rd|road|dr|drive|ln|lane|blvd|boulevard|ct|court|way|pl|place|cir|circle|pkwy|parkway|hwy|highway)\b/i
+
+/** Personal info a public comment should not carry. Used to warn before submitting. */
+export function personalInfoWarnings(text: string | null | undefined): PersonalInfoKind[] {
+  const t = text ?? ''
+  const found: PersonalInfoKind[] = []
+  if (PHONE_RE.test(t)) found.push('phone')
+  if (EMAIL_RE.test(t)) found.push('email')
+  if (ADDRESS_RE.test(t)) found.push('address')
+  return found
+}
+
+export function personalInfoMessage(kinds: string[]) {
+  const words = kinds.map(k => (HOLD_REASON_LABELS[k] ?? k).toLowerCase().replace("a child's name", "children's names"))
+  return words.length === 0 ? '' : `Please remove ${words.join(', ')}. Public comments with personal details are held for review.`
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100

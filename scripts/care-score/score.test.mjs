@@ -8,6 +8,7 @@
 import {
   computeCareScore, starWeight, recencyWeight, buildHistogram, histogramRows, hasEnoughReviews, formatScore,
   attributionLine, reviewerTypeFor, reviewWindow, reviewErrorMessage, MIN_REVIEWS_FOR_SCORE,
+  personalInfoWarnings, personalInfoMessage, REPORT_REASONS, HOLD_REASON_LABELS,
 } from '../../src/lib/care-score.ts'
 
 let passed = 0
@@ -56,6 +57,16 @@ console.log('errors')
 check('duplicate', reviewErrorMessage('duplicate key value violates unique constraint "shift_reviews_shift_pair_key"') === 'You have already reviewed this shift.')
 check('locked', /48 hours/.test(reviewErrorMessage('This review can no longer be edited')))
 check('passthrough', reviewErrorMessage('boom') === 'boom' && reviewErrorMessage(null).length > 0)
+
+console.log('personal info (same cases as care-score-v1-1.db.test.sql)')
+check('phone', eq(personalInfoWarnings('Call me at (704) 555-0199 anytime'), ['phone']) && eq(personalInfoWarnings('704.555.0199'), ['phone']) && eq(personalInfoWarnings('+1 704-555-0199'), ['phone']))
+check('email', eq(personalInfoWarnings('Email me: maria@example.com'), ['email']))
+check('address', eq(personalInfoWarnings('Lovely team at 123 Main Street'), ['address']) && eq(personalInfoWarnings('4500 park rd'), ['address']))
+check('clean text', eq(personalInfoWarnings('Great with toddlers, 5 stars, 3 rooms covered'), []) && eq(personalInfoWarnings(null), []))
+check('several', eq(personalInfoWarnings('maria@example.com or 704-555-0199'), ['phone', 'email']))
+check('message', /phone number, email address/.test(personalInfoMessage(['phone', 'email'])) && /children's names/.test(personalInfoMessage(['child_name'])) && personalInfoMessage([]) === '')
+check('report reasons match database', eq(REPORT_REASONS.map(r => r.value), ['retaliation', 'false_information', 'child_info', 'harassment', 'other']))
+check('hold labels cover database reasons', ['phone', 'email', 'address', 'child_name', 'reported_child_info'].every(k => HOLD_REASON_LABELS[k]))
 
 console.log(`\n${passed} passed, ${failures.length} failed`)
 if (failures.length) process.exit(1)

@@ -173,6 +173,7 @@ export default function CenterShiftsPage() {
       ...data
     })
     if (res.error) throw new Error(res.error)
+    if (res.held) await showAlert('Saved. The comment seems to include personal details (like a phone number or a child\'s name), so CareLocal will check it before it appears.')
     
     // Refresh to hide the review button
     window.location.reload()

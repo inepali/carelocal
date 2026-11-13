@@ -1,13 +1,16 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { EyeOff, Eye, Loader2, Lock, Star } from 'lucide-react'
+import { CheckCircle2, EyeOff, Eye, Flag, Loader2, Lock, ShieldAlert, Star } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { moderateReview } from '@/app/actions/reviews.actions'
+import { moderateReview, releaseReviewHold, resolveReviewReport } from '@/app/actions/reviews.actions'
+import { HOLD_REASON_LABELS, REPORT_REASONS } from '@/lib/care-score'
 import { showAlert, showPrompt } from '@/lib/dialog'
 
-type Filter = 'all' | 'low' | 'pending' | 'hidden'
+type Filter = 'reported' | 'held' | 'all' | 'low' | 'pending' | 'hidden'
 const FILTERS: { id: Filter; label: string }[] = [
+  { id: 'reported', label: 'Reported' },
+  { id: 'held', label: 'Held for personal info' },
   { id: 'all', label: 'All' },
   { id: 'low', label: '1–2 stars' },
   { id: 'pending', label: 'Not revealed yet' },
@@ -30,9 +33,22 @@ interface AdminReview {
   reveal_at: string | null
   hidden_at: string | null
   hidden_reason: string | null
+  held_at: string | null
+  held_reasons: string[] | null
   edit_history: unknown[] | null
   created_at: string
 }
+
+interface AdminReport {
+  id: string
+  review_id: string
+  reason: string
+  details: string | null
+  status: 'open' | 'dismissed' | 'actioned'
+  created_at: string
+}
+
+const reasonLabel = (r: string) => REPORT_REASONS.find(x => x.value === r)?.label ?? r
 
 /** Super admins: every Care Score review, including private feedback. Hide (with a reason) or show again; never delete. */
 export default function AdminReviewsPage() {
@@ -40,22 +56,43 @@ export default function AdminReviewsPage() {
   const [loading, setLoading] = useState(true)
   const [rows, setRows] = useState<AdminReview[]>([])
   const [names, setNames] = useState<Record<string, string>>({})
-  const [filter, setFilter] = useState<Filter>('all')
+  const [filter, setFilter] = useState<Filter>('reported')
+  const [reports, setReports] = useState<Record<string, AdminReport[]>>({})
   const [busyId, setBusyId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
-    let q = supabase.from('shift_reviews')
-      .select('id, shift_id, reviewer_id, reviewee_id, reviewer_type, rating, tags, public_comment, private_feedback, do_not_return, author_name, author_role, reveal_at, hidden_at, hidden_reason, edit_history, created_at')
-      .order('created_at', { ascending: false })
-      .limit(200)
-    if (filter === 'low') q = q.lte('rating', 2)
-    if (filter === 'pending') q = q.gt('reveal_at', new Date().toISOString())
-    if (filter === 'hidden') q = q.not('hidden_at', 'is', null)
-    const { data, error } = await q
-    if (error) showAlert('Could not load reviews: ' + error.message, { tone: 'error' })
-    const list = (data ?? []) as AdminReview[]
+    let reportedIds: string[] | null = null
+    if (filter === 'reported') {
+      const { data: open } = await supabase.from('shift_review_reports').select('review_id').eq('status', 'open').limit(500)
+      reportedIds = [...new Set(((open ?? []) as { review_id: string }[]).map(r => r.review_id))]
+    }
+    let list: AdminReview[] = []
+    if (reportedIds === null || reportedIds.length > 0) {
+      let q = supabase.from('shift_reviews')
+        .select('id, shift_id, reviewer_id, reviewee_id, reviewer_type, rating, tags, public_comment, private_feedback, do_not_return, author_name, author_role, reveal_at, hidden_at, hidden_reason, held_at, held_reasons, edit_history, created_at')
+        .order('created_at', { ascending: false })
+        .limit(200)
+      if (reportedIds) q = q.in('id', reportedIds)
+      if (filter === 'held') q = q.not('held_at', 'is', null)
+      if (filter === 'low') q = q.lte('rating', 2)
+      if (filter === 'pending') q = q.gt('reveal_at', new Date().toISOString())
+      if (filter === 'hidden') q = q.not('hidden_at', 'is', null)
+      const { data, error } = await q
+      if (error) showAlert('Could not load reviews: ' + error.message, { tone: 'error' })
+      list = (data ?? []) as AdminReview[]
+    }
     setRows(list)
+
+    const reportMap: Record<string, AdminReport[]> = {}
+    if (list.length > 0) {
+      const { data: reps } = await supabase.from('shift_review_reports')
+        .select('id, review_id, reason, details, status, created_at')
+        .in('review_id', list.map(r => r.id))
+        .order('created_at', { ascending: false })
+      for (const rep of (reps ?? []) as AdminReport[]) (reportMap[rep.review_id] ??= []).push(rep)
+    }
+    setReports(reportMap)
 
     const centerIds = new Set<string>()
     const staffIds = new Set<string>()
@@ -85,6 +122,26 @@ export default function AdminReviewsPage() {
     }
     setBusyId(row.id)
     const res = await moderateReview(row.id, !row.hidden_at, reason)
+    setBusyId(null)
+    if (res.error) { showAlert(res.error, { tone: 'error' }); return }
+    load()
+  }
+
+  async function release(row: AdminReview) {
+    setBusyId(row.id)
+    const res = await releaseReviewHold(row.id)
+    setBusyId(null)
+    if (res.error) { showAlert(res.error, { tone: 'error' }); return }
+    load()
+  }
+
+  async function resolve(rep: AdminReport, action: 'dismiss' | 'hide') {
+    const note = await showPrompt(action === 'hide' ? 'Why hide this review? (audit trail)' : 'Note for the audit trail (optional)', '',
+      { title: action === 'hide' ? 'Hide review' : 'Dismiss report', tone: action === 'hide' ? 'danger' : 'default', confirmLabel: action === 'hide' ? 'Hide' : 'Dismiss' })
+    if (note === null) return
+    if (action === 'hide' && !note.trim()) { showAlert('Give a reason for hiding the review.'); return }
+    setBusyId(rep.review_id)
+    const res = await resolveReviewReport(rep.id, action, note)
     setBusyId(null)
     if (res.error) { showAlert(res.error, { tone: 'error' }); return }
     load()
@@ -144,6 +201,28 @@ export default function AdminReviewsPage() {
                 {r.public_comment && <p className="mt-2 rounded-xl bg-surface p-3 text-sm text-text-main">{r.public_comment}</p>}
                 {r.private_feedback && <p className="mt-2 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm text-amber-900"><span className="font-bold">Private: </span>{r.private_feedback}</p>}
                 {r.hidden_at && <p className="mt-2 text-xs font-bold text-red-700">Hidden {new Date(r.hidden_at).toLocaleDateString()}: {r.hidden_reason}</p>}
+                {r.held_at && (
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                    <span className="flex items-center gap-1.5 font-bold"><ShieldAlert className="h-4 w-4" /> Held: {(r.held_reasons ?? []).map(x => HOLD_REASON_LABELS[x] ?? x).join(', ')}</span>
+                    <button type="button" onClick={() => release(r)} disabled={busyId === r.id} className="inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1 font-bold text-text-main hover:bg-surface disabled:opacity-50">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Fine, publish it
+                    </button>
+                  </div>
+                )}
+                {(reports[r.id] ?? []).map(rep => (
+                  <div key={rep.id} className={`mt-3 rounded-xl border p-3 text-xs ${rep.status === 'open' ? 'border-sky-200 bg-sky-50 text-sky-900' : 'border-border bg-surface text-muted'}`}>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="flex items-center gap-1.5 font-bold"><Flag className="h-3.5 w-3.5" /> {reasonLabel(rep.reason)} · {new Date(rep.created_at).toLocaleDateString()}{rep.status !== 'open' && ` · ${rep.status}`}</span>
+                      {rep.status === 'open' && (
+                        <span className="flex gap-2">
+                          <button type="button" onClick={() => resolve(rep, 'dismiss')} disabled={busyId === r.id} className="rounded-lg bg-white px-2.5 py-1 font-bold text-text-main hover:bg-surface disabled:opacity-50">Dismiss</button>
+                          <button type="button" onClick={() => resolve(rep, 'hide')} disabled={busyId === r.id} className="rounded-lg bg-red-600 px-2.5 py-1 font-bold text-white hover:bg-red-700 disabled:opacity-50">Hide review</button>
+                        </span>
+                      )}
+                    </div>
+                    {rep.details && <p className="mt-1">{rep.details}</p>}
+                  </div>
+                ))}
               </div>
             )
           })}

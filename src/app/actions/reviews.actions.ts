@@ -3,8 +3,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import {
-  MAX_COMMENT_LENGTH, MAX_REPLY_LENGTH, reviewErrorMessage,
-  type CareReview, type CareScoreRow, type CareSubjectType,
+  MAX_COMMENT_LENGTH, MAX_REPLY_LENGTH, REPORT_REASONS, reviewErrorMessage,
+  type CareReview, type CareScoreRow, type CareSubjectType, type ReportReason, type ReviewSort,
 } from '@/lib/care-score'
 
 type ReviewContent = {
@@ -73,18 +73,19 @@ export async function submitReview(data: ReviewContent & {
     revieweeId = data.reviewee_id
   }
 
-  const { error } = await supabase.from('shift_reviews').insert({
+  const { data: saved, error } = await supabase.from('shift_reviews').insert({
     shift_id: shift.id,
     reviewer_id: reviewerId,
     reviewee_id: revieweeId,
     reviewer_type: data.reviewer_type,
     ...content.value,
-  })
+  }).select('held_reasons').maybeSingle()
   if (error) return { error: reviewErrorMessage(error.message) }
 
   revalidatePath('/staff/my-shifts')
   revalidatePath('/center/shifts')
-  return { success: true }
+  // Held: the public comment carries personal info, so a super admin looks at it before it shows
+  return { success: true, held: ((saved?.held_reasons as string[] | null) ?? []).length > 0 }
 }
 
 /** Edit your own review during its 48-hour edit window. Earlier versions are kept in edit_history. */
@@ -100,12 +101,13 @@ export async function updateReview(reviewId: string, data: ReviewContent) {
   const content = cleanContent(data, existing.reviewer_type as 'center' | 'staff')
   if ('error' in content) return { error: content.error }
 
-  const { error } = await supabase.from('shift_reviews').update(content.value).eq('id', reviewId)
+  const { data: saved, error } = await supabase.from('shift_reviews').update(content.value).eq('id', reviewId)
+    .select('held_reasons').maybeSingle()
   if (error) return { error: reviewErrorMessage(error.message) }
 
   revalidatePath('/staff/my-shifts')
   revalidatePath('/center/shifts')
-  return { success: true }
+  return { success: true, held: ((saved?.held_reasons as string[] | null) ?? []).length > 0 }
 }
 
 /** Reviews you wrote for a shift (reviews about you come through getCareReviews once revealed) */
@@ -133,10 +135,11 @@ export async function getCareScores(subjectType: CareSubjectType, subjectIds: st
 }
 
 /** Revealed, visible reviews about a subject: attributed, without private feedback, newest first, with replies */
-export async function getCareReviews(subjectType: CareSubjectType, subjectId: string, limit = 20, offset = 0) {
+export async function getCareReviews(subjectType: CareSubjectType, subjectId: string, limit = 20, offset = 0, sort: ReviewSort = 'recent') {
   const supabase = await createClient()
   const { data, error } = await supabase.rpc('get_care_reviews', {
     p_subject_type: subjectType, p_subject_id: subjectId, p_limit: limit, p_offset: offset,
+    p_sort: sort === 'helpful' ? 'helpful' : 'recent',
   })
   if (error) return { reviews: [] as CareReview[], error: error.message }
   return { reviews: (data ?? []) as CareReview[] }
@@ -159,6 +162,46 @@ export async function respondToReview(reviewId: string, body: string) {
 export async function moderateReview(reviewId: string, hide: boolean, reason?: string) {
   const supabase = await createClient()
   const { error } = await supabase.rpc('moderate_care_review', { p_review_id: reviewId, p_hide: hide, p_reason: reason ?? null })
+  if (error) return { error: error.message }
+  revalidatePath('/admin/reviews')
+  return { success: true }
+}
+
+/** Mark a review helpful, or take that back. Likes only sort reviews; they never change the score. */
+export async function toggleReviewLike(reviewId: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('toggle_care_review_like', { p_review_id: reviewId })
+  if (error) return { error: error.message }
+  const row = (Array.isArray(data) ? data[0] : data) as { liked: boolean; like_count: number } | undefined
+  return { liked: !!row?.liked, likeCount: row?.like_count ?? 0 }
+}
+
+/** Report a review to CareLocal. A report about a child's information takes the review down until checked. */
+export async function reportReview(reviewId: string, reason: ReportReason, details?: string) {
+  if (!REPORT_REASONS.some(r => r.value === reason)) return { error: 'Choose a reason.' }
+  const text = details?.trim() ?? ''
+  if (text.length > 1000) return { error: 'Details can be up to 1000 characters.' }
+  if (reason === 'other' && !text) return { error: 'Tell us what is wrong with this review.' }
+  const supabase = await createClient()
+  const { error } = await supabase.rpc('report_care_review', { p_review_id: reviewId, p_reason: reason, p_details: text || null })
+  if (error) return { error: error.message }
+  revalidatePath('/admin/reviews')
+  return { success: true }
+}
+
+/** Super admins: dismiss a report, or hide the review it is about (resolves every open report on it) */
+export async function resolveReviewReport(reportId: string, action: 'dismiss' | 'hide', note?: string) {
+  const supabase = await createClient()
+  const { error } = await supabase.rpc('resolve_care_review_report', { p_report_id: reportId, p_action: action, p_note: note ?? null })
+  if (error) return { error: error.message }
+  revalidatePath('/admin/reviews')
+  return { success: true }
+}
+
+/** Super admins: publish a review held for personal info after checking it is fine */
+export async function releaseReviewHold(reviewId: string) {
+  const supabase = await createClient()
+  const { error } = await supabase.rpc('release_care_review_hold', { p_review_id: reviewId })
   if (error) return { error: error.message }
   revalidatePath('/admin/reviews')
   return { success: true }

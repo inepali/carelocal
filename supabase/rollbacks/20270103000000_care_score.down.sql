@@ -9,6 +9,7 @@ DROP TRIGGER IF EXISTS trg_guard_shift_review ON public.shift_reviews;
 DROP FUNCTION IF EXISTS public.moderate_care_review(uuid, boolean, text);
 DROP FUNCTION IF EXISTS public.respond_to_care_review(uuid, text);
 DROP FUNCTION IF EXISTS public.get_care_reviews(text, uuid, integer, integer);
+DROP FUNCTION IF EXISTS public.care_can_view_subject(text, uuid);  -- added by 20270104000000 (roll that back first)
 DROP FUNCTION IF EXISTS public.shift_review_rescore();
 DROP FUNCTION IF EXISTS public.recompute_all_care_scores();
 DROP FUNCTION IF EXISTS public.recompute_care_score(text, uuid);

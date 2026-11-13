@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Star, Loader2, X, AlertTriangle } from 'lucide-react'
 import { showAlert } from '@/lib/dialog'
-import { EDIT_WINDOW_HOURS, MAX_COMMENT_LENGTH, REVIEW_WINDOW_DAYS } from '@/lib/care-score'
+import { EDIT_WINDOW_HOURS, MAX_COMMENT_LENGTH, REVIEW_WINDOW_DAYS, personalInfoMessage, personalInfoWarnings } from '@/lib/care-score'
 
 interface ReviewModalProps {
   isOpen: boolean
@@ -178,6 +178,11 @@ export function ReviewModal({ isOpen, onClose, onSubmit, reviewerType, title }: 
                 placeholder="Share your experience (visible to others). Please don't name children."
                 className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main min-h-[80px]"
               />
+              {personalInfoWarnings(publicComment).length > 0 && (
+                <p className="mt-2 flex items-start gap-1.5 text-xs font-medium text-amber-700">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {personalInfoMessage(personalInfoWarnings(publicComment))}
+                </p>
+              )}
             </div>
             
             <div>
