@@ -6,6 +6,7 @@ import { Shift, StaffProfile, trialDaysLeft as trialDaysLeftFor } from '@/lib/ty
 import Link from 'next/link'
 import { Calendar, Users, AlertCircle, FileText, ArrowRight, CheckCircle2, Clock, UserPlus, Globe, Star, AlertTriangle, CalendarCheck, Eye, Inbox, Download } from 'lucide-react'
 import { useCenterContext } from '../context'
+import { hasEnoughReviews } from '@/lib/care-score'
 import { loadCenterPlan } from '@/lib/center-plan'
 import { loadCenterCompliance, countStates } from '@/lib/compliance-data'
 import { inspectionStatus, DUE_SOON_DAYS } from '@/lib/inspections'
@@ -95,16 +96,12 @@ export default function DashboardOverview() {
         supabase.from('shifts').select('*, work_areas(name)').eq('center_id', centerId).eq('status', 'open').neq('is_archived', true).gte('shift_date', today).order('shift_date', { ascending: true }).limit(3),
         supabase.from('shift_claims').select('*, staff_profiles(first_name, last_name), shifts(shift_date, start_time, work_area_id, work_areas(name))').eq('status', 'pending').order('claimed_at', { ascending: false }).limit(3),
         supabase.from('center_staff').select('*, staff_profiles(first_name, last_name)').eq('center_id', centerId).eq('status', 'active').order('added_at', { ascending: false }).limit(3),
-        supabase.from('shift_reviews').select('rating').eq('reviewee_id', centerId).eq('reviewer_type', 'staff')
+        supabase.from('care_scores').select('score, review_count').eq('subject_type', 'center').eq('subject_id', centerId).maybeSingle()
       ])
 
-      let avgRating = 0
-      let totalReviews = 0
-      if (reviewsData && reviewsData.length > 0) {
-        totalReviews = reviewsData.length
-        const sum = reviewsData.reduce((acc, curr) => acc + curr.rating, 0)
-        avgRating = sum / totalReviews
-      }
+      // Care Score (weighted); shown as a number once there are enough reviews
+      const totalReviews = reviewsData?.review_count ?? 0
+      const avgRating = hasEnoughReviews(reviewsData) && reviewsData?.score != null ? Number(reviewsData.score) : 0
 
       setStats({
         activeStaff: staffCount || 0,
@@ -261,10 +258,10 @@ export default function DashboardOverview() {
           </div>
           <div>
             <div className="text-4xl font-black text-heading mb-1 flex items-baseline gap-1">
-              {stats.avgRating > 0 ? stats.avgRating.toFixed(1) : '—'}
+              {stats.avgRating > 0 ? stats.avgRating.toFixed(1) : stats.totalReviews > 0 ? 'New' : '—'}
               <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
             </div>
-            <div className="text-sm font-bold text-muted">{stats.totalReviews} {staffTerm} Review{stats.totalReviews !== 1 ? 's' : ''}</div>
+            <Link href="/center/care-score" className="text-sm font-bold text-muted hover:text-brand-600 hover:underline">{stats.totalReviews} {staffTerm} Review{stats.totalReviews !== 1 ? 's' : ''} · View &amp; reply</Link>
           </div>
         </div>
       </div>

@@ -17,6 +17,7 @@ import { AcademicQualificationsTab } from '@/components/staff/AcademicQualificat
 import { StaffAvatar } from '@/components/StaffAvatar'
 import { getAvatarUploadUrl, deleteAvatar } from '@/app/actions/avatar.actions'
 import { showAlert, showConfirm } from '@/lib/dialog'
+import { CareScorePanel } from '@/components/care-score/CareScorePanel'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -131,7 +132,6 @@ export default function StaffProfilePage() {
   const [metros, setMetros]           = useState<MetroArea[]>([])
   const [staffId, setStaffId]         = useState<string | null>(null)
   const [vaultDocs, setVaultDocs]     = useState<StaffDocument[]>([])
-  const [reviews, setReviews]         = useState<any[]>([])
   const [activeTab, setActiveTab]     = useState<TabId>('personal')
   const { isRegularOnly } = useIsRegularOnly()
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
@@ -231,20 +231,6 @@ export default function StaffProfilePage() {
           .select('id, document_name, document_category')
           .eq('staff_id', profileData.id)
         setVaultDocs((docs || []) as any)
-
-        // Fetch Reviews from Centers
-        const { data: revs } = await supabase
-          .from('shift_reviews')
-          .select('*')
-          .eq('reviewee_id', profileData.id)
-          .eq('reviewer_type', 'center')
-        
-        if (revs && revs.length > 0) {
-           const cIds = revs.map((r: any) => r.reviewer_id)
-           const { data: cData } = await supabase.from('centers').select('id, name').in('id', cIds)
-           const cMap = (cData || []).reduce((acc: any, curr: any) => { acc[curr.id] = curr.name; return acc; }, {})
-           setReviews(revs.map((r: any) => ({ ...r, reviewer_name: cMap[r.reviewer_id] || 'Center' })))
-        }
       }
 
       setLoading(false)
@@ -395,7 +381,14 @@ export default function StaffProfilePage() {
         <AvailabilityTab profile={profile} setProfile={setProfile} supabase={supabase} />
       )}
       {activeTab === 'reviews' && (
-        <ReviewsTab reviews={reviews} />
+        profile.id ? (
+          <CareScorePanel
+            subjectType="staff"
+            subjectId={profile.id}
+            canRespond
+            emptyHint="Complete shifts to build your reputation! Centers review you after each shift."
+          />
+        ) : null
       )}
     </div>
   )
@@ -1166,45 +1159,3 @@ function AvailabilityTab({
   )
 }
 
-// ─── Reviews Tab ───────────────────────────────────────────────────────────
-
-function ReviewsTab({ reviews }: { reviews: any[] }) {
-  return (
-    <div className="space-y-4">
-      {reviews.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-[2rem] border-2 border-dashed border-border">
-          <Star className="w-10 h-10 text-subtle mx-auto mb-3" />
-          <p className="text-muted font-bold text-sm">No Care Score ratings yet.</p>
-          <p className="text-subtle text-xs mt-1">Complete shifts to build your reputation!</p>
-        </div>
-      ) : (
-        <div className="grid gap-4">
-          {reviews.map(review => (
-            <div key={review.id} className="p-6 rounded-[1.5rem] bg-white border border-border hover:shadow-md transition-shadow">
-              <div className="flex items-center justify-between mb-3">
-                <div className="font-bold text-text-main text-lg">{review.reviewer_name}</div>
-                <div className="flex gap-1">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className={`w-5 h-5 ${i < review.rating ? 'text-amber-400 fill-amber-400' : 'text-border fill-transparent'}`} />
-                  ))}
-                </div>
-              </div>
-              {review.tags && review.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {review.tags.map((tag: string) => (
-                    <span key={tag} className="text-[10px] font-black uppercase tracking-widest bg-brand-50 text-brand-600 px-2.5 py-1 rounded-lg border border-brand-100">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-              {review.public_comment && (
-                <p className="text-sm text-text-muted mt-3 italic p-4 bg-surface rounded-xl border border-border">"{review.public_comment}"</p>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}

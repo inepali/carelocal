@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Calendar, Clock, AlertCircle, Loader2, Heart, Star, LogIn, LogOut, CheckCircle2, Bell, ChevronLeft, ChevronRight, UserCheck, Settings } from 'lucide-react'
 import Link from 'next/link'
 import { submitReview } from '@/app/actions/reviews.actions'
+import { reviewWindow } from '@/lib/care-score'
 import { checkInStaff, checkOutStaff } from '@/app/actions/timeclock.actions'
 import { ReviewModal } from '@/components/ReviewModal'
 import { useLookups } from '@/hooks/use-lookups'
@@ -124,13 +125,14 @@ export default function CenterShiftsPage() {
         // 6. Fetch existing reviews
         const { data: reviews } = await supabase
           .from('shift_reviews')
-          .select('reviewee_id')
-          .in('reviewee_id', staffIds)
+          .select('shift_id, reviewee_id')
+          .in('shift_id', shiftIds)
           .in('reviewer_id', centerIds)
           .eq('reviewer_type', 'center')
 
+        // One review per shift per staff member
         const reviewedMap: Record<string, boolean> = {}
-        ;(reviews || []).forEach((r: any) => { reviewedMap[r.reviewee_id] = true })
+        ;(reviews || []).forEach((r: any) => { reviewedMap[`${r.shift_id}:${r.reviewee_id}`] = true })
 
         // 7. Enrich shifts
         const enrichedShifts = centerShifts.map(shift => {
@@ -144,7 +146,8 @@ export default function CenterShiftsPage() {
             ...shift,
             shift_claims: shiftClaims,
             interest_count: interestMap[shift.id] || 0,
-            is_reviewed: confirmedClaim ? !!reviewedMap[confirmedClaim.staff_id] : false
+            is_reviewed: confirmedClaim ? !!reviewedMap[`${shift.id}:${confirmedClaim.staff_id}`] : false,
+            review_open: confirmedClaim?.check_out_time ? reviewWindow(new Date(confirmedClaim.check_out_time)).open : false
           }
         })
 
@@ -163,13 +166,13 @@ export default function CenterShiftsPage() {
   const handleReviewSubmit = async (data: any) => {
     if (!reviewingShift || !reviewingStaffId) return
     
-    await submitReview({
+    const res = await submitReview({
       shift_id: reviewingShift.id,
-      reviewer_id: reviewingShift.center_id, // center's ID
       reviewee_id: reviewingStaffId,
       reviewer_type: 'center',
       ...data
     })
+    if (res.error) throw new Error(res.error)
     
     // Refresh to hide the review button
     window.location.reload()
@@ -368,7 +371,7 @@ export default function CenterShiftsPage() {
                                 {actionLoadingId === shift.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : confirmedClaim.check_in_time ? <LogOut className="h-3.5 w-3.5" /> : <LogIn className="h-3.5 w-3.5" />}
                               </button>
                             )}
-                            {status === 'Completed' && confirmedClaim && !shift.is_reviewed && <button type="button" aria-label="Review staff" title="Review staff" onClick={() => { setReviewingShift(shift); setReviewingStaffId(confirmedClaim.staff_id) }} className="rounded-lg border border-amber-200 bg-amber-50 p-1.5 text-amber-700 hover:bg-amber-100"><Star className="h-3.5 w-3.5" /></button>}
+                            {status === 'Completed' && confirmedClaim && !shift.is_reviewed && shift.review_open && <button type="button" aria-label="Review staff" title="Review staff" onClick={() => { setReviewingShift(shift); setReviewingStaffId(confirmedClaim.staff_id) }} className="rounded-lg border border-amber-200 bg-amber-50 p-1.5 text-amber-700 hover:bg-amber-100"><Star className="h-3.5 w-3.5" /></button>}
                             <Link href={`/center/shifts/${shift.id}`} aria-label="Manage shift" title="Manage shift" className="rounded-lg border border-brand-200 bg-white p-1.5 text-brand-600 hover:bg-brand-50"><Settings className="h-3.5 w-3.5" /></Link>
                           </div>
                         </div>

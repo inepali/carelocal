@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import type { DomainKey } from '@/lib/domain-config'
 import { normalizeWebUrl } from '@/lib/utils'
 import { citySlug } from '@/lib/server/public-jobs'
+import { hasEnoughReviews } from '@/lib/care-score'
 
 /**
  * Server-only reads for the public center pages (/centers, /centers/in/<city>, /centers/<handle>). Like
@@ -71,14 +72,14 @@ export const getPublicCenter = cache(async (domain: DomainKey, handle: string): 
     client.from('center_about_items').select('id, title, content, updated_at')
       .eq('center_id', c.id).order('sort_order').order('created_at'),
     c.public_show_care_score
-      ? client.from('shift_reviews').select('rating').eq('reviewee_id', c.id).eq('reviewer_type', 'staff')
+      ? client.from('care_scores').select('score, review_count').eq('subject_type', 'center').eq('subject_id', c.id).maybeSingle()
       : Promise.resolve({ data: null }),
   ])
 
   const programRows = programs.data ?? []
   const teamRows = team.data ?? []
   const aboutRows = about.data ?? []
-  const ratings = (reviews.data ?? []) as { rating: number }[]
+  const care = reviews.data as { score: number | string | null; review_count: number } | null
   const description = c.public_description?.trim() || null
   return {
     id: c.id,
@@ -95,8 +96,9 @@ export const getPublicCenter = cache(async (domain: DomainKey, handle: string): 
     email: c.public_show_email ? c.email ?? null : null,
     licenseNumber: c.public_show_license ? c.license_number ?? null : null,
     capacity: c.public_show_capacity !== false && c.max_capacity ? c.max_capacity : null,
-    careScore: ratings.length > 0
-      ? { average: ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length, count: ratings.length }
+    // Weighted Care Score, public only once there are enough reviews to mean something
+    careScore: hasEnoughReviews(care) && care?.score != null
+      ? { average: Number(care.score), count: care.review_count }
       : null,
     toursEnabled: c.public_tours_enabled !== false,
     lastModified: newest(c.updated_at, ...programRows.map(p => p.updated_at), ...teamRows.map(t => t.updated_at), ...aboutRows.map(a => a.updated_at)),

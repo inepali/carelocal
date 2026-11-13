@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Star, Loader2, X, AlertTriangle } from 'lucide-react'
 import { showAlert } from '@/lib/dialog'
+import { EDIT_WINDOW_HOURS, MAX_COMMENT_LENGTH, REVIEW_WINDOW_DAYS } from '@/lib/care-score'
 
 interface ReviewModalProps {
   isOpen: boolean
@@ -57,7 +58,7 @@ export function ReviewModal({ isOpen, onClose, onSubmit, reviewerType, title }: 
       setPunctual(true)
       setDoNotReturn(false)
     } catch (error) {
-      showAlert('Failed to submit review.')
+      showAlert(error instanceof Error && error.message ? error.message : 'Failed to submit review.')
     } finally {
       setSubmitting(false)
     }
@@ -78,7 +79,11 @@ export function ReviewModal({ isOpen, onClose, onSubmit, reviewerType, title }: 
 
         <div className="flex-1 overflow-auto p-6">
           <form id="review-form" onSubmit={handleSubmit} className="space-y-6">
-            
+            <p className="rounded-xl border border-border bg-surface px-4 py-3 text-xs text-muted">
+              Your name and role are shown with this review. It stays hidden until {reviewerType === 'staff' ? 'the center reviews you' : 'they review your center'} too,
+              or {REVIEW_WINDOW_DAYS} days after the shift. You can edit it for {EDIT_WINDOW_HOURS} hours.
+            </p>
+
             {/* Star Rating */}
             <div className="flex flex-col items-center">
               <label className="block text-sm font-bold text-text-main mb-2">Overall Rating</label>
@@ -169,7 +174,8 @@ export function ReviewModal({ isOpen, onClose, onSubmit, reviewerType, title }: 
               <textarea
                 value={publicComment}
                 onChange={(e) => setPublicComment(e.target.value)}
-                placeholder="Share your experience (visible to others)..."
+                maxLength={MAX_COMMENT_LENGTH}
+                placeholder="Share your experience (visible to others). Please don't name children."
                 className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main min-h-[80px]"
               />
             </div>
@@ -179,7 +185,8 @@ export function ReviewModal({ isOpen, onClose, onSubmit, reviewerType, title }: 
               <textarea
                 value={privateFeedback}
                 onChange={(e) => setPrivateFeedback(e.target.value)}
-                placeholder="Only visible to Carelocal admins..."
+                maxLength={MAX_COMMENT_LENGTH}
+                placeholder={reviewerType === 'center' ? 'Never shown to them. Only your center and CareLocal admins can see this.' : 'Never shown to the center. Only you and CareLocal admins can see this.'}
                 className="w-full px-4 py-3 rounded-xl border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600 transition text-text-main min-h-[80px]"
               />
             </div>

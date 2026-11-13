@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { authorizeShiftClaimAction } from '@/lib/server/staff-access'
+import { promptReviewsForShift } from '@/lib/server/care-review-prompts'
 
 export async function checkInStaff(shiftId: string, staffId: string) {
   const auth = await authorizeShiftClaimAction(shiftId, staffId)
@@ -104,6 +105,10 @@ export async function checkOutStaff(shiftId: string, staffId: string) {
 
   if (claimError) return { error: claimError.message }
   if (!updatedClaims || updatedClaims.length === 0) return { error: 'No confirmed shift to check out of.' }
+
+  // Ask both sides for a Care Score review (once per claim; never blocks the check-out). Sent before the shift
+  // status update below so a failure there cannot skip it.
+  await promptReviewsForShift(shiftId, staffId)
 
   // Update shift status to completed
   const { error: shiftError } = await supabase

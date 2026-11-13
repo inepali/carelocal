@@ -30,6 +30,7 @@ import { useLookups } from '@/hooks/use-lookups'
 import { lookupLabel } from '@/lib/lookups'
 import { assignableRoles, centerRoleLabel, isLeadershipRole } from '@/lib/center-roles'
 import { showAlert, showConfirm } from '@/lib/dialog'
+import { CareScorePanel } from '@/components/care-score/CareScorePanel'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -91,7 +92,6 @@ export default function StaffReviewPage() {
   const [requestedClass, setRequestedClass] = useState<EmploymentClass | null>(null)
   const [approveType, setApproveType] = useState<EmploymentType>('substitute')
   const [activating, setActivating]   = useState(false)
-  const [reviews, setReviews]         = useState<any[]>([])
   const [internalDocs, setInternalDocs] = useState<any[]>([])
   const catchUpDone = useRef(false)
   const [employmentClass, setEmploymentClass] = useState<EmploymentClass>('substitute')
@@ -226,26 +226,6 @@ export default function StaffReviewPage() {
         .eq('staff_id', staffId)
         .order('sort_order', { ascending: true })
       setCredentials(creds || [])
-
-      // 7. Reviews
-      const { data: reviewsData } = await supabase
-        .from('shift_reviews')
-        .select('*')
-        .eq('reviewee_id', staffId)
-        .eq('reviewer_type', 'center')
-      
-      if (reviewsData && reviewsData.length > 0) {
-        const cIds = reviewsData.map((r: any) => r.reviewer_id)
-        const { data: cData } = await supabase.from('centers').select('id, name').in('id', cIds)
-        const cMap = (cData || []).reduce((acc: any, curr: any) => { acc[curr.id] = curr.name; return acc; }, {})
-        const enrichedReviews = reviewsData.map((r: any) => ({
-          ...r,
-          reviewer_name: cMap[r.reviewer_id] || 'Center'
-        }))
-        setReviews(enrichedReviews)
-      } else {
-        setReviews([])
-      }
 
       // 8. Internal Docs (catch error if migration not run yet)
       const { data: intDocs, error: intDocsErr } = await supabase
@@ -724,56 +704,12 @@ export default function StaffReviewPage() {
       )}
 
       {/* ── Care Score Tab ─────────────────────────────────────────── */}
-      {activeTab === 'carescore' && (
-        <div className="space-y-4">
-          {reviews.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-border">
-              <Star className="w-10 h-10 text-subtle mx-auto mb-3" />
-              <p className="text-muted font-bold">No Care Score ratings yet.</p>
-            </div>
-          ) : (
-            <>
-              <div className="bg-white border-2 border-border rounded-2xl p-6 flex items-center gap-4">
-                <Star className="w-8 h-8 text-amber-400 fill-amber-400" />
-                <div>
-                  <div className="text-3xl font-black text-heading leading-none">
-                    {(reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)}
-                    <span className="text-base text-subtle font-bold"> / 5</span>
-                  </div>
-                  <div className="text-xs font-black text-muted uppercase tracking-widest mt-1">
-                    {reviews.length} rating{reviews.length === 1 ? '' : 's'} from centers
-                  </div>
-                </div>
-              </div>
-              <div className="grid sm:grid-cols-2 gap-4">
-                {reviews.map(review => (
-                  <div key={review.id} className="p-5 rounded-2xl bg-white border-2 border-border">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="font-black text-text-main text-sm">{review.reviewer_name}</div>
-                      <div className="flex gap-1">
-                        {[...Array(5)].map((_, i) => (
-                          <Star key={i} className={`w-4 h-4 ${i < review.rating ? 'text-amber-400 fill-amber-400' : 'text-border fill-transparent'}`} />
-                        ))}
-                      </div>
-                    </div>
-                    {review.tags && review.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mb-3">
-                        {review.tags.map((tag: string) => (
-                          <span key={tag} className="text-[9px] font-black uppercase tracking-widest bg-brand-50 text-brand-600 px-2 py-1 rounded-md border border-brand-100">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    {review.public_comment && (
-                      <p className="text-sm text-text-muted italic bg-surface p-3 rounded-xl border border-border">"{review.public_comment}"</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
+      {activeTab === 'carescore' && staffId && (
+        <CareScorePanel
+          subjectType="staff"
+          subjectId={staffId as string}
+          emptyHint="Ratings from every center this person has worked a shift at appear here."
+        />
       )}
 
       {/* ── Experience Tab ─────────────────────────────────────────── */}

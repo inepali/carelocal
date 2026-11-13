@@ -17,7 +17,8 @@ import {
   Bell,
   MapPin,
   LifeBuoy,
-  ListChecks
+  ListChecks,
+  Star
 } from 'lucide-react'
 
 export default function AdminLayout({
@@ -53,6 +54,7 @@ export default function AdminLayout({
     { name: 'State Documents', href: '/admin/states', icon: ListChecks },
     { name: 'Global Staff', href: '/admin/staff', icon: Users },
     { name: 'Support Tickets', href: '/admin/support', icon: LifeBuoy },
+    { name: 'Care Score Reviews', href: '/admin/reviews', icon: Star },
     { name: 'Subscriptions', href: '/admin/billing', icon: CreditCard },
     { name: 'System Settings', href: '/admin/settings', icon: Settings },
   ]

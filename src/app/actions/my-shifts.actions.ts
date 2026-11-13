@@ -57,7 +57,7 @@ export async function getMyShiftsBypassingRLS(staffId: string) {
   const centerIds = Array.from(new Set((allowedShifts || []).map(s => s.center_id)))
   const { data: reviews } = await supabase
     .from('shift_reviews')
-    .select('reviewee_id')
+    .select('reviewee_id, shift_id')
     .in('reviewee_id', centerIds)
     .eq('reviewer_id', staffId)
     .eq('reviewer_type', 'staff')

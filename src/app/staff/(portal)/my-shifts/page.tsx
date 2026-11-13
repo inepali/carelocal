@@ -7,12 +7,25 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { getMyShiftsBypassingRLS } from '@/app/actions/my-shifts.actions'
 import { submitReview } from '@/app/actions/reviews.actions'
+import { reviewWindow } from '@/lib/care-score'
 import { ReviewModal } from '@/components/ReviewModal'
 import { useLookups } from '@/hooks/use-lookups'
 import { lookupLabel } from '@/lib/lookups'
 import { showAlert } from '@/lib/dialog'
 import { loadClaimBlockers, type ClaimBlocker } from '@/lib/claim-gate'
 import { ClaimBlockedDialog } from '@/components/staff/ClaimBlockedDialog'
+
+/** A shift can be reviewed from check-out (or its scheduled end) until the review window closes */
+function canStillReview(shift: { shift_date: string; start_time: string; end_time: string }, claim: { check_out_time?: string | null } | null | undefined) {
+  let endedAt: Date
+  if (claim?.check_out_time) {
+    endedAt = new Date(claim.check_out_time)
+  } else {
+    endedAt = new Date(`${shift.shift_date}T${shift.end_time.slice(0, 5)}`)
+    if (shift.end_time <= shift.start_time) endedAt = new Date(endedAt.getTime() + 86_400_000)
+  }
+  return reviewWindow(endedAt).open
+}
 
 export default function MyShiftsPage() {
   const { data: roleLookups } = useLookups('Role')
@@ -32,7 +45,7 @@ export default function MyShiftsPage() {
   const [expressingInterestId, setExpressingInterestId] = useState<string | null>(null)
   const [withdrawingShiftId, setWithdrawingShiftId] = useState<string | null>(null)
   const [reviewingShift, setReviewingShift] = useState<any>(null)
-  const [reviewedCenterIds, setReviewedCenterIds] = useState<Set<string>>(new Set())
+  const [reviewedShiftIds, setReviewedShiftIds] = useState<Set<string>>(new Set())
   const [showBalanceModal, setShowBalanceModal] = useState(false)
   const [claimBlock, setClaimBlock] = useState<{ centerName: string; slug: string; blockers: ClaimBlocker[] } | null>(null)
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -97,8 +110,8 @@ export default function MyShiftsPage() {
       setInterestedShiftIds(interested)
 
       const reviewed = new Set<string>()
-      ;(myReviews || []).forEach((r: any) => reviewed.add(r.reviewee_id))
-      setReviewedCenterIds(reviewed)
+      ;(myReviews || []).forEach((r: any) => reviewed.add(r.shift_id))
+      setReviewedShiftIds(reviewed)
 
       // 5. Fetch Metros for context
       const { data: metroData } = await supabase.from('metro_areas').select('*').eq('is_active', true)
@@ -214,14 +227,14 @@ export default function MyShiftsPage() {
   const handleReviewSubmit = async (data: any) => {
     if (!myProfile || !reviewingShift) return
     
-    await submitReview({
+    const res = await submitReview({
       shift_id: reviewingShift.id,
-      reviewer_id: myProfile.id,
-      reviewee_id: reviewingShift.center_id,
       reviewer_type: 'staff',
       ...data
     })
-    setReviewedCenterIds(prev => new Set([...prev, reviewingShift.center_id]))
+    if (res.error) throw new Error(res.error)
+    setReviewedShiftIds(prev => new Set([...prev, reviewingShift.id]))
+    showAlert('Thanks! Your review will appear once the center reviews you too, or after the review window closes.')
   }
 
   // Removed metro matching explicitly since this is purely a calendar of YOUR shifts
@@ -324,7 +337,8 @@ export default function MyShiftsPage() {
                       const isInterested = interestedShiftIds.has(shift.id)
                       const myClaim = shift.my_claim
                       const isCompleted = shift.status === 'completed' || !!myClaim?.check_out_time
-                      const isReviewed = reviewedCenterIds.has(shift.center_id)
+                      const isReviewed = reviewedShiftIds.has(shift.id)
+            const canReview = isCompleted && !isReviewed && canStillReview(shift, myClaim)
                       const timeLabel = `${shift.start_time.substring(0, 5)}–${shift.end_time.substring(0, 5)}`
                       const roomLabel = [shift.work_areas?.name, shift.work_areas?.age_group].filter(Boolean).join(' · ') || 'Any room'
                       return (
@@ -338,7 +352,7 @@ export default function MyShiftsPage() {
                           </div>
                           <div className="mt-2 flex flex-col gap-1.5">
                             {isCompleted ? (
-                              isReviewed ? <div className="rounded-lg bg-surface px-2 py-1.5 text-center text-[10px] font-bold text-muted">Reviewed</div> : <button type="button" onClick={() => setReviewingShift(shift)} className="flex items-center justify-center gap-1 rounded-lg bg-amber-400 px-2 py-1.5 text-[10px] font-bold text-heading"><Star className="h-3 w-3" /> Review</button>
+                              isReviewed ? <div className="rounded-lg bg-surface px-2 py-1.5 text-center text-[10px] font-bold text-muted">Reviewed</div> : canReview ? <button type="button" onClick={() => setReviewingShift(shift)} className="flex items-center justify-center gap-1 rounded-lg bg-amber-400 px-2 py-1.5 text-[10px] font-bold text-heading"><Star className="h-3 w-3" /> Review</button> : <div className="rounded-lg bg-surface px-2 py-1.5 text-center text-[10px] font-bold text-muted">Review closed</div>
                             ) : isConfirmed ? (
                               <div className="rounded-lg bg-brand-50 px-2 py-1.5 text-center text-[10px] font-bold text-brand-600">Confirmed</div>
                             ) : isClaimed ? (
@@ -433,10 +447,11 @@ export default function MyShiftsPage() {
             const payLabel = (shift.payment_mode || 'Corporate payroll').replace(/_/g, ' ')
             const myClaim = shift.my_claim
             const isCompleted = shift.status === 'completed' || !!myClaim?.check_out_time
-            const isReviewed = reviewedCenterIds.has(shift.center_id)
+            const isReviewed = reviewedShiftIds.has(shift.id)
+            const canReview = isCompleted && !isReviewed && canStillReview(shift, myClaim)
 
             const actionHint = isCompleted
-              ? isReviewed ? 'You have reviewed this center.' : 'Shift completed. Please share your experience.'
+              ? isReviewed ? 'You have reviewed this shift.' : canReview ? 'Shift completed. Please share your experience.' : 'The review window for this shift has closed.'
               : isConfirmed
               ? 'You are confirmed for this shift. Check your schedule.'
               : isClaimed
@@ -531,6 +546,10 @@ export default function MyShiftsPage() {
                       isReviewed ? (
                         <div className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-surface text-muted border border-border font-black text-xs uppercase tracking-widest whitespace-nowrap">
                           <CheckCircle2 className="w-4 h-4" /> Reviewed
+                        </div>
+                      ) : !canReview ? (
+                        <div className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-surface text-muted border border-border font-black text-xs uppercase tracking-widest whitespace-nowrap">
+                          Review closed
                         </div>
                       ) : (
                         <button
