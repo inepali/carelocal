@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { AlertTriangle, Baby, Camera, ClipboardList, Loader2, LogIn, LogOut, Mail, Milk, Moon, Pill, StickyNote, Droplets, Utensils, X } from 'lucide-react'
+import { AlertTriangle, Baby, Home, Camera, ClipboardList, Loader2, LogIn, LogOut, Mail, Milk, Moon, Pill, StickyNote, Droplets, Utensils, X } from 'lucide-react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { ageLabel, type RosterPerson, type RosterRoom } from '@/lib/roster-ratio'
 import { loadChildDayEvents, setToiletTrained, type RosterMove } from '@/lib/roster'
@@ -27,7 +27,7 @@ const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: 'num
  * diaper or bathroom, activity, note), naps with sleep checks (due on a timer, required for infants),
  * medicine from the child's authorized list (hidden when there is none), and today's list, where an entry is
  * removed with a reason, never deleted. Message to parent emails the child's authorized pick-up contacts.
- * Moving rooms is done by dragging.
+ * Moving rooms is done by dragging; a visiting child also gets a To Home Room button.
  */
 export function ChildCard({
   supabase,
@@ -251,10 +251,20 @@ export function ChildCard({
 
         <div className="mt-3">
           {onSite ? (
-            <button type="button" disabled={busy} onClick={() => onMove(person, { work_area_id: null, zone: 'home' })}
-              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-[#b42318] bg-white text-base text-[#a3221b] hover:bg-[#fce4e2] disabled:opacity-50">
-              <LogOut className="h-5 w-5" /> Check out
-            </button>
+            <div className="flex gap-2">
+              {/* Visiting another room: one tap back to the home room's classroom */}
+              {home && home.id !== current!.id && (
+                <button type="button" disabled={busy} onClick={() => onMove(person, { work_area_id: home.id, zone: 'classroom' })}
+                  title={`Move to ${home.name}`}
+                  className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-brand-600 text-base text-white hover:bg-brand-800 disabled:opacity-50">
+                  <Home className="h-5 w-5" /> To Home Room
+                </button>
+              )}
+              <button type="button" disabled={busy} onClick={() => onMove(person, { work_area_id: null, zone: 'home' })}
+                className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border-2 border-[#b42318] bg-white text-base text-[#a3221b] hover:bg-[#fce4e2] disabled:opacity-50">
+                <LogOut className="h-5 w-5" /> Check out
+              </button>
+            </div>
           ) : (
             <button type="button" disabled={busy || !base} onClick={() => base && onMove(person, { work_area_id: base.id, zone: 'classroom' })}
               className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 text-base text-white hover:bg-brand-800 disabled:opacity-50">
