@@ -108,7 +108,7 @@ export function SelectedPanel({
           <button type="button" disabled={busy} onClick={() => onMove(person, toHome.to)}
             title={`Move to ${home!.name} · ${toHome.result.text}${toHome.warning ? ` · ${toHome.warning}` : ''}`}
             className="ml-auto inline-flex min-h-10 items-center gap-1.5 rounded-full bg-brand-600 px-3.5 text-[13px] text-white hover:bg-brand-800 disabled:opacity-50">
-            <Home className="h-4 w-4" /> To Home Room
+            <Home className="h-4 w-4" /> To {home!.name}
           </button>
         )}
         {onSite ? (

@@ -260,7 +260,7 @@ export function ChildCard({
                 <button type="button" disabled={busy} onClick={() => onMove(person, { work_area_id: home.id, zone: 'classroom' })}
                   title={`Move to ${home.name}`}
                   className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-brand-600 text-base text-white hover:bg-brand-800 disabled:opacity-50">
-                  <Home className="h-5 w-5" /> To Home Room
+                  <Home className="h-5 w-5" /> To {home.name}
                 </button>
               )}
               <button type="button" disabled={busy} onClick={() => onMove(person, { work_area_id: null, zone: 'home' })}
