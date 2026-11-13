@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef, useState } from 'react'
 import { Home, DoorOpen, Sun } from 'lucide-react'
 import type { RosterPerson, RosterRoom, RoomStatus } from '@/lib/roster-ratio'
 import { Chip, PersonAvatar } from './PersonAvatar'
@@ -10,6 +11,54 @@ type Seats = { home: RosterPerson[]; classroom: RosterPerson[]; playground: Rost
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 const DROP_RING = 'inset 0 0 0 4px rgba(35,87,217,0.55)'
+
+/** Largest and smallest a child's face gets in the Classroom circle, in px */
+const KID_MAX = 64
+const KID_MIN = 26
+/** Ring radii, as % of the circle's diameter, for 1, 2 and 3 rings (outermost first) */
+const RING_RADII = [[37], [40, 24], [41, 30, 19]]
+
+/**
+ * Fit n children into the Classroom circle without overlap. Each ring's kids get a share proportional
+ * to its circumference; the face size is whatever fits the tightest ring (arc spacing) and the gap
+ * between rings, capped at KID_MAX. Add a ring only when that lets faces be bigger.
+ */
+export function kidLayout(n: number, diameter: number) {
+  let best: { kidSize: number; rings: { count: number; rad: number }[] } | null = null
+  for (const radii of RING_RADII) {
+    if (radii.length > 1 && n <= radii.length * 4) break   // a handful of kids never needs another ring
+    const total = radii.reduce((a, b) => a + b, 0)
+    let left = n
+    const rings = radii.map((rad, i) => {
+      const count = i === radii.length - 1 ? left : Math.min(left, Math.round((n * rad) / total))
+      left -= count
+      return { count, rad }
+    })
+    const px = (pct: number) => (pct / 100) * diameter
+    const arc = Math.min(...rings.map(r => (r.count ? (2 * Math.PI * px(r.rad)) / r.count : Infinity)))
+    const gap = radii.length > 1 ? Math.min(...radii.slice(1).map((r, i) => px(radii[i] - r))) : Infinity
+    // Faces at the outer ring must also stay inside the circle's edge
+    const edge = 2 * px(50 - radii[0]) + px(4)
+    const size = Math.floor(Math.min(KID_MAX, arc * 0.84, gap * 0.92, edge))
+    if (!best || size > best.kidSize + 2) best = { kidSize: size, rings }
+  }
+  return { kidSize: Math.max(KID_MIN, best!.kidSize), rings: best!.rings }
+}
+
+/** The Classroom circle's rendered width, kept current as the screen resizes */
+function useCircleDiameter(ref: React.RefObject<HTMLDivElement | null>) {
+  const [d, setD] = useState(560)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const update = () => { if (el.offsetWidth) setD(el.offsetWidth) }
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [ref])
+  return d
+}
 
 /**
  * The selected room, as in the approved mockup: the green Classroom circle sits on top of a rectangle whose
@@ -57,24 +106,29 @@ export function RoomStage({
   const kids = seats.classroom.filter(p => p.kind === 'child')
   const teachers = seats.classroom.filter(p => p.kind === 'staff')
   const n = kids.length
-  const twoRings = n > 12
-  const kidSize = n <= 12 ? 64 : n <= 18 ? 54 : 48
-  const outerN = twoRings ? Math.ceil(n * 0.58) : n
+  const circleRef = useRef<HTMLDivElement>(null)
+  const diameter = useCircleDiameter(circleRef)
+  const layout = kidLayout(n, diameter)
+  const { kidSize, rings } = layout
+  const twoRings = rings.length > 1
   // Leave room in the middle for the buttons: teachers a little smaller and further apart
-  const teacherSize = twoRings ? 52 : teachers.length >= 3 ? 68 : centerActions ? 72 : 84
-  const chipSize = Math.round(kidSize / 2)
+  const teacherBase = rings.length > 2 ? 44 : twoRings ? 52 : teachers.length >= 3 ? 68 : centerActions ? 72 : 84
+  const teacherSize = Math.round(Math.min(teacherBase, diameter * 0.15))
+  const chipSize = Math.round(Math.min(64, kidSize) / 2)
 
   const kidSpot = (i: number) => {
-    const onOuter = i < outerN
-    const ringN = onOuter ? outerN : n - outerN
-    const j = onOuter ? i : i - outerN
-    const rad = twoRings ? (onOuter ? 40 : 23) : 37
-    const ang = -Math.PI / 2 + (onOuter ? 0 : Math.PI / Math.max(ringN, 1)) + (2 * Math.PI * j) / Math.max(ringN, 1)
+    let start = 0
+    let r = 0
+    while (r < rings.length - 1 && i >= start + rings[r].count) { start += rings[r].count; r++ }
+    const { count, rad } = rings[r]
+    const j = i - start
+    // Stagger alternate rings by half a step so faces don't line up radially
+    const ang = -Math.PI / 2 + (r % 2 ? Math.PI / Math.max(count, 1) : 0) + (2 * Math.PI * j) / Math.max(count, 1)
     return { left: `${50 + rad * Math.cos(ang)}%`, top: `${50 + rad * Math.sin(ang)}%` }
   }
   const teacherSpot = (i: number) => {
     if (teachers.length <= 1) return centerActions ? { left: '36%', top: '50%' } : { left: '50%', top: '50%' }   // one teacher sits beside the buttons
-    const off = twoRings ? 10 : centerActions && teachers.length === 2 ? 20 : 16
+    const off = rings.length > 2 ? 8 : twoRings ? 10 : centerActions && teachers.length === 2 ? 20 : 16
     const ang = -Math.PI / 2 + (2 * Math.PI * i) / teachers.length + (teachers.length === 2 ? Math.PI / 2 : 0)
     return { left: `${50 + off * Math.cos(ang)}%`, top: `${50 + off * Math.sin(ang)}%` }
   }
@@ -157,6 +211,7 @@ export function RoomStage({
 
       {/* Classroom circle */}
       <div
+        ref={circleRef}
         data-drop={keys.classroom}
         className="absolute left-1/2 top-1/2 z-[2] aspect-square h-[76%] -translate-x-1/2 -translate-y-1/2 rounded-full lg:h-[88%] transition-colors"
         style={{
@@ -198,7 +253,7 @@ export function RoomStage({
             tint={tintOf(k)}
             size={kidSize}
             visitingFrom={visitingFrom(k)}
-            label={n <= 12 ? 'below' : 'none'}
+            label={!twoRings && kidSize >= 52 ? 'below' : 'none'}
             float={i}
             style={kidSpot(i)}
             ix={ix}
