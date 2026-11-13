@@ -233,9 +233,12 @@ export function ChildCard({
           <Face person={person} url={photo} tint={tint} size={64} border="3px solid #ffffff" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-base font-bold text-heading">{person.first_name} {person.last_initial}.</p>
-            <p className="text-[13px] text-muted">{ageLabel(person.age_months)}{home ? ` · ${home.name}` : ' · No home room'}</p>
-            <p className="mt-0.5 text-[13px] text-text-main">
-              {onSite ? `${current!.name} · ${ZONE_LABEL[person.zone]}${home && home.id !== current!.id ? ' (visiting)' : ''}` : 'Not checked in'}
+            {/* One line: age, then where they are (the home room is named only when they're elsewhere or out) */}
+            <p className="text-[13px] text-muted">
+              {ageLabel(person.age_months)}
+              {onSite
+                ? <> · <span className="text-text-main">{current!.name} · {ZONE_LABEL[person.zone]}</span>{home && home.id !== current!.id ? ` (visiting from ${home.name})` : ''}</>
+                : <>{home ? ` · ${home.name}` : ' · No home room'} · <span className="text-text-main">Not checked in</span></>}
             </p>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface text-muted hover:bg-surface-2">
