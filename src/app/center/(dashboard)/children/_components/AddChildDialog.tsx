@@ -9,6 +9,7 @@ import type { Child } from '@/lib/child-types'
 import { showAlert } from '@/lib/dialog'
 import { BTN_PRIMARY, BTN_QUIET, FLD, LBL, Modal, todayISO } from './ui'
 import { HomeRoomField, suggestedRoomFor } from './HomeRoomField'
+import { RelationshipSelect } from './RelationshipSelect'
 
 /**
  * Enroll a child with the parent as the first contact. Pick-up is NOT authorized unless the box is ticked:
@@ -82,7 +83,7 @@ export function AddChildDialog({ centerId, classrooms, onClose, onCreated }: {
           <div className="mb-3 text-sm font-bold text-text-main">Parent or guardian (first contact)</div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div><label className={LBL}>Name</label><input value={f.parent} onChange={e => set('parent', e.target.value)} className={FLD} maxLength={120} /></div>
-            <div><label className={LBL}>Relationship</label><input value={f.relationship} onChange={e => set('relationship', e.target.value)} className={FLD} maxLength={60} /></div>
+            <div><label htmlFor="add-child-relationship" className={LBL}>Relationship</label><RelationshipSelect id="add-child-relationship" value={f.relationship} onChange={v => set('relationship', v)} /></div>
             <div><label className={LBL}>Phone</label><input type="tel" value={f.phone} onChange={e => set('phone', e.target.value)} className={FLD} maxLength={30} /></div>
             <div><label className={LBL}>Email</label><input type="email" value={f.email} onChange={e => set('email', e.target.value)} className={FLD} maxLength={254} /></div>
           </div>

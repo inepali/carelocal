@@ -1,6 +1,15 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { DomainKey } from '@/lib/domain-config'
 
+interface LookupGroupDef {
+  id: string
+  label: string
+  /** Only shown in Manage Data for these verticals (default: all) */
+  domains?: readonly DomainKey[]
+  /** Longest label the column it is saved into allows */
+  maxLabel?: number
+}
+
 /** Groups managed in Center → Manage Data. Every dropdown for these reads center_lookups. */
 export const LOOKUP_GROUPS = [
   { id: 'Role', label: 'Roles' },
@@ -8,9 +17,21 @@ export const LOOKUP_GROUPS = [
   { id: 'Shift Type', label: 'Shift Types' },
   { id: 'Payment Method', label: 'Payment Methods' },
   { id: 'Inspection Type', label: 'Inspection Types' },
-] as const
+  // Saved as the label into child_guardians.relationship (text, ≤ 60)
+  { id: 'Guardian Type', label: 'Parent/Guardian Types', domains: ['childcare'], maxLabel: 60 },
+] as const satisfies readonly LookupGroupDef[]
 
 export type LookupGroup = typeof LOOKUP_GROUPS[number]['id']
+
+/** Group definition, typed so the optional fields can be read on any group */
+export function lookupGroupDef(id: string): LookupGroupDef | undefined {
+  return (LOOKUP_GROUPS as readonly LookupGroupDef[]).find(g => g.id === id)
+}
+
+/** Groups that apply to a vertical */
+export function lookupGroupsFor(domainKey: DomainKey): LookupGroupDef[] {
+  return (LOOKUP_GROUPS as readonly LookupGroupDef[]).filter(g => !g.domains || g.domains.includes(domainKey))
+}
 
 export interface LookupRow {
   id: string

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Edit2, Trash2, Save, X, Loader2, Database, RotateCcw, ChevronUp, ChevronDown } from 'lucide-react'
 import {
-  LOOKUP_GROUPS, fetchLookupRows, mergeLookups, resolveLookupScope,
+  LOOKUP_GROUPS, fetchLookupRows, mergeLookups, resolveLookupScope, lookupGroupDef, lookupGroupsFor,
   type LookupGroup, type LookupItem
 } from '@/lib/lookups'
 import { invalidateLookupCache } from '@/hooks/use-lookups'
@@ -191,8 +191,14 @@ export default function ManageDataTab() {
     await afterChange(error)
   }
 
-  const groupLabel = LOOKUP_GROUPS.find(g => g.id === activeGroup)?.label
-  const tabs: { id: ActiveTab; label: string }[] = [{ id: WORK_AREAS_TAB, label: workAreaTerm }, ...LOOKUP_GROUPS]
+  const groupDef = lookupGroupDef(activeGroup)
+  const groupLabel = groupDef?.label
+  const maxLabel = groupDef?.maxLabel
+  const tabs: { id: ActiveTab; label: string }[] = [
+    { id: WORK_AREAS_TAB, label: workAreaTerm },
+    // Groups for this center's vertical (Parent/Guardian Types are childcare only)
+    ...(scope ? lookupGroupsFor(scope.domainKey) : []).map(g => ({ id: g.id as LookupGroup, label: g.label })),
+  ]
 
   return (
     <div>
@@ -259,6 +265,7 @@ export default function ManageDataTab() {
                     autoFocus
                     placeholder="Label (e.g., Certification)"
                     value={editLabel}
+                    maxLength={maxLabel}
                     onChange={e => setEditLabel(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl border border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-600/30"
                   />
@@ -305,6 +312,7 @@ export default function ManageDataTab() {
                               autoFocus
                               placeholder="Label"
                               value={editLabel}
+                              maxLength={maxLabel}
                               onChange={e => setEditLabel(e.target.value)}
                               className="w-full px-4 py-2 rounded-xl border border-brand-600 focus:outline-none"
                             />

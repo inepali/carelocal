@@ -8,6 +8,7 @@ import type { Child, ChildGuardian } from '@/lib/child-types'
 import { showAlert, showConfirm } from '@/lib/dialog'
 import { BTN, BTN_PRIMARY, BTN_QUIET, BTN_QUIET_SM, FLD, LBL, Modal, Pill } from './ui'
 import { ParentAccessDialog } from './ParentAccessDialog'
+import { RelationshipSelect } from './RelationshipSelect'
 import { getParentAccess, type ContactAccess } from '@/app/actions/parent-access.actions'
 
 /**
@@ -133,7 +134,7 @@ export function ContactsPanel({ child, guardians, onChanged }: { child: Child; g
           <div className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <div><label className={LBL}>Name *</label><input autoFocus value={editing.name} onChange={e => set('name', e.target.value)} className={FLD} maxLength={120} /></div>
-              <div><label className={LBL}>Relationship</label><input value={editing.relationship ?? ''} onChange={e => set('relationship', e.target.value)} className={FLD} maxLength={60} placeholder="Mother, grandfather, neighbor…" /></div>
+              <div><label htmlFor="contact-relationship" className={LBL}>Relationship</label><RelationshipSelect id="contact-relationship" value={editing.relationship ?? ''} onChange={v => set('relationship', v)} /></div>
               <div><label className={LBL}>Phone</label><input type="tel" value={editing.phone ?? ''} onChange={e => set('phone', e.target.value)} className={FLD} maxLength={30} /></div>
               <div><label className={LBL}>Email</label><input type="email" value={editing.email ?? ''} onChange={e => set('email', e.target.value)} className={FLD} maxLength={254} /></div>
             </div>
