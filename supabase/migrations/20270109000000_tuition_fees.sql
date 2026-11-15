@@ -219,6 +219,13 @@ BEGIN
   END IF;
 END $$;
 
+-- The first day a rate starting on p_day is charged: p_day if a period starts that day, else the next period start
+CREATE OR REPLACE FUNCTION public.tuition_first_charged(p_frequency text, p_anchor date, p_day date)
+RETURNS date LANGUAGE sql IMMUTABLE SET search_path = public AS $$
+  SELECT CASE WHEN p.period_start = p_day OR p_frequency = 'one_time' THEN p_day ELSE p.period_end + 1 END
+  FROM public.tuition_period(p_frequency, p_anchor, p_day) p
+$$;
+
 -- The rate of a fee in force on a day
 CREATE OR REPLACE FUNCTION public.tuition_rate_on(p_fee_id uuid, p_day date)
 RETURNS public.tuition_fee_rates LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
@@ -842,7 +849,8 @@ BEGIN
         'discount_reason', ct.discount_reason, 'override_amount', ct.override_amount,
         'created_today', ct.created_at > now() - interval '24 hours',
         'upcoming_rate', CASE WHEN ct.override_amount IS NULL THEN (
-          SELECT jsonb_build_object('amount', r.amount, 'from', r.effective_from) FROM tuition_fee_rates r
+          SELECT jsonb_build_object('amount', r.amount, 'from', r.effective_from,
+                   'charged_from', public.tuition_first_charged(f.frequency, ct.start_date, r.effective_from)) FROM tuition_fee_rates r
           WHERE r.fee_id = ct.fee_id AND r.effective_from > v_today AND r.effective_from >= ct.start_date
             AND (ct.end_date IS NULL OR r.effective_from <= ct.end_date)
           ORDER BY r.effective_from LIMIT 1) END
@@ -940,7 +948,7 @@ DO $$
 DECLARE f text;
 BEGIN
   FOREACH f IN ARRAY ARRAY[
-    'tuition_can_manage(uuid)', 'tuition_money(numeric)', 'tuition_period(text, date, date)',
+    'tuition_can_manage(uuid)', 'tuition_money(numeric)', 'tuition_period(text, date, date)', 'tuition_first_charged(text, date, date)',
     'tuition_discount_label(text, numeric, text, numeric)',
     'child_tuition_on(uuid, date)', 'child_payment_split(uuid, date)',
     'tuition_fees_list(uuid)', 'tuition_fee_save(uuid, jsonb)', 'tuition_fee_delete(uuid)',

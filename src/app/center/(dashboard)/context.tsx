@@ -21,6 +21,8 @@ type CenterContextType = {
   announcementsEnabled: boolean;
   /** Staff schedule is switched on for this center (a super admin turns it on) */
   scheduleEnabled: boolean;
+  /** Tuition (rate card, children's fees, who pays) is switched on for this center (a super admin turns it on) */
+  tuitionEnabled: boolean;
 }
 
 export const CenterContext = createContext<CenterContextType>({
@@ -35,6 +37,7 @@ export const CenterContext = createContext<CenterContextType>({
   lessonPlansEnabled: true,
   announcementsEnabled: false,
   scheduleEnabled: false,
+  tuitionEnabled: false,
 })
 
 export const useCenterContext = () => useContext(CenterContext)
@@ -53,3 +56,7 @@ export const canOpenRoster = (ctx: Pick<CenterContextType, 'domainKey' | 'role' 
 /** The staff schedule is for the owner and administrators to plan (teachers see it read-only in the staff portal) */
 export const canManageSchedule = (ctx: Pick<CenterContextType, 'role' | 'scheduleEnabled'>) =>
   ctx.scheduleEnabled && (ctx.role === 'owner' || ctx.role === 'admin')
+
+/** Tuition rides on Child Files; the owner and administrators keep it (the database enforces the same rule) */
+export const canManageTuition = (ctx: Pick<CenterContextType, 'domainKey' | 'role' | 'childFilesEnabled' | 'tuitionEnabled'>) =>
+  canOpenChildFiles(ctx) && ctx.tuitionEnabled

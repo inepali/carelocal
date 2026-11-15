@@ -11,6 +11,8 @@ import type { CenterTourRequest } from '@/lib/tours'
 import { showAlert } from '@/lib/dialog'
 import { BTN, BTN_PRIMARY, BTN_QUIET, FLD, LBL, Modal, todayISO } from './ui'
 import { HomeRoomField, suggestedRoomFor } from './HomeRoomField'
+import { EnrollFeesSection, applyEnrollFees, type PickedFee } from './TuitionFields'
+import { canManageTuition, useCenterContext } from '../../context'
 
 /**
  * On a tour request: enroll a child the family listed. The parent who asked becomes the first contact (and
@@ -24,6 +26,8 @@ export function EnrollFromTour({ request }: { request: CenterTourRequest }) {
   const [picking, setPicking] = useState<number | null>(null)
   const [f, setF] = useState({ date_of_birth: '', classroom_id: '', enrolled_on: todayISO(), first_attended_on: '' })
   const [saving, setSaving] = useState(false)
+  const tuitionOn = canManageTuition(useCenterContext())
+  const [fees, setFees] = useState<PickedFee[]>([])
   const [roomPicked, setRoomPicked] = useState(false)
   const today = todayISO()
   const ageDay = f.first_attended_on || (f.enrolled_on > today ? f.enrolled_on : today)
@@ -48,6 +52,7 @@ export function EnrollFromTour({ request }: { request: CenterTourRequest }) {
 
   function startEnrolling(index: number) {
     setRoomPicked(false)
+    setFees([])
     setF(prev => withSuggestion({ ...prev, classroom_id: '' }, request.children[index]?.dob ?? ''))
     setPicking(index)
   }
@@ -59,6 +64,10 @@ export function EnrollFromTour({ request }: { request: CenterTourRequest }) {
     const res = await enrollFromTourRequest(createClient(), request, picking, {
       date_of_birth: f.date_of_birth, classroom_id: f.classroom_id || null, enrolled_on: f.enrolled_on || undefined, first_attended_on: f.first_attended_on || null,
     })
+    if (res.success && fees.length > 0) {
+      const problems = await applyEnrollFees(res.child.id, fees)
+      if (problems.length) showAlert(`Enrolled, but some fees were not added: ${problems.join(' ')} Add them on the Fee & Payment tab.`)
+    }
     setSaving(false)
     if (!res.success) { showAlert(res.error); return }
     router.push(`/center/children/${res.child.id}`)
@@ -79,7 +88,7 @@ export function EnrollFromTour({ request }: { request: CenterTourRequest }) {
       </ul>
 
       {picking !== null && (
-        <Modal title={`Enroll ${request.children[picking].name}`} onClose={() => setPicking(null)} footer={
+        <Modal title={`Enroll ${request.children[picking].name}`} onClose={() => setPicking(null)} wide={tuitionOn} footer={
           <>
             <button onClick={() => setPicking(null)} className={BTN_QUIET}>Cancel</button>
             <button onClick={enroll} disabled={saving} className={BTN_PRIMARY}>{saving && <Loader2 className="h-4 w-4 animate-spin" />} Enroll</button>
@@ -95,6 +104,10 @@ export function EnrollFromTour({ request }: { request: CenterTourRequest }) {
               <div><label className={LBL}>Enrolled on</label><input type="date" value={f.enrolled_on} onChange={e => setF({ ...f, enrolled_on: e.target.value })} className={FLD} /></div>
               <div className="sm:col-span-2"><label className={LBL}>First day of attendance</label><input type="date" value={f.first_attended_on} onChange={e => setF({ ...f, first_attended_on: e.target.value })} className={FLD} /></div>
             </div>
+            {tuitionOn && (
+              <EnrollFeesSection centerId={request.center_id} programId={classrooms.find(c => c.id === f.classroom_id)?.program_id ?? null}
+                startDefault={f.enrolled_on || today} value={fees} onChange={setFees} />
+            )}
           </div>
         </Modal>
       )}

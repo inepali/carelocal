@@ -27,7 +27,7 @@ import { setCenterEnabled } from '@/app/actions/account-status.actions'
 import { setCenterJobLimit, setCenterJobsEnabled } from '@/app/actions/jobs.actions'
 import { setCenterChildFilesEnabled, setCenterRosterEnabled } from '@/app/actions/child-files-admin.actions'
 import { purgeCenter } from '@/app/actions/data-cleanup.actions'
-import { setCenterMenuPlanningEnabled, setCenterCacfpEnabled, setCenterLessonPlansEnabled, setCenterParentPortalEnabled, setCenterAnnouncementsEnabled, setCenterScheduleEnabled, setCenterScheduleSlot } from '@/app/actions/center-modules.actions'
+import { setCenterMenuPlanningEnabled, setCenterCacfpEnabled, setCenterLessonPlansEnabled, setCenterParentPortalEnabled, setCenterAnnouncementsEnabled, setCenterScheduleEnabled, setCenterScheduleSlot, setCenterTuitionEnabled } from '@/app/actions/center-modules.actions'
 import { CenterDetailsDialog, moduleSummary } from '@/components/admin/CenterDetailsDialog'
 import { PurgeDialog } from '@/components/admin/PurgeDialog'
 import { NewCenterDialog } from '@/components/admin/CenterOwners'
@@ -264,6 +264,19 @@ export default function AdminCentersPage() {
     setCenters(prev => prev.map(c => c.id === center.id ? { ...c, schedule_enabled: enabling } : c))
   }
 
+  const toggleTuition = async (center: { id: string; name: string; tuition_enabled?: boolean }) => {
+    const enabling = !center.tuition_enabled
+    if (!await showConfirm(
+      enabling
+        ? `Turn on Tuition for ${center.name}? Its owner and administrators can keep a dated rate card per program, put fees on each child and record who pays and how (ACH, card, check or other). No money moves yet.`
+        : `Turn off Tuition for ${center.name}? The rate card and the Fee & Payment tab are hidden for everyone at the center. Everything is kept for when it is turned back on.`,
+      { title: 'Tuition', confirmLabel: enabling ? 'Turn on' : 'Turn off', tone: 'default' },
+    )) return
+    const res = await setCenterTuitionEnabled(center.id, enabling)
+    if (!res.success) { showAlert(res.error); return }
+    setCenters(prev => prev.map(c => c.id === center.id ? { ...c, tuition_enabled: enabling } : c))
+  }
+
   /** Flips the board's drag snap between 15 and 30 minutes */
   const changeScheduleSlot = async (center: { id: string; name: string; schedule_slot_minutes?: number }) => {
     const next = center.schedule_slot_minutes === 30 ? 15 : 30
@@ -480,7 +493,7 @@ export default function AdminCentersPage() {
           onClose={() => setDetailsId(null)}
           statusLabel={detailsCenter.subscriptions?.[0]?.status || 'No subscription'}
           jobLimitLabel={describeJobLimit(detailsCenter.job_limit_override)}
-          actions={{ toggleJobs, changeJobLimit, toggleChildFiles, toggleRoster, toggleLessonPlans, toggleMenu, toggleCacfp, toggleParentPortal, toggleAnnouncements, toggleSchedule, changeScheduleSlot }}
+          actions={{ toggleJobs, changeJobLimit, toggleChildFiles, toggleRoster, toggleLessonPlans, toggleMenu, toggleCacfp, toggleParentPortal, toggleAnnouncements, toggleSchedule, changeScheduleSlot, toggleTuition }}
         />
       )}
 

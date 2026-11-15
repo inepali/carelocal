@@ -240,6 +240,10 @@ SELECT pg_temp.ok((SELECT jsonb_array_length(child_tuition_get('d0000000-0000-00
 SELECT pg_temp.eq((SELECT (p ->> 'total')::numeric FROM jsonb_array_elements(child_tuition_get('d0000000-0000-0000-0000-000000000001') -> 'periods') p WHERE p ->> 'frequency' = 'weekly'), 256.50, 'weekly total');
 SELECT pg_temp.ok((SELECT f -> 'upcoming_rate' ->> 'amount' = '295.00' FROM jsonb_array_elements(child_tuition_get('d0000000-0000-0000-0000-000000000001') -> 'fees') f WHERE f ->> 'label' LIKE '%Full-time' AND f -> 'upcoming_rate' IS NOT NULL AND f -> 'upcoming_rate' <> 'null'), 'upcoming rate shown');
 SELECT pg_temp.ok((SELECT jsonb_array_length(child_tuition_get('d0000000-0000-0000-0000-000000000001') -> 'upcoming_payers') = 2), 'next week''s payers');
+SELECT pg_temp.eq((SELECT (f -> 'upcoming_rate' ->> 'charged_from')::date FROM jsonb_array_elements(child_tuition_get('d0000000-0000-0000-0000-000000000001') -> 'fees') f WHERE f ->> 'label' LIKE '%After care'),
+  (date_trunc('month', pg_temp.nm() + 2) + CASE WHEN date_trunc('month', pg_temp.nm() + 2)::date = pg_temp.nm() + 2 THEN interval '0' ELSE interval '1 month' END)::date, 'monthly price is first charged on a 1st');
+SELECT pg_temp.eq(tuition_first_charged('weekly', NULL, '2026-11-18'), '2026-11-23'::date, 'Wednesday rate is charged from next Monday');
+SELECT pg_temp.eq(tuition_first_charged('weekly', NULL, '2026-11-16'), '2026-11-16'::date, 'Monday rate is charged that Monday');
 SELECT pg_temp.ok((SELECT count(*) > 0 FROM child_audit_log WHERE child_id = 'd0000000-0000-0000-0000-000000000001' AND summary LIKE 'Payers:%'), 'payers logged');
 SELECT pg_temp.ok((SELECT count(*) > 0 FROM child_audit_log WHERE child_id = 'd0000000-0000-0000-0000-000000000001' AND summary LIKE 'Fee added: Toddler · Full-time%10% off (Sibling)'), 'fee logged');
 SELECT pg_temp.eq((SELECT net_amount FROM child_tuition_on('d0000000-0000-0000-0000-000000000001', pg_temp.today()) WHERE fee_name = 'Full-time'), 256.50, 'checked wrapper');

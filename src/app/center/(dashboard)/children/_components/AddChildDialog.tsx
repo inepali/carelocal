@@ -10,6 +10,8 @@ import { showAlert } from '@/lib/dialog'
 import { BTN_PRIMARY, BTN_QUIET, FLD, LBL, Modal, todayISO } from './ui'
 import { HomeRoomField, suggestedRoomFor } from './HomeRoomField'
 import { RelationshipSelect } from './RelationshipSelect'
+import { EnrollFeesSection, applyEnrollFees, type PickedFee } from './TuitionFields'
+import { canManageTuition, useCenterContext } from '../../context'
 
 /**
  * Enroll a child with the parent as the first contact. Pick-up is NOT authorized unless the box is ticked:
@@ -26,6 +28,8 @@ export function AddChildDialog({ centerId, classrooms, onClose, onCreated }: {
     parent: '', relationship: 'Parent', phone: '', email: '', can_pick_up: false,
   })
   const [saving, setSaving] = useState(false)
+  const tuitionOn = canManageTuition(useCenterContext())
+  const [fees, setFees] = useState<PickedFee[]>([])
   const [roomPicked, setRoomPicked] = useState(false)       // once someone picks a room, the date of birth stops changing it
   const set = <K extends keyof typeof f>(key: K, value: (typeof f)[K]) => setF(prev => ({ ...prev, [key]: value }))
   const today = todayISO()
@@ -47,6 +51,10 @@ export function AddChildDialog({ centerId, classrooms, onClose, onCreated }: {
     }, f.parent.trim() ? [{
       name: f.parent, relationship: f.relationship, phone: f.phone, email: f.email, is_primary: true, is_emergency_contact: true, can_pick_up: f.can_pick_up,
     }] : [])
+    if (res.success && fees.length > 0) {
+      const problems = await applyEnrollFees(res.child.id, fees)
+      if (problems.length) showAlert(`${res.child.first_name} was added, but some fees were not: ${problems.join(' ')} Add them on the Fee & Payment tab.`)
+    }
     setSaving(false)
     if (!res.success) {
       showAlert(res.error)
@@ -92,6 +100,11 @@ export function AddChildDialog({ centerId, classrooms, onClose, onCreated }: {
             <span>Authorized to pick up this child<span className="block text-xs text-muted">Leave unticked until the signed application lists this person. You can change it later; every change is logged.</span></span>
           </label>
         </div>
+
+        {tuitionOn && (
+          <EnrollFeesSection centerId={centerId} programId={classrooms.find(c => c.id === f.classroom_id)?.program_id ?? null}
+            startDefault={f.enrolled_on || today} value={fees} onChange={setFees} />
+        )}
       </div>
     </Modal>
   )

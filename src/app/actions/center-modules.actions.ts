@@ -142,3 +142,24 @@ export async function setCenterScheduleSlot(centerId: string, minutes: number): 
   console.warn(`[schedule] super admin ${user.id} set the schedule snap to ${minutes} minutes for center ${centerId}`)
   return { success: true }
 }
+
+/**
+ * Super admin: turn Tuition (the rate card, children's fees and who pays) on or off for a child care center. Off by
+ * default and needs Children on. Turning it off hides it from everyone at the center and deletes nothing.
+ */
+export async function setCenterTuitionEnabled(centerId: string, enabled: boolean): Promise<Result> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user?.app_metadata?.is_super_admin !== true) return { success: false, error: 'Not allowed' }
+
+  const db = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  const { data: center } = await db.from('centers').select('id, domain_key, child_files_enabled').eq('id', centerId).maybeSingle()
+  if (!center) return { success: false, error: 'Center not found' }
+  if (enabled && center.domain_key !== 'childcare') return { success: false, error: 'Tuition is only for child care centers.' }
+  if (enabled && !center.child_files_enabled) return { success: false, error: 'Turn on Children for this center first.' }
+
+  const { error } = await db.from('centers').update({ tuition_enabled: enabled }).eq('id', centerId)
+  if (error) return { success: false, error: error.message }
+  console.warn(`[tuition] super admin ${user.id} turned tuition ${enabled ? 'on' : 'off'} for center ${centerId}`)
+  return { success: true }
+}

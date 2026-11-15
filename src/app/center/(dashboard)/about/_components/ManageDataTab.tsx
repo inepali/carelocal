@@ -9,13 +9,16 @@ import {
 } from '@/lib/lookups'
 import { invalidateLookupCache } from '@/hooks/use-lookups'
 import type { DomainKey } from '@/lib/domain-config'
-import { useCenterContext } from '../../context'
+import { canManageTuition, useCenterContext } from '../../context'
 import { WorkAreasPanel } from './WorkAreasPanel'
+import { TuitionFeesPanel } from './TuitionFeesPanel'
 import { showConfirm } from '@/lib/dialog'
 
 // Work areas (Classrooms, Care Areas …) live in their own table but are managed here too
 const WORK_AREAS_TAB = 'work_areas'
-type ActiveTab = LookupGroup | typeof WORK_AREAS_TAB
+// The tuition rate card (its own tables, with dated prices), when Tuition is on
+const TUITION_TAB = 'tuition'
+type ActiveTab = LookupGroup | typeof WORK_AREAS_TAB | typeof TUITION_TAB
 
 const SOURCE_BADGE: Record<LookupItem['source'], { label: string; className: string }> = {
   default:  { label: 'Default',    className: 'bg-slate-50 text-muted border-border' },
@@ -29,13 +32,16 @@ function toValue(label: string) {
 
 export default function ManageDataTab() {
   const supabase = createClient()
-  const { workAreaTerm } = useCenterContext()
+  const ctx = useCenterContext()
+  const { workAreaTerm } = ctx
+  const tuitionOn = canManageTuition(ctx)
   const [activeGroup, setActiveGroup] = useState<ActiveTab>(WORK_AREAS_TAB)
 
   // Deep link to a tab, e.g. ?tab=work_areas or ?tab=Payment%20Method
   useEffect(() => {
     const tab = new URLSearchParams(window.location.search).get('tab')
     if (tab && LOOKUP_GROUPS.some(g => g.id === tab)) setActiveGroup(tab as LookupGroup)
+    else if (tab === TUITION_TAB) setActiveGroup(TUITION_TAB)
   }, [])
   const [items, setItems] = useState<LookupItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -58,7 +64,7 @@ export default function ManageDataTab() {
   }, [])
 
   const loadData = useCallback(async () => {
-    if (!scope || activeGroup === WORK_AREAS_TAB) return
+    if (!scope || activeGroup === WORK_AREAS_TAB || activeGroup === TUITION_TAB) return
     setLoading(true)
     try {
       const rows = await fetchLookupRows(supabase, activeGroup, scope.centerId)
@@ -196,6 +202,7 @@ export default function ManageDataTab() {
   const maxLabel = groupDef?.maxLabel
   const tabs: { id: ActiveTab; label: string }[] = [
     { id: WORK_AREAS_TAB, label: workAreaTerm },
+    ...(tuitionOn ? [{ id: TUITION_TAB as ActiveTab, label: 'Tuition Fees' }] : []),
     // Groups for this center's vertical (Parent/Guardian Types are childcare only)
     ...(scope ? lookupGroupsFor(scope.domainKey) : []).map(g => ({ id: g.id as LookupGroup, label: g.label })),
   ]
@@ -234,6 +241,8 @@ export default function ManageDataTab() {
         <div className="flex-1 bg-white rounded-3xl border border-border overflow-hidden shadow-sm">
           {activeGroup === WORK_AREAS_TAB ? (
             scope && <WorkAreasPanel centerId={scope.centerId} workAreaTerm={workAreaTerm} showRoster={scope.domainKey === 'childcare'} />
+          ) : activeGroup === TUITION_TAB ? (
+            scope && tuitionOn ? <TuitionFeesPanel centerId={scope.centerId} /> : null
           ) : (
           <>
           <div className="p-6 border-b border-border bg-surface/50 flex items-center justify-between">

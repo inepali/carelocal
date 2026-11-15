@@ -43,6 +43,8 @@ export interface Classroom {
   ratio_children?: number | null
   min_age_months?: number | null
   max_age_months?: number | null
+  /** The program the class belongs to (About → Programs), used to suggest tuition fees */
+  program_id?: string | null
   /** Enrolled children whose home room this is */
   enrolled?: number
 }
@@ -59,7 +61,7 @@ async function childRequirements(supabase: SupabaseClient, centerId: string) {
 /** Active classrooms in the center's order, with their age range, capacity and how many children call each home */
 export async function loadClassrooms(supabase: SupabaseClient, centerId: string) {
   const [rooms, kids] = await Promise.all([
-    supabase.from('work_areas').select('id, name, capacity, ratio_children, min_age_months, max_age_months')
+    supabase.from('work_areas').select('id, name, capacity, ratio_children, min_age_months, max_age_months, program_id')
       .eq('center_id', centerId).eq('is_active', true).order('sort_order').order('name'),
     supabase.from('children').select('classroom_id').eq('center_id', centerId).eq('status', 'enrolled'),
   ])

@@ -31,6 +31,7 @@ DROP TABLE IF EXISTS public.child_tuition;
 DROP TABLE IF EXISTS public.tuition_fee_rates;
 DROP TABLE IF EXISTS public.tuition_fees;
 
+DROP FUNCTION IF EXISTS public.tuition_first_charged(text, date, date);
 DROP FUNCTION IF EXISTS public.tuition_period(text, date, date);
 DROP FUNCTION IF EXISTS public.tuition_money(numeric);
 DROP FUNCTION IF EXISTS public.tuition_log(uuid, uuid, text, uuid, text, text);

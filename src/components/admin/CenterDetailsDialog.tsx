@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import {
   X, Building2, MapPin, Phone, Mail, User, ShieldCheck, CreditCard, Calendar, Users, LogIn,
-  Briefcase, Baby, LayoutGrid, NotebookPen, Utensils, ClipboardList, KeyRound, Megaphone, CalendarClock,
+  Briefcase, Baby, LayoutGrid, NotebookPen, Utensils, ClipboardList, KeyRound, Megaphone, CalendarClock, Receipt,
 } from 'lucide-react'
 import { TIER_LABELS, type SubscriptionTier } from '@/lib/types'
 import { CenterOwnersSection } from './CenterOwners'
@@ -28,6 +28,7 @@ export interface CenterModuleActions {
   toggleAnnouncements: Toggle
   toggleSchedule: Toggle
   changeScheduleSlot: Toggle
+  toggleTuition: Toggle
 }
 
 interface ModuleRow {
@@ -100,6 +101,11 @@ export function CenterDetailsDialog({ center, onClose, actions, statusLabel, job
         key: 'parent_portal', label: 'Parent page', icon: KeyRound, on: !!center.parent_portal_enabled, toggle: actions.toggleParentPortal,
         description: 'Parents see daily activities and photos and message teachers on the center’s link, with a 6-digit PIN.',
         needs: !center.roster_enabled && !center.parent_portal_enabled ? 'Turn on Live roster first' : undefined,
+      },
+      {
+        key: 'tuition', label: 'Tuition', icon: Receipt, on: !!center.tuition_enabled, toggle: actions.toggleTuition,
+        description: 'Dated rate card per program, fees on each child, and who pays how (ACH, card, check, other).',
+        needs: !center.child_files_enabled && !center.tuition_enabled ? 'Turn on Children first' : undefined,
       },
     ] : []),
     {
@@ -226,6 +232,7 @@ export function moduleSummary(center: AdminCenter): string[] {
     childcare && center.menu_planning_enabled && 'Menu',
     childcare && center.cacfp_enabled && 'CACFP',
     childcare && center.parent_portal_enabled && 'Parents',
+    childcare && center.tuition_enabled && 'Tuition',
     center.announcements_enabled && 'Announcements',
   ].filter((x): x is string => typeof x === 'string')
 }
