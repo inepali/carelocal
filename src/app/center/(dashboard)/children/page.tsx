@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Baby, ListChecks, Loader2, Plus, Search } from 'lucide-react'
+import { Baby, ListChecks, Loader2, Plus, Search, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { canOpenChildFiles, useCenterContext } from '../context'
 import { loadChildrenOverview, type ChildRequirement, type Classroom } from '@/lib/children'
@@ -90,7 +90,10 @@ export default function ChildrenPage() {
           <h1 className="mb-1 text-3xl font-extrabold text-heading">Children</h1>
           <p className="text-muted">Enrollment records for each child, tracked against the NC child care rules. Only the owner and administrators can open them.</p>
         </div>
-        <button onClick={() => setAdding(true)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 font-semibold text-white shadow-sm hover:bg-brand-800"><Plus className="h-5 w-5" /> Add child</button>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Link href="/center/children/guardians" className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-white px-5 py-3 font-semibold text-brand-600 shadow-sm hover:bg-brand-50"><Users className="h-5 w-5" /> Parents & guardians</Link>
+          <button onClick={() => setAdding(true)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 font-semibold text-white shadow-sm hover:bg-brand-800"><Plus className="h-5 w-5" /> Add child</button>
+        </div>
       </div>
 
       {!loading && requirements.length === 0 && (

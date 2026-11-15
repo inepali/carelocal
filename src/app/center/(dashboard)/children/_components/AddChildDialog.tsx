@@ -1,14 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { addChild } from '@/lib/children'
+import { addChild, listCenterGuardians } from '@/lib/children'
 import type { Classroom } from '@/lib/children'
-import type { Child } from '@/lib/child-types'
+import type { CenterGuardian, Child } from '@/lib/child-types'
 import { showAlert } from '@/lib/dialog'
 import { BTN_PRIMARY, BTN_QUIET, FLD, LBL, Modal, todayISO } from './ui'
 import { HomeRoomField, suggestedRoomFor } from './HomeRoomField'
+import { GuardianPicker } from './GuardianPicker'
 
 /**
  * Enroll a child with the parent as the first contact. Pick-up is NOT authorized unless the box is ticked:
@@ -23,7 +24,17 @@ export function AddChildDialog({ centerId, classrooms, onClose, onCreated }: {
   const [f, setF] = useState({
     first_name: '', last_name: '', preferred_name: '', date_of_birth: '', classroom_id: '', enrolled_on: todayISO(), first_attended_on: '',
     parent: '', relationship: 'Parent', phone: '', email: '', can_pick_up: false,
+    center_guardian_id: null as string | null, save_to_list: true,
   })
+  const [list, setList] = useState<CenterGuardian[]>([])
+  useEffect(() => {
+    listCenterGuardians(createClient(), centerId).then(res => { if (res.success) setList(res.guardians) })
+  }, [centerId])
+  const linked = !!f.center_guardian_id
+
+  function pick(g: CenterGuardian) {
+    setF(prev => ({ ...prev, center_guardian_id: g.id, parent: g.name, phone: g.phone ?? '', email: g.email ?? '', relationship: g.relationship || prev.relationship }))
+  }
   const [saving, setSaving] = useState(false)
   const [roomPicked, setRoomPicked] = useState(false)       // once someone picks a room, the date of birth stops changing it
   const set = <K extends keyof typeof f>(key: K, value: (typeof f)[K]) => setF(prev => ({ ...prev, [key]: value }))
@@ -43,8 +54,9 @@ export function AddChildDialog({ centerId, classrooms, onClose, onCreated }: {
     const res = await addChild(createClient(), centerId, {
       first_name: f.first_name, last_name: f.last_name, preferred_name: f.preferred_name, date_of_birth: f.date_of_birth,
       classroom_id: f.classroom_id || null, enrolled_on: f.enrolled_on || undefined, first_attended_on: f.first_attended_on || null,
-    }, f.parent.trim() ? [{
+    }, f.parent.trim() || f.center_guardian_id ? [{
       name: f.parent, relationship: f.relationship, phone: f.phone, email: f.email, is_primary: true, is_emergency_contact: true, can_pick_up: f.can_pick_up,
+      center_guardian_id: f.center_guardian_id, save_to_list: !f.center_guardian_id && f.save_to_list,
     }] : [])
     setSaving(false)
     if (!res.success) {
@@ -80,12 +92,21 @@ export function AddChildDialog({ centerId, classrooms, onClose, onCreated }: {
 
         <div className="rounded-2xl border border-border bg-surface p-4">
           <div className="mb-3 text-sm font-bold text-text-main">Parent or guardian (first contact)</div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div><label className={LBL}>Name</label><input value={f.parent} onChange={e => set('parent', e.target.value)} className={FLD} maxLength={120} /></div>
-            <div><label className={LBL}>Relationship</label><input value={f.relationship} onChange={e => set('relationship', e.target.value)} className={FLD} maxLength={60} /></div>
-            <div><label className={LBL}>Phone</label><input type="tel" value={f.phone} onChange={e => set('phone', e.target.value)} className={FLD} maxLength={30} /></div>
-            <div><label className={LBL}>Email</label><input type="email" value={f.email} onChange={e => set('email', e.target.value)} className={FLD} maxLength={254} /></div>
+          <div className="mb-3">
+            <GuardianPicker guardians={list} value={f.center_guardian_id} onPick={pick} onUnlink={() => set('center_guardian_id', null)} />
           </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div><label className={LBL}>Name</label><input value={f.parent} readOnly={linked} onChange={e => set('parent', e.target.value)} className={`${FLD} ${linked ? 'bg-white/60 text-muted' : ''}`} maxLength={120} /></div>
+            <div><label className={LBL}>Relationship</label><input value={f.relationship} onChange={e => set('relationship', e.target.value)} className={FLD} maxLength={60} /></div>
+            <div><label className={LBL}>Phone</label><input type="tel" value={f.phone} readOnly={linked} onChange={e => set('phone', e.target.value)} className={`${FLD} ${linked ? 'bg-white/60 text-muted' : ''}`} maxLength={30} /></div>
+            <div><label className={LBL}>Email</label><input type="email" value={f.email} readOnly={linked} onChange={e => set('email', e.target.value)} className={`${FLD} ${linked ? 'bg-white/60 text-muted' : ''}`} maxLength={254} /></div>
+          </div>
+          {!linked && f.parent.trim() && (
+            <label className="mt-3 flex cursor-pointer items-start gap-2.5 text-sm text-text-main">
+              <input type="checkbox" checked={f.save_to_list} onChange={e => set('save_to_list', e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-600" />
+              <span>Also add to the parents list<span className="block text-xs text-muted">So you can pick this person for a sibling later.</span></span>
+            </label>
+          )}
           <label className="mt-3 flex cursor-pointer items-start gap-2.5 text-sm text-text-main">
             <input type="checkbox" checked={f.can_pick_up} onChange={e => set('can_pick_up', e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-600" />
             <span>Authorized to pick up this child<span className="block text-xs text-muted">Leave unticked until the signed application lists this person. You can change it later; every change is logged.</span></span>

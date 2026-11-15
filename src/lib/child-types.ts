@@ -48,8 +48,30 @@ export interface ChildGuardian {
   daily_report?: boolean
   /** Teachers can send this contact messages from the Live roster (authorized pick-ups with an email only) */
   can_message?: boolean
+  /** The center's Parents & guardians list entry this contact comes from. While set, name, phone and email follow the entry. */
+  center_guardian_id?: string | null
   created_at: string
   updated_at: string
+}
+
+/** One person on the center's Parents & guardians list, picked when adding a contact to a child */
+export interface CenterGuardian {
+  id: string
+  center_id: string
+  name: string
+  /** Suggested relationship when picked (each child's contact can still say something else) */
+  relationship: string | null
+  phone: string | null
+  email: string | null
+  notes: string | null
+  archived_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** A list entry with the children it is a contact for (only what the caller can see) */
+export interface CenterGuardianWithChildren extends CenterGuardian {
+  children: { child_id: string; first_name: string; last_name: string; status: 'enrolled' | 'withdrawn'; relationship: string | null }[]
 }
 
 /** One child's status for one requirement. Same field names the compliance engine already reads for staff. */

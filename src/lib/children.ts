@@ -1,6 +1,6 @@
 // Self-contained on purpose (type-only imports, no path aliases) so the access-rule tests can load it directly.
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Child, ChildAuditEntry, ChildDocumentStatus, ChildFile, ChildGuardian, ChildMedication } from './child-types'
+import type { CenterGuardian, CenterGuardianWithChildren, Child, ChildAuditEntry, ChildDocumentStatus, ChildFile, ChildGuardian, ChildMedication } from './child-types'
 
 /**
  * Every read and write the Child Files screens make. Each function takes the CALLER's Supabase client, so the
@@ -140,6 +140,10 @@ export interface GuardianInput {
   daily_report?: boolean
   /** Teachers can message this contact (on by default) */
   can_message?: boolean
+  /** Picked from the Parents & guardians list: name, phone and email then come from the entry */
+  center_guardian_id?: string | null
+  /** Not picked from the list: also add this person to it (and link the contact) */
+  save_to_list?: boolean
 }
 
 const clean = (value: string | null | undefined) => (value ?? '').trim() || null
@@ -162,11 +166,15 @@ export async function addChild(supabase: SupabaseClient, centerId: string, input
   if (error || !data) return fail(error)
 
   const child = data as Child
-  const named = guardians.filter(g => g.name?.trim())
+  const named = guardians.filter(g => g.name?.trim() || g.center_guardian_id)
   if (named.length > 0) {
+    const linked = await Promise.all(named.map(g => listEntryFor(supabase, centerId, g)))
+    const listFailure = linked.find(l => !l.success)
+    if (listFailure && !listFailure.success) return { ...listFailure, child }
     const { error: guardianError } = await supabase.from('child_guardians').insert(named.map((g, i) => ({
       center_id: centerId,
       child_id: child.id,
+      center_guardian_id: linked[i].success ? linked[i].id : null,
       name: g.name.trim(),
       relationship: clean(g.relationship),
       phone: clean(g.phone),
@@ -177,7 +185,7 @@ export async function addChild(supabase: SupabaseClient, centerId: string, input
       // The primary contact gets the daily report by default (needs an email)
       daily_report: !!clean(g.email) && (g.daily_report ?? (g.is_primary ?? i === 0)),
     })))
-    if (guardianError) return { ...fail(guardianError), child }   // the child exists; only the contacts failed
+    if (guardianError) return { ...fail(guardianError.code === '23505' ? 'The same person was picked twice.' : guardianError), child }   // the child exists; only the contacts failed
   }
   return { success: true as const, child } as Ok<{ child: Child }>
 }
@@ -211,10 +219,27 @@ export async function reenrollChild(supabase: SupabaseClient, childId: string, e
 
 // ─── Guardians and pick-up ───────────────────────────────────────────────────
 
+/**
+ * The list entry a new or changed contact links to: the picked one, a new entry when asked to save to the list,
+ * or none. The database copies the entry's name, phone and email onto the contact.
+ */
+async function listEntryFor(supabase: SupabaseClient, centerId: string, input: GuardianInput): Promise<Ok<{ id: string | null }> | Failure> {
+  if (input.center_guardian_id) return { success: true, id: input.center_guardian_id }
+  if (!input.save_to_list || !input.name?.trim()) return { success: true, id: null }
+  const res = await saveCenterGuardian(supabase, centerId, {
+    name: input.name, relationship: input.relationship, phone: input.phone, email: input.email,
+  })
+  return res.success ? { success: true, id: res.guardian.id } : res
+}
+
 export async function saveGuardian(supabase: SupabaseClient, centerId: string, childId: string, input: GuardianInput & { id?: string }) {
-  if (!input.name?.trim()) return fail('Enter the person’s name.')
+  if (!input.name?.trim() && !input.center_guardian_id) return fail('Enter the person’s name.')
+  const entry = await listEntryFor(supabase, centerId, input)
+  if (!entry.success) return entry
   const row = {
-    name: input.name.trim(),
+    // null unlinks; left out (undefined and nothing new saved) keeps whatever link the row has
+    ...(input.center_guardian_id !== undefined || entry.id ? { center_guardian_id: entry.id } : {}),
+    name: (input.name ?? '').trim() || 'From list',   // replaced by the entry's name when linked
     relationship: clean(input.relationship),
     phone: clean(input.phone),
     email: clean(input.email),
@@ -228,6 +253,7 @@ export async function saveGuardian(supabase: SupabaseClient, centerId: string, c
     ? supabase.from('child_guardians').update(row).eq('id', input.id).select('*')
     : supabase.from('child_guardians').insert({ ...row, center_id: centerId, child_id: childId }).select('*')
   const { data, error } = await query
+  if (error?.code === '23505') return fail('This person is already a contact for this child.')
   if (error) return fail(error)
   if (!data?.length) return fail('Contact not found or you do not have access to it.')
   return { success: true as const, guardian: data[0] as ChildGuardian } as Ok<{ guardian: ChildGuardian }>
@@ -237,6 +263,74 @@ export async function deleteGuardian(supabase: SupabaseClient, guardianId: strin
   const { data, error } = await supabase.from('child_guardians').delete().eq('id', guardianId).select('id')
   if (error) return fail(error)
   if (!data?.length) return fail('Contact not found or you do not have access to it.')
+  return { success: true as const }
+}
+
+// ─── Parents & guardians list (center level) ─────────────────────────────────
+
+export interface CenterGuardianInput {
+  name: string
+  relationship?: string | null
+  phone?: string | null
+  email?: string | null
+  notes?: string | null
+}
+
+/** The center's list, active entries first, each with the children it is a contact for */
+export async function listCenterGuardians(supabase: SupabaseClient, centerId: string, opts: { includeArchived?: boolean } = {}) {
+  let query = supabase.from('center_guardians')
+    .select('*, child_guardians(child_id, relationship, children(first_name, last_name, status))')
+    .eq('center_id', centerId)
+    .order('name')
+  if (!opts.includeArchived) query = query.is('archived_at', null)
+  const { data, error } = await query
+  if (error) return fail(error)
+  type Raw = CenterGuardian & { child_guardians?: { child_id: string; relationship: string | null; children: { first_name: string; last_name: string; status: 'enrolled' | 'withdrawn' } | null }[] }
+  const guardians: CenterGuardianWithChildren[] = ((data ?? []) as Raw[]).map(({ child_guardians, ...g }) => ({
+    ...g,
+    children: (child_guardians ?? []).filter(c => c.children).map(c => ({
+      child_id: c.child_id, relationship: c.relationship,
+      first_name: c.children!.first_name, last_name: c.children!.last_name, status: c.children!.status,
+    })).sort((a, b) => `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`)),
+  }))
+  return { success: true as const, guardians } as Ok<{ guardians: CenterGuardianWithChildren[] }>
+}
+
+/** Add or change a list entry. A change to name, phone or email updates every child it is linked to. */
+export async function saveCenterGuardian(supabase: SupabaseClient, centerId: string, input: CenterGuardianInput & { id?: string }) {
+  if (!input.name?.trim()) return fail('Enter the person’s name.')
+  const email = clean(input.email)
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail('That email address does not look right.')
+  const row = {
+    name: input.name.trim(),
+    relationship: clean(input.relationship),
+    phone: clean(input.phone),
+    email,
+    notes: clean(input.notes),
+  }
+  const query = input.id
+    ? supabase.from('center_guardians').update(row).eq('id', input.id).eq('center_id', centerId).select('*')
+    : supabase.from('center_guardians').insert({ ...row, center_id: centerId }).select('*')
+  const { data, error } = await query
+  if (error) return fail(error)
+  if (!data?.length) return fail('Parent or guardian not found or you do not have access to it.')
+  return { success: true as const, guardian: data[0] as CenterGuardian } as Ok<{ guardian: CenterGuardian }>
+}
+
+/** Archived entries leave the picker; children who already have them keep them */
+export async function setCenterGuardianArchived(supabase: SupabaseClient, id: string, archived: boolean) {
+  const { data, error } = await supabase.from('center_guardians')
+    .update({ archived_at: archived ? new Date().toISOString() : null }).eq('id', id).select('id')
+  if (error) return fail(error)
+  if (!data?.length) return fail('Parent or guardian not found or you do not have access to it.')
+  return { success: true as const }
+}
+
+/** Removes the entry from the list. Children's contact rows stay, unlinked. */
+export async function deleteCenterGuardian(supabase: SupabaseClient, id: string) {
+  const { data, error } = await supabase.from('center_guardians').delete().eq('id', id).select('id')
+  if (error) return fail(error)
+  if (!data?.length) return fail('Parent or guardian not found or you do not have access to it.')
   return { success: true as const }
 }
 
