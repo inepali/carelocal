@@ -196,5 +196,34 @@ SELECT pg_temp.eq((pg_temp.acct('d0000000-0000-0000-0000-000000000012', 'Lea Dad
 SELECT pg_temp.ok(EXISTS (SELECT 1 FROM child_audit_log WHERE summary LIKE 'Primary contact Lea Dad set as payer%'), 'logged');
 SELECT pg_temp.eq((SELECT c ->> 'payer_name' FROM jsonb_array_elements(pg_temp.kid(billing_preview('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 35), 'Lea L') -> 'charges') c), 'Lea Dad', 'next week uses the saved payer');
 
+-- 10. Credit used shows per payment (20270116000000_billing_credit_used.sql) ----------------------------------------
+RESET ROLE;
+SELECT pg_temp.as_user(NULL);
+INSERT INTO children (id, center_id, first_name, last_name, status, enrolled_on) VALUES
+  ('d0000000-0000-0000-0000-000000000013', '10000000-0000-0000-0000-000000000001', 'Max', 'M', 'enrolled', pg_temp.nm() + 42);
+INSERT INTO child_tuition (center_id, child_id, fee_id, start_date) VALUES
+  ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000013', 'f0000000-0000-0000-0000-000000000001', pg_temp.nm() + 42);
+INSERT INTO child_payment_payers (center_id, child_id, payer_name, share_type, method, effective_from)
+VALUES ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000013', 'Max Dad', 'remainder', 'check', pg_temp.today());
+SET ROLE authenticated;
+SELECT pg_temp.as_user('a0000000-0000-0000-0000-000000000002');
+SELECT billing_receive_payment('d0000000-0000-0000-0000-000000000013', jsonb_build_object('payer_id', pg_temp.payer('Max M', 'Max Dad'), 'amount', '150', 'method', 'other'));
+SELECT billing_receive_payment('d0000000-0000-0000-0000-000000000013', jsonb_build_object('payer_id', pg_temp.payer('Max M', 'Max Dad'), 'amount', '375', 'method', 'cash'));
+SELECT pg_temp.eq((pg_temp.acct('d0000000-0000-0000-0000-000000000013', 'Max Dad') ->> 'credit')::numeric, 525.00, 'paid ahead: all credit');
+SELECT billing_run_submit('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 42,
+  (billing_preview('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 42) -> 'totals' ->> 'total')::numeric);
+DO $$
+DECLARE a jsonb := billing_child_account('d0000000-0000-0000-0000-000000000013'); r150 jsonb; r375 jsonb;
+BEGIN
+  SELECT e INTO r150 FROM jsonb_array_elements(a -> 'receipts') e WHERE (e ->> 'amount')::numeric = 150;
+  SELECT e INTO r375 FROM jsonb_array_elements(a -> 'receipts') e WHERE (e ->> 'amount')::numeric = 375;
+  PERFORM pg_temp.eq((pg_temp.acct('d0000000-0000-0000-0000-000000000013', 'Max Dad') ->> 'credit')::numeric, 240.00, 'available = 525 − 285 used');
+  PERFORM pg_temp.eq((r150 ->> 'credit_used')::numeric, 150.00, 'oldest payment used first');
+  PERFORM pg_temp.eq((r150 ->> 'credit_left')::numeric, 0.00, '... nothing left on it');
+  PERFORM pg_temp.eq((r375 ->> 'credit_used')::numeric, 135.00, 'the rest from the next payment');
+  PERFORM pg_temp.eq((r375 ->> 'credit_left')::numeric, 240.00, '... 240 still available');
+  PERFORM pg_temp.eq((pg_temp.acct('d0000000-0000-0000-0000-000000000013', 'Max Dad') ->> 'due')::numeric, 0.00, 'bill paid by credit');
+END $$;
+
 RESET ROLE;
 SELECT 'RECEIPTS ALL PASSED' AS result;

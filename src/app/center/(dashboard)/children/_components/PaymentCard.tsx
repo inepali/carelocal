@@ -87,7 +87,7 @@ export function PaymentCard({ childId, childName, periods }: { childId: string; 
                 {!p.active && <span className="text-xs text-muted"> (past payer)</span>}
               </button>
               <span className="flex shrink-0 items-center gap-3">
-                {p.credit > 0 && <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800">{money(p.credit)} credit</span>}
+                {p.credit > 0 && <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800">{money(p.credit)} credit available</span>}
                 <span className={`font-semibold ${p.due > 0 ? 'text-heading' : 'text-muted'}`}>{p.due > 0 ? `${money(p.due)} due` : 'Nothing due'}</span>
               </span>
             </li>
@@ -99,7 +99,7 @@ export function PaymentCard({ childId, childName, periods }: { childId: string; 
         <span className="font-bold text-heading">Balance due</span>
         <span className="font-black text-heading">{money(acct.total_due + acct.unassigned_due)}</span>
       </div>
-      {acct.total_credit > 0 && <p className="mt-1 text-right text-xs text-emerald-700">{money(acct.total_credit)} credit is used by the next bill</p>}
+      {acct.total_credit > 0 && <p className="mt-1 text-right text-xs text-emerald-700">{money(acct.total_credit)} credit available, used by the next bill</p>}
       {acct.adjustments.length > 0 && (
         <ul className="mt-3 space-y-1 rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-xs text-emerald-900">
           {acct.adjustments.map(a => (
@@ -124,7 +124,8 @@ export function PaymentCard({ childId, childName, periods }: { childId: string; 
                 <span className="min-w-0">
                   {formatDate(r.received_on)} · {r.payer_name} · {receiptMethodLabel(r.method)}{r.method === 'credit' && r.note ? `: ${r.note}` : ''}
                   {r.card_brand ? ` ${r.card_brand}` : ''}{r.last4 ? ` ····${r.last4}` : ''}{r.reference ? ` #${r.reference}` : ''}
-                  {!r.voided && r.credit_left > 0 && <span className="text-emerald-700 no-underline"> · {money(r.credit_left)} credit left</span>}
+                  {!r.voided && Number(r.credit_used) > 0 && <span className="text-muted"> · {money(r.credit_used)} credit used</span>}
+                  {!r.voided && r.credit_left > 0 && <span className="text-emerald-700"> · {money(r.credit_left)} credit available</span>}
                   {r.voided && <span className="text-red-700"> · voided: {r.void_reason}</span>}
                 </span>
                 <span className="flex items-center gap-2">
