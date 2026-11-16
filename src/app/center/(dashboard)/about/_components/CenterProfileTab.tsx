@@ -8,6 +8,7 @@ import { Building2, Save, MapPin, ShieldCheck, Loader2, ExternalLink, Clock, Glo
 import { getDomainKey, type DomainKey } from '@/lib/domain-config'
 import { showAlert } from '@/lib/dialog'
 import GroupMeCard from './GroupMeCard'
+import CenterBankCard from './CenterBankCard'
 
 export default function CenterProfileTab() {
   const supabase = createClient()
@@ -326,6 +327,8 @@ export default function CenterProfileTab() {
           </div>
 
           <GroupMeCard />
+
+          <CenterBankCard />
         </div>
 
         {/* ── Right: Sidebar / Subscription ── */}

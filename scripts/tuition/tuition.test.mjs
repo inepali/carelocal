@@ -122,6 +122,14 @@ check('missing key refused', threw)
 threw = false
 try { bankKey(Buffer.alloc(16).toString('base64')) } catch { threw = true }
 check('short key refused', threw)
+const centerEnc = encryptAccountNumber('000123456789', key, 'center')
+check('center round trip', decryptAccountNumber(centerEnc, key, 'center') === '000123456789')
+threw = false
+try { decryptAccountNumber(centerEnc, key, 'payer') } catch { threw = true }
+check('a center number can\'t pass as a payer number', threw)
+threw = false
+try { decryptAccountNumber(enc, key, 'center') } catch { threw = true }
+check('a payer number can\'t pass as a center number', threw)
 check('normalize: spaces and dashes', normalizeAccountNumber(' 1234-5678 ') === '12345678')
 check('normalize: letters refused', normalizeAccountNumber('12ab5678') === null)
 check('fixed needs an amount', /fixed amount/.test(checkPayers([{ payer_name: 'A', share_type: 'fixed', share_value: '', method: 'check' }]) ?? ''))
