@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, LayoutDashboard, Users, UserPlus, Info, Calendar, Tags, LifeBuoy, ClipboardCheck, Truck, Baby, Building2, UserCircle, Inbox, ShieldCheck, Briefcase, CalendarCheck, LayoutGrid, PanelLeftClose, PanelLeftOpen, NotebookPen, Utensils, Megaphone, CalendarClock } from 'lucide-react'
+import { LogOut, LayoutDashboard, Users, UserPlus, Info, Calendar, Tags, LifeBuoy, ClipboardCheck, Truck, Baby, Building2, UserCircle, Inbox, ShieldCheck, Briefcase, CalendarCheck, LayoutGrid, PanelLeftClose, PanelLeftOpen, NotebookPen, Utensils, Megaphone, CalendarClock, Receipt } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
-import { CenterContext, canManageSchedule, canOpenChildFiles, canOpenRoster } from './context'
+import { CenterContext, canManageSchedule, canManageTuition, canOpenChildFiles, canOpenRoster } from './context'
 import type { DomainKey } from '@/lib/domain-config'
 
 // Dev/demo tool: jumps the browser to another vertical's domain (it does not change the
@@ -144,6 +144,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
     ...(canOpenRoster({ domainKey, role, childFilesEnabled, rosterEnabled }) ? [{ name: 'Live roster', href: '/center/roster', icon: LayoutGrid }] : []),
     ...(canManageSchedule({ role, scheduleEnabled }) ? [{ name: 'Schedule', href: '/center/schedule', icon: CalendarClock }] : []),
     ...(canOpenChildFiles({ domainKey, role, childFilesEnabled }) ? [{ name: 'Children', href: '/center/children', icon: Baby }] : []),
+    ...(canManageTuition({ domainKey, role, childFilesEnabled, tuitionEnabled }) ? [{ name: 'Billing', href: '/center/billing', icon: Receipt }] : []),
     ...(domainKey === 'childcare' && lessonPlansEnabled ? [{ name: 'Lesson Plans', href: '/center/lesson-plans/weekly', icon: NotebookPen }] : []),
     ...(domainKey === 'childcare' && menuPlanningEnabled ? [{ name: 'Menu', href: '/center/menu', icon: Utensils }] : []),
     ...(announcementsEnabled && (role === 'owner' || role === 'admin') ? [{ name: 'Messages', href: '/center/announcements', icon: Megaphone }] : []),
