@@ -5,7 +5,7 @@
  *   npm run test:billing
  * Database tests: scripts/billing/billing.test.sql
  */
-import { mondayOf, addDays, monthStart, addMonths, billingWindow, defaultWindowDay, sumMoney, checkPayment } from '../../src/lib/billing.ts'
+import { mondayOf, addDays, monthStart, addMonths, billingWindow, defaultWindowDay, sumMoney, checkPayment, planPayment, checkReceipt } from '../../src/lib/billing.ts'
 import { buildNachaFile, buildAchCsv, abaOk, NachaError } from '../../src/lib/server/nacha.ts'
 
 let passed = 0
@@ -37,6 +37,23 @@ check('payment over balance', /more than/.test(checkPayment({ amount: '42.51', m
 check('payment needs method', /how it was paid/.test(checkPayment({ amount: '1', method: 'ach', received_on: '2026-11-15' }, 5, '2026-11-15') ?? ''))
 check('payment not in future', /future/.test(checkPayment({ amount: '1', method: 'cash', received_on: '2026-11-16' }, 5, '2026-11-15') ?? ''))
 check('payment amount format', /amount/.test(checkPayment({ amount: '1.005', method: 'cash', received_on: '2026-11-15' }, 5, '2026-11-15') ?? ''))
+
+console.log('payment card')
+const open2 = [
+  { id: 'a', label: 'week of Nov 9', period_start: '2026-11-09', amount: 375, paid: 0, balance: 375, status: 'open' },
+  { id: 's', label: 'week of Nov 16', period_start: '2026-11-16', amount: 375, paid: 0, balance: 375, status: 'ach_sent' },
+  { id: 'b', label: 'week of Nov 23', period_start: '2026-11-23', amount: 375, paid: 100, balance: 275, status: 'partial' },
+]
+const pp = (a) => JSON.stringify(planPayment(a, open2))
+check('partial payment', pp(200) === JSON.stringify({ applied: 200, credit: 0, stillDue: 450, paidCharges: 1 }), pp(200))
+check('oldest first, skips sent draft', pp(500) === JSON.stringify({ applied: 500, credit: 0, stillDue: 150, paidCharges: 2 }), pp(500))
+check('over = credit', pp(1000.1) === JSON.stringify({ applied: 650, credit: 350.1, stillDue: 0, paidCharges: 2 }), pp(1000.1))
+check('advance with nothing due', JSON.stringify(planPayment(375, [])) === JSON.stringify({ applied: 0, credit: 375, stillDue: 0, paidCharges: 0 }))
+const rcpt = { payer_id: 'x', amount: '$1,200.50', method: 'credit_card', card_brand: 'Visa', last4: '4242', reference: '', received_on: '2026-11-16', note: '' }
+check('receipt ok (with $ and comma)', checkReceipt(rcpt, '2026-11-16') === null)
+check('receipt needs payer', /who is paying/.test(checkReceipt({ ...rcpt, payer_id: '' }, '2026-11-16') ?? ''))
+check('receipt last 4 only', /last 4/.test(checkReceipt({ ...rcpt, last4: '42424' }, '2026-11-16') ?? ''))
+check('receipt no future', /future/.test(checkReceipt({ ...rcpt, received_on: '2026-11-17' }, '2026-11-16') ?? ''))
 
 console.log('nacha')
 check('ABA ok', abaOk('021000021') && abaOk('011000015'))

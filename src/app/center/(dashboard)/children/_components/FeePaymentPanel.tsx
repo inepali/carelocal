@@ -15,6 +15,7 @@ import {
 import { BTN, BTN_PRIMARY, BTN_QUIET, BTN_QUIET_SM, FLD, LBL, Modal, Pill } from './ui'
 import { DiscountFields, NO_DISCOUNT, optionLabel } from './TuitionFields'
 import { revealBankAccount, saveChildPayers } from '@/app/actions/tuition-bank.actions'
+import { PaymentCard } from './PaymentCard'
 
 const PERIOD_TITLE: Record<string, string> = { weekly: 'This week', biweekly: 'These two weeks', monthly: 'This month' }
 const range = (a: string, b: string) => (a === b ? formatDate(a) : `${formatDate(a)} – ${formatDate(b)}`)
@@ -129,6 +130,7 @@ export function FeePaymentPanel({ child }: { child: Child }) {
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {data.periods.map(p => <PeriodCard key={p.frequency} period={p} payers={data.payers} />)}
+          <PaymentCard childId={child.id} childName={child.first_name} periods={data.periods} />
         </div>
       )}
 

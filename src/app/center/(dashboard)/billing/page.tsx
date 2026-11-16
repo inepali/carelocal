@@ -92,6 +92,18 @@ function RunBilling({ centerId }: { centerId: string }) {
   const hidden = (data?.children.length ?? 0) - (data?.children.filter(c => c.billable).length ?? 0)
   const warnings = useMemo(() => (data?.children ?? []).filter(c => c.billable && c.warnings.length), [data])
   const t = data?.totals
+  // Credit payers already paid in advance: the run uses it as each charge is created
+  const creditUse = useMemo(() => {
+    const left = { ...(data?.credits ?? {}) }
+    let total = 0
+    for (const c of data?.children ?? []) for (const ch of c.charges) {
+      if (!c.billable || !ch.payer_id || !left[ch.payer_id]) continue
+      const use = Math.min(Number(left[ch.payer_id]), Number(ch.amount))
+      left[ch.payer_id] = Number(left[ch.payer_id]) - use
+      total += use
+    }
+    return Math.round(total * 100) / 100
+  }, [data])
 
   async function submit() {
     if (!data || !t) return
@@ -182,7 +194,7 @@ function RunBilling({ centerId }: { centerId: string }) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {rows.map(c => <ChildRow key={c.child_id} c={c} open={!!open[c.child_id]} toggle={() => setOpen(o => ({ ...o, [c.child_id]: !o[c.child_id] }))} />)}
+                    {rows.map(c => <ChildRow key={c.child_id} c={c} credits={data.credits ?? {}} open={!!open[c.child_id]} toggle={() => setOpen(o => ({ ...o, [c.child_id]: !o[c.child_id] }))} />)}
                   </tbody>
                 </table>
               </div>
@@ -230,6 +242,7 @@ function RunBilling({ centerId }: { centerId: string }) {
                 <Row label={`ACH drafts (${t.ach_count})`} value={money(t.ach_total)} />
                 <Row label="Card / check / cash / other" value={money(t.manual_total)} />
                 {t.unassigned_total > 0 && <Row label="… no payer set" value={money(t.unassigned_total)} muted />}
+                {creditUse > 0 && <Row label="Paid from credit on file" value={`−${money(creditUse)}`} />}
                 <div className="my-3 border-t border-border" />
                 <div className="flex items-baseline justify-between">
                   <dt className="font-bold text-heading">Grand Total {frequency === 'weekly' ? 'Weekly' : 'Monthly'}</dt>
@@ -257,7 +270,7 @@ function Row({ label, value, strong, muted }: { label: string; value: string; st
   )
 }
 
-function ChildRow({ c, open, toggle }: { c: PreviewChild; open: boolean; toggle: () => void }) {
+function ChildRow({ c, credits, open, toggle }: { c: PreviewChild; credits: Record<string, number>; open: boolean; toggle: () => void }) {
   return (
     <>
       <tr className={`align-top ${c.billable ? '' : 'text-muted'}`}>
@@ -281,6 +294,7 @@ function ChildRow({ c, open, toggle }: { c: PreviewChild; open: boolean; toggle:
               <Pill key={i} className={ch.method === 'unassigned' ? 'border-red-200 bg-red-50 text-red-700'
                 : ch.ach_ready ? 'border-sky-200 bg-sky-50 text-sky-800' : 'border-border bg-surface text-text-main'}>
                 {ch.payer_name} · {chargeMethodLabel(ch.method)}{ch.method === 'ach' && !ch.ach_ready ? ' (by hand)' : ''} · {money(ch.amount)}
+                {ch.payer_id && Number(credits[ch.payer_id]) > 0 ? ` · ${money(Math.min(Number(credits[ch.payer_id]), ch.amount))} from credit` : ''}
               </Pill>
             ))}
             {!c.billable && <span className="text-xs">{c.warnings[0] ?? 'Nothing to bill'}</span>}

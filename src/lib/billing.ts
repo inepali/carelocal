@@ -38,10 +38,12 @@ export interface BillingPreview {
   children: PreviewChild[]; totals: PreviewTotals
   today: string; is_owner: boolean; default_draft_date: string; center_bank: boolean
   runs: { id: string; status: 'submitted' | 'void'; total: number; child_count: number; submitted_at: string }[]
+  credits?: Record<string, number>   // payer id → credit the run will use
 }
 
 export interface Payment {
-  id: string; kind: 'payment' | 'ach' | 'ach_return'; amount: number; method: string; reference: string | null
+  receipt_id?: string | null
+  id: string; kind: 'payment' | 'ach' | 'ach_return' | 'credit'; amount: number; method: string; reference: string | null
   received_on: string; note: string | null; voided: boolean; void_reason: string | null; recorded_by: string; created_at: string
 }
 export interface Charge {
@@ -60,7 +62,7 @@ export interface AchBatch {
 export interface RunSummary {
   id: string; frequency: RunFrequency; period_start: string; period_end: string; label: string; draft_date: string | null
   status: 'submitted' | 'void'; child_count: number; list_total: number; discount_total: number; total: number
-  ach_total: number; manual_total: number; note: string | null; paid: number; balance: number
+  ach_total: number; manual_total: number; credit_total?: number; note: string | null; paid: number; balance: number
   submitted_at: string; submitted_by: string; voided_at: string | null; voided_by: string | null; void_reason: string | null
   ach: AchBatch | null
 }
@@ -90,7 +92,7 @@ export const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
 ]
 
 export const chargeMethodLabel = (m: string) =>
-  ({ ach: 'ACH', credit_card: 'Card', check: 'Check', other: 'Other', unassigned: 'No payer', cash: 'Cash' } as Record<string, string>)[m] ?? m
+  ({ ach: 'ACH', credit_card: 'Card', debit_card: 'Debit card', check: 'Check', other: 'Other', unassigned: 'No payer', cash: 'Cash' } as Record<string, string>)[m] ?? m
 
 export const CHARGE_STATUS: Record<ChargeStatus, { label: string; tone: string }> = {
   open: { label: 'Due', tone: 'border-amber-200 bg-amber-50 text-amber-800' },
@@ -200,3 +202,81 @@ export const returnAch = (s: SupabaseClient, chargeId: string, code: string, not
   call<null>(s, 'billing_charge_ach_return', { p_charge_id: chargeId, p_code: code, p_note: note.trim() || null })
 export const voidRun = (s: SupabaseClient, runId: string, reason: string) =>
   call<null>(s, 'billing_run_void', { p_run_id: runId, p_reason: reason })
+
+// --- Payment card (take a payment on the child's file) -----------------------------------------------------------
+
+export type ReceiptMethod = 'credit_card' | 'debit_card' | 'check' | 'cash' | 'other'
+export const RECEIPT_METHODS: { value: ReceiptMethod; label: string }[] = [
+  { value: 'credit_card', label: 'Credit card' },
+  { value: 'debit_card', label: 'Debit card' },
+  { value: 'check', label: 'Check' },
+  { value: 'cash', label: 'Cash' },
+  { value: 'other', label: 'Other' },
+]
+export const CARD_BRANDS = ['Visa', 'Mastercard', 'Amex', 'Discover', 'Other']
+export const receiptMethodLabel = (m: string) => RECEIPT_METHODS.find(x => x.value === m)?.label ?? chargeMethodLabel(m)
+
+export interface AccountCharge { id: string; label: string; period_start: string; amount: number; paid: number; balance: number; status: ChargeStatus }
+export interface AccountPayer {
+  payer_id: string; payer_name: string; method: string; last4: string | null; card_brand: string | null; active: boolean
+  due: number; credit: number; charges: AccountCharge[]
+}
+export interface Receipt {
+  id: string; payer_name: string; amount: number; method: ReceiptMethod; card_brand: string | null; last4: string | null
+  reference: string | null; received_on: string; note: string | null; applied: number; credit_left: number
+  voided: boolean; void_reason: string | null; recorded_by: string; created_at: string
+}
+export interface ChildAccount {
+  today: string; payers: AccountPayer[]; total_due: number; total_credit: number; unassigned_due: number; receipts: Receipt[]
+}
+export interface ReceiptInput {
+  payer_id: string; amount: string; method: ReceiptMethod; card_brand: string; last4: string; reference: string; received_on: string; note: string
+}
+
+const cents = (v: number | string) => Math.round(Number(v) * 100)
+const parseAmount = (t: string) => (t ?? '').replace(/[$,\s]/g, '')
+
+/**
+ * What a payment of `amount` would do for one payer, the way the database applies it: the oldest due first
+ * (drafts already sent to the bank are skipped), a partial amount leaves the rest due, anything over is credit.
+ */
+export function planPayment(amount: number, charges: AccountCharge[]): { applied: number; credit: number; stillDue: number; paidCharges: number } {
+  let left = cents(amount), applied = 0, n = 0, due = 0
+  for (const c of charges) {
+    if (c.status === 'ach_sent' || c.status === 'void') continue
+    const bal = cents(c.balance)
+    due += bal
+    if (left <= 0 || bal <= 0) continue
+    const part = Math.min(left, bal)
+    left -= part; applied += part; n += 1
+  }
+  return { applied: applied / 100, credit: left / 100, stillDue: (due - applied) / 100, paidCharges: n }
+}
+
+/** A payment form before it goes to the database. Returns the problem, or null */
+export function checkReceipt(r: ReceiptInput, today: string): string | null {
+  if (!r.payer_id) return 'Pick who is paying.'
+  const t = parseAmount(r.amount)
+  if (!/^\d+(\.\d{1,2})?$/.test(t) || Number(t) <= 0) return 'Enter the amount paid.'
+  if (Number(t) > 100000) return 'That amount is too large for one payment.'
+  if (!RECEIPT_METHODS.some(m => m.value === r.method)) return 'Pick how it was paid.'
+  if ((r.method === 'credit_card' || r.method === 'debit_card') && r.last4 && !/^\d{4}$/.test(r.last4)) return 'Enter only the last 4 digits of the card.'
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(r.received_on)) return 'Enter the date it was paid.'
+  if (r.received_on > today) return 'The payment date can’t be in the future.'
+  return null
+}
+
+export const loadChildAccount = (s: SupabaseClient, childId: string) => call<ChildAccount>(s, 'billing_child_account', { p_child_id: childId })
+export const receivePayment = (s: SupabaseClient, childId: string, r: ReceiptInput) => {
+  const card = r.method === 'credit_card' || r.method === 'debit_card'
+  return call<{ receipt_id: string; applied: number; credit: number; charges: number; credit_total: number }>(s, 'billing_receive_payment', {
+    p_child_id: childId,
+    p: {
+      payer_id: r.payer_id, amount: parseAmount(r.amount), method: r.method,
+      card_brand: card ? r.card_brand || null : null, last4: card ? r.last4 || null : null,
+      reference: r.reference.trim() || null, received_on: r.received_on, note: r.note.trim() || null,
+    },
+  })
+}
+export const voidReceipt = (s: SupabaseClient, receiptId: string, reason: string) =>
+  call<null>(s, 'billing_receipt_void', { p_receipt_id: receiptId, p_reason: reason })

@@ -26,7 +26,7 @@ export function chargeMethodDetail(c: Pick<Charge, 'method' | 'account_type' | '
 }
 
 const paymentLabel = (kind: string, method: string) =>
-  kind === 'ach' ? 'ACH draft cleared' : kind === 'ach_return' ? 'ACH returned' : chargeMethodLabel(method)
+  kind === 'ach' ? 'ACH draft cleared' : kind === 'ach_return' ? 'ACH returned' : kind === 'credit' ? `Paid from credit (${chargeMethodLabel(method)})` : chargeMethodLabel(method)
 
 function RecordPaymentDialog({ charge, today, onClose, onSaved }: { charge: Charge; today: string; onClose: () => void; onSaved: () => void }) {
   const [form, setForm] = useState({
@@ -136,7 +136,8 @@ export function ChargeList({ charges, today, onChanged, readOnly }: { charges: C
                     {p.note && <span className="text-muted">{p.note}</span>}
                     <span className="text-muted">by {p.recorded_by}</span>
                     {p.voided && <span className="no-underline text-red-700">voided: {p.void_reason}</span>}
-                    {!readOnly && !p.voided && p.kind === 'payment' && (
+                    {p.receipt_id && !p.voided && <span className="text-muted">· from the Payment card</span>}
+                    {!readOnly && !p.voided && p.kind === 'payment' && !p.receipt_id && (
                       <button className="inline-flex items-center gap-1 text-muted hover:text-red-700" onClick={() => undoPayment(p.id, p.amount)} title="Void this payment">
                         <Undo2 className="h-3 w-3" /> Void
                       </button>

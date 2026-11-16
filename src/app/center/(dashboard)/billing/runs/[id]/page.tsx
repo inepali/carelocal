@@ -76,7 +76,7 @@ export default function BillingRunPage() {
         <Stat label="Billing amount" value={money(run.list_total)} />
         <Stat label="Discount" value={run.discount_total > 0 ? `−${money(run.discount_total)}` : money(0)} />
         <Stat label={`Grand Total ${run.frequency === 'weekly' ? 'Weekly' : 'Monthly'}`} value={money(run.total)} strong />
-        <Stat label="By ACH" value={money(run.ach_total)} />
+        <Stat label={run.credit_total ? `By ACH · ${money(run.credit_total)} from credit` : 'By ACH'} value={money(run.ach_total)} />
         <Stat label="Paid" value={money(run.paid)} />
         <Stat label="Still due" value={voided ? '—' : money(run.balance)} strong />
       </div>
