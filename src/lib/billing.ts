@@ -16,7 +16,7 @@ export type BatchStatus = 'scheduled' | 'exported' | 'sent' | 'settled' | 'void'
 export interface PreviewLine {
   child_tuition_id: string; fee_id: string; fee_name: string; frequency: string; period_start: string; period_end: string
   list: number | null; discount: number; net: number; discount_label: string | null
-  prorate_days?: number | null; prorate_of?: number | null
+  adjustment_id?: string | null
 }
 export interface PreviewCharge {
   payer_id: string | null; payer_name: string; payer_kind: string | null; method: ChargeMethod
@@ -26,8 +26,6 @@ export interface PreviewCharge {
 export interface PreviewChild {
   child_id: string; name: string; classroom: string | null; status: string; enrolled_on: string; withdrawn_on: string | null
   billable: boolean; list: number; discount: number; total: number
-  /** New starter (fees start after the window's first day): can be billed for school days only */
-  can_prorate: boolean; prorated: boolean; prorate_days: number | null; prorate_of: number | null
   lines: PreviewLine[]; charges: PreviewCharge[]
   skipped: { frequency: string; run_id: string; reason: string }[]; warnings: string[]
 }
@@ -35,6 +33,7 @@ export interface PreviewTotals {
   children: number; billable: number; list: number; discount: number; total: number
   ach_total: number; ach_count: number; manual_total: number; unassigned_total: number
   by_frequency: { weekly: number; biweekly: number; monthly: number; one_time: number }
+  adjustments?: number   // one-time discounts in this run
 }
 export interface BillingPreview {
   frequency: RunFrequency; period_start: string; period_end: string; label: string
@@ -95,7 +94,7 @@ export const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
 ]
 
 export const chargeMethodLabel = (m: string) =>
-  ({ ach: 'ACH', credit_card: 'Card', debit_card: 'Debit card', check: 'Check', other: 'Other', unassigned: 'No payer', cash: 'Cash' } as Record<string, string>)[m] ?? m
+  ({ ach: 'ACH', credit_card: 'Card', debit_card: 'Debit card', check: 'Check', other: 'Other', unassigned: 'No payer', cash: 'Cash', credit: 'Credit' } as Record<string, string>)[m] ?? m
 
 export const CHARGE_STATUS: Record<ChargeStatus, { label: string; tone: string }> = {
   open: { label: 'Due', tone: 'border-amber-200 bg-amber-50 text-amber-800' },
@@ -179,13 +178,13 @@ async function call<T>(s: SupabaseClient, fn: string, args: Record<string, unkno
   return { success: true, data: data as T }
 }
 
-export const loadPreview = (s: SupabaseClient, centerId: string, frequency: RunFrequency, day: string, prorate: string[] = []) =>
-  call<BillingPreview>(s, 'billing_preview', { p_center_id: centerId, p_frequency: frequency, p_day: day, p_prorate: prorate })
+export const loadPreview = (s: SupabaseClient, centerId: string, frequency: RunFrequency, day: string) =>
+  call<BillingPreview>(s, 'billing_preview', { p_center_id: centerId, p_frequency: frequency, p_day: day })
 
-export const submitRun = (s: SupabaseClient, centerId: string, frequency: RunFrequency, day: string, expectedTotal: number, draftDate: string | null, note: string, prorate: string[] = []) =>
+export const submitRun = (s: SupabaseClient, centerId: string, frequency: RunFrequency, day: string, expectedTotal: number, draftDate: string | null, note: string) =>
   call<string>(s, 'billing_run_submit', {
     p_center_id: centerId, p_frequency: frequency, p_day: day, p_expected_total: expectedTotal,
-    p_draft_date: draftDate || null, p_note: note.trim() || null, p_prorate: prorate,
+    p_draft_date: draftDate || null, p_note: note.trim() || null,
   })
 
 export const loadRuns = (s: SupabaseClient, centerId: string) => call<RunSummary[]>(s, 'billing_runs_list', { p_center_id: centerId, p_limit: 52 })
@@ -209,7 +208,7 @@ export const voidRun = (s: SupabaseClient, runId: string, reason: string) =>
 
 // --- Payment card (take a payment on the child's file) -----------------------------------------------------------
 
-export type ReceiptMethod = 'credit_card' | 'debit_card' | 'check' | 'cash' | 'other'
+export type ReceiptMethod = 'credit_card' | 'debit_card' | 'check' | 'cash' | 'other' | 'credit'
 export const RECEIPT_METHODS: { value: ReceiptMethod; label: string }[] = [
   { value: 'credit_card', label: 'Credit card' },
   { value: 'debit_card', label: 'Debit card' },
@@ -218,7 +217,7 @@ export const RECEIPT_METHODS: { value: ReceiptMethod; label: string }[] = [
   { value: 'other', label: 'Other' },
 ]
 export const CARD_BRANDS = ['Visa', 'Mastercard', 'Amex', 'Discover', 'Other']
-export const receiptMethodLabel = (m: string) => RECEIPT_METHODS.find(x => x.value === m)?.label ?? chargeMethodLabel(m)
+export const receiptMethodLabel = (m: string) => m === 'credit' ? 'Credit' : RECEIPT_METHODS.find(x => x.value === m)?.label ?? chargeMethodLabel(m)
 
 export interface AccountCharge { id: string; label: string; period_start: string; amount: number; paid: number; balance: number; status: ChargeStatus }
 export interface AccountPayer {
@@ -230,8 +229,14 @@ export interface Receipt {
   reference: string | null; received_on: string; note: string | null; applied: number; credit_left: number
   voided: boolean; void_reason: string | null; recorded_by: string; created_at: string
 }
+/** A one-time discount waiting for its week's / month's billing run */
+export interface PendingAdjustment {
+  id: string; amount: number; reason: string; frequency: RunFrequency; period_start: string; label: string
+  payer_id: string | null; payer_name: string | null; created_by: string; created_at: string
+}
 export interface ChildAccount {
   today: string; payers: AccountPayer[]; total_due: number; total_credit: number; unassigned_due: number; receipts: Receipt[]
+  adjustments: PendingAdjustment[]
 }
 export interface ReceiptInput {
   payer_id: string; amount: string; method: ReceiptMethod; card_brand: string; last4: string; reference: string; received_on: string; note: string
@@ -282,5 +287,16 @@ export const receivePayment = (s: SupabaseClient, childId: string, r: ReceiptInp
     },
   })
 }
+/** One-time discount on a week / month not billed yet. day = any day in that window */
+export const addAdjustment = (s: SupabaseClient, childId: string, a: { amount: string; reason: string; frequency: RunFrequency; day: string; payer_id: string }) =>
+  call<string>(s, 'billing_adjustment_add', {
+    p_child_id: childId,
+    p: { amount: parseAmount(a.amount), reason: a.reason.trim(), frequency: a.frequency, day: a.day, payer_id: a.payer_id || null },
+  })
+export const voidAdjustment = (s: SupabaseClient, id: string) => call<null>(s, 'billing_adjustment_void', { p_adjustment_id: id, p_reason: null })
+/** Credit to account: a payment of method 'credit' with a reason (comes off what's due, the rest is credit) */
+export const giveCredit = (s: SupabaseClient, childId: string, c: { payer_id: string; amount: string; reason: string; today: string }) =>
+  receivePayment(s, childId, { payer_id: c.payer_id, amount: c.amount, method: 'credit', card_brand: '', last4: '', reference: '', received_on: c.today, note: c.reason })
+
 export const voidReceipt = (s: SupabaseClient, receiptId: string, reason: string) =>
   call<null>(s, 'billing_receipt_void', { p_receipt_id: receiptId, p_reason: reason })

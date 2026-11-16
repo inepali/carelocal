@@ -94,7 +94,7 @@ export function BillingHistoryPanel({ child }: { child: Child }) {
                         {b.lines.map((l, i) => (
                           <tr key={i}>
                             <td className="py-1">{l.fee_name}{l.discount_label ? <span className="text-muted"> · {l.discount_label}</span> : null}</td>
-                            <td className="py-1 text-right">{money(l.list)}</td>
+                            <td className="py-1 text-right">{l.frequency === 'adjustment' ? '' : money(l.list)}</td>
                             <td className="py-1 text-right">{l.discount > 0 ? `−${money(l.discount)}` : ''}</td>
                             <td className="py-1 text-right font-semibold">{money(l.net)}</td>
                           </tr>

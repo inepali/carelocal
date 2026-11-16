@@ -110,48 +110,64 @@ SELECT pg_temp.eq((pg_temp.kid(billing_preview('10000000-0000-0000-0000-00000000
 SELECT pg_temp.eq((SELECT c ->> 'payer_name' FROM jsonb_array_elements(pg_temp.kid(billing_preview('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 21), 'Joy J') -> 'charges') c), 'Joy Mom', 'her payer gets the charge');
 SELECT pg_temp.eq((pg_temp.kid(billing_preview('10000000-0000-0000-0000-000000000001', 'monthly', pg_temp.nm() + 23), 'Joy J') ->> 'billable')::boolean, false, 'weekly fee not in a monthly run');
 
--- 8. Optional proration for new starters (20270113000000_billing_proration.sql) --------------------------------
-SELECT pg_temp.eq(billing_weekdays(pg_temp.nm(), pg_temp.nm() + 6), 5, 'Mon–Sun has 5 school days');
-SELECT pg_temp.eq(billing_weekdays(pg_temp.nm() + 2, pg_temp.nm() + 6), 3, 'Wed–Sun has 3');
-DO $$
-DECLARE p jsonb := billing_preview('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 21);
-BEGIN
-  PERFORM pg_temp.eq((pg_temp.kid(p, 'Joy J') ->> 'can_prorate')::boolean, true, 'mid-week starter can be prorated');
-  PERFORM pg_temp.eq((pg_temp.kid(p, 'Joy J') ->> 'prorated')::boolean, false, 'full week unless asked');
-  PERFORM pg_temp.eq((pg_temp.kid(p, 'Ava A') ->> 'can_prorate')::boolean, false, 'a child already enrolled is not a new starter');
-END $$;
+-- 8. One-time discounts and credits (20270114000000_billing_adjustments.sql); proration was removed --------------
 RESET ROLE;
 SELECT pg_temp.as_user(NULL);
 INSERT INTO children (id, center_id, first_name, last_name, status, enrolled_on) VALUES
-  ('d0000000-0000-0000-0000-000000000011', '10000000-0000-0000-0000-000000000001', 'Kai', 'K', 'enrolled', pg_temp.nm() + 24);
+  ('d0000000-0000-0000-0000-000000000011', '10000000-0000-0000-0000-000000000001', 'Kai', 'K', 'enrolled', pg_temp.nm() + 21);
 INSERT INTO child_tuition (center_id, child_id, fee_id, start_date) VALUES
-  ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000011', 'f0000000-0000-0000-0000-000000000001', pg_temp.nm() + 24);
+  ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000011', 'f0000000-0000-0000-0000-000000000001', pg_temp.nm() + 21);
 INSERT INTO child_payment_payers (center_id, child_id, payer_name, payer_kind, share_type, share_value, fixed_frequency, method, effective_from, sort_order) VALUES
   ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000011', 'Kai subsidy', 'subsidy', 'fixed', 210, 'weekly', 'other', pg_temp.today(), 1),
   ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000011', 'Kai Mom', 'family', 'remainder', NULL, NULL, 'check', pg_temp.today(), 2);
 SET ROLE authenticated;
 SELECT pg_temp.as_user('a0000000-0000-0000-0000-000000000002');
+SELECT pg_temp.ok(NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname IN ('billing_weekdays', 'billing_prorate_line')), 'proration removed');
+SELECT pg_temp.eq((pg_temp.kid(billing_preview('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 21), 'Joy J') ->> 'total')::numeric, 285.00, 'mid-week starter: full week');
+
+-- Checks
+SELECT pg_temp.fails($$SELECT billing_adjustment_add('d0000000-0000-0000-0000-000000000010', jsonb_build_object('amount', '57', 'reason', '', 'day', pg_temp.nm() + 21))$$, 'reason');
+SELECT pg_temp.fails($$SELECT billing_adjustment_add('d0000000-0000-0000-0000-000000000010', jsonb_build_object('amount', '57', 'reason', 'x', 'day', pg_temp.today() - 14))$$, 'is over');
+SELECT pg_temp.fails($$SELECT billing_adjustment_add('d0000000-0000-0000-0000-000000000001', jsonb_build_object('amount', '10', 'reason', 'x', 'day', pg_temp.nm()))$$, 'already billed');
+SELECT pg_temp.fails(format($$SELECT billing_adjustment_add('d0000000-0000-0000-0000-000000000010', jsonb_build_object('amount', '5', 'reason', 'x', 'day', pg_temp.nm() + 21, 'payer_id', %L))$$, pg_temp.payer('Kai K', 'Kai Mom')), 'this child''s payers');
+
+CREATE TEMP TABLE adj (k text PRIMARY KEY, id uuid);
+GRANT ALL ON adj TO PUBLIC;
+INSERT INTO adj SELECT 'joy', billing_adjustment_add('d0000000-0000-0000-0000-000000000010', jsonb_build_object('amount', '57', 'reason', 'Thanksgiving closure', 'day', pg_temp.nm() + 23));
+INSERT INTO adj SELECT 'kai', billing_adjustment_add('d0000000-0000-0000-0000-000000000011', jsonb_build_object('amount', '100', 'reason', 'Referral thank-you', 'day', pg_temp.nm() + 21));
+INSERT INTO adj SELECT 'big', billing_adjustment_add('d0000000-0000-0000-0000-000000000010', jsonb_build_object('amount', '300', 'reason', 'Typo', 'day', pg_temp.nm() + 21));
 DO $$
-DECLARE
-  pr uuid[] := ARRAY['d0000000-0000-0000-0000-000000000010', 'd0000000-0000-0000-0000-000000000011']::uuid[];
-  p jsonb := billing_preview('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 21, pr);
-  full_total numeric := (billing_preview('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 21) -> 'totals' ->> 'total')::numeric;
-  run uuid;
+DECLARE p jsonb := billing_preview('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 21);
 BEGIN
-  PERFORM pg_temp.eq((pg_temp.kid(p, 'Joy J') ->> 'total')::numeric, 171.00, 'starts Wednesday: 3 of 5 days of $285');
-  PERFORM pg_temp.eq((pg_temp.kid(p, 'Joy J') ->> 'list')::numeric, 171.00, 'billing amount prorated');
-  PERFORM pg_temp.eq(pg_temp.kid(p, 'Joy J') -> 'lines' -> 0 ->> 'discount_label', 'Prorated 3 of 5 days', 'label says so');
-  PERFORM pg_temp.eq((pg_temp.kid(p, 'Kai K') ->> 'total')::numeric, 114.00, 'starts Thursday: 2 of 5 days');
-  PERFORM pg_temp.eq((SELECT (c ->> 'amount')::numeric FROM jsonb_array_elements(pg_temp.kid(p, 'Kai K') -> 'charges') c WHERE c ->> 'payer_name' = 'Kai subsidy'), 84.00, 'subsidy share prorated too');
-  PERFORM pg_temp.eq((SELECT (c ->> 'amount')::numeric FROM jsonb_array_elements(pg_temp.kid(p, 'Kai K') -> 'charges') c WHERE c ->> 'payer_name' = 'Kai Mom'), 30.00, 'mom share prorated');
-  PERFORM pg_temp.eq((p -> 'totals' ->> 'total')::numeric, full_total - 114 - 171, 'run total drops by the prorated days');
-  -- Submitting without the same prorate list is refused (the total differs)
-  PERFORM pg_temp.fails(format($q$SELECT billing_run_submit('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 21, %s)$q$, (p -> 'totals' ->> 'total')), 'changed since you looked');
-  run := billing_run_submit('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 21, (p -> 'totals' ->> 'total')::numeric, NULL, NULL, pr);
-  PERFORM pg_temp.eq((SELECT total FROM billing_bills WHERE run_id = run AND child_name = 'Joy J'), 171.00, 'bill posted prorated');
-  PERFORM pg_temp.eq((SELECT prorate_days || '/' || prorate_of FROM billing_bill_lines l JOIN billing_bills b ON b.id = l.bill_id WHERE b.run_id = run AND b.child_name = 'Kai K'), '2/5', 'days kept on the bill line');
-  PERFORM pg_temp.ok(EXISTS (SELECT 1 FROM child_audit_log WHERE summary LIKE 'Billed week of % (prorated 3 of 5 days)%'), 'logged as prorated');
+  PERFORM pg_temp.eq((pg_temp.kid(p, 'Joy J') ->> 'total')::numeric, 0.00, 'too-big discount capped at the bill');
+  PERFORM pg_temp.ok(EXISTS (SELECT 1 FROM jsonb_array_elements_text(pg_temp.kid(p, 'Joy J') -> 'warnings') w WHERE w LIKE 'Only $228.00 of the $300.00%'), 'warns about the part that does not fit');
 END $$;
+SELECT billing_adjustment_void((SELECT id FROM adj WHERE k = 'big'), 'Typo');
+SELECT pg_temp.eq(jsonb_array_length(billing_child_account('d0000000-0000-0000-0000-000000000010') -> 'adjustments'), 1, 'pending discounts listed on the Payment card');
+DO $$
+DECLARE p jsonb := billing_preview('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 21); run uuid;
+BEGIN
+  PERFORM pg_temp.eq((pg_temp.kid(p, 'Joy J') ->> 'list')::numeric, 285.00, 'billing amount unchanged');
+  PERFORM pg_temp.eq((pg_temp.kid(p, 'Joy J') ->> 'discount')::numeric, 57.00, 'one-time discount');
+  PERFORM pg_temp.eq((pg_temp.kid(p, 'Joy J') ->> 'total')::numeric, 228.00, 'total after discount');
+  PERFORM pg_temp.eq((SELECT l ->> 'discount_label' FROM jsonb_array_elements(pg_temp.kid(p, 'Joy J') -> 'lines') l WHERE l ->> 'frequency' = 'adjustment'), 'Thanksgiving closure', 'reason shows on the bill');
+  PERFORM pg_temp.eq((pg_temp.kid(p, 'Kai K') ->> 'total')::numeric, 185.00, 'Kai: 285 − 100');
+  PERFORM pg_temp.ok(NOT EXISTS (SELECT 1 FROM jsonb_array_elements(pg_temp.kid(p, 'Kai K') -> 'charges') c WHERE c ->> 'payer_name' = 'Kai Mom'), 'comes off the payer of the rest first (Mom 75 → 0)');
+  PERFORM pg_temp.eq((SELECT (c ->> 'amount')::numeric FROM jsonb_array_elements(pg_temp.kid(p, 'Kai K') -> 'charges') c WHERE c ->> 'payer_name' = 'Kai subsidy'), 185.00, 'then the next payer');
+  PERFORM pg_temp.eq((p -> 'totals' ->> 'adjustments')::numeric, 157.00, 'run shows the one-time discounts');
+  run := billing_run_submit('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 21, (p -> 'totals' ->> 'total')::numeric);
+  PERFORM pg_temp.eq((SELECT discount_amount FROM billing_bills WHERE run_id = run AND child_name = 'Joy J'), 57.00, 'bill posted with the discount');
+  PERFORM pg_temp.ok(EXISTS (SELECT 1 FROM billing_bill_lines WHERE adjustment_id = (SELECT id FROM adj WHERE k = 'joy')), 'discount linked to the bill');
+END $$;
+SELECT pg_temp.eq(jsonb_array_length(billing_child_account('d0000000-0000-0000-0000-000000000010') -> 'adjustments'), 0, 'used discounts leave the pending list');
+SELECT pg_temp.fails($$SELECT billing_adjustment_void((SELECT id FROM adj WHERE k = 'joy'))$$, 'already on a bill');
+SELECT pg_temp.fails($$SELECT billing_adjustment_add('d0000000-0000-0000-0000-000000000010', jsonb_build_object('amount', '10', 'reason', 'Late', 'day', pg_temp.nm() + 21))$$, 'already billed');
+
+-- Credit to account: for a week already billed
+SELECT pg_temp.fails(format($$SELECT billing_receive_payment('d0000000-0000-0000-0000-000000000010', jsonb_build_object('payer_id', %L, 'amount', '50', 'method', 'credit'))$$, pg_temp.payer('Joy J', 'Joy Mom')), 'reason for the credit');
+INSERT INTO rc SELECT 'cr', billing_receive_payment('d0000000-0000-0000-0000-000000000010', jsonb_build_object('payer_id', pg_temp.payer('Joy J', 'Joy Mom'), 'amount', '50', 'method', 'credit', 'note', 'Snow day'));
+SELECT pg_temp.eq((pg_temp.acct('d0000000-0000-0000-0000-000000000010', 'Joy Mom') ->> 'due')::numeric, 178.00, 'credit comes off what is due');
+SELECT pg_temp.ok(EXISTS (SELECT 1 FROM child_audit_log WHERE summary LIKE 'Credit given: $50.00 (Snow day) from Joy Mom%'), 'credit logged');
 
 RESET ROLE;
 SELECT 'RECEIPTS ALL PASSED' AS result;

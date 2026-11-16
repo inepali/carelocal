@@ -1,14 +1,15 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { CreditCard, Loader2, Undo2, Wallet } from 'lucide-react'
+import { BadgePercent, CreditCard, Loader2, Undo2, Wallet, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/lib/compliance'
 import { money, type Period } from '@/lib/tuition'
-import { showAlert, showPrompt } from '@/lib/dialog'
+import { showAlert, showConfirm, showPrompt } from '@/lib/dialog'
 import {
-  CARD_BRANDS, RECEIPT_METHODS, checkReceipt, loadChildAccount, planPayment, receiptMethodLabel, receivePayment, voidReceipt,
-  type AccountPayer, type ChildAccount, type ReceiptInput,
+  CARD_BRANDS, RECEIPT_METHODS, addAdjustment, addDays, addMonths, billingWindow, checkReceipt, defaultWindowDay, giveCredit,
+  loadChildAccount, planPayment, receiptMethodLabel, receivePayment, voidAdjustment, voidReceipt,
+  type AccountPayer, type ChildAccount, type ReceiptInput, type RunFrequency,
 } from '@/lib/billing'
 import { BTN, BTN_PRIMARY, BTN_QUIET, FLD, LBL, Modal } from './ui'
 
@@ -25,6 +26,7 @@ export function PaymentCard({ childId, childName, periods }: { childId: string; 
   const [acct, setAcct] = useState<ChildAccount | null>(null)
   const [error, setError] = useState('')
   const [paying, setPaying] = useState<string | null>(null)   // payer id the dialog opens on
+  const [adjusting, setAdjusting] = useState(false)
   const [showAll, setShowAll] = useState(false)
 
   const load = useCallback(async () => {
@@ -36,6 +38,13 @@ export function PaymentCard({ childId, childName, periods }: { childId: string; 
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load() }, [load])
+
+  async function removeDiscount(id: string, amount: number, label: string) {
+    if (!await showConfirm(`Remove the ${money(amount)} one-time discount for the ${label}?`, { title: 'Remove discount', confirmLabel: 'Remove', tone: 'danger' })) return
+    const res = await voidAdjustment(createClient(), id)
+    if (!res.success) { showAlert(res.error); return }
+    load()
+  }
 
   async function undo(id: string, amount: number, payer: string) {
     const reason = await showPrompt(`Void ${payer}'s ${money(amount)} payment? Anything it paid is due again and any credit it left is removed. Give a reason.`, '', { title: 'Void payment', tone: 'danger', confirmLabel: 'Void payment' })
@@ -56,10 +65,15 @@ export function PaymentCard({ childId, childName, periods }: { childId: string; 
     <section className="rounded-2xl border border-border bg-white p-5 shadow-sm">
       <div className="mb-3 flex items-center justify-between gap-2">
         <h3 className="text-base font-bold text-heading">Payment</h3>
-        <button className={BTN} disabled={!canPay} title={canPay ? undefined : 'Add who pays first (Payers below)'}
-          onClick={() => setPaying((acct.payers.find(p => p.active && p.due > 0) ?? acct.payers.find(p => p.active) ?? acct.payers[0]).payer_id)}>
-          <CreditCard className="h-3.5 w-3.5" /> Take payment
-        </button>
+        <div className="flex gap-1.5">
+          <button className={BTN_QUIET} disabled={!canPay} title={canPay ? 'One-time discount or credit' : 'Add who pays first (Payers below)'} onClick={() => setAdjusting(true)}>
+            <BadgePercent className="h-3.5 w-3.5" /> Adjust
+          </button>
+          <button className={BTN} disabled={!canPay} title={canPay ? undefined : 'Add who pays first (Payers below)'}
+            onClick={() => setPaying((acct.payers.find(p => p.active && p.due > 0) ?? acct.payers.find(p => p.active) ?? acct.payers[0]).payer_id)}>
+            <CreditCard className="h-3.5 w-3.5" /> Take payment
+          </button>
+        </div>
       </div>
 
       {acct.payers.length === 0 ? (
@@ -86,6 +100,19 @@ export function PaymentCard({ childId, childName, periods }: { childId: string; 
         <span className="font-black text-heading">{money(acct.total_due + acct.unassigned_due)}</span>
       </div>
       {acct.total_credit > 0 && <p className="mt-1 text-right text-xs text-emerald-700">{money(acct.total_credit)} credit is used by the next bill</p>}
+      {acct.adjustments.length > 0 && (
+        <ul className="mt-3 space-y-1 rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-xs text-emerald-900">
+          {acct.adjustments.map(a => (
+            <li key={a.id} className="flex items-baseline justify-between gap-2">
+              <span>One-time discount · {a.label}: {a.reason}{a.payer_name ? ` (${a.payer_name})` : ''}</span>
+              <span className="flex items-center gap-1.5 font-semibold">
+                −{money(a.amount)}
+                <button className="text-emerald-700 hover:text-red-700" title="Remove" onClick={() => removeDiscount(a.id, a.amount, a.label)}><X className="h-3 w-3" /></button>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
       {acct.unassigned_due > 0 && <p className="mt-1 text-xs text-amber-700">{money(acct.unassigned_due)} was billed with no payer set. Collect it from the Billing history tab.</p>}
 
       {acct.receipts.length > 0 && (
@@ -95,7 +122,7 @@ export function PaymentCard({ childId, childName, periods }: { childId: string; 
             {receipts.map(r => (
               <li key={r.id} className={`flex flex-wrap items-baseline justify-between gap-x-3 ${r.voided ? 'text-muted line-through' : ''}`}>
                 <span className="min-w-0">
-                  {formatDate(r.received_on)} · {r.payer_name} · {receiptMethodLabel(r.method)}
+                  {formatDate(r.received_on)} · {r.payer_name} · {receiptMethodLabel(r.method)}{r.method === 'credit' && r.note ? `: ${r.note}` : ''}
                   {r.card_brand ? ` ${r.card_brand}` : ''}{r.last4 ? ` ····${r.last4}` : ''}{r.reference ? ` #${r.reference}` : ''}
                   {!r.voided && r.credit_left > 0 && <span className="text-emerald-700 no-underline"> · {money(r.credit_left)} credit left</span>}
                   {r.voided && <span className="text-red-700"> · voided: {r.void_reason}</span>}
@@ -119,6 +146,10 @@ export function PaymentCard({ childId, childName, periods }: { childId: string; 
         </div>
       )}
 
+      {adjusting && (
+        <AdjustDialog acct={acct} periods={periods} childId={childId}
+          onClose={() => setAdjusting(false)} onSaved={() => { setAdjusting(false); load() }} />
+      )}
       {paying && (
         <TakePaymentDialog acct={acct} payerId={paying} periods={periods} childId={childId}
           onClose={() => setPaying(null)} onSaved={() => { setPaying(null); load() }} />
@@ -288,6 +319,106 @@ function TakePaymentDialog({ acct, payerId, periods, childId, onClose, onSaved }
               ))}
             </ul>
           </details>
+        )}
+      </div>
+    </Modal>
+  )
+}
+
+/**
+ * One-time adjustments: a discount on a week / month that isn't billed yet (shows on that bill), or a credit to the
+ * payer's account (comes off what's due now; the rest is used by the next bill).
+ */
+function AdjustDialog({ acct, periods, childId, onClose, onSaved }: {
+  acct: ChildAccount; periods: Period[]; childId: string; onClose: () => void; onSaved: () => void
+}) {
+  const frequency: RunFrequency = periods.some(p => p.frequency === 'weekly') || !periods.some(p => p.frequency === 'monthly') ? 'weekly' : 'monthly'
+  const unit = frequency === 'weekly' ? 'week' : 'month'
+  const [kind, setKind] = useState<'discount' | 'credit'>('discount')
+  const [amount, setAmount] = useState('')
+  const [reason, setReason] = useState('')
+  const [day, setDay] = useState(() => defaultWindowDay(frequency, acct.today))
+  const [payerId, setPayerId] = useState(kind === 'credit' ? acct.payers[0]?.payer_id ?? '' : '')
+  const [saving, setSaving] = useState(false)
+  const win = billingWindow(frequency, day)
+  const step = (n: number) => setDay(frequency === 'weekly' ? addDays(win.start, 7 * n) : addMonths(day, n))
+  const credit = kind === 'credit'
+  const payer = acct.payers.find(p => p.payer_id === payerId)
+  const amt = Number(amount.replace(/[$,\s]/g, ''))
+  const plan = credit && payer && amt > 0 ? planPayment(amt, payer.charges) : null
+
+  async function save() {
+    if (!/^\d+(\.\d{1,2})?$/.test(amount.replace(/[$,\s]/g, '')) || amt <= 0) { showAlert('Enter the amount.'); return }
+    if (!reason.trim()) { showAlert(credit ? 'Give a reason for the credit.' : 'Give a reason (it shows on the bill).'); return }
+    if (credit && !payerId) { showAlert('Pick whose account gets the credit.'); return }
+    setSaving(true)
+    const supabase = createClient()
+    const res = credit
+      ? await giveCredit(supabase, childId, { payer_id: payerId, amount, reason, today: acct.today })
+      : await addAdjustment(supabase, childId, { amount, reason, frequency, day: win.start, payer_id: payerId })
+    setSaving(false)
+    if (!res.success) { showAlert(res.error); return }
+    onSaved()
+  }
+
+  return (
+    <Modal title="One-time adjustment" onClose={onClose} footer={<>
+      <button className={BTN_QUIET} onClick={onClose}>Cancel</button>
+      <button className={BTN_PRIMARY} onClick={save} disabled={saving}>{saving && <Loader2 className="h-4 w-4 animate-spin" />} {credit ? 'Give credit' : 'Add discount'}</button>
+    </>}>
+      <div className="space-y-4">
+        <div className="grid gap-2 sm:grid-cols-2">
+          {([
+            ['discount', 'Discount on a bill', `Comes off one ${unit}'s bill that isn't billed yet, e.g. a holiday closure next ${unit}.`],
+            ['credit', 'Credit to account', 'For a week already billed: comes off what is due now, the rest is used by the next bill.'],
+          ] as const).map(([k, title, desc]) => (
+            <button key={k} type="button" onClick={() => { setKind(k); if (k === 'credit' && !payerId) setPayerId(acct.payers[0]?.payer_id ?? '') }}
+              className={`rounded-xl border p-3 text-left ${kind === k ? 'border-brand-600 bg-brand-50' : 'border-border hover:bg-surface'}`}>
+              <div className="text-sm font-bold text-heading">{title}</div>
+              <div className="mt-0.5 text-xs text-muted">{desc}</div>
+            </button>
+          ))}
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className={LBL}>Amount</label>
+            <input className={FLD} inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" autoFocus />
+          </div>
+          <div>
+            <label className={LBL}>{credit ? 'Whose account' : 'Comes off'} </label>
+            <select className={FLD} value={payerId} onChange={e => setPayerId(e.target.value)}>
+              {!credit && <option value="">The payer of the rest (default)</option>}
+              {acct.payers.map(p => <option key={p.payer_id} value={p.payer_id}>{p.payer_name}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {!credit && (
+          <div>
+            <span className={LBL}>Which {unit}</span>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button className={BTN_QUIET} onClick={() => step(-1)} aria-label="Previous">‹</button>
+              <span className="min-w-52 rounded-xl border border-border px-3 py-2 text-center text-sm font-semibold text-text-main">
+                {frequency === 'weekly' ? `${formatDate(win.start)} – ${formatDate(win.end)}` : new Date(`${win.start}T12:00:00`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              </span>
+              <button className={BTN_QUIET} onClick={() => step(1)} aria-label="Next">›</button>
+            </div>
+            <p className="mt-1 text-xs text-muted">It shows on that {unit}&apos;s bill as a one-time discount. If that {unit} is already billed, use a credit instead.</p>
+          </div>
+        )}
+
+        <div>
+          <label className={LBL}>Reason</label>
+          <input className={FLD} maxLength={120} value={reason} onChange={e => setReason(e.target.value)}
+            placeholder={credit ? 'e.g. Snow day closure' : 'e.g. Thanksgiving closure'} />
+        </div>
+
+        {plan && (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+            {plan.applied > 0 && <>Takes {money(plan.applied)} off what {payer?.payer_name} owes. </>}
+            {plan.credit > 0 && <>{money(plan.credit)} is kept as credit for the next bill.</>}
+          </div>
         )}
       </div>
     </Modal>
