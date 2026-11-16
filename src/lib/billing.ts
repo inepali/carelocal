@@ -133,11 +133,12 @@ export function billingWindow(frequency: RunFrequency, day: string): { start: st
   const start = monthStart(day)
   return { start, end: addDays(addMonths(start, 1), -1) }
 }
-/** The next window to bill by default: next week (from Thursday on) or this week; next month from the 20th */
+/**
+ * Child care is billed in advance (prepay), so a run opens on the next window: next week's Monday, or the 1st of
+ * next month. Children starting any day in that window are billed in it.
+ */
 export function defaultWindowDay(frequency: RunFrequency, today: string): string {
-  const x = d(today)
-  if (frequency === 'weekly') return x.getDay() >= 4 || x.getDay() === 0 ? addDays(mondayOf(today), 7) : mondayOf(today)
-  return x.getDate() >= 20 ? addMonths(today, 1) : monthStart(today)
+  return frequency === 'weekly' ? addDays(mondayOf(today), 7) : addMonths(today, 1)
 }
 
 /** Sum of money values to the cent (no float drift) */

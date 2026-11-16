@@ -94,5 +94,21 @@ SELECT pg_temp.as_user('a0000000-0000-0000-0000-000000000004');
 SELECT pg_temp.fails(format($$SELECT billing_receive_payment('d0000000-0000-0000-0000-000000000001', jsonb_build_object('payer_id', %L, 'amount', '1', 'method', 'cash'))$$, pg_temp.payer('Ava A', 'Ava Mom')), 'not turned on');
 SELECT pg_temp.fails($$INSERT INTO billing_receipts (center_id, child_id, payer_id, payer_name, amount, method, received_on) SELECT center_id, child_id, id, 'x', 1, 'cash', current_date FROM child_payment_payers LIMIT 1$$, 'permission denied');
 
+-- 7. Prepay: next week's run (made today) includes a child who starts Wednesday of that week --------------------
+RESET ROLE;
+SELECT pg_temp.as_user(NULL);
+INSERT INTO children (id, center_id, first_name, last_name, status, enrolled_on) VALUES
+  ('d0000000-0000-0000-0000-000000000010', '10000000-0000-0000-0000-000000000001', 'Joy', 'J', 'enrolled', pg_temp.nm() + 23);
+INSERT INTO child_tuition (center_id, child_id, fee_id, start_date) VALUES
+  ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000010', 'f0000000-0000-0000-0000-000000000001', pg_temp.nm() + 23);
+INSERT INTO child_payment_payers (center_id, child_id, payer_name, share_type, method, effective_from)
+VALUES ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000010', 'Joy Mom', 'remainder', 'check', pg_temp.today());
+SET ROLE authenticated;
+SELECT pg_temp.as_user('a0000000-0000-0000-0000-000000000002');
+SELECT pg_temp.ok(pg_temp.kid(billing_preview('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 14), 'Joy J') IS NULL, 'not in the week before she starts');
+SELECT pg_temp.eq((pg_temp.kid(billing_preview('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 21), 'Joy J') ->> 'total')::numeric, 285.00, 'starts Wednesday: billed the full week in advance');
+SELECT pg_temp.eq((SELECT c ->> 'payer_name' FROM jsonb_array_elements(pg_temp.kid(billing_preview('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 21), 'Joy J') -> 'charges') c), 'Joy Mom', 'her payer gets the charge');
+SELECT pg_temp.eq((pg_temp.kid(billing_preview('10000000-0000-0000-0000-000000000001', 'monthly', pg_temp.nm() + 23), 'Joy J') ->> 'billable')::boolean, false, 'weekly fee not in a monthly run');
+
 RESET ROLE;
 SELECT 'RECEIPTS ALL PASSED' AS result;

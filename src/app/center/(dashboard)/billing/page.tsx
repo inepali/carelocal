@@ -147,10 +147,25 @@ function RunBilling({ centerId }: { centerId: string }) {
             <button className={BTN_QUIET_SM} onClick={() => step(1)} aria-label="Next"><ChevronRight className="h-4 w-4" /></button>
           </div>
         </div>
+        <div className="flex gap-1.5 pb-0.5">
+          {([0, 1] as const).map(n => {
+            const today = data?.today ?? todayISO()
+            const target = frequency === 'weekly' ? addDays(billingWindow('weekly', today).start, 7 * n) : addMonths(today, n)
+            const on = billingWindow(frequency, day).start === billingWindow(frequency, target).start
+            return (
+              <button key={n} onClick={() => setDay(target)}
+                className={`rounded-full border px-3 py-1.5 text-xs font-bold ${on ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-border text-muted hover:bg-surface'}`}>
+                {n === 0 ? (frequency === 'weekly' ? 'This week' : 'This month') : (frequency === 'weekly' ? 'Next week' : 'Next month')}
+              </button>
+            )
+          })}
+        </div>
         {data && (
           <div className="pb-2 text-sm text-muted">
+            {data.period_start > data.today ? <b className="text-text-main">Prepay · </b> : null}
             {formatDate(data.period_start)} – {formatDate(data.period_end)}
-            {frequency === 'weekly' ? ' · weekly fees, plus every-2-weeks fees that start this week' : ' · monthly fees'} · one-time fees dated in the window
+            {frequency === 'weekly' ? ' · weekly fees, plus every-2-weeks fees that start this week' : ' · monthly fees'} · one-time fees dated in the window ·
+            children starting any day in it are included
           </div>
         )}
       </div>
@@ -194,7 +209,7 @@ function RunBilling({ centerId }: { centerId: string }) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {rows.map(c => <ChildRow key={c.child_id} c={c} credits={data.credits ?? {}} open={!!open[c.child_id]} toggle={() => setOpen(o => ({ ...o, [c.child_id]: !o[c.child_id] }))} />)}
+                    {rows.map(c => <ChildRow key={c.child_id} c={c} periodStart={data.period_start} credits={data.credits ?? {}} open={!!open[c.child_id]} toggle={() => setOpen(o => ({ ...o, [c.child_id]: !o[c.child_id] }))} />)}
                   </tbody>
                 </table>
               </div>
@@ -270,7 +285,7 @@ function Row({ label, value, strong, muted }: { label: string; value: string; st
   )
 }
 
-function ChildRow({ c, credits, open, toggle }: { c: PreviewChild; credits: Record<string, number>; open: boolean; toggle: () => void }) {
+function ChildRow({ c, periodStart, credits, open, toggle }: { c: PreviewChild; periodStart: string; credits: Record<string, number>; open: boolean; toggle: () => void }) {
   return (
     <>
       <tr className={`align-top ${c.billable ? '' : 'text-muted'}`}>
@@ -282,6 +297,7 @@ function ChildRow({ c, credits, open, toggle }: { c: PreviewChild; credits: Reco
               <span className="block text-xs text-muted">
                 {c.classroom ?? 'No home room'}
                 {c.withdrawn_on ? ` · withdrawn ${formatDate(c.withdrawn_on)}` : ''}
+                {c.enrolled_on >= periodStart ? <span className="ml-1 rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-px font-semibold text-emerald-800">New · starts {formatDate(c.enrolled_on)}</span> : null}
                 {c.skipped.length > 0 ? ' · already billed' : ''}
               </span>
             </span>
