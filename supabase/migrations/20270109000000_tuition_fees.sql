@@ -12,11 +12,7 @@
 --    (or on the child's start day if later). No proration.
 --  - Changes dated before today (center time) need the center's owner and a reason. Everything is logged in the
 --    child's Activity (child_audit_log) or, for the rate card, kept as dated rows.
---  - Bank details for ACH: bank name, account type, routing number (checked with the ABA checksum) and the full
---    account number, ENCRYPTED by the server (AES-256-GCM, key TUITION_BANK_KEY, never in the database) before it
---    reaches here. The app can't read the encrypted column; child_payment_bank_reveal() hands it to the server for
---    an owner or admin to see, and every look is logged. Cards: only the brand and last 4 digits (no card numbers,
---    which would put CareLocal in PCI scope).
+--  - Never stored: full bank account, routing or card numbers. Only the last 4 digits and the bank or card brand.
 --  - Nobody writes these tables directly. Owners and admins read them (RLS) and change them only through the
 --    functions below, with the module switched on.
 --  - Withdrawing a child ends their fees and payer lines on the withdrawal day.
@@ -123,8 +119,6 @@ CREATE TABLE IF NOT EXISTS public.child_payment_payers (
   bank_name                  text CHECK (bank_name IS NULL OR char_length(bank_name) <= 80),
   account_type               text CHECK (account_type IN ('checking', 'savings')),
   last4                      text CHECK (last4 IS NULL OR last4 ~ '^[0-9]{4}$'),
-  routing_number             text CHECK (routing_number IS NULL OR routing_number ~ '^[0-9]{9}$'),
-  account_number_enc         text CHECK (account_number_enc IS NULL OR (account_number_enc ~ '^v[0-9]+:' AND char_length(account_number_enc) <= 400)),
   card_brand                 text CHECK (card_brand IS NULL OR char_length(card_brand) <= 20),
   other_details              text CHECK (other_details IS NULL OR char_length(other_details) <= 300),
   draft_day                  text CHECK (draft_day IS NULL OR char_length(draft_day) <= 20),
@@ -143,8 +137,6 @@ CREATE TABLE IF NOT EXISTS public.child_payment_payers (
     OR (share_type = 'fixed' AND share_value > 0 AND fixed_frequency IS NOT NULL)
   ),
   CONSTRAINT child_payment_payers_card_or_bank CHECK (method IN ('ach', 'credit_card') OR (last4 IS NULL AND account_type IS NULL)),
-  CONSTRAINT child_payment_payers_bank_is_ach CHECK (method = 'ach' OR (routing_number IS NULL AND account_number_enc IS NULL)),
-  CONSTRAINT child_payment_payers_account_last4 CHECK (account_number_enc IS NULL OR last4 IS NOT NULL),
   CONSTRAINT child_payment_payers_dates CHECK (effective_to IS NULL OR effective_to >= effective_from)
 );
 CREATE INDEX IF NOT EXISTS child_payment_payers_child_idx ON public.child_payment_payers (child_id, effective_from);
@@ -163,23 +155,7 @@ BEGIN
   END LOOP;
 END $$;
 
--- The encrypted account number is never readable by the app: every column but that one
-REVOKE SELECT ON public.child_payment_payers FROM authenticated;
-GRANT SELECT (id, center_id, child_id, payer_guardian_id, payer_name, payer_kind, share_type, share_value, fixed_frequency,
-  method, bank_name, account_type, last4, routing_number, card_brand, other_details, draft_day, authorization_on_file,
-  authorization_signed_on, authorization_file_id, sort_order, effective_from, effective_to, created_by, created_at)
-  ON public.child_payment_payers TO authenticated;
-
 -- 6. Helpers ---------------------------------------------------------------------------------------------------
-
--- ABA routing number checksum: 3·(d1+d4+d7) + 7·(d2+d5+d8) + (d3+d6+d9) ≡ 0 (mod 10)
-CREATE OR REPLACE FUNCTION public.tuition_aba_ok(p text)
-RETURNS boolean LANGUAGE sql IMMUTABLE SET search_path = public AS $$
-  SELECT p ~ '^[0-9]{9}$' AND p <> '000000000' AND (
-    3 * (substr(p,1,1)::int + substr(p,4,1)::int + substr(p,7,1)::int)
-  + 7 * (substr(p,2,1)::int + substr(p,5,1)::int + substr(p,8,1)::int)
-  +     (substr(p,3,1)::int + substr(p,6,1)::int + substr(p,9,1)::int)) % 10 = 0
-$$;
 
 -- Owner or admin of the center, with Tuition switched on
 CREATE OR REPLACE FUNCTION public.tuition_can_manage(p_center_id uuid)
@@ -242,13 +218,6 @@ BEGIN
     period_start := p_anchor; period_end := p_anchor;
   END IF;
 END $$;
-
--- The first day a rate starting on p_day is charged: p_day if a period starts that day, else the next period start
-CREATE OR REPLACE FUNCTION public.tuition_first_charged(p_frequency text, p_anchor date, p_day date)
-RETURNS date LANGUAGE sql IMMUTABLE SET search_path = public AS $$
-  SELECT CASE WHEN p.period_start = p_day OR p_frequency = 'one_time' THEN p_day ELSE p.period_end + 1 END
-  FROM public.tuition_period(p_frequency, p_anchor, p_day) p
-$$;
 
 -- The rate of a fee in force on a day
 CREATE OR REPLACE FUNCTION public.tuition_rate_on(p_fee_id uuid, p_day date)
@@ -693,10 +662,8 @@ END $$;
 -- Replace the child's payer lines from p_from on. Lines in force before p_from end the day before; lines that would
 -- start on or after p_from are dropped. An empty list clears the plan from p_from.
 -- p_lines: [{payer_guardian_id | payer_name, payer_kind, share_type, share_value, fixed_frequency, method, bank_name,
---            account_type, last4, routing_number, account_number_enc | keep_account_from, card_brand, other_details,
---            draft_day, authorization_on_file, authorization_signed_on, authorization_file_id}]
--- ACH needs the bank name, account type, a valid routing number and the account number: either newly encrypted by the
--- server (account_number_enc + last4) or kept from an earlier payer line of this child (keep_account_from = its id).
+--            account_type, last4, card_brand, other_details, draft_day, authorization_on_file,
+--            authorization_signed_on, authorization_file_id}]
 -- Rules: at most one "the rest" line; percents add up to at most 100, and to exactly 100 when there is no
 -- "the rest" line; fixed amounts say which total (weekly, every two weeks, monthly) they come off.
 CREATE OR REPLACE FUNCTION public.child_payment_plan_save(p_child_id uuid, p_from date, p_lines jsonb, p_note text DEFAULT NULL)
@@ -704,7 +671,6 @@ RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   v_child children%ROWTYPE; v_from date; v_l jsonb; v_i integer := 0; v_rest integer; v_pct numeric; v_names text[] := '{}';
   v_gid uuid; v_gname text; v_method text; v_last4 text; v_file uuid;
-  v_routing text; v_enc text; v_keep child_payment_payers%ROWTYPE;
 BEGIN
   SELECT * INTO v_child FROM children WHERE id = p_child_id;
   IF NOT FOUND THEN RAISE EXCEPTION 'Child not found' USING ERRCODE = 'P0002'; END IF;
@@ -751,29 +717,7 @@ BEGIN
     END IF;
     v_last4 := NULLIF(btrim(COALESCE(v_l ->> 'last4', '')), '');
     IF v_last4 IS NOT NULL AND v_last4 !~ '^[0-9]{4}$' THEN
-      RAISE EXCEPTION 'Enter only the last 4 digits of the card (%)', v_gname USING ERRCODE = '22023';
-    END IF;
-    v_routing := NULL; v_enc := NULL;
-    IF v_method = 'ach' THEN
-      v_enc := NULLIF(v_l ->> 'account_number_enc', '');
-      IF v_enc IS NULL AND NULLIF(v_l ->> 'keep_account_from', '') IS NOT NULL THEN
-        SELECT * INTO v_keep FROM child_payment_payers
-        WHERE id = (v_l ->> 'keep_account_from')::uuid AND child_id = p_child_id AND account_number_enc IS NOT NULL;
-        IF NOT FOUND THEN RAISE EXCEPTION 'Enter %''s account number again', v_gname USING ERRCODE = '22023'; END IF;
-        v_enc := v_keep.account_number_enc; v_last4 := v_keep.last4;
-      END IF;
-      IF v_enc IS NULL THEN RAISE EXCEPTION 'Enter %''s bank account number', v_gname USING ERRCODE = '22023'; END IF;
-      IF v_enc !~ '^v[0-9]+:' OR v_last4 IS NULL THEN RAISE EXCEPTION 'Bank account number was not saved securely. Try again' USING ERRCODE = '22023'; END IF;
-      v_routing := NULLIF(btrim(COALESCE(v_l ->> 'routing_number', '')), '');
-      IF v_routing IS NULL OR NOT public.tuition_aba_ok(v_routing) THEN
-        RAISE EXCEPTION '%''s routing number isn''t valid. It is the 9 digits at the bottom left of a check', v_gname USING ERRCODE = '22023';
-      END IF;
-      IF NULLIF(btrim(COALESCE(v_l ->> 'bank_name', '')), '') IS NULL THEN
-        RAISE EXCEPTION 'Enter %''s bank name', v_gname USING ERRCODE = '22023';
-      END IF;
-      IF COALESCE(v_l ->> 'account_type', '') NOT IN ('checking', 'savings') THEN
-        RAISE EXCEPTION 'Pick checking or savings for %', v_gname USING ERRCODE = '22023';
-      END IF;
+      RAISE EXCEPTION 'Enter only the last 4 digits of the account or card (%)', v_gname USING ERRCODE = '22023';
     END IF;
     IF v_l ->> 'share_type' = 'fixed' AND COALESCE(NULLIF(v_l ->> 'share_value', '')::numeric, 0) <= 0 THEN
       RAISE EXCEPTION 'Give %''s fixed amount', v_gname USING ERRCODE = '22023';
@@ -787,7 +731,7 @@ BEGIN
     END IF;
 
     INSERT INTO child_payment_payers (center_id, child_id, payer_guardian_id, payer_name, payer_kind, share_type, share_value,
-      fixed_frequency, method, bank_name, account_type, last4, routing_number, account_number_enc, card_brand, other_details, draft_day,
+      fixed_frequency, method, bank_name, account_type, last4, card_brand, other_details, draft_day,
       authorization_on_file, authorization_signed_on, authorization_file_id, sort_order, effective_from, created_by)
     VALUES (v_child.center_id, p_child_id, v_gid, v_gname,
       COALESCE(NULLIF(v_l ->> 'payer_kind', ''), CASE WHEN v_gid IS NOT NULL THEN 'family' ELSE 'other' END),
@@ -798,8 +742,7 @@ BEGIN
       NULLIF(btrim(COALESCE(v_l ->> 'bank_name', '')), ''),
       CASE WHEN v_method IN ('ach', 'credit_card') THEN NULLIF(v_l ->> 'account_type', '') END,
       CASE WHEN v_method IN ('ach', 'credit_card') THEN v_last4 END,
-      v_routing, v_enc,
-      CASE WHEN v_method = 'credit_card' THEN NULLIF(btrim(COALESCE(v_l ->> 'card_brand', '')), '') END,
+      NULLIF(btrim(COALESCE(v_l ->> 'card_brand', '')), ''),
       NULLIF(btrim(COALESCE(v_l ->> 'other_details', '')), ''),
       NULLIF(btrim(COALESCE(v_l ->> 'draft_day', '')), ''),
       COALESCE((v_l ->> 'authorization_on_file')::boolean, false),
@@ -860,27 +803,11 @@ BEGIN
       'payer_guardian_id', v_gid, 'payer_name', CASE WHEN v_gid IS NULL THEN v_l.payer_name END, 'payer_kind', v_l.payer_kind,
       'share_type', v_l.share_type, 'share_value', v_l.share_value, 'fixed_frequency', v_l.fixed_frequency,
       'method', v_l.method, 'bank_name', v_l.bank_name, 'account_type', v_l.account_type, 'last4', v_l.last4,
-      'routing_number', v_l.routing_number, 'account_number_enc', v_l.account_number_enc,
       'card_brand', v_l.card_brand, 'other_details', v_l.other_details, 'draft_day', v_l.draft_day,
       'authorization_on_file', v_l.authorization_on_file, 'authorization_signed_on', v_l.authorization_signed_on));
   END LOOP;
   IF jsonb_array_length(v_lines) = 0 THEN RAISE EXCEPTION 'This child has no payers today to copy' USING ERRCODE = '22023'; END IF;
   RETURN public.child_payment_plan_save(p_to_child, p_from, v_lines, 'Copied from sibling');
-END $$;
-
--- The encrypted account number of a payer line, for the server to decrypt for an owner or admin. Logged every time.
-CREATE OR REPLACE FUNCTION public.child_payment_bank_reveal(p_payer_id uuid)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE v_p child_payment_payers%ROWTYPE;
-BEGIN
-  SELECT * INTO v_p FROM child_payment_payers WHERE id = p_payer_id;
-  IF NOT FOUND OR NOT public.tuition_can_manage(v_p.center_id) THEN
-    RAISE EXCEPTION 'You do not have access to these bank details' USING ERRCODE = '42501';
-  END IF;
-  IF v_p.account_number_enc IS NULL THEN RAISE EXCEPTION 'No bank account number on file' USING ERRCODE = 'P0002'; END IF;
-  PERFORM public.tuition_log(v_p.center_id, v_p.child_id, 'child_payment_payers', v_p.id, 'update',
-    'Bank account number viewed: ' || v_p.payer_name || ' ····' || COALESCE(v_p.last4, ''));
-  RETURN jsonb_build_object('account_number_enc', v_p.account_number_enc, 'routing_number', v_p.routing_number, 'last4', v_p.last4);
 END $$;
 
 -- 11. Everything the Fee & Payment tab shows ------------------------------------------------------------------
@@ -915,8 +842,7 @@ BEGIN
         'discount_reason', ct.discount_reason, 'override_amount', ct.override_amount,
         'created_today', ct.created_at > now() - interval '24 hours',
         'upcoming_rate', CASE WHEN ct.override_amount IS NULL THEN (
-          SELECT jsonb_build_object('amount', r.amount, 'from', r.effective_from,
-                   'charged_from', public.tuition_first_charged(f.frequency, ct.start_date, r.effective_from)) FROM tuition_fee_rates r
+          SELECT jsonb_build_object('amount', r.amount, 'from', r.effective_from) FROM tuition_fee_rates r
           WHERE r.fee_id = ct.fee_id AND r.effective_from > v_today AND r.effective_from >= ct.start_date
             AND (ct.end_date IS NULL OR r.effective_from <= ct.end_date)
           ORDER BY r.effective_from LIMIT 1) END
@@ -938,13 +864,11 @@ BEGIN
       ) ORDER BY ct.start_date DESC, f.name)
       FROM child_tuition ct JOIN tuition_fees f ON f.id = ct.fee_id WHERE ct.child_id = p_child_id), '[]'),
     'payers', COALESCE((
-      SELECT jsonb_agg((to_jsonb(pp) - 'account_number_enc') || jsonb_build_object('relationship', g.relationship,
-        'has_account_number', pp.account_number_enc IS NOT NULL) ORDER BY pp.sort_order)
+      SELECT jsonb_agg(to_jsonb(pp) || jsonb_build_object('relationship', g.relationship) ORDER BY pp.sort_order)
       FROM child_payment_payers pp LEFT JOIN child_guardians g ON g.id = pp.payer_guardian_id
       WHERE pp.child_id = p_child_id AND pp.effective_from <= v_today AND (pp.effective_to IS NULL OR pp.effective_to >= v_today)), '[]'),
     'upcoming_payers', COALESCE((
-      SELECT jsonb_agg((to_jsonb(pp) - 'account_number_enc') || jsonb_build_object('relationship', g.relationship,
-        'has_account_number', pp.account_number_enc IS NOT NULL) ORDER BY pp.effective_from, pp.sort_order)
+      SELECT jsonb_agg(to_jsonb(pp) || jsonb_build_object('relationship', g.relationship) ORDER BY pp.effective_from, pp.sort_order)
       FROM child_payment_payers pp LEFT JOIN child_guardians g ON g.id = pp.payer_guardian_id
       WHERE pp.child_id = p_child_id AND pp.effective_from > v_today), '[]'),
     'payer_history', COALESCE((
@@ -1016,14 +940,13 @@ DO $$
 DECLARE f text;
 BEGIN
   FOREACH f IN ARRAY ARRAY[
-    'tuition_can_manage(uuid)', 'tuition_money(numeric)', 'tuition_period(text, date, date)', 'tuition_first_charged(text, date, date)',
+    'tuition_can_manage(uuid)', 'tuition_money(numeric)', 'tuition_period(text, date, date)',
     'tuition_discount_label(text, numeric, text, numeric)',
     'child_tuition_on(uuid, date)', 'child_payment_split(uuid, date)',
     'tuition_fees_list(uuid)', 'tuition_fee_save(uuid, jsonb)', 'tuition_fee_delete(uuid)',
     'tuition_rate_set(uuid, numeric, date, text)', 'tuition_rate_delete(uuid, text)',
     'child_tuition_add(uuid, jsonb)', 'child_tuition_change(uuid, date, jsonb, text)', 'child_tuition_end(uuid, date, text)',
     'child_payment_plan_save(uuid, date, jsonb, text)', 'child_payment_plan_copy(uuid, uuid, date)',
-    'child_payment_bank_reveal(uuid)', 'tuition_aba_ok(text)',
     'child_tuition_get(uuid)', 'tuition_fee_options(uuid, uuid)'
   ] LOOP
     EXECUTE format('REVOKE ALL ON FUNCTION public.%s FROM PUBLIC, anon', f);

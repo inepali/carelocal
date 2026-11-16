@@ -10,7 +10,7 @@
 --    hands it to the server for the owner and logs the look.
 --  - center_bank_account_events records every add, replace, removal and view (who and when).
 --  - Nobody writes these tables directly; the functions below do, for the owner.
--- Needs: 20270109000000_tuition_fees.sql (tuition_aba_ok), can_view_confidential(), centers, center_admins.
+-- Needs: 20270109100000_tuition_bank_details.sql (tuition_aba_ok), can_view_confidential(), centers, center_admins.
 -- Rollback: supabase/rollbacks/20270110000000_center_bank_account.down.sql
 -- ============================================================
 

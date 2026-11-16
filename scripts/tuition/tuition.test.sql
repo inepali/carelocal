@@ -1,6 +1,7 @@
 -- Database tests for tuition fees and payment (20270109000000_tuition_fees.sql), on a throwaway local Postgres:
 --   createdb tui && psql -q -d tui -f scripts/tuition/stub.sql \
---     -f supabase/migrations/20270109000000_tuition_fees.sql -f scripts/tuition/tuition.test.sql
+--     -f supabase/migrations/20270109000000_tuition_fees.sql -f supabase/migrations/20270109100000_tuition_bank_details.sql \
+--     -f scripts/tuition/tuition.test.sql
 -- It prints ALL PASSED or stops at the first failed check.
 \set ON_ERROR_STOP on
 

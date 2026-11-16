@@ -1,5 +1,6 @@
 -- Database tests for the center bank account (20270110000000_center_bank_account.sql), on a throwaway local Postgres:
 --   createdb cbank && psql -q -d cbank -f scripts/tuition/stub.sql -f supabase/migrations/20270109000000_tuition_fees.sql \
+--     -f supabase/migrations/20270109100000_tuition_bank_details.sql \
 --     -f supabase/migrations/20270110000000_center_bank_account.sql -f scripts/tuition/center-bank.test.sql
 -- It prints ALL PASSED or stops at the first failed check.
 \set ON_ERROR_STOP on
