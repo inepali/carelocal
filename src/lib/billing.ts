@@ -231,6 +231,8 @@ export interface Receipt {
   reference: string | null; received_on: string; note: string | null; applied: number; credit_left: number
   paid_now?: number      // paid open bills when it was taken
   credit_used?: number   // its leftover credit used by later bills
+  paid_for?: { label: string; amount: number }[]   // bills it paid when taken
+  used_for?: { label: string; amount: number }[]   // bills that used its credit
   voided: boolean; void_reason: string | null; recorded_by: string; created_at: string
 }
 /** A one-time discount waiting for its week's / month's billing run */

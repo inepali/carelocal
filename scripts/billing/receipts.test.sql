@@ -225,5 +225,41 @@ BEGIN
   PERFORM pg_temp.eq((pg_temp.acct('d0000000-0000-0000-0000-000000000013', 'Max Dad') ->> 'due')::numeric, 0.00, 'bill paid by credit');
 END $$;
 
+-- 11. Payments follow the person when payers are re-saved (20270117000000_billing_payer_identity.sql) -------------
+RESET ROLE;
+SELECT pg_temp.as_user(NULL);
+INSERT INTO children (id, center_id, first_name, last_name, status, enrolled_on) VALUES
+  ('d0000000-0000-0000-0000-000000000014', '10000000-0000-0000-0000-000000000001', 'Ned', 'N', 'enrolled', pg_temp.nm() + 49);
+INSERT INTO child_tuition (center_id, child_id, fee_id, start_date) VALUES
+  ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000014', 'f0000000-0000-0000-0000-000000000001', pg_temp.nm() + 49);
+INSERT INTO child_guardians (id, center_id, child_id, name, is_primary) VALUES
+  ('e0000000-0000-0000-0000-000000000014', '10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000014', 'Ned Mom', true);
+INSERT INTO child_payment_payers (id, center_id, child_id, payer_guardian_id, payer_name, share_type, method, effective_from)
+VALUES ('b0000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000014',
+  'e0000000-0000-0000-0000-000000000014', 'Ned Mom', 'remainder', 'check', pg_temp.today());
+SET ROLE authenticated;
+SELECT pg_temp.as_user('a0000000-0000-0000-0000-000000000002');
+SELECT billing_receive_payment('d0000000-0000-0000-0000-000000000014', jsonb_build_object('payer_id', 'b0000000-0000-0000-0000-00000000000a', 'amount', '400', 'method', 'cash'));
+-- Payers re-saved the same day: the old line is deleted and a new one made (as child_payment_plan_save does)
+RESET ROLE;
+DELETE FROM child_payment_payers WHERE id = 'b0000000-0000-0000-0000-00000000000a';
+INSERT INTO child_payment_payers (id, center_id, child_id, payer_guardian_id, payer_name, share_type, method, effective_from)
+VALUES ('b0000000-0000-0000-0000-00000000000b', '10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000014',
+  'e0000000-0000-0000-0000-000000000014', 'Ned Mom', 'remainder', 'credit_card', pg_temp.today());
+SET ROLE authenticated;
+SELECT pg_temp.eq((SELECT count(*) FROM billing_receipts WHERE child_id = 'd0000000-0000-0000-0000-000000000014')::int, 1, 'payment kept when its payer line is deleted');
+SELECT pg_temp.eq((pg_temp.acct('d0000000-0000-0000-0000-000000000014', 'Ned Mom') ->> 'credit')::numeric, 400.00, 'credit follows Ned Mom to her new payer line');
+SELECT pg_temp.eq(jsonb_array_length(billing_child_account('d0000000-0000-0000-0000-000000000014') -> 'payers'), 1, 'one row per person');
+SELECT billing_run_submit('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 49,
+  (billing_preview('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 49) -> 'totals' ->> 'total')::numeric);
+DO $$
+DECLARE a jsonb := billing_child_account('d0000000-0000-0000-0000-000000000014');
+BEGIN
+  PERFORM pg_temp.eq((pg_temp.acct('d0000000-0000-0000-0000-000000000014', 'Ned Mom') ->> 'due')::numeric, 0.00, 'the bill used her credit');
+  PERFORM pg_temp.eq((pg_temp.acct('d0000000-0000-0000-0000-000000000014', 'Ned Mom') ->> 'credit')::numeric, 115.00, 'credit available: 400 − 285');
+  PERFORM pg_temp.eq((a -> 'receipts' -> 0 ->> 'credit_used')::numeric, 285.00, 'payment shows credit used');
+  PERFORM pg_temp.ok((a -> 'receipts' -> 0 -> 'used_for' -> 0 ->> 'label') LIKE 'week of %', 'and for which week');
+END $$;
+
 RESET ROLE;
 SELECT 'RECEIPTS ALL PASSED' AS result;

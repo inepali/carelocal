@@ -124,7 +124,8 @@ export function PaymentCard({ childId, childName, periods }: { childId: string; 
                 <span className="min-w-0">
                   {formatDate(r.received_on)} · {r.payer_name} · {receiptMethodLabel(r.method)}{r.method === 'credit' && r.note ? `: ${r.note}` : ''}
                   {r.card_brand ? ` ${r.card_brand}` : ''}{r.last4 ? ` ····${r.last4}` : ''}{r.reference ? ` #${r.reference}` : ''}
-                  {!r.voided && Number(r.credit_used) > 0 && <span className="text-muted"> · {money(r.credit_used)} credit used</span>}
+                  {!r.voided && (r.paid_for ?? []).length > 0 && <span className="text-muted"> · paid {r.paid_for!.map(w => w.label).join(', ')}</span>}
+                  {!r.voided && Number(r.credit_used) > 0 && <span className="text-muted"> · {money(r.credit_used)} credit used{(r.used_for ?? []).length ? ` (${r.used_for!.map(w => w.label).join(', ')})` : ''}</span>}
                   {!r.voided && r.credit_left > 0 && <span className="text-emerald-700"> · {money(r.credit_left)} credit available</span>}
                   {r.voided && <span className="text-red-700"> · voided: {r.void_reason}</span>}
                 </span>
