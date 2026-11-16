@@ -8,8 +8,10 @@
  */
 import {
   money, parseMoney, discountLabel, shareLabel, methodDetail, nextMonday, nextFirstOfMonth, suggestedRateStart,
-  checkPayers, previewSplit, checkDiscount, discountArgs, firstChargedOn,
+  checkPayers, previewSplit, checkDiscount, discountArgs, firstChargedOn, abaValid, accountNumberProblem, payerLinesForDb,
 } from '../../src/lib/tuition.ts'
+import { encryptAccountNumber, decryptAccountNumber, normalizeAccountNumber, bankKey } from '../../src/lib/server/bank-account.ts'
+import { randomBytes } from 'node:crypto'
 
 let passed = 0
 const failures = []
@@ -37,7 +39,7 @@ check('no discount', discountLabel({}) === '')
 check('fixed share', shareLabel({ share_type: 'fixed', share_value: 200, fixed_frequency: 'weekly' }) === '$200.00 / week')
 check('percent share', shareLabel({ share_type: 'percent', share_value: '50.00' }) === '50%')
 check('rest share', shareLabel({ share_type: 'remainder' }) === 'The rest')
-check('ACH detail', methodDetail({ method: 'ach', account_type: 'checking', last4: '4417', bank_name: 'Wells Fargo' }) === 'ACH · Checking · ····4417 · Wells Fargo')
+check('ACH detail', methodDetail({ method: 'ach', account_type: 'checking', last4: '4417', bank_name: 'Wells Fargo' }) === 'ACH · Wells Fargo · Checking · ····4417')
 check('card detail', methodDetail({ method: 'credit_card', card_brand: 'Visa', last4: '1881' }) === 'Card · Visa · ····1881')
 check('other detail', methodDetail({ method: 'other', other_details: 'Paid monthly by the state' }) === 'Other · Paid monthly by the state')
 
@@ -55,7 +57,7 @@ check('first charged: monthly on the 1st', firstChargedOn('monthly', '2026-12-01
 check('first charged: biweekly depends on the child', firstChargedOn('biweekly', '2026-11-18') === null)
 
 console.log('payer pre-check')
-const ach = { method: 'ach' }
+const ach = { method: 'ach', bank_name: 'Wells Fargo', account_type: 'checking', routing_number: '053000219', account_number: '1234567890', account_number_confirm: '1234567890' }
 check('ok: subsidy fixed + rest', checkPayers([
   { payer_name: 'Subsidy', share_type: 'fixed', share_value: '200', fixed_frequency: 'weekly', method: 'other' },
   { payer_guardian_id: 'g1', share_type: 'remainder', ...ach },
@@ -78,7 +80,50 @@ check('two "the rest"', /Only one/.test(checkPayers([
   { payer_name: 'A', share_type: 'remainder', ...ach }, { payer_name: 'B', share_type: 'remainder', ...ach },
 ]) ?? ''))
 check('no payer named', /Pick a parent/.test(checkPayers([{ share_type: 'remainder', ...ach }]) ?? ''))
-check('full account number refused', /last 4/.test(checkPayers([{ payer_name: 'A', share_type: 'remainder', method: 'ach', last4: '000123456789' }]) ?? ''))
+check('card: only last 4', /last 4/.test(checkPayers([{ payer_name: 'A', share_type: 'remainder', method: 'credit_card', last4: '4111111111111111' }]) ?? ''))
+
+console.log('bank details')
+check('ABA: Wells Fargo NC', abaValid('053000219'))
+check('ABA: JPMorgan Chase', abaValid('021000021'))
+check('ABA: bad checksum', !abaValid('053000218'))
+check('ABA: all zeros', !abaValid('000000000'))
+check('ABA: 8 digits', !abaValid('05300021'))
+check('account ok', accountNumberProblem('1234-5678 90', '1234567890', 'Mom') === null)
+check('account mismatch', /don't match/.test(accountNumberProblem('1234567890', '1234567891', 'Mom') ?? ''))
+check('account too short', /4 to 17/.test(accountNumberProblem('123', '123', 'Mom') ?? ''))
+check('account too long', /4 to 17/.test(accountNumberProblem('1'.repeat(18), '1'.repeat(18), 'Mom') ?? ''))
+check('ACH needs a routing number', /routing/.test(checkPayers([{ payer_name: 'A', share_type: 'remainder', ...ach, routing_number: '' }]) ?? ''))
+check('ACH needs a bank name', /bank name/.test(checkPayers([{ payer_name: 'A', share_type: 'remainder', ...ach, bank_name: ' ' }]) ?? ''))
+check('ACH needs the account number', /account number/.test(checkPayers([{ payer_name: 'A', share_type: 'remainder', ...ach, account_number: '', account_number_confirm: '' }]) ?? ''))
+check('ACH with the number on file needs no retyping', checkPayers([{ payer_name: 'A', share_type: 'remainder', ...ach, account_number: '', account_number_confirm: '', keep_account_from: 'p1' }]) === null)
+const db = payerLinesForDb([{ payer_guardian_id: 'g1', payer_name: 'Mom', share_type: 'remainder', ...ach, last4: '9999', card_brand: 'Visa' }, { payer_name: 'Dad', share_type: 'percent', share_value: '50%', method: 'credit_card', card_brand: 'Visa', last4: '1881', routing_number: '053000219', account_number: '1' }])
+check('never sends the plain account number', !JSON.stringify(db).includes('1234567890') && !('account_number' in db[0]) && !('account_number_confirm' in db[0]))
+check('ACH: no card fields, server sets last4', db[0].card_brand === undefined && db[0].last4 === undefined && db[0].payer_name === undefined)
+check('card: no bank fields', db[1].routing_number === undefined && db[1].bank_name === undefined && db[1].account_type === undefined && db[1].last4 === '1881' && db[1].share_value === '50')
+check('retyped number replaces the one on file', payerLinesForDb([{ payer_name: 'A', share_type: 'remainder', ...ach, keep_account_from: 'p1' }])[0].keep_account_from === undefined)
+check('kept number', payerLinesForDb([{ payer_name: 'A', share_type: 'remainder', ...ach, account_number: '', keep_account_from: 'p1' }])[0].keep_account_from === 'p1')
+
+console.log('encryption')
+const key = randomBytes(32)
+const enc = encryptAccountNumber('000123456789', key)
+check('format v1:iv:tag:ct', /^v1:[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+$/.test(enc) && !enc.includes('123456789'))
+check('round trip', decryptAccountNumber(enc, key) === '000123456789')
+check('fresh IV every time', encryptAccountNumber('000123456789', key) !== enc)
+let threw = false
+try { decryptAccountNumber(enc, randomBytes(32)) } catch { threw = true }
+check('wrong key refused', threw)
+threw = false
+const parts = enc.split(':'); const ct = Buffer.from(parts[3], 'base64'); ct[0] ^= 1
+try { decryptAccountNumber([parts[0], parts[1], parts[2], ct.toString('base64')].join(':'), key) } catch { threw = true }
+check('tampering detected', threw)
+threw = false
+try { bankKey(undefined) } catch { threw = true }
+check('missing key refused', threw)
+threw = false
+try { bankKey(Buffer.alloc(16).toString('base64')) } catch { threw = true }
+check('short key refused', threw)
+check('normalize: spaces and dashes', normalizeAccountNumber(' 1234-5678 ') === '12345678')
+check('normalize: letters refused', normalizeAccountNumber('12ab5678') === null)
 check('fixed needs an amount', /fixed amount/.test(checkPayers([{ payer_name: 'A', share_type: 'fixed', share_value: '', method: 'check' }]) ?? ''))
 
 console.log('split preview (matches public.tuition_split)')

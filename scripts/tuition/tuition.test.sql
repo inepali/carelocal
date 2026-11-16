@@ -189,7 +189,8 @@ SELECT pg_temp.eq((SELECT tuition_fee_options('10000000-0000-0000-0000-000000000
 -- Subsidy pays a fixed $200 a week, Mom pays the rest by ACH
 SELECT pg_temp.eq(child_payment_plan_save('d0000000-0000-0000-0000-000000000001', pg_temp.today(), jsonb_build_array(
   jsonb_build_object('payer_name', 'NC DCDEE subsidy', 'payer_kind', 'subsidy', 'share_type', 'fixed', 'share_value', '200', 'fixed_frequency', 'weekly', 'method', 'other', 'other_details', 'Paid monthly by the state'),
-  jsonb_build_object('payer_guardian_id', 'e0000000-0000-0000-0000-000000000001', 'share_type', 'remainder', 'method', 'ach', 'bank_name', 'Wells Fargo', 'account_type', 'checking', 'last4', '4417',
+  jsonb_build_object('payer_guardian_id', 'e0000000-0000-0000-0000-000000000001', 'share_type', 'remainder', 'method', 'ach', 'bank_name', 'Wells Fargo', 'account_type', 'checking',
+    'routing_number', '053000219', 'account_number_enc', 'v1:iv:tag:ciphertext', 'last4', '4417',
     'authorization_on_file', true, 'authorization_signed_on', '2026-01-02', 'authorization_file_id', 'f0000000-0000-0000-0000-000000000001'))), 2, 'plan saved');
 SELECT pg_temp.eq(pg_temp.paid('d0000000-0000-0000-0000-000000000001', pg_temp.today(), 'weekly', 'NC DCDEE subsidy'), 200::numeric, 'subsidy pays its fixed amount');
 SELECT pg_temp.eq(pg_temp.paid('d0000000-0000-0000-0000-000000000001', pg_temp.today(), 'weekly', 'Priya'), 56.50, 'Mom pays the rest of the week');
@@ -200,7 +201,13 @@ SELECT pg_temp.eq(pg_temp.split_of('d0000000-0000-0000-0000-000000000001', pg_te
 -- Bad plans
 SELECT pg_temp.fails($$SELECT child_payment_plan_save('d0000000-0000-0000-0000-000000000001', pg_temp.today(), '[{"payer_name":"A","share_type":"percent","share_value":"60","method":"check"},{"payer_name":"B","share_type":"percent","share_value":"30","method":"check"}]')$$, 'add up to 90%');
 SELECT pg_temp.fails($$SELECT child_payment_plan_save('d0000000-0000-0000-0000-000000000001', pg_temp.today(), '[{"payer_name":"A","share_type":"remainder","method":"check"},{"payer_name":"B","share_type":"remainder","method":"check"}]')$$, 'Only one payer');
-SELECT pg_temp.fails($$SELECT child_payment_plan_save('d0000000-0000-0000-0000-000000000001', pg_temp.today(), '[{"payer_name":"A","share_type":"remainder","method":"ach","last4":"123456789"}]')$$, 'last 4 digits');
+SELECT pg_temp.fails($$SELECT child_payment_plan_save('d0000000-0000-0000-0000-000000000001', pg_temp.today(), '[{"payer_name":"A","share_type":"remainder","method":"credit_card","last4":"123456789"}]')$$, 'last 4 digits');
+-- ACH needs bank, type, a valid routing number and an encrypted account number
+SELECT pg_temp.fails($$SELECT child_payment_plan_save('d0000000-0000-0000-0000-000000000001', pg_temp.today(), '[{"payer_name":"A","share_type":"remainder","method":"ach","bank_name":"B","account_type":"checking","routing_number":"053000219"}]')$$, 'bank account number');
+SELECT pg_temp.fails($$SELECT child_payment_plan_save('d0000000-0000-0000-0000-000000000001', pg_temp.today(), '[{"payer_name":"A","share_type":"remainder","method":"ach","bank_name":"B","account_type":"checking","routing_number":"053000218","account_number_enc":"v1:x","last4":"1234"}]')$$, 'routing number isn''t valid');
+SELECT pg_temp.fails($$SELECT child_payment_plan_save('d0000000-0000-0000-0000-000000000001', pg_temp.today(), '[{"payer_name":"A","share_type":"remainder","method":"ach","bank_name":"B","account_type":"checking","routing_number":"053000219","account_number_enc":"12345678","last4":"5678"}]')$$, 'not saved securely');
+SELECT pg_temp.fails($$SELECT child_payment_plan_save('d0000000-0000-0000-0000-000000000001', pg_temp.today(), '[{"payer_name":"A","share_type":"remainder","method":"ach","account_type":"checking","routing_number":"053000219","account_number_enc":"v1:x","last4":"5678"}]')$$, 'bank name');
+SELECT pg_temp.ok(tuition_aba_ok('021000021') AND tuition_aba_ok('053000219') AND NOT tuition_aba_ok('123456789') AND NOT tuition_aba_ok('000000000'), 'ABA checksum');
 SELECT pg_temp.fails($$SELECT child_payment_plan_save('d0000000-0000-0000-0000-000000000001', pg_temp.today(), '[{"payer_guardian_id":"e0000000-0000-0000-0000-000000000004","share_type":"remainder","method":"check"}]')$$, 'not one of this child');
 SELECT pg_temp.fails($$SELECT child_payment_plan_save('d0000000-0000-0000-0000-000000000001', pg_temp.today(), '[{"payer_name":"A","share_type":"remainder","method":"check","authorization_file_id":"f0000000-0000-0000-0000-000000000002"}]')$$, 'this child''s files');
 SELECT pg_temp.fails($$SELECT child_payment_plan_save('d0000000-0000-0000-0000-000000000001', pg_temp.today(), '[{"payer_name":"A","share_type":"half","method":"check"}]')$$, 'Pick each payer''s share');
@@ -208,8 +215,15 @@ SELECT pg_temp.fails($$SELECT child_payment_plan_save('d0000000-0000-0000-0000-0
 
 -- 50/50 between the parents from next Monday; the odd cent goes to the first parent
 SELECT child_payment_plan_save('d0000000-0000-0000-0000-000000000001', pg_temp.nm(), jsonb_build_array(
-  jsonb_build_object('payer_guardian_id', 'e0000000-0000-0000-0000-000000000001', 'share_type', 'percent', 'share_value', '50', 'method', 'ach', 'last4', '4417'),
-  jsonb_build_object('payer_guardian_id', 'e0000000-0000-0000-0000-000000000002', 'share_type', 'percent', 'share_value', '50', 'method', 'credit_card', 'card_brand', 'Visa', 'last4', '1881')));
+  jsonb_build_object('payer_guardian_id', 'e0000000-0000-0000-0000-000000000001', 'share_type', 'percent', 'share_value', '50', 'method', 'ach', 'bank_name', 'Wells Fargo', 'account_type', 'checking',
+    'routing_number', '053000219', 'keep_account_from', (SELECT id FROM child_payment_payers WHERE payer_name = 'Priya' AND effective_to IS NULL)),
+  jsonb_build_object('payer_guardian_id', 'e0000000-0000-0000-0000-000000000002', 'share_type', 'percent', 'share_value', '50', 'method', 'credit_card', 'card_brand', 'Visa', 'last4', '1881', 'routing_number', '021000021')));
+RESET ROLE;
+SELECT pg_temp.ok((SELECT account_number_enc = 'v1:iv:tag:ciphertext' AND last4 = '4417' FROM child_payment_payers WHERE payer_name = 'Priya' AND effective_from = pg_temp.nm()), 'kept account carries over');
+SELECT pg_temp.ok((SELECT routing_number IS NULL FROM child_payment_payers WHERE payer_name = 'Raj'), 'cards keep no routing number');
+SET ROLE authenticated;
+SELECT pg_temp.fails($$SELECT child_payment_plan_save('d0000000-0000-0000-0000-000000000002', pg_temp.today(), jsonb_build_array(jsonb_build_object('payer_name', 'X', 'share_type', 'remainder', 'method', 'ach', 'bank_name', 'B', 'account_type', 'checking', 'routing_number', '053000219',
+  'keep_account_from', (SELECT id FROM child_payment_payers WHERE payer_name = 'Priya' AND effective_to IS NULL))))$$, 'account number again');
 SELECT pg_temp.eq(pg_temp.paid('d0000000-0000-0000-0000-000000000001', pg_temp.today(), 'weekly', 'Priya'), 56.50, 'today the old plan holds');
 SELECT pg_temp.eq(pg_temp.paid('d0000000-0000-0000-0000-000000000001', pg_temp.nm(), 'weekly', 'Priya'), 125.38, 'first parent gets the odd cent (250.75)');
 SELECT pg_temp.eq(pg_temp.paid('d0000000-0000-0000-0000-000000000001', pg_temp.nm(), 'weekly', 'Raj'), 125.37, 'second parent');
@@ -231,8 +245,22 @@ SELECT pg_temp.eq((SELECT payer_guardian_id FROM child_payment_payers WHERE chil
   'e0000000-0000-0000-0000-000000000003'::uuid, 'Mom matched to Leo''s own contact row');
 SELECT pg_temp.ok((SELECT authorization_file_id IS NULL AND authorization_on_file FROM child_payment_payers WHERE child_id = 'd0000000-0000-0000-0000-000000000002' AND share_type = 'remainder'),
   'form stays with Mia; flag copies');
-SELECT pg_temp.as_user('a0000000-0000-0000-0000-000000000001');
-UPDATE pg_temp.ids SET id = id;  -- no-op, keeps the session warm
+RESET ROLE;
+SELECT pg_temp.ok((SELECT account_number_enc IS NOT NULL AND routing_number = '053000219' FROM child_payment_payers WHERE child_id = 'd0000000-0000-0000-0000-000000000002' AND share_type = 'remainder'),
+  'bank details copy to the sibling');
+SET ROLE authenticated;
+
+-- The encrypted number is never readable by the app, only through the logged reveal
+SELECT pg_temp.fails($$SELECT account_number_enc FROM child_payment_payers LIMIT 1$$, 'permission denied');
+SELECT pg_temp.ok((SELECT count(*) FROM child_payment_payers WHERE routing_number IS NOT NULL) > 0, 'other columns readable');
+SELECT pg_temp.ok(NOT (child_tuition_get('d0000000-0000-0000-0000-000000000001')::text LIKE '%ciphertext%'), 'tab data never carries the encrypted number');
+SELECT pg_temp.ok((SELECT (p ->> 'has_account_number')::boolean FROM jsonb_array_elements(child_tuition_get('d0000000-0000-0000-0000-000000000001') -> 'payers') p WHERE p ->> 'payer_name' = 'Priya'), 'has_account_number flag');
+SELECT pg_temp.eq((SELECT child_payment_bank_reveal(id) ->> 'account_number_enc' FROM child_payment_payers WHERE payer_name = 'Priya' AND effective_to IS NOT NULL), 'v1:iv:tag:ciphertext', 'reveal returns it to the server');
+SELECT pg_temp.ok((SELECT count(*) = 1 FROM child_audit_log WHERE summary = 'Bank account number viewed: Priya ····4417'), 'every look is logged');
+SELECT pg_temp.as_user('a0000000-0000-0000-0000-000000000004');
+SELECT pg_temp.fails($$SELECT child_payment_bank_reveal((SELECT id FROM child_payment_payers LIMIT 1))$$, 'do not have access');
+SELECT pg_temp.as_user('a0000000-0000-0000-0000-000000000003');
+SELECT pg_temp.fails($$SELECT child_payment_bank_reveal('00000000-0000-0000-0000-000000000000')$$, 'do not have access');
 SELECT pg_temp.as_user('a0000000-0000-0000-0000-000000000002');
 
 -- 5. The tab's data ---------------------------------------------------------------------------------------------

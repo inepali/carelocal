@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, ChevronDown, ChevronRight, Copy, CreditCard, FileCheck2, History, Loader2, Pencil, Plus, Receipt, Trash2, Users } from 'lucide-react'
+import { AlertTriangle, ChevronDown, ChevronRight, Copy, CreditCard, Eye, EyeOff, FileCheck2, History, Building2, Loader2, Lock, Pencil, Plus, Receipt, Trash2, Users } from 'lucide-react'
 import type { Child } from '@/lib/child-types'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/lib/compliance'
@@ -9,11 +9,12 @@ import { showAlert, showConfirm } from '@/lib/dialog'
 import {
   PAY_METHODS, PAYER_KINDS, addChildFee, changeChildFee, checkPayers, copyPayersToSibling, discountInputOf, discountLabel,
   endChildFee, frequencyLabel, frequencyPer, loadChildTuition, methodDetail, money, nextFirstOfMonth, nextMonday, payerToInput,
-  previewSplit, savePayers, shareLabel,
+  abaValid, previewSplit, shareLabel,
   type ChildFee, type ChildTuition, type DiscountInput, type PayerInput, type PayerRow, type Period,
 } from '@/lib/tuition'
 import { BTN, BTN_PRIMARY, BTN_QUIET, BTN_QUIET_SM, FLD, LBL, Modal, Pill } from './ui'
 import { DiscountFields, NO_DISCOUNT, optionLabel } from './TuitionFields'
+import { revealBankAccount, saveChildPayers } from '@/app/actions/tuition-bank.actions'
 
 const PERIOD_TITLE: Record<string, string> = { weekly: 'This week', biweekly: 'These two weeks', monthly: 'This month' }
 const range = (a: string, b: string) => (a === b ? formatDate(a) : `${formatDate(a)} – ${formatDate(b)}`)
@@ -394,7 +395,8 @@ function PayerItem({ p, files }: { p: PayerRow; files: { id: string; file_name: 
         </span>
         <Pill className="border-brand-100 bg-brand-50 text-brand-600">{shareLabel(p)}</Pill>
       </div>
-      <p className="mt-1 text-sm text-text-main">{methodDetail(p)}{p.draft_day ? ` · ${p.draft_day}` : ''}</p>
+      <p className="mt-1 text-sm text-text-main">{methodDetail({ ...p, last4: p.method === 'ach' && p.has_account_number ? null : p.last4 })}{p.draft_day ? ` · ${p.draft_day}` : ''}</p>
+      {p.method === 'ach' && (p.routing_number || p.has_account_number) && <BankNumbers p={p} />}
       <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
         {p.authorization_on_file
           ? <><FileCheck2 className="h-3.5 w-3.5 text-emerald-600" /> Authorization on file{p.authorization_signed_on ? `, signed ${formatDate(p.authorization_signed_on)}` : ''}{file ? ` · ${file.file_name}` : ''}</>
@@ -424,8 +426,7 @@ function PayersDialog({ data, onClose, onSaved }: { data: ChildTuition; onClose:
     if (problem) { showAlert(problem); return }
     if (from < today && !note.trim()) { showAlert('Give a reason for a change dated before today.'); return }
     setSaving(true)
-    const named = lines.map(l => (l.payer_guardian_id ? { ...l, payer_name: undefined } : l))
-    const res = await savePayers(createClient(), data.child.id, from, named, note)
+    const res = await saveChildPayers(data.child.id, from, lines, note)
     setSaving(false)
     if (!res.success) { showAlert(res.error); return }
     onSaved()
@@ -517,23 +518,7 @@ function PayersDialog({ data, onClose, onSaved }: { data: ChildTuition; onClose:
                   <input id={`py-draft-${i}`} value={l.draft_day ?? ''} onChange={e => update(i, { draft_day: e.target.value })} maxLength={20} className={FLD} placeholder={l.method === 'check' ? 'Mondays' : 'Friday, or the 1st'} />
                 </div>
 
-                {l.method === 'ach' && (
-                  <>
-                    <div>
-                      <label htmlFor={`py-bank-${i}`} className={LBL}>Bank</label>
-                      <input id={`py-bank-${i}`} value={l.bank_name ?? ''} onChange={e => update(i, { bank_name: e.target.value })} maxLength={80} className={FLD} placeholder="Wells Fargo" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label htmlFor={`py-acct-${i}`} className={LBL}>Account</label>
-                        <select id={`py-acct-${i}`} value={l.account_type ?? 'checking'} onChange={e => update(i, { account_type: e.target.value as PayerInput['account_type'] })} className={FLD}>
-                          <option value="checking">Checking</option><option value="savings">Savings</option>
-                        </select>
-                      </div>
-                      <Last4 id={`py-l4-${i}`} value={l.last4 ?? ''} onChange={v => update(i, { last4: v })} />
-                    </div>
-                  </>
-                )}
+                {l.method === 'ach' && <AchFields i={i} l={l} update={update} />}
                 {l.method === 'credit_card' && (
                   <>
                     <div>
@@ -617,9 +602,110 @@ function PayersDialog({ data, onClose, onSaved }: { data: ChildTuition; onClose:
           </div>
         </div>
         <PastHint show={from < today} owner={data.is_owner} />
-        <p className="text-xs text-muted">Payers before this date stay in the history. Keep the signed ACH or card form under Records and pick it above.</p>
+        <p className="text-xs text-muted">Payers before this date stay in the history. Keep the signed ACH or card form under Records and pick it above. For cards, only the brand and last 4 digits are kept.</p>
       </div>
     </Modal>
+  )
+}
+
+/**
+ * ACH details: bank, account type, routing number and the full account number (typed twice). The account number goes
+ * only to the server, which encrypts it. When one is already on file it stays unless "Replace" is used.
+ */
+function AchFields({ i, l, update }: { i: number; l: PayerInput; update: (i: number, patch: Partial<PayerInput>) => void }) {
+  const [show, setShow] = useState(false)
+  const routing = (l.routing_number ?? '').trim()
+  const routingBad = routing.length === 9 && !abaValid(routing)
+  const typed = (l.account_number ?? '').replace(/[\s-]/g, '')
+  const confirm = (l.account_number_confirm ?? '').replace(/[\s-]/g, '')
+  const digitsOnly = (v: string, max: number) => v.replace(/[^\d\s-]/g, '').slice(0, max)
+  return (
+    <div className="sm:col-span-2 grid gap-3 rounded-xl border border-border p-3 sm:grid-cols-2">
+      <p className="sm:col-span-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted"><Building2 className="h-3.5 w-3.5" /> Bank account</p>
+      <div>
+        <label htmlFor={`py-bank-${i}`} className={LBL}>Bank name *</label>
+        <input id={`py-bank-${i}`} value={l.bank_name ?? ''} onChange={e => update(i, { bank_name: e.target.value })} maxLength={80} className={FLD} placeholder="Wells Fargo" />
+      </div>
+      <div>
+        <label htmlFor={`py-acct-${i}`} className={LBL}>Account type *</label>
+        <select id={`py-acct-${i}`} value={l.account_type || 'checking'} onChange={e => update(i, { account_type: e.target.value as PayerInput['account_type'] })} className={FLD}>
+          <option value="checking">Checking</option><option value="savings">Savings</option>
+        </select>
+      </div>
+      <div>
+        <label htmlFor={`py-routing-${i}`} className={LBL}>Routing number *</label>
+        <input id={`py-routing-${i}`} value={l.routing_number ?? ''} onChange={e => update(i, { routing_number: e.target.value.replace(/\D/g, '').slice(0, 9) })}
+          inputMode="numeric" autoComplete="off" maxLength={9} className={`${FLD} font-mono`} placeholder="9 digits" />
+        <p className={`mt-1 text-[11px] ${routingBad ? 'text-red-600' : 'text-subtle'}`}>
+          {routingBad ? 'This isn’t a valid routing number. Check the 9 digits.' : 'Bottom left of a check.'}
+        </p>
+      </div>
+      {l.keep_account_from && !l.account_number ? (
+        <div className="self-start">
+          <span className={LBL}>Account number *</span>
+          <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm">
+            <span className="flex items-center gap-1.5 font-mono text-text-main"><Lock className="h-3.5 w-3.5 text-muted" /> ····{l.last4 || '••••'} on file</span>
+            <button type="button" onClick={() => update(i, { keep_account_from: null, account_number: '', account_number_confirm: '' })} className="text-xs font-semibold text-brand-600 hover:underline">Replace</button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div>
+            <label htmlFor={`py-acctno-${i}`} className={LBL}>Account number *</label>
+            <div className="relative">
+              <input id={`py-acctno-${i}`} type={show ? 'text' : 'password'} value={l.account_number ?? ''} onChange={e => update(i, { account_number: digitsOnly(e.target.value, 21) })}
+                inputMode="numeric" autoComplete="off" data-1p-ignore data-lpignore="true" className={`${FLD} pr-10 font-mono`} placeholder="4 to 17 digits" />
+              <button type="button" onClick={() => setShow(v => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted hover:bg-surface" aria-label={show ? 'Hide account number' : 'Show account number'}>
+                {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+          <div className="sm:col-start-2">
+            <label htmlFor={`py-acctno2-${i}`} className={LBL}>Confirm account number *</label>
+            <input id={`py-acctno2-${i}`} type={show ? 'text' : 'password'} value={l.account_number_confirm ?? ''} onChange={e => update(i, { account_number_confirm: digitsOnly(e.target.value, 21) })}
+              onPaste={e => e.preventDefault()} inputMode="numeric" autoComplete="off" data-1p-ignore data-lpignore="true" className={`${FLD} font-mono`} placeholder="Type it again" />
+            {confirm.length > 0 && typed.length > 0 && (
+              <p className={`mt-1 text-[11px] ${confirm === typed ? 'text-emerald-700' : 'text-red-600'}`}>{confirm === typed ? 'Numbers match.' : 'Numbers don’t match yet.'}</p>
+            )}
+          </div>
+        </>
+      )}
+      <p className="sm:col-span-2 flex items-start gap-1.5 text-[11px] text-subtle">
+        <Lock className="mt-0.5 h-3 w-3 shrink-0" /> The account number is encrypted before it is saved. Afterwards it shows as the last 4 digits; owners and admins can view it in full, and every view is logged.
+      </p>
+    </div>
+  )
+}
+
+/** Routing number and the masked account number, with a logged "Show" for owners and admins (hides again after 30s) */
+function BankNumbers({ p }: { p: PayerRow }) {
+  const [full, setFull] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    if (!full) return
+    const t = setTimeout(() => setFull(null), 30_000)
+    return () => clearTimeout(t)
+  }, [full])
+  async function reveal() {
+    if (!await showConfirm(`Show ${p.payer_name}'s full account number? This is recorded in the child's Activity.`, { title: 'Show account number', confirmLabel: 'Show' })) return
+    setBusy(true)
+    const res = await revealBankAccount(p.id)
+    setBusy(false)
+    if (!res.success) { showAlert(res.error); return }
+    setFull(res.account_number)
+  }
+  return (
+    <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs text-muted">
+      {p.routing_number && <span>Routing {p.routing_number}</span>}
+      {p.has_account_number && (
+        <span className="inline-flex items-center gap-1.5">
+          Account {full ?? `····${p.last4 ?? ''}`}
+          <button type="button" onClick={full ? () => setFull(null) : reveal} disabled={busy} className="font-sans font-semibold text-brand-600 hover:underline disabled:opacity-50">
+            {busy ? 'Opening…' : full ? 'Hide' : 'Show'}
+          </button>
+        </span>
+      )}
+    </p>
   )
 }
 

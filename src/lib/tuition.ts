@@ -81,9 +81,9 @@ export function shareLabel(p: { share_type: string; share_value?: number | strin
 export function methodDetail(p: { method: string; account_type?: string | null; last4?: string | null; bank_name?: string | null; card_brand?: string | null; other_details?: string | null }) {
   const parts = [methodLabel(p.method)]
   if (p.method === 'ach') {
+    if (p.bank_name) parts.push(p.bank_name)
     if (p.account_type) parts.push(p.account_type === 'savings' ? 'Savings' : 'Checking')
     if (p.last4) parts.push(`····${p.last4}`)
-    if (p.bank_name) parts.push(p.bank_name)
   } else if (p.method === 'credit_card') {
     if (p.card_brand) parts.push(p.card_brand)
     if (p.last4) parts.push(`····${p.last4}`)
@@ -137,6 +137,14 @@ export interface PayerInput {
   method: PayMethod
   bank_name?: string
   account_type?: 'checking' | 'savings' | ''
+  /** ACH: 9-digit ABA routing number */
+  routing_number?: string
+  /** ACH: the full account number as typed. Sent only to the server action, which encrypts it; never stored as is. */
+  account_number?: string
+  account_number_confirm?: string
+  /** ACH: keep the encrypted account number already on file on this earlier payer line (when it isn't retyped) */
+  keep_account_from?: string | null
+  /** Card: last 4 digits only. ACH: set by the server from the account number. */
   last4?: string
   card_brand?: string
   other_details?: string
@@ -144,6 +152,23 @@ export interface PayerInput {
   authorization_on_file?: boolean
   authorization_signed_on?: string
   authorization_file_id?: string | null
+}
+
+/** ABA routing number checksum: 3·(d1+d4+d7) + 7·(d2+d5+d8) + (d3+d6+d9) is a multiple of 10 */
+export function abaValid(routing: string | null | undefined): boolean {
+  const r = (routing ?? '').trim()
+  if (!/^\d{9}$/.test(r) || r === '000000000') return false
+  const d = r.split('').map(Number)
+  return (3 * (d[0] + d[3] + d[6]) + 7 * (d[1] + d[4] + d[7]) + (d[2] + d[5] + d[8])) % 10 === 0
+}
+
+/** Problem with a typed account number and its confirmation, or null. Digits only, 4–17 (spaces and dashes allowed). */
+export function accountNumberProblem(account: string | undefined, confirm: string | undefined, who: string): string | null {
+  const a = (account ?? '').replace(/[\s-]/g, '')
+  if (!a) return `Enter ${who}'s bank account number.`
+  if (!/^\d{4,17}$/.test(a)) return `${who}'s account number should be 4 to 17 digits.`
+  if (a !== (confirm ?? '').replace(/[\s-]/g, '')) return `${who}'s account numbers don't match. Type it again in both boxes.`
+  return null
 }
 
 /**
@@ -163,8 +188,17 @@ export function checkPayers(lines: PayerInput[]): string | null {
       if (l.share_type === 'percent' && v > 100) return `${who}'s percentage is more than 100%.`
       if (l.share_type === 'fixed' && parseMoney(l.share_value) == null) return `${who}'s amount should look like 200 or 200.50.`
     }
+    if (l.method === 'ach') {
+      if (!l.bank_name?.trim()) return `Enter ${who}'s bank name.`
+      if (l.account_type !== 'checking' && l.account_type !== 'savings') return `Pick checking or savings for ${who}.`
+      if (!abaValid(l.routing_number)) return `${who}'s routing number isn't valid. It is the 9 digits at the bottom left of a check.`
+      if (!l.keep_account_from) {
+        const p = accountNumberProblem(l.account_number, l.account_number_confirm, who)
+        if (p) return p
+      }
+    }
     const last4 = (l.last4 ?? '').trim()
-    if (last4 && !/^\d{4}$/.test(last4)) return `Enter only the last 4 digits of ${who}'s account or card.`
+    if (l.method === 'credit_card' && last4 && !/^\d{4}$/.test(last4)) return `Enter only the last 4 digits of ${who}'s card.`
   }
   const rests = lines.filter(l => l.share_type === 'remainder').length
   if (rests > 1) return 'Only one payer can pay "the rest".'
@@ -247,6 +281,7 @@ export interface PayerRow {
   id: string; payer_guardian_id: string | null; payer_name: string; payer_kind: PayerKind; relationship: string | null
   share_type: ShareType; share_value: number | null; fixed_frequency: 'weekly' | 'biweekly' | 'monthly' | null
   method: PayMethod; bank_name: string | null; account_type: 'checking' | 'savings' | null; last4: string | null; card_brand: string | null
+  routing_number: string | null; has_account_number: boolean
   other_details: string | null; draft_day: string | null; authorization_on_file: boolean; authorization_signed_on: string | null
   authorization_file_id: string | null; effective_from: string; effective_to: string | null; sort_order: number
 }
@@ -272,6 +307,7 @@ export function payerToInput(p: PayerRow): PayerInput {
     payer_guardian_id: p.payer_guardian_id, payer_name: p.payer_name, payer_kind: p.payer_kind,
     share_type: p.share_type, share_value: p.share_value == null ? '' : String(Number(p.share_value)),
     fixed_frequency: p.fixed_frequency ?? 'weekly', method: p.method, bank_name: p.bank_name ?? '', account_type: p.account_type ?? '',
+    routing_number: p.routing_number ?? '', keep_account_from: p.has_account_number ? p.id : null,
     last4: p.last4 ?? '', card_brand: p.card_brand ?? '', other_details: p.other_details ?? '', draft_day: p.draft_day ?? '',
     authorization_on_file: p.authorization_on_file, authorization_signed_on: p.authorization_signed_on ?? '',
     authorization_file_id: p.authorization_file_id,
@@ -367,16 +403,35 @@ export function changeChildFee(s: SupabaseClient, id: string, from: string, d: D
 export const endChildFee = (s: SupabaseClient, id: string, end: string | null, note?: string) =>
   call<null>(s, 'child_tuition_end', { p_id: id, p_end: end, p_note: note?.trim() || null })
 
-export function savePayers(s: SupabaseClient, childId: string, from: string, lines: PayerInput[], note?: string) {
-  const problem = checkPayers(lines)
-  if (problem) return Promise.resolve(fail(problem))
-  const clean = lines.map(l => ({
-    ...l,
-    share_value: l.share_type === 'remainder' ? undefined : String(l.share_value ?? '').replace(/[$,%\s]/g, ''),
-    fixed_frequency: l.share_type === 'fixed' ? (l.fixed_frequency ?? 'weekly') : undefined,
-    last4: l.last4?.trim() || undefined,
-  }))
-  return call<number>(s, 'child_payment_plan_save', { p_child_id: childId, p_from: from, p_lines: clean, p_note: note?.trim() || null })
+/**
+ * Payer lines as public.child_payment_plan_save() takes them, minus the account number (the server action encrypts
+ * it and adds account_number_enc + last4). Fields that don't belong to the line's method are dropped.
+ */
+export function payerLinesForDb(lines: PayerInput[]) {
+  return lines.map(l => {
+    const ach = l.method === 'ach'
+    return {
+      payer_guardian_id: l.payer_guardian_id || undefined,
+      payer_name: l.payer_guardian_id ? undefined : l.payer_name?.trim(),
+      payer_kind: l.payer_kind,
+      share_type: l.share_type,
+      share_value: l.share_type === 'remainder' ? undefined : String(l.share_value ?? '').replace(/[$,%\s]/g, ''),
+      fixed_frequency: l.share_type === 'fixed' ? (l.fixed_frequency ?? 'weekly') : undefined,
+      method: l.method,
+      bank_name: ach ? l.bank_name?.trim() : undefined,
+      account_type: ach ? l.account_type || 'checking' : undefined,
+      routing_number: ach ? l.routing_number?.trim() : undefined,
+      keep_account_from: ach && l.keep_account_from && !l.account_number ? l.keep_account_from : undefined,
+      last4: l.method === 'credit_card' ? l.last4?.trim() || undefined : undefined,
+      card_brand: l.method === 'credit_card' ? l.card_brand?.trim() : undefined,
+      other_details: l.other_details?.trim() || undefined,
+      draft_day: l.draft_day?.trim() || undefined,
+      authorization_on_file: !!l.authorization_on_file,
+      authorization_signed_on: l.authorization_on_file ? l.authorization_signed_on || undefined : undefined,
+      authorization_file_id: l.authorization_on_file ? l.authorization_file_id || undefined : undefined,
+    }
+  })
 }
+
 export const copyPayersToSibling = (s: SupabaseClient, fromChild: string, toChild: string, from: string) =>
   call<number>(s, 'child_payment_plan_copy', { p_from_child: fromChild, p_to_child: toChild, p_from: from })

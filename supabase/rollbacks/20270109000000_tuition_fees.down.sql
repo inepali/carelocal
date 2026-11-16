@@ -1,5 +1,6 @@
 -- Rollback for 20270109000000_tuition_fees.sql: rate card, children's fees, payers, the functions and the switch go.
--- This deletes every rate, fee assignment and payer line. Export them first if they are needed.
+-- This deletes every rate, fee assignment and payer line (with the encrypted bank account numbers). Export them first
+-- if they are needed.
 -- Activity log rows written by tuition stay (the audit trail is never edited).
 DROP TRIGGER IF EXISTS trg_tuition_on_withdraw ON public.children;
 DROP FUNCTION IF EXISTS public.tuition_on_withdraw();
@@ -7,6 +8,7 @@ DROP FUNCTION IF EXISTS public.tuition_on_withdraw();
 DROP FUNCTION IF EXISTS public.tuition_fee_options(uuid, uuid);
 DROP FUNCTION IF EXISTS public.child_tuition_get(uuid);
 DROP FUNCTION IF EXISTS public.child_payment_plan_copy(uuid, uuid, date);
+DROP FUNCTION IF EXISTS public.child_payment_bank_reveal(uuid);
 DROP FUNCTION IF EXISTS public.tuition_siblings(uuid);
 DROP FUNCTION IF EXISTS public.child_payment_plan_save(uuid, date, jsonb, text);
 DROP FUNCTION IF EXISTS public.child_tuition_end(uuid, date, text);
@@ -33,6 +35,7 @@ DROP TABLE IF EXISTS public.tuition_fees;
 
 DROP FUNCTION IF EXISTS public.tuition_first_charged(text, date, date);
 DROP FUNCTION IF EXISTS public.tuition_period(text, date, date);
+DROP FUNCTION IF EXISTS public.tuition_aba_ok(text);
 DROP FUNCTION IF EXISTS public.tuition_money(numeric);
 DROP FUNCTION IF EXISTS public.tuition_log(uuid, uuid, text, uuid, text, text);
 DROP FUNCTION IF EXISTS public.tuition_require_past_ok(uuid, date, text);
