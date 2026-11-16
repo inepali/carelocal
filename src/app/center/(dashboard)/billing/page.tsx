@@ -67,16 +67,18 @@ function RunBilling({ centerId }: { centerId: string }) {
   const [showAll, setShowAll] = useState(false)
   const [open, setOpen] = useState<Record<string, boolean>>({})
   const [submitting, setSubmitting] = useState(false)
+  // New starters to bill for their school days only (off by default: the full week / month is billed)
+  const [prorate, setProrate] = useState<string[]>([])
 
   const load = useCallback(async () => {
     setLoading(true)
-    const res = await loadPreview(createClient(), centerId, frequency, day)
+    const res = await loadPreview(createClient(), centerId, frequency, day, prorate)
     setLoading(false)
     if (!res.success) { setError(res.error); setData(null); return }
     setError('')
     setData(res.data)
     setDraftDate(res.data.default_draft_date)
-  }, [centerId, frequency, day])
+  }, [centerId, frequency, day, prorate])
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load() }, [load])
@@ -84,9 +86,13 @@ function RunBilling({ centerId }: { centerId: string }) {
   function pickFrequency(f: RunFrequency) {
     if (f === frequency) return
     setFrequency(f)
+    setProrate([])
     setDay(defaultWindowDay(f, data?.today ?? todayISO()))
   }
-  const step = (n: number) => setDay(d => frequency === 'weekly' ? addDays(billingWindow('weekly', d).start, 7 * n) : addMonths(d, n))
+  const pickDay = (d: string) => { setProrate([]); setDay(d) }
+  const step = (n: number) => pickDay(frequency === 'weekly' ? addDays(billingWindow('weekly', day).start, 7 * n) : addMonths(day, n))
+  const starters = useMemo(() => (data?.children ?? []).filter(c => c.can_prorate && c.billable), [data])
+  const toggleProrate = (id: string) => setProrate(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])
 
   const rows = useMemo(() => (data?.children ?? []).filter(c => showAll || c.billable), [data, showAll])
   const hidden = (data?.children.length ?? 0) - (data?.children.filter(c => c.billable).length ?? 0)
@@ -112,12 +118,13 @@ function RunBilling({ centerId }: { centerId: string }) {
       `Bill ${t.billable} ${t.billable === 1 ? 'child' : 'children'} for the ${data.label}: ${money(t.total)}.`,
       t.ach_count > 0 ? `${t.ach_count} ACH ${t.ach_count === 1 ? 'draft' : 'drafts'} (${money(t.ach_total)}) will be queued for ${formatDate(draftDate)}.` : 'No ACH drafts.',
       t.manual_total > 0 ? `${money(t.manual_total)} is to be paid by card, check, cash or other.` : '',
+      prorate.length ? `${prorate.length} new ${prorate.length === 1 ? 'starter is' : 'starters are'} prorated.` : '',
       warnings.length ? `${warnings.length} ${warnings.length === 1 ? 'child has' : 'children have'} warnings.` : '',
       'Each bill is posted to the child’s billing history.',
     ].filter(Boolean)
     if (!await showConfirm(lines.join('\n'), { title: 'Submit billing run', confirmLabel: 'Submit' })) return
     setSubmitting(true)
-    const res = await submitRun(createClient(), centerId, frequency, data.period_start, t.total, t.ach_count > 0 ? draftDate : null, note)
+    const res = await submitRun(createClient(), centerId, frequency, data.period_start, t.total, t.ach_count > 0 ? draftDate : null, note, prorate)
     setSubmitting(false)
     if (!res.success) { showAlert(res.error); load(); return }
     router.push(`/center/billing/runs/${res.data}`)
@@ -142,8 +149,8 @@ function RunBilling({ centerId }: { centerId: string }) {
           <div className="flex items-center gap-1.5">
             <button className={BTN_QUIET_SM} onClick={() => step(-1)} aria-label="Previous"><ChevronLeft className="h-4 w-4" /></button>
             {frequency === 'weekly'
-              ? <input type="date" className={`${FLD} w-44`} value={billingWindow('weekly', day).start} onChange={e => e.target.value && setDay(e.target.value)} aria-label="Any day in the week" />
-              : <input type="month" className={`${FLD} w-44`} value={day.slice(0, 7)} onChange={e => e.target.value && setDay(`${e.target.value}-01`)} aria-label="Month" />}
+              ? <input type="date" className={`${FLD} w-44`} value={billingWindow('weekly', day).start} onChange={e => e.target.value && pickDay(e.target.value)} aria-label="Any day in the week" />
+              : <input type="month" className={`${FLD} w-44`} value={day.slice(0, 7)} onChange={e => e.target.value && pickDay(`${e.target.value}-01`)} aria-label="Month" />}
             <button className={BTN_QUIET_SM} onClick={() => step(1)} aria-label="Next"><ChevronRight className="h-4 w-4" /></button>
           </div>
         </div>
@@ -153,7 +160,7 @@ function RunBilling({ centerId }: { centerId: string }) {
             const target = frequency === 'weekly' ? addDays(billingWindow('weekly', today).start, 7 * n) : addMonths(today, n)
             const on = billingWindow(frequency, day).start === billingWindow(frequency, target).start
             return (
-              <button key={n} onClick={() => setDay(target)}
+              <button key={n} onClick={() => pickDay(target)}
                 className={`rounded-full border px-3 py-1.5 text-xs font-bold ${on ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-border text-muted hover:bg-surface'}`}>
                 {n === 0 ? (frequency === 'weekly' ? 'This week' : 'This month') : (frequency === 'weekly' ? 'Next week' : 'Next month')}
               </button>
@@ -187,6 +194,14 @@ function RunBilling({ centerId }: { centerId: string }) {
           <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
               <h2 className="font-bold text-heading">{t.billable} {t.billable === 1 ? 'child' : 'children'} to bill · {data.label}</h2>
+              {starters.length > 0 && (
+                <label className="flex items-center gap-2 text-sm text-muted" title="Bill new starters only for the school days (Mon–Fri) from their start date">
+                  <input type="checkbox" disabled={loading}
+                    checked={starters.every(c => prorate.includes(c.child_id))}
+                    onChange={e => setProrate(e.target.checked ? starters.map(c => c.child_id) : [])} />
+                  Prorate all {starters.length} new {starters.length === 1 ? 'starter' : 'starters'}
+                </label>
+              )}
               {hidden > 0 && (
                 <label className="flex items-center gap-2 text-sm text-muted">
                   <input type="checkbox" checked={showAll} onChange={e => setShowAll(e.target.checked)} />
@@ -209,7 +224,7 @@ function RunBilling({ centerId }: { centerId: string }) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {rows.map(c => <ChildRow key={c.child_id} c={c} periodStart={data.period_start} credits={data.credits ?? {}} open={!!open[c.child_id]} toggle={() => setOpen(o => ({ ...o, [c.child_id]: !o[c.child_id] }))} />)}
+                    {rows.map(c => <ChildRow key={c.child_id} c={c} periodStart={data.period_start} credits={data.credits ?? {}} prorateOn={prorate.includes(c.child_id)} onProrate={() => toggleProrate(c.child_id)} busy={loading} open={!!open[c.child_id]} toggle={() => setOpen(o => ({ ...o, [c.child_id]: !o[c.child_id] }))} />)}
                   </tbody>
                 </table>
               </div>
@@ -285,7 +300,9 @@ function Row({ label, value, strong, muted }: { label: string; value: string; st
   )
 }
 
-function ChildRow({ c, periodStart, credits, open, toggle }: { c: PreviewChild; periodStart: string; credits: Record<string, number>; open: boolean; toggle: () => void }) {
+function ChildRow({ c, periodStart, credits, prorateOn, onProrate, busy, open, toggle }: {
+  c: PreviewChild; periodStart: string; credits: Record<string, number>; prorateOn: boolean; onProrate: () => void; busy: boolean; open: boolean; toggle: () => void
+}) {
   return (
     <>
       <tr className={`align-top ${c.billable ? '' : 'text-muted'}`}>
@@ -302,6 +319,12 @@ function ChildRow({ c, periodStart, credits, open, toggle }: { c: PreviewChild; 
               </span>
             </span>
           </button>
+          {c.can_prorate && c.billable && (
+            <label className="ml-6 mt-1.5 flex items-center gap-1.5 text-xs text-text-main">
+              <input type="checkbox" checked={prorateOn} disabled={busy} onChange={onProrate} />
+              Prorate{c.prorate_days != null && c.prorate_of ? ` (${c.prorate_days} of ${c.prorate_of} school days)` : ''}
+            </label>
+          )}
           {c.warnings.length > 0 && c.billable && <AlertTriangle className="ml-6 mt-1 h-3.5 w-3.5 text-amber-600" aria-label="Has warnings" />}
         </td>
         <td className="px-3 py-3">

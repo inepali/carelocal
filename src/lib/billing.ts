@@ -16,6 +16,7 @@ export type BatchStatus = 'scheduled' | 'exported' | 'sent' | 'settled' | 'void'
 export interface PreviewLine {
   child_tuition_id: string; fee_id: string; fee_name: string; frequency: string; period_start: string; period_end: string
   list: number | null; discount: number; net: number; discount_label: string | null
+  prorate_days?: number | null; prorate_of?: number | null
 }
 export interface PreviewCharge {
   payer_id: string | null; payer_name: string; payer_kind: string | null; method: ChargeMethod
@@ -25,6 +26,8 @@ export interface PreviewCharge {
 export interface PreviewChild {
   child_id: string; name: string; classroom: string | null; status: string; enrolled_on: string; withdrawn_on: string | null
   billable: boolean; list: number; discount: number; total: number
+  /** New starter (fees start after the window's first day): can be billed for school days only */
+  can_prorate: boolean; prorated: boolean; prorate_days: number | null; prorate_of: number | null
   lines: PreviewLine[]; charges: PreviewCharge[]
   skipped: { frequency: string; run_id: string; reason: string }[]; warnings: string[]
 }
@@ -176,13 +179,13 @@ async function call<T>(s: SupabaseClient, fn: string, args: Record<string, unkno
   return { success: true, data: data as T }
 }
 
-export const loadPreview = (s: SupabaseClient, centerId: string, frequency: RunFrequency, day: string) =>
-  call<BillingPreview>(s, 'billing_preview', { p_center_id: centerId, p_frequency: frequency, p_day: day })
+export const loadPreview = (s: SupabaseClient, centerId: string, frequency: RunFrequency, day: string, prorate: string[] = []) =>
+  call<BillingPreview>(s, 'billing_preview', { p_center_id: centerId, p_frequency: frequency, p_day: day, p_prorate: prorate })
 
-export const submitRun = (s: SupabaseClient, centerId: string, frequency: RunFrequency, day: string, expectedTotal: number, draftDate: string | null, note: string) =>
+export const submitRun = (s: SupabaseClient, centerId: string, frequency: RunFrequency, day: string, expectedTotal: number, draftDate: string | null, note: string, prorate: string[] = []) =>
   call<string>(s, 'billing_run_submit', {
     p_center_id: centerId, p_frequency: frequency, p_day: day, p_expected_total: expectedTotal,
-    p_draft_date: draftDate || null, p_note: note.trim() || null,
+    p_draft_date: draftDate || null, p_note: note.trim() || null, p_prorate: prorate,
   })
 
 export const loadRuns = (s: SupabaseClient, centerId: string) => call<RunSummary[]>(s, 'billing_runs_list', { p_center_id: centerId, p_limit: 52 })

@@ -110,5 +110,48 @@ SELECT pg_temp.eq((pg_temp.kid(billing_preview('10000000-0000-0000-0000-00000000
 SELECT pg_temp.eq((SELECT c ->> 'payer_name' FROM jsonb_array_elements(pg_temp.kid(billing_preview('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 21), 'Joy J') -> 'charges') c), 'Joy Mom', 'her payer gets the charge');
 SELECT pg_temp.eq((pg_temp.kid(billing_preview('10000000-0000-0000-0000-000000000001', 'monthly', pg_temp.nm() + 23), 'Joy J') ->> 'billable')::boolean, false, 'weekly fee not in a monthly run');
 
+-- 8. Optional proration for new starters (20270113000000_billing_proration.sql) --------------------------------
+SELECT pg_temp.eq(billing_weekdays(pg_temp.nm(), pg_temp.nm() + 6), 5, 'Mon–Sun has 5 school days');
+SELECT pg_temp.eq(billing_weekdays(pg_temp.nm() + 2, pg_temp.nm() + 6), 3, 'Wed–Sun has 3');
+DO $$
+DECLARE p jsonb := billing_preview('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 21);
+BEGIN
+  PERFORM pg_temp.eq((pg_temp.kid(p, 'Joy J') ->> 'can_prorate')::boolean, true, 'mid-week starter can be prorated');
+  PERFORM pg_temp.eq((pg_temp.kid(p, 'Joy J') ->> 'prorated')::boolean, false, 'full week unless asked');
+  PERFORM pg_temp.eq((pg_temp.kid(p, 'Ava A') ->> 'can_prorate')::boolean, false, 'a child already enrolled is not a new starter');
+END $$;
+RESET ROLE;
+SELECT pg_temp.as_user(NULL);
+INSERT INTO children (id, center_id, first_name, last_name, status, enrolled_on) VALUES
+  ('d0000000-0000-0000-0000-000000000011', '10000000-0000-0000-0000-000000000001', 'Kai', 'K', 'enrolled', pg_temp.nm() + 24);
+INSERT INTO child_tuition (center_id, child_id, fee_id, start_date) VALUES
+  ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000011', 'f0000000-0000-0000-0000-000000000001', pg_temp.nm() + 24);
+INSERT INTO child_payment_payers (center_id, child_id, payer_name, payer_kind, share_type, share_value, fixed_frequency, method, effective_from, sort_order) VALUES
+  ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000011', 'Kai subsidy', 'subsidy', 'fixed', 210, 'weekly', 'other', pg_temp.today(), 1),
+  ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000011', 'Kai Mom', 'family', 'remainder', NULL, NULL, 'check', pg_temp.today(), 2);
+SET ROLE authenticated;
+SELECT pg_temp.as_user('a0000000-0000-0000-0000-000000000002');
+DO $$
+DECLARE
+  pr uuid[] := ARRAY['d0000000-0000-0000-0000-000000000010', 'd0000000-0000-0000-0000-000000000011']::uuid[];
+  p jsonb := billing_preview('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 21, pr);
+  full_total numeric := (billing_preview('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 21) -> 'totals' ->> 'total')::numeric;
+  run uuid;
+BEGIN
+  PERFORM pg_temp.eq((pg_temp.kid(p, 'Joy J') ->> 'total')::numeric, 171.00, 'starts Wednesday: 3 of 5 days of $285');
+  PERFORM pg_temp.eq((pg_temp.kid(p, 'Joy J') ->> 'list')::numeric, 171.00, 'billing amount prorated');
+  PERFORM pg_temp.eq(pg_temp.kid(p, 'Joy J') -> 'lines' -> 0 ->> 'discount_label', 'Prorated 3 of 5 days', 'label says so');
+  PERFORM pg_temp.eq((pg_temp.kid(p, 'Kai K') ->> 'total')::numeric, 114.00, 'starts Thursday: 2 of 5 days');
+  PERFORM pg_temp.eq((SELECT (c ->> 'amount')::numeric FROM jsonb_array_elements(pg_temp.kid(p, 'Kai K') -> 'charges') c WHERE c ->> 'payer_name' = 'Kai subsidy'), 84.00, 'subsidy share prorated too');
+  PERFORM pg_temp.eq((SELECT (c ->> 'amount')::numeric FROM jsonb_array_elements(pg_temp.kid(p, 'Kai K') -> 'charges') c WHERE c ->> 'payer_name' = 'Kai Mom'), 30.00, 'mom share prorated');
+  PERFORM pg_temp.eq((p -> 'totals' ->> 'total')::numeric, full_total - 114 - 171, 'run total drops by the prorated days');
+  -- Submitting without the same prorate list is refused (the total differs)
+  PERFORM pg_temp.fails(format($q$SELECT billing_run_submit('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 21, %s)$q$, (p -> 'totals' ->> 'total')), 'changed since you looked');
+  run := billing_run_submit('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 21, (p -> 'totals' ->> 'total')::numeric, NULL, NULL, pr);
+  PERFORM pg_temp.eq((SELECT total FROM billing_bills WHERE run_id = run AND child_name = 'Joy J'), 171.00, 'bill posted prorated');
+  PERFORM pg_temp.eq((SELECT prorate_days || '/' || prorate_of FROM billing_bill_lines l JOIN billing_bills b ON b.id = l.bill_id WHERE b.run_id = run AND b.child_name = 'Kai K'), '2/5', 'days kept on the bill line');
+  PERFORM pg_temp.ok(EXISTS (SELECT 1 FROM child_audit_log WHERE summary LIKE 'Billed week of % (prorated 3 of 5 days)%'), 'logged as prorated');
+END $$;
+
 RESET ROLE;
 SELECT 'RECEIPTS ALL PASSED' AS result;
