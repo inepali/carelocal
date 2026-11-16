@@ -312,7 +312,7 @@ function ChildRow({ c, periodStart, credits, open, toggle }: { c: PreviewChild; 
             {c.charges.map((ch, i) => (
               <Pill key={i} className={ch.method === 'unassigned' ? 'border-red-200 bg-red-50 text-red-700'
                 : ch.ach_ready ? 'border-sky-200 bg-sky-50 text-sky-800' : 'border-border bg-surface text-text-main'}>
-                {ch.payer_name} · {chargeMethodLabel(ch.method)}{ch.method === 'ach' && !ch.ach_ready ? ' (by hand)' : ''} · {money(ch.amount)}
+                {ch.payer_name}{ch.primary_default ? ' (primary contact)' : ''} · {chargeMethodLabel(ch.method)}{ch.method === 'ach' && !ch.ach_ready ? ' (by hand)' : ''} · {money(ch.amount)}
                 {ch.payer_id && Number(credits[ch.payer_id]) > 0 ? ` · ${money(Math.min(Number(credits[ch.payer_id]), ch.amount))} from credit` : ''}
               </Pill>
             ))}

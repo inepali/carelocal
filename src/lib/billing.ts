@@ -22,6 +22,8 @@ export interface PreviewCharge {
   payer_id: string | null; payer_name: string; payer_kind: string | null; method: ChargeMethod
   account_type?: string | null; last4?: string | null; card_brand?: string | null
   amount: number; ach_ready: boolean; problem: string | null
+  /** No payers set: the primary contact pays by check (saved as the payer when the run is submitted) */
+  guardian_id?: string | null; primary_default?: boolean
 }
 export interface PreviewChild {
   child_id: string; name: string; classroom: string | null; status: string; enrolled_on: string; withdrawn_on: string | null

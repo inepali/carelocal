@@ -169,5 +169,32 @@ INSERT INTO rc SELECT 'cr', billing_receive_payment('d0000000-0000-0000-0000-000
 SELECT pg_temp.eq((pg_temp.acct('d0000000-0000-0000-0000-000000000010', 'Joy Mom') ->> 'due')::numeric, 178.00, 'credit comes off what is due');
 SELECT pg_temp.ok(EXISTS (SELECT 1 FROM child_audit_log WHERE summary LIKE 'Credit given: $50.00 (Snow day) from Joy Mom%'), 'credit logged');
 
+-- 9. No payers set: the primary contact pays (20270115000000_billing_primary_payer.sql) -------------------------
+RESET ROLE;
+SELECT pg_temp.as_user(NULL);
+INSERT INTO children (id, center_id, first_name, last_name, status, enrolled_on) VALUES
+  ('d0000000-0000-0000-0000-000000000012', '10000000-0000-0000-0000-000000000001', 'Lea', 'L', 'enrolled', pg_temp.nm() + 28);
+INSERT INTO child_tuition (center_id, child_id, fee_id, start_date) VALUES
+  ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000012', 'f0000000-0000-0000-0000-000000000001', pg_temp.nm() + 28);
+INSERT INTO child_guardians (center_id, child_id, name, is_primary) VALUES
+  ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000012', 'Lea Aunt', false),
+  ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000012', 'Lea Dad', true);
+SET ROLE authenticated;
+SELECT pg_temp.as_user('a0000000-0000-0000-0000-000000000002');
+DO $$
+DECLARE p jsonb := billing_preview('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 28); run uuid;
+BEGIN
+  PERFORM pg_temp.eq((SELECT c ->> 'payer_name' FROM jsonb_array_elements(pg_temp.kid(p, 'Lea L') -> 'charges') c), 'Lea Dad', 'primary contact pays');
+  PERFORM pg_temp.eq((SELECT c ->> 'method' FROM jsonb_array_elements(pg_temp.kid(p, 'Lea L') -> 'charges') c), 'check', 'by check');
+  PERFORM pg_temp.eq(jsonb_array_length(pg_temp.kid(p, 'Lea L') -> 'warnings'), 0, 'no "no payer" warning');
+  PERFORM pg_temp.eq((SELECT c ->> 'method' FROM jsonb_array_elements(pg_temp.kid(p, 'Cal C') -> 'charges') c), 'unassigned', 'no payers and no primary: still unassigned');
+  run := billing_run_submit('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 28, (p -> 'totals' ->> 'total')::numeric);
+  PERFORM pg_temp.ok((pg_temp.charge(run, 'Lea L', 'Lea Dad')).payer_id IS NOT NULL, 'charge linked to a payer');
+END $$;
+SELECT pg_temp.eq((SELECT share_type || '/' || method FROM child_payment_payers WHERE child_id = 'd0000000-0000-0000-0000-000000000012'), 'remainder/check', 'saved as the payer of the rest, by check');
+SELECT pg_temp.eq((pg_temp.acct('d0000000-0000-0000-0000-000000000012', 'Lea Dad') ->> 'due')::numeric, 285.00, 'shows on the Payment card');
+SELECT pg_temp.ok(EXISTS (SELECT 1 FROM child_audit_log WHERE summary LIKE 'Primary contact Lea Dad set as payer%'), 'logged');
+SELECT pg_temp.eq((SELECT c ->> 'payer_name' FROM jsonb_array_elements(pg_temp.kid(billing_preview('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm() + 35), 'Lea L') -> 'charges') c), 'Lea Dad', 'next week uses the saved payer');
+
 RESET ROLE;
 SELECT 'RECEIPTS ALL PASSED' AS result;
