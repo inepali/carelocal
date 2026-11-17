@@ -141,7 +141,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
 
   // Modules a super admin switches on per center live in the header, so the sidebar keeps the everyday pages
   const HEADER_NAVIGATION = [
-    ...(canOpenRoster({ domainKey, role, childFilesEnabled, rosterEnabled }) ? [{ name: 'Live roster', href: '/center/roster', icon: LayoutGrid }] : []),
+    ...(canOpenRoster({ domainKey, role, childFilesEnabled, rosterEnabled }) ? [{ name: 'Live Roster', href: '/center/roster', icon: LayoutGrid }] : []),
     ...(canManageSchedule({ role, scheduleEnabled }) ? [{ name: 'Schedule', href: '/center/schedule', icon: CalendarClock }] : []),
     ...(canOpenChildFiles({ domainKey, role, childFilesEnabled }) ? [{ name: 'Children', href: '/center/children', icon: Baby }] : []),
     ...(domainKey === 'childcare' && lessonPlansEnabled ? [{ name: 'Lesson Plans', href: '/center/lesson-plans/weekly', icon: NotebookPen }] : []),
