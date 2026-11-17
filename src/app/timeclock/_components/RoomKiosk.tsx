@@ -9,10 +9,11 @@ import { clockCloseRoom, clockRoomOpen } from '@/app/actions/time-clock-kiosk.ac
 const IDLE_MS = 3 * 60_000
 
 /**
- * My Room on the Time Clock tablet. The teacher is signed in here only for this: Done, 3 minutes without a touch,
- * or the 15-minute limit signs them out of the tablet and goes back to the PIN pad.
+ * My Room on the Time Clock tablet, laid out like My Room in the staff portal (same header and page, scrolls the
+ * same way) but without the portal menu. The teacher is signed in here only for this: Done, 3 minutes without a
+ * touch, or the 15-minute limit signs them out of the tablet and goes back to the PIN pad.
  */
-export function RoomKiosk({ centerName }: { centerName: string }) {
+export function RoomKiosk({ userName }: { userName: string }) {
   const router = useRouter()
   const [closing, setClosing] = useState(false)
   const [left, setLeft] = useState(IDLE_MS / 1000)
@@ -28,8 +29,9 @@ export function RoomKiosk({ centerName }: { centerName: string }) {
 
   useEffect(() => {
     const touch = () => { lastTouch.current = Date.now() }
-    window.addEventListener('pointerdown', touch, true)
-    window.addEventListener('keydown', touch, true)
+    // Scrolling counts as using the page too
+    const events = ['pointerdown', 'keydown', 'wheel', 'touchmove', 'scroll'] as const
+    events.forEach(e => window.addEventListener(e, touch, { capture: true, passive: true }))
     const tick = setInterval(() => {
       const rest = Math.max(0, Math.ceil((IDLE_MS - (Date.now() - lastTouch.current)) / 1000))
       setLeft(rest)
@@ -37,28 +39,33 @@ export function RoomKiosk({ centerName }: { centerName: string }) {
     }, 1000)
     const limit = setInterval(async () => { if (!(await clockRoomOpen())) close() }, 60_000)
     return () => {
-      window.removeEventListener('pointerdown', touch, true)
-      window.removeEventListener('keydown', touch, true)
+      events.forEach(e => window.removeEventListener(e, touch, { capture: true }))
       clearInterval(tick)
       clearInterval(limit)
     }
   }, [close])
 
   return (
-    <div className="min-h-dvh">
-      <div className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-border bg-white/95 px-4 py-2 backdrop-blur">
-        <p className="text-sm text-text-muted">
-          <span className="font-semibold text-text-main">{centerName}</span> · My Room on the Time Clock
-          {left <= 60 && <span className="ml-2 font-semibold text-amber-700">Closing in {left}s</span>}
-        </p>
-        <button type="button" onClick={close} disabled={closing}
-          className="flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
-          {closing ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />} Done
-        </button>
-      </div>
-      <div className="p-3 sm:p-5">
-        <TeacherRoster />
-      </div>
+    <div className="staff-shell flex min-h-screen bg-surface font-sans">
+      <main className="flex min-h-screen flex-1 flex-col overflow-x-hidden">
+        <header className="glass sticky top-0 z-10 flex h-20 items-center justify-between gap-4 border-b border-border px-4 md:px-8">
+          <div className="min-w-0">
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted">My Room</div>
+            <div className="truncate text-lg font-bold text-heading">{userName}</div>
+          </div>
+          <div className="flex shrink-0 items-center gap-3">
+            {left <= 60 && <span className="text-sm font-semibold text-amber-700">Closing in {left}s</span>}
+            <button type="button" onClick={close} disabled={closing}
+              className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-muted transition-colors hover:border-brand-600 hover:text-brand-600 disabled:opacity-60">
+              {closing ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+              Done
+            </button>
+          </div>
+        </header>
+        <div className="flex-1 p-4 md:p-8">
+          <TeacherRoster />
+        </div>
+      </main>
     </div>
   )
 }

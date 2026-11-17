@@ -113,7 +113,7 @@ export function TimeClock({ centerName, timeZone, today, deviceName }: { centerN
   const locked = Date.now() < lockedUntil
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-3xl flex-col px-5 py-6" onPointerDown={touch}>
+    <div className="mx-auto flex min-h-dvh max-w-3xl select-none flex-col px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))]" onPointerDown={touch}>
       <header className="flex items-start justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-muted">{centerName}</p>

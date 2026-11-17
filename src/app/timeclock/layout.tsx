@@ -16,7 +16,7 @@ export const viewport: Viewport = {
 /** The center's Time Clock tablet: no account, no site navigation */
 export default function TimeClockLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-dvh select-none bg-surface pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] text-text-main">
+    <div className="min-h-dvh bg-surface text-text-main">
       {children}
     </div>
   )
