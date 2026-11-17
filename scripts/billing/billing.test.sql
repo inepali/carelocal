@@ -66,10 +66,10 @@ INSERT INTO children (id, center_id, first_name, last_name, classroom_id, status
   ('d0000000-0000-0000-0000-000000000007', '10000000-0000-0000-0000-000000000001', 'Gus', 'G', NULL, 'enrolled', pg_temp.today(), NULL);
 
 INSERT INTO child_tuition (center_id, child_id, fee_id, start_date, end_date, discount_type, discount_value, discount_reason) VALUES
-  ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000001', pg_temp.today(), NULL, 'percent', 10, 'Sibling'),
-  ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000002', pg_temp.today(), NULL, NULL, NULL, NULL),
-  ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000002', 'f0000000-0000-0000-0000-000000000001', pg_temp.today(), NULL, NULL, NULL, NULL),
-  ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'f0000000-0000-0000-0000-000000000001', pg_temp.today(), NULL, NULL, NULL, NULL),
+  ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000001', pg_temp.nm(), NULL, 'percent', 10, 'Sibling'),
+  ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000002', pg_temp.nm(), NULL, NULL, NULL, NULL),
+  ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000002', 'f0000000-0000-0000-0000-000000000001', pg_temp.nm(), NULL, NULL, NULL, NULL),
+  ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'f0000000-0000-0000-0000-000000000001', pg_temp.nm(), NULL, NULL, NULL, NULL),
   ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'f0000000-0000-0000-0000-000000000004', pg_temp.nm() + 2, pg_temp.nm() + 2, NULL, NULL, NULL),
   ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000004', 'f0000000-0000-0000-0000-000000000001', pg_temp.nm() + 10, NULL, NULL, NULL, NULL),
   ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000006', 'f0000000-0000-0000-0000-000000000003', pg_temp.today(), NULL, NULL, NULL, NULL);
@@ -142,7 +142,7 @@ SELECT pg_temp.eq((pg_temp.charge((SELECT id FROM r WHERE k = 'w1'), 'Cal C', 'N
 SELECT pg_temp.eq((SELECT draft_date FROM billing_ach_batches WHERE run_id = (SELECT id FROM r WHERE k = 'w1')), pg_temp.nm(), 'draft date');
 SELECT pg_temp.ok((SELECT count(*) FROM child_audit_log WHERE table_name = 'billing_bills' AND summary LIKE 'Billed week of%') = 3, 'bills logged in Activity');
 
--- Running the same week again bills nothing new
+-- The same week can't be billed twice
 DO $$
 DECLARE p jsonb := billing_preview('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm());
 BEGIN
@@ -150,9 +150,9 @@ BEGIN
   PERFORM pg_temp.eq(jsonb_array_length(pg_temp.kid(p, 'Ava A') -> 'skipped'), 1, 'Ava shows as already billed');
   PERFORM pg_temp.eq(jsonb_array_length(p -> 'runs'), 1, 'existing run listed');
 END $$;
-SELECT pg_temp.fails($$SELECT billing_run_submit('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm(), 0)$$, 'Nothing to bill');
+SELECT pg_temp.fails($$SELECT billing_run_submit('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm(), 0)$$, 'already billed');
 
--- A child added since is picked up by running the week again (catch-up run)
+-- A child added after the week was billed is not billed in it (one run per window); Hal is billed this week instead
 RESET ROLE;
 INSERT INTO children (id, center_id, first_name, last_name, status, enrolled_on) VALUES
   ('d0000000-0000-0000-0000-000000000008', '10000000-0000-0000-0000-000000000001', 'Hal', 'H', 'enrolled', pg_temp.today());
@@ -162,9 +162,10 @@ INSERT INTO child_payment_payers (center_id, child_id, payer_name, share_type, m
 VALUES ('10000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000008', 'Hal Mom', 'remainder', 'ach', '021000021', 'v1:aa:bb:ee', '3333', 'checking', true, pg_temp.today());
 SET ROLE authenticated;
 SELECT pg_temp.as_user('a0000000-0000-0000-0000-000000000002');
-SELECT pg_temp.eq((billing_preview('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm()) -> 'totals' ->> 'total')::numeric, 285.00, 'catch-up preview');
-INSERT INTO r SELECT 'w2', billing_run_submit('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm(), 285);
-SELECT pg_temp.eq((SELECT child_count FROM billing_runs WHERE id = (SELECT id FROM r WHERE k = 'w2')), 1, 'catch-up run bills Hal only');
+SELECT pg_temp.fails($$SELECT billing_run_submit('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm(), 285)$$, 'void that run first');
+SELECT pg_temp.eq((billing_preview('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.today()) -> 'totals' ->> 'total')::numeric, 285.00, 'this week: only Hal');
+INSERT INTO r SELECT 'w2', billing_run_submit('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.today(), 285);
+SELECT pg_temp.eq((SELECT child_count FROM billing_runs WHERE id = (SELECT id FROM r WHERE k = 'w2')), 1, 'run bills Hal only');
 
 -- 4. Payments --------------------------------------------------------------------------------------------------
 SELECT billing_payment_record((pg_temp.charge((SELECT id FROM r WHERE k = 'w1'), 'Ben B', 'Ben Dad')).id,
@@ -234,7 +235,7 @@ SELECT billing_payment_void((SELECT p.id FROM billing_payments p JOIN billing_ch
 SELECT pg_temp.eq((pg_temp.charge((SELECT id FROM r WHERE k = 'w2'), 'Hal H', 'Hal Mom')).status, 'open', 'open again after void');
 SELECT billing_run_void((SELECT id FROM r WHERE k = 'w2'), 'Billed by mistake');
 SELECT pg_temp.eq((SELECT status FROM billing_runs WHERE id = (SELECT id FROM r WHERE k = 'w2')), 'void', 'run voided');
-SELECT pg_temp.eq((billing_preview('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.nm()) -> 'totals' ->> 'total')::numeric, 285.00, 'voided period can be billed again');
+SELECT pg_temp.eq((billing_preview('10000000-0000-0000-0000-000000000001', 'weekly', pg_temp.today()) -> 'totals' ->> 'total')::numeric, 285.00, 'voided period can be billed again');
 
 -- 7. Monthly run: monthly fees only -----------------------------------------------------------------------------
 DO $$

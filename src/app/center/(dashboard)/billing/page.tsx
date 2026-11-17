@@ -94,6 +94,8 @@ function RunBilling({ centerId }: { centerId: string }) {
   const hidden = (data?.children.length ?? 0) - (data?.children.filter(c => c.billable).length ?? 0)
   const warnings = useMemo(() => (data?.children ?? []).filter(c => c.billable && c.warnings.length), [data])
   const t = data?.totals
+  // One run per week / month: once submitted, the window can't be billed again (void the run first)
+  const billedRun = data?.runs.find(r => r.status === 'submitted') ?? null
   // Credit payers already paid in advance: the run uses it as each charge is created
   const creditUse = useMemo(() => {
     const left = { ...(data?.credits ?? {}) }
@@ -182,7 +184,7 @@ function RunBilling({ centerId }: { centerId: string }) {
               The {data.label} was already billed{' '}
               {data.runs.filter(r => r.status === 'submitted').map((r, i) => (
                 <span key={r.id}>{i > 0 && ', '}<Link className="font-bold underline" href={`/center/billing/runs/${r.id}`}>{money(r.total)} for {r.child_count} {r.child_count === 1 ? 'child' : 'children'}</Link></span>
-              ))}. Running it again bills only what is still unbilled (children or one-time fees added since).
+              ))}. To bill it again, open that run and void it first. Children added since are billed from the next {frequency === 'weekly' ? 'week' : 'month'}.
             </div>
           )}
 
@@ -267,8 +269,8 @@ function RunBilling({ centerId }: { centerId: string }) {
                   <dd className="text-2xl font-black text-heading">{money(t.total)}</dd>
                 </div>
               </dl>
-              <button className={`${BTN_PRIMARY} mt-5 w-full`} disabled={submitting || loading || t.billable === 0} onClick={submit}>
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Submit billing run
+              <button className={`${BTN_PRIMARY} mt-5 w-full`} disabled={submitting || loading || t.billable === 0 || !!billedRun} onClick={submit}>
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} {billedRun ? 'Already billed' : 'Submit billing run'}
               </button>
               <p className="mt-2 text-xs text-muted">Amounts are worked out again when you submit. If anything changed since this preview, you&apos;ll be asked to review it again.</p>
             </div>
