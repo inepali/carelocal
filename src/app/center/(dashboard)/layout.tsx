@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, LayoutDashboard, Users, UserPlus, Info, Calendar, Tags, LifeBuoy, ClipboardCheck, Truck, Baby, Building2, UserCircle, Inbox, ShieldCheck, Briefcase, CalendarCheck, LayoutGrid, PanelLeftClose, PanelLeftOpen, NotebookPen, Utensils, Megaphone, CalendarClock, Receipt } from 'lucide-react'
+import { LogOut, LayoutDashboard, Users, UserPlus, Info, Calendar, Tags, LifeBuoy, ClipboardCheck, Truck, Baby, Building2, UserCircle, Inbox, ShieldCheck, Briefcase, CalendarCheck, LayoutGrid, PanelLeftClose, PanelLeftOpen, NotebookPen, Utensils, Megaphone, CalendarClock, Receipt, Clock } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
-import { CenterContext, canManageSchedule, canManageTuition, canOpenChildFiles, canOpenRoster } from './context'
+import { CenterContext, canManageSchedule, canManageTimeClock, canManageTuition, canOpenChildFiles, canOpenRoster } from './context'
 import type { DomainKey } from '@/lib/domain-config'
 
 // Dev/demo tool: jumps the browser to another vertical's domain (it does not change the
@@ -40,6 +40,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
   const [announcementsEnabled, setAnnouncementsEnabled] = useState(false)
   const [scheduleEnabled, setScheduleEnabled] = useState(false)
   const [tuitionEnabled, setTuitionEnabled] = useState(false)
+  const [timeclockEnabled, setTimeclockEnabled] = useState(false)
   // Narrow icon-only sidebar; remembered in this browser
   const [collapsed, setCollapsed] = useState(false)
 
@@ -98,13 +99,15 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
       // Read on its own so a database without the menu planning migration only hides Menu, not the whole header
       const adminCenterId = (data as { center_id?: string } | null)?.center_id
       if (adminCenterId) {
-        const [menuFlag, lessonFlag, announcementsFlag, scheduleFlag, tuitionFlag] = await Promise.all([
+        const [menuFlag, lessonFlag, announcementsFlag, scheduleFlag, tuitionFlag, timeclockFlag] = await Promise.all([
           supabase.from('centers').select('menu_planning_enabled').eq('id', adminCenterId).maybeSingle(),
           supabase.from('centers').select('lesson_plans_enabled').eq('id', adminCenterId).maybeSingle(),
           supabase.from('centers').select('announcements_enabled').eq('id', adminCenterId).maybeSingle(),
           supabase.from('centers').select('schedule_enabled').eq('id', adminCenterId).maybeSingle(),
           supabase.from('centers').select('tuition_enabled').eq('id', adminCenterId).maybeSingle(),
+          supabase.from('centers').select('timeclock_enabled').eq('id', adminCenterId).maybeSingle(),
         ])
+        setTimeclockEnabled(!!(timeclockFlag.data as { timeclock_enabled?: boolean } | null)?.timeclock_enabled)
         setTuitionEnabled(!!(tuitionFlag.data as { tuition_enabled?: boolean } | null)?.tuition_enabled)
         setScheduleEnabled(!!(scheduleFlag.data as { schedule_enabled?: boolean } | null)?.schedule_enabled)
         setMenuPlanningEnabled(!!(menuFlag.data as { menu_planning_enabled?: boolean } | null)?.menu_planning_enabled)
@@ -143,6 +146,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
   const HEADER_NAVIGATION = [
     ...(canOpenRoster({ domainKey, role, childFilesEnabled, rosterEnabled }) ? [{ name: 'Live Roster', href: '/center/roster', icon: LayoutGrid }] : []),
     ...(canManageSchedule({ role, scheduleEnabled }) ? [{ name: 'Schedule', href: '/center/schedule', icon: CalendarClock }] : []),
+    ...(canManageTimeClock({ role, timeclockEnabled }) ? [{ name: 'Time Clock', href: '/center/timeclock', icon: Clock }] : []),
     ...(canOpenChildFiles({ domainKey, role, childFilesEnabled }) ? [{ name: 'Children', href: '/center/children', icon: Baby }] : []),
     ...(domainKey === 'childcare' && lessonPlansEnabled ? [{ name: 'Lesson Plans', href: '/center/lesson-plans/weekly', icon: NotebookPen }] : []),
     ...(domainKey === 'childcare' && menuPlanningEnabled ? [{ name: 'Menu', href: '/center/menu', icon: Utensils }] : []),
@@ -172,7 +176,7 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <CenterContext.Provider value={{ staffTerm, workAreaTerm, domainKey, centerId, role, childFilesEnabled, rosterEnabled, menuPlanningEnabled, lessonPlansEnabled, announcementsEnabled, scheduleEnabled, tuitionEnabled }}>
+    <CenterContext.Provider value={{ staffTerm, workAreaTerm, domainKey, centerId, role, childFilesEnabled, rosterEnabled, menuPlanningEnabled, lessonPlansEnabled, announcementsEnabled, scheduleEnabled, tuitionEnabled, timeclockEnabled }}>
       <div className="center-shell min-h-screen bg-surface flex font-sans">
       {/* ── Sidebar ── */}
       <aside className={`${collapsed ? 'w-16' : 'w-64'} bg-brand-900 text-white flex flex-col fixed inset-y-0 z-10 transition-[width] duration-200`}>

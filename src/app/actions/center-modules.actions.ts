@@ -163,3 +163,21 @@ export async function setCenterTuitionEnabled(centerId: string, enabled: boolean
   console.warn(`[tuition] super admin ${user.id} turned tuition ${enabled ? 'on' : 'off'} for center ${centerId}`)
   return { success: true }
 }
+
+/**
+ * Super admin: turn the Time Clock (4-digit Time Card PIN punches on a center tablet, time off requests, PTO and
+ * timesheets) on or off. Off by default. Turning it off stops the tablets and hides it for everyone at the center;
+ * punches, PINs and requests are kept for when it is turned back on.
+ */
+export async function setCenterTimeClockEnabled(centerId: string, enabled: boolean): Promise<Result> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user?.app_metadata?.is_super_admin !== true) return { success: false, error: 'Not allowed' }
+
+  const db = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  const { error, count } = await db.from('centers').update({ timeclock_enabled: enabled }, { count: 'exact' }).eq('id', centerId)
+  if (error) return { success: false, error: error.message }
+  if (!count) return { success: false, error: 'Center not found' }
+  console.warn(`[timeclock] super admin ${user.id} turned the Time Clock ${enabled ? 'on' : 'off'} for center ${centerId}`)
+  return { success: true }
+}

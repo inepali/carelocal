@@ -22,7 +22,8 @@
     "test:schedule": "node --experimental-strip-types --no-warnings scripts/schedule/schedule.test.mjs",
     "test:care-score": "node --experimental-strip-types --no-warnings scripts/care-score/score.test.mjs",
     "test:tuition": "node --experimental-strip-types --no-warnings scripts/tuition/tuition.test.mjs",
-    "test:billing": "node --experimental-strip-types --no-warnings scripts/billing/billing.test.mjs"
+    "test:billing": "node --experimental-strip-types --no-warnings scripts/billing/billing.test.mjs",
+    "test:timeclock": "node --experimental-strip-types --no-warnings scripts/timeclock/timeclock.test.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1030.0",

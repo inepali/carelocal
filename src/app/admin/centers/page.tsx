@@ -27,7 +27,7 @@ import { setCenterEnabled } from '@/app/actions/account-status.actions'
 import { setCenterJobLimit, setCenterJobsEnabled } from '@/app/actions/jobs.actions'
 import { setCenterChildFilesEnabled, setCenterRosterEnabled } from '@/app/actions/child-files-admin.actions'
 import { purgeCenter } from '@/app/actions/data-cleanup.actions'
-import { setCenterMenuPlanningEnabled, setCenterCacfpEnabled, setCenterLessonPlansEnabled, setCenterParentPortalEnabled, setCenterAnnouncementsEnabled, setCenterScheduleEnabled, setCenterScheduleSlot, setCenterTuitionEnabled } from '@/app/actions/center-modules.actions'
+import { setCenterMenuPlanningEnabled, setCenterCacfpEnabled, setCenterLessonPlansEnabled, setCenterParentPortalEnabled, setCenterAnnouncementsEnabled, setCenterScheduleEnabled, setCenterScheduleSlot, setCenterTuitionEnabled, setCenterTimeClockEnabled } from '@/app/actions/center-modules.actions'
 import { CenterDetailsDialog, moduleSummary } from '@/components/admin/CenterDetailsDialog'
 import { PurgeDialog } from '@/components/admin/PurgeDialog'
 import { NewCenterDialog } from '@/components/admin/CenterOwners'
@@ -277,6 +277,19 @@ export default function AdminCentersPage() {
     setCenters(prev => prev.map(c => c.id === center.id ? { ...c, tuition_enabled: enabling } : c))
   }
 
+  const toggleTimeClock = async (center: { id: string; name: string; timeclock_enabled?: boolean }) => {
+    const enabling = !center.timeclock_enabled
+    if (!await showConfirm(
+      enabling
+        ? `Turn on the Time Clock for ${center.name}? Its owner and administrators set a 4-digit Time Card PIN for each employee and turn a tablet into the Time Clock. Staff clock in and out and ask for time off there; timesheets come only from these punches.`
+        : `Turn off the Time Clock for ${center.name}? Its tablets stop working and the Time Clock is hidden for everyone at the center. Punches, PINs and requests are kept for when it is turned back on.`,
+      { title: 'Time Clock', confirmLabel: enabling ? 'Turn on' : 'Turn off', tone: 'default' },
+    )) return
+    const res = await setCenterTimeClockEnabled(center.id, enabling)
+    if (!res.success) { showAlert(res.error); return }
+    setCenters(prev => prev.map(c => c.id === center.id ? { ...c, timeclock_enabled: enabling } : c))
+  }
+
   /** Flips the board's drag snap between 15 and 30 minutes */
   const changeScheduleSlot = async (center: { id: string; name: string; schedule_slot_minutes?: number }) => {
     const next = center.schedule_slot_minutes === 30 ? 15 : 30
@@ -493,7 +506,7 @@ export default function AdminCentersPage() {
           onClose={() => setDetailsId(null)}
           statusLabel={detailsCenter.subscriptions?.[0]?.status || 'No subscription'}
           jobLimitLabel={describeJobLimit(detailsCenter.job_limit_override)}
-          actions={{ toggleJobs, changeJobLimit, toggleChildFiles, toggleRoster, toggleLessonPlans, toggleMenu, toggleCacfp, toggleParentPortal, toggleAnnouncements, toggleSchedule, changeScheduleSlot, toggleTuition }}
+          actions={{ toggleJobs, changeJobLimit, toggleChildFiles, toggleRoster, toggleLessonPlans, toggleMenu, toggleCacfp, toggleParentPortal, toggleAnnouncements, toggleSchedule, changeScheduleSlot, toggleTuition, toggleTimeClock }}
         />
       )}
 

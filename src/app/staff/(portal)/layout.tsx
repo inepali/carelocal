@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, Calendar, FileText, UserCircle, Globe, Search, CreditCard, Building, LayoutDashboard, Inbox, Briefcase, ClipboardList, LayoutGrid, NotebookPen, Utensils, Megaphone, CalendarClock } from 'lucide-react'
+import { LogOut, Calendar, FileText, UserCircle, Globe, Search, CreditCard, Building, LayoutDashboard, Inbox, Briefcase, ClipboardList, LayoutGrid, NotebookPen, Utensils, Megaphone, CalendarClock, Clock } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { useIsRegularOnly, isSubstituteOnlyRoute, isRegularOnlyRoute } from '@/lib/hooks/useIsRegularOnly'
@@ -30,6 +30,8 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
   const [menuOn, setMenuOn] = useState(false)
   const [lessonPlansOn, setLessonPlansOn] = useState(false)
   const [scheduleOn, setScheduleOn] = useState(false)
+  // My Time shows once a center they work at has the Time Clock on (substitutes too)
+  const [timeOn, setTimeOn] = useState(false)
   useEffect(() => {
     if (!classLoading && isRegularOnly) {
       teacherRosterEnabled().then(setRosterOn)
@@ -73,6 +75,7 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
     }
 
     loadUser()
+    supabase.rpc('timeclock_mine', { p_from: null }).then(({ data }) => setTimeOn(Array.isArray(data) && data.length > 0), () => {})
     const countAnnouncements = () => loadMyAnnouncements(supabase).then(list => {
       if (list) setAnnouncements({ total: list.length, unread: list.filter(a => a.unread).length })
     })
@@ -91,6 +94,7 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
     { name: 'My Center', href: '/staff/center', icon: Building },
     { name: 'My Room', href: '/staff/roster', icon: LayoutGrid },
     { name: 'My Schedule', href: '/staff/schedule', icon: CalendarClock },
+    { name: 'My Time', href: '/staff/time', icon: Clock },
     { name: 'Lesson Plans', href: '/staff/lesson-plans', icon: NotebookPen },
     { name: 'Menu', href: '/staff/menu', icon: Utensils },
     { name: 'My Centers', href: '/staff/centers', icon: Globe },
@@ -109,6 +113,7 @@ export default function StaffPortalLayout({ children }: { children: React.ReactN
    .filter(item => item.href !== '/staff/menu' || menuOn)
    .filter(item => item.href !== '/staff/announcements' || announcements.total > 0 || pathname === '/staff/announcements')
    .filter(item => item.href !== '/staff/schedule' || scheduleOn)
+   .filter(item => item.href !== '/staff/time' || timeOn || pathname === '/staff/time')
 
   if (loading || classLoading || blockedRoute) {
      return <div className="min-h-screen bg-surface flex items-center justify-center">Loading...</div>

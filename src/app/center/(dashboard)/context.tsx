@@ -23,6 +23,8 @@ type CenterContextType = {
   scheduleEnabled: boolean;
   /** Tuition (rate card, children's fees, who pays) is switched on for this center (a super admin turns it on) */
   tuitionEnabled: boolean;
+  /** Time Clock (PIN punches, time off, timesheets) is switched on for this center (a super admin turns it on) */
+  timeclockEnabled: boolean;
 }
 
 export const CenterContext = createContext<CenterContextType>({
@@ -38,6 +40,7 @@ export const CenterContext = createContext<CenterContextType>({
   announcementsEnabled: false,
   scheduleEnabled: false,
   tuitionEnabled: false,
+  timeclockEnabled: false,
 })
 
 export const useCenterContext = () => useContext(CenterContext)
@@ -60,3 +63,7 @@ export const canManageSchedule = (ctx: Pick<CenterContextType, 'role' | 'schedul
 /** Tuition rides on Child Files; the owner and administrators keep it (the database enforces the same rule) */
 export const canManageTuition = (ctx: Pick<CenterContextType, 'domainKey' | 'role' | 'childFilesEnabled' | 'tuitionEnabled'>) =>
   canOpenChildFiles(ctx) && ctx.tuitionEnabled
+
+/** The Time Clock is kept by the owner and administrators (the database enforces the same rule) */
+export const canManageTimeClock = (ctx: Pick<CenterContextType, 'role' | 'timeclockEnabled'>) =>
+  ctx.timeclockEnabled && (ctx.role === 'owner' || ctx.role === 'admin')

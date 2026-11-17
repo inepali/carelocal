@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import {
   X, Building2, MapPin, Phone, Mail, User, ShieldCheck, CreditCard, Calendar, Users, LogIn,
-  Briefcase, Baby, LayoutGrid, NotebookPen, Utensils, ClipboardList, KeyRound, Megaphone, CalendarClock, Receipt,
+  Briefcase, Baby, LayoutGrid, NotebookPen, Utensils, ClipboardList, KeyRound, Megaphone, CalendarClock, Receipt, Clock,
 } from 'lucide-react'
 import { TIER_LABELS, type SubscriptionTier } from '@/lib/types'
 import { CenterOwnersSection } from './CenterOwners'
@@ -29,6 +29,7 @@ export interface CenterModuleActions {
   toggleSchedule: Toggle
   changeScheduleSlot: Toggle
   toggleTuition: Toggle
+  toggleTimeClock: Toggle
 }
 
 interface ModuleRow {
@@ -73,6 +74,10 @@ export function CenterDetailsDialog({ center, onClose, actions, statusLabel, job
       key: 'schedule', label: 'Staff schedule', icon: CalendarClock, on: !!center.schedule_enabled, toggle: actions.toggleSchedule,
       description: 'Fixed weekly schedules for regular staff and the daily room board. Teachers see theirs read-only.',
       extra: { label: 'Snap to', value: `${center.schedule_slot_minutes === 30 ? 30 : 15} min`, onClick: actions.changeScheduleSlot },
+    },
+    {
+      key: 'timeclock', label: 'Time Clock', icon: Clock, on: !!center.timeclock_enabled, toggle: actions.toggleTimeClock,
+      description: 'Staff clock in and out with a 4-digit PIN on a center tablet, ask for time off, and get timesheets for payroll.',
     },
     ...(childcare ? [
       {
@@ -226,6 +231,7 @@ export function moduleSummary(center: AdminCenter): string[] {
   return [
     center.jobs_enabled && 'Jobs',
     center.schedule_enabled && 'Schedule',
+    center.timeclock_enabled && 'Time Clock',
     childcare && center.child_files_enabled && 'Children',
     childcare && center.roster_enabled && 'Roster',
     childcare && center.lesson_plans_enabled !== false && 'Lessons',
