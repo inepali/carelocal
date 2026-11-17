@@ -81,7 +81,7 @@ export default function ChildFilePage() {
   const keepUntil = child.withdrawn_on ? (() => { const d = new Date(`${child.withdrawn_on}T12:00:00`); d.setFullYear(d.getFullYear() + 1); return formatDate(d) })() : null
   const TABS: { id: Tab; label: string; count?: number }[] = [
     { id: 'records', label: 'Records' },
-    { id: 'contacts', label: 'Contacts & pick-up', count: guardians.length },
+    { id: 'contacts', label: 'Contacts', count: guardians.length },
     { id: 'medicines', label: 'Medicines' },
     ...(ctx.rosterEnabled ? [{ id: 'reports' as const, label: 'Daily reports' }] : []),
     ...(canManageTuition(ctx) ? [{ id: 'tuition' as const, label: 'Fee & Payment' }, { id: 'billing' as const, label: 'Billing history' }] : []),
