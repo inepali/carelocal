@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Baby, ListChecks, Loader2, Plus, Search } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { canOpenChildFiles, useCenterContext } from '../context'
+import { canManageTuition, canOpenChildFiles, useCenterContext } from '../context'
 import { loadChildrenOverview, type ChildRequirement, type Classroom } from '@/lib/children'
 import { childRows, describeAge, summarizeChild } from '@/lib/child-compliance'
 import { seedNcChildRequirements } from '@/lib/child-template'
@@ -164,6 +164,7 @@ export default function ChildrenPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
+                        {canManageTuition(ctx) && <Link href={`/center/children/${child.id}?tab=tuition`} className={BTN_QUIET_SM}>Fee &amp; Payment</Link>}
                         <Link href={`/center/children/${child.id}`} className={BTN}>Files</Link>
                         <Link href={`/center/children/${child.id}/incidents`} className={BTN_QUIET_SM}>Incidents</Link>
                       </div>

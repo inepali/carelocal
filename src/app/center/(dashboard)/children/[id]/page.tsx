@@ -34,6 +34,16 @@ export default function ChildFilePage() {
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('records')
+  // Open a tab from the link, e.g. ?tab=tuition from the Fee & Payment button on the Children list
+  const [urlTab] = useState(() => (typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('tab')))
+  useEffect(() => {
+    if (!urlTab) return
+    const ok = ['records', 'contacts', 'medicines', 'activity'].includes(urlTab)
+      || (urlTab === 'reports' && ctx.rosterEnabled)
+      || ((urlTab === 'tuition' || urlTab === 'billing') && canManageTuition(ctx))
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (ok) setTab(urlTab as Tab)
+  }, [urlTab, ctx])
   const [editing, setEditing] = useState(false)
   const [withdrawing, setWithdrawing] = useState(false)
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
