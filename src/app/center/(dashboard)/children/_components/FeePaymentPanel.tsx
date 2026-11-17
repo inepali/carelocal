@@ -149,7 +149,7 @@ export function FeePaymentPanel({ child }: { child: Child }) {
                     <Pill className="border-border bg-surface text-muted">{frequencyLabel(f.frequency)}</Pill>
                     {f.start > today && <Pill className="border-amber-200 bg-amber-50 text-amber-800">Starts {formatDate(f.start)}</Pill>}
                   </div>
-                  <p className="mt-0.5 text-sm text-text-main">{discountLabel(f) || 'List price'}</p>
+                  {discountLabel(f) && <p className="mt-0.5 text-sm text-text-main">{discountLabel(f)}</p>}
                   <p className="mt-0.5 text-xs text-muted">
                     From {formatDate(f.start)}{f.end ? ` to ${formatDate(f.end)}` : ''}
                     {f.upcoming_rate && <> · <span className="font-semibold text-amber-800">price {money(f.upcoming_rate.amount)} from {formatDate(f.upcoming_rate.charged_from ?? f.upcoming_rate.from)}</span></>}
@@ -289,7 +289,7 @@ export function FeePaymentPanel({ child }: { child: Child }) {
           )}
           {dialog.mode === 'change' && (
             <div className="space-y-4">
-              <p className="text-sm text-muted">Now: <strong className="text-heading">{discountLabel(dialog.fee) || 'List price'}</strong>. The new terms apply from the date you pick; earlier days keep the old ones.</p>
+              <p className="text-sm text-muted">Now: <strong className="text-heading">{discountLabel(dialog.fee) || 'no discount'}</strong>. The new terms apply from the date you pick; earlier days keep the old ones.</p>
               <DiscountFields idPrefix="fp-change" value={dialog.discount} onChange={d => setDialog({ ...dialog, discount: d })} />
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
