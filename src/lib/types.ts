@@ -265,12 +265,12 @@ export interface WorkArea {
   /** Position in dropdowns (Manage Data lets the center rearrange them) */
   sort_order: number
   created_at: string
-  /** Live roster: the N in 1 teacher : N children (null = not ratio-checked) */
+  /** Live Roster: the N in 1 teacher : N children (null = not ratio-checked) */
   ratio_children?: number | null
-  /** Live roster: ages this room is for, in whole months (min inclusive, max exclusive) */
+  /** Live Roster: ages this room is for, in whole months (min inclusive, max exclusive) */
   min_age_months?: number | null
   max_age_months?: number | null
-  /** Live roster: shown on the board (off for kitchens, offices and similar) */
+  /** Live Roster: shown on the board (off for kitchens, offices and similar) */
   on_roster?: boolean
   /** The program this class belongs to (About → Programs); null = none yet */
   program_id?: string | null

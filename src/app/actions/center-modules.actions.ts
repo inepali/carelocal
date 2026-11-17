@@ -89,7 +89,7 @@ export async function setCenterAnnouncementsEnabled(centerId: string, enabled: b
 
 /**
  * Super admin: turn the parent portal (/parent) on or off for a child care center. Off by default. It needs the
- * live roster (that is where daily activities and photos come from). Turning it off signs every parent out right
+ * Live Roster (that is where daily activities and photos come from). Turning it off signs every parent out right
  * away (the database checks the switch on every visit); codes are kept, so turning it back on lets parents in again.
  */
 export async function setCenterParentPortalEnabled(centerId: string, enabled: boolean): Promise<Result> {
@@ -101,7 +101,7 @@ export async function setCenterParentPortalEnabled(centerId: string, enabled: bo
   const { data: center } = await db.from('centers').select('id, domain_key, roster_enabled').eq('id', centerId).maybeSingle()
   if (!center) return { success: false, error: 'Center not found' }
   if (enabled && center.domain_key !== 'childcare') return { success: false, error: 'The parent portal is only for child care centers.' }
-  if (enabled && !center.roster_enabled) return { success: false, error: 'Turn on the Live roster for this center first.' }
+  if (enabled && !center.roster_enabled) return { success: false, error: 'Turn on the Live Roster for this center first.' }
 
   const { error } = await db.from('centers').update({ parent_portal_enabled: enabled }).eq('id', centerId)
   if (error) return { success: false, error: error.message }

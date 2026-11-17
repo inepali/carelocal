@@ -148,7 +148,7 @@ export function WorkAreasPanel({ centerId, workAreaTerm, showRoster = false }: {
   const minA = int(form.minAge), maxA = int(form.maxAge)
   const rosterFields = showRoster && (
     <div className="w-full rounded-xl border border-brand-200 bg-white/70 p-3">
-      <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-brand-700"><LayoutGrid className="h-3.5 w-3.5" /> Live roster</p>
+      <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-brand-700"><LayoutGrid className="h-3.5 w-3.5" /> Live Roster</p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1.6fr_auto] sm:items-end">
         <label className="block text-xs font-semibold text-muted">
           Teacher : child ratio
@@ -170,7 +170,7 @@ export function WorkAreasPanel({ centerId, workAreaTerm, showRoster = false }: {
         </div>
         <label className="flex min-h-11 items-center gap-2 text-sm font-semibold text-text-main">
           <input type="checkbox" checked={form.onRoster} onChange={e => setForm({ ...form, onRoster: e.target.checked })} className="h-4 w-4 accent-brand-600" />
-          Show on live roster
+          Show on Live Roster
         </label>
       </div>
       <p className="mt-2 text-xs text-subtle">

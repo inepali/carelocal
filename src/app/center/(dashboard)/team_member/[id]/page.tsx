@@ -107,7 +107,7 @@ export default function StaffReviewPage() {
   const [openRequests, setOpenRequests] = useState<DocumentRequest[]>([])
   const [requestFor, setRequestFor] = useState<{ requirementId?: string } | null>(null)
   const [savingClass, setSavingClass] = useState(false)
-  // Live roster: the regular teacher's own room (their view opens there; they wait at its Home when not checked in)
+  // Live Roster: the regular teacher's own room (their view opens there; they wait at its Home when not checked in)
   const [homeRoom, setHomeRoom] = useState('')
   const [rooms, setRooms] = useState<{ id: string; name: string }[]>([])
   const [menuEditor, setMenuEditor] = useState(false)
@@ -539,7 +539,7 @@ export default function StaffReviewPage() {
               </dd>
             </div>
             {employmentClass === 'regular' && rooms.length > 0 && (
-              <div className="flex items-center gap-3 px-4 py-2" title="Their room on the live roster. Floaters have none.">
+              <div className="flex items-center gap-3 px-4 py-2" title="Their room on the Live Roster. Floaters have none.">
                 <dt className={LABEL}>Home room</dt>
                 <dd className="flex-1 min-w-0">
                   <select

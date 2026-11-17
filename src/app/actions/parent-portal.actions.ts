@@ -106,7 +106,7 @@ function friendly(error: { message?: string; code?: string } | null) {
 
 /**
  * A parent writes: a new message about their child (threadId null, needs the PIN) or a reply.
- * The center's owners and admins are copied by email right away; teachers see it on the Live roster.
+ * The center's owners and admins are copied by email right away; teachers see it on the Live Roster.
  */
 export async function parentSendMessage(input: {
   link?: string | null

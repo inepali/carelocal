@@ -12,7 +12,7 @@ type Failure = { success: false; error: string }
 
 export function friendlyRosterError(error: { code?: string; message?: string } | null | undefined) {
   if (!error) return 'Something went wrong.'
-  if (error.code === '42501') return 'The live roster is not turned on for your center, or you do not have access to it.'
+  if (error.code === '42501') return 'The Live Roster is not turned on for your center, or you do not have access to it.'
   return error.message?.replace(/^.*?ERROR:\s*/, '') || 'Something went wrong.'
 }
 

@@ -37,9 +37,9 @@ export function TeacherRoster() {
       if (cancelled) return
       const center = (membership as { center?: { roster_enabled?: boolean; child_files_enabled?: boolean } | null } | null)?.center
       if (!membership) {
-        setState({ kind: 'blocked', message: 'The live roster is for full-time and part-time teachers of a center. Ask your director to add you as a full-time or part-time employee.' })
+        setState({ kind: 'blocked', message: 'The Live Roster is for full-time and part-time teachers of a center. Ask your director to add you as a full-time or part-time employee.' })
       } else if (!center?.roster_enabled || !center?.child_files_enabled) {
-        setState({ kind: 'blocked', message: 'The live roster is not turned on for your center yet.' })
+        setState({ kind: 'blocked', message: 'The Live Roster is not turned on for your center yet.' })
       } else {
         setState({
           kind: 'ready',

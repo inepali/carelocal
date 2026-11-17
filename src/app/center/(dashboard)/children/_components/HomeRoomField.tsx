@@ -22,7 +22,7 @@ export function suggestedRoomFor(dob: string, onDay: string, classrooms: Classro
 
 /**
  * The home room picker: every room with its ages and open spots, the room that fits the child's age, and a
- * warning when the chosen room is full or meant for another age group. The live roster seats a child in this
+ * warning when the chosen room is full or meant for another age group. The Live Roster seats a child in this
  * room at Home until they are checked in.
  */
 export function HomeRoomField({
@@ -82,7 +82,7 @@ export function HomeRoomField({
         {outside && (
           <p className="flex items-start gap-1 font-semibold text-amber-700">
             <AlertTriangle className="mt-px h-3 w-3 shrink-0" />
-            {chosen!.name} is for {range(chosen!)}. On the live roster a younger child tightens the room&apos;s ratio.
+            {chosen!.name} is for {range(chosen!)}. On the Live Roster a younger child tightens the room&apos;s ratio.
           </p>
         )}
       </div>

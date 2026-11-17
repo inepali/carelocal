@@ -357,7 +357,7 @@ export function RosterBoard({ centerId, mode = 'admin', homeRoomId = null, viewe
         <div className="shrink-0">
           <p className="text-xs font-bold uppercase tracking-wider text-muted">{formatDay(day)}</p>
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="!text-xl font-bold tracking-tight text-heading">{teacher ? 'My room' : 'Live roster'}</h1>
+            <h1 className="!text-xl font-bold tracking-tight text-heading">{teacher ? 'My room' : 'Live Roster'}</h1>
             {!teacher && (
               <div role="radiogroup" aria-label="View" className="flex rounded-full bg-surface-2 p-1">
                 {(['admin', 'teacher'] as const).map(v => (

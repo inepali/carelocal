@@ -80,7 +80,7 @@ export function CenterDetailsDialog({ center, onClose, actions, statusLabel, job
         description: 'Children’s files and incident records. Only after the child records data addendum is accepted.',
       },
       {
-        key: 'roster', label: 'Live roster', icon: LayoutGrid, on: !!center.roster_enabled, toggle: actions.toggleRoster,
+        key: 'roster', label: 'Live Roster', icon: LayoutGrid, on: !!center.roster_enabled, toggle: actions.toggleRoster,
         description: 'Rooms, ratios and check-in/out for every child and teacher.',
         needs: !center.child_files_enabled && !center.roster_enabled ? 'Turn on Children first' : undefined,
       },
@@ -100,7 +100,7 @@ export function CenterDetailsDialog({ center, onClose, actions, statusLabel, job
       {
         key: 'parent_portal', label: 'Parent page', icon: KeyRound, on: !!center.parent_portal_enabled, toggle: actions.toggleParentPortal,
         description: 'Parents see daily activities and photos and message teachers on the center’s link, with a 6-digit PIN.',
-        needs: !center.roster_enabled && !center.parent_portal_enabled ? 'Turn on Live roster first' : undefined,
+        needs: !center.roster_enabled && !center.parent_portal_enabled ? 'Turn on Live Roster first' : undefined,
       },
       {
         key: 'tuition', label: 'Tuition', icon: Receipt, on: !!center.tuition_enabled, toggle: actions.toggleTuition,

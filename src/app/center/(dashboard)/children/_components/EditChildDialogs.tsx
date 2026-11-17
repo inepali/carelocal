@@ -65,7 +65,7 @@ export function EditChildDialog({ child, classrooms, onClose, onSaved }: {
         </div>
 
         <div className="space-y-3 rounded-2xl border border-border p-4">
-          <p className="text-sm font-bold text-heading">On the live roster</p>
+          <p className="text-sm font-bold text-heading">On the Live Roster</p>
           <div>
             <label className={LBL}>Care alert for teachers</label>
             <input value={f.care_alert} onChange={e => set('care_alert', e.target.value)} className={FLD} maxLength={200}

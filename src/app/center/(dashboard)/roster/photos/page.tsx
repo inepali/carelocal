@@ -66,14 +66,14 @@ export default function PhotoReviewPage() {
     return (
       <div className="max-w-2xl rounded-2xl border border-border bg-white p-10 text-center shadow-sm">
         <Camera className="mx-auto mb-3 h-10 w-10 text-brand-200" />
-        <p className="text-muted">Only the owner and administrators of a center with the live roster can review photos.</p>
+        <p className="text-muted">Only the owner and administrators of a center with the Live Roster can review photos.</p>
       </div>
     )
   }
 
   return (
     <div className="max-w-6xl pb-20">
-      <Link href="/center/roster" className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-muted hover:text-brand-600"><ArrowLeft className="h-4 w-4" /> Back to Live roster</Link>
+      <Link href="/center/roster" className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-muted hover:text-brand-600"><ArrowLeft className="h-4 w-4" /> Back to Live Roster</Link>
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-heading">Photo review</h1>

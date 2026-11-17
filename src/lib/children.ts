@@ -339,7 +339,7 @@ export async function loadMedications(supabase: SupabaseClient, childId: string)
   return {
     success: true as const,
     medications: (meds.data ?? []) as ChildMedication[],
-    // Doses are readable when the live roster is on; otherwise the list is just empty
+    // Doses are readable when the Live Roster is on; otherwise the list is just empty
     given: (given.data ?? []) as { id: string; medication_id: string | null; at: string; details: { dose?: string; note?: string }; voided_at: string | null; void_reason: string | null }[],
   }
 }

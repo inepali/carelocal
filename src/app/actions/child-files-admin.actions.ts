@@ -36,11 +36,11 @@ export async function setCenterRosterEnabled(centerId: string, enabled: boolean)
   const db = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
   const { data: center } = await db.from('centers').select('id, domain_key, child_files_enabled').eq('id', centerId).maybeSingle()
   if (!center) return { success: false, error: 'Center not found' }
-  if (enabled && center.domain_key !== 'childcare') return { success: false, error: 'The live roster is only for child care centers.' }
-  if (enabled && !center.child_files_enabled) return { success: false, error: 'Turn on Child Files for this center first. The live roster uses its children.' }
+  if (enabled && center.domain_key !== 'childcare') return { success: false, error: 'The Live Roster is only for child care centers.' }
+  if (enabled && !center.child_files_enabled) return { success: false, error: 'Turn on Child Files for this center first. The Live Roster uses its children.' }
 
   const { error } = await db.from('centers').update({ roster_enabled: enabled }).eq('id', centerId)
   if (error) return { success: false, error: error.message }
-  console.warn(`[roster] super admin ${user.id} turned the live roster ${enabled ? 'on' : 'off'} for center ${centerId}`)
+  console.warn(`[roster] super admin ${user.id} turned the Live Roster ${enabled ? 'on' : 'off'} for center ${centerId}`)
   return { success: true }
 }

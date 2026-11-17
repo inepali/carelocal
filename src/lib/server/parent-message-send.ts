@@ -15,7 +15,7 @@ import { escapeHtml, siteForDomain } from '@/lib/server/notify'
  * Two kinds of recipient (20261229000000_parent_message_threads.sql):
  *  - 'parent': a contact. When the center has the parent page on, the email carries a link (/parent/m/<token>,
  *    30 days) that opens only this conversation to read, acknowledge and reply. A new token on every attempt.
- *  - 'staff': an owner or admin copied on a message a parent wrote. Their email points to the Live roster.
+ *  - 'staff': an owner or admin copied on a message a parent wrote. Their email points to the Live Roster.
  */
 
 interface MessageData {
@@ -69,7 +69,7 @@ ${link ? `<tr><td style="padding:4px 24px 0">${LINK_BUTTON(link, 'Acknowledge or
   return { subject, html, text }
 }
 
-/** The copy an owner or admin gets when a parent writes. It points to the child on the Live roster. */
+/** The copy an owner or admin gets when a parent writes. It points to the child on the Live Roster. */
 export function buildStaffCopyEmail(m: MessageData, rosterUrl: string) {
   const center = m.center.name
   const child = m.child.first_name
@@ -84,13 +84,13 @@ export function buildStaffCopyEmail(m: MessageData, rosterUrl: string) {
 <p style="margin:0;font-size:14px;color:#33404d">${escapeHtml(m.subject)}</p>
 </td></tr>
 <tr><td style="padding:12px 24px 0">${paragraphs.map(p => `<p style="margin:0 0 12px;font-size:15px;line-height:1.5">${p}</p>`).join('')}</td></tr>
-<tr><td style="padding:4px 24px 0">${LINK_BUTTON(rosterUrl, 'Open the Live roster')}</td></tr>
-<tr><td style="padding:0 24px 24px"><p style="margin:0;font-size:12px;color:#5b6773">You are copied as an owner or administrator. ${escapeHtml(child)}’s teachers see this on the Live roster; reply from ${escapeHtml(child)}’s card there. Please do not reply to this email.</p></td></tr>
+<tr><td style="padding:4px 24px 0">${LINK_BUTTON(rosterUrl, 'Open the Live Roster')}</td></tr>
+<tr><td style="padding:0 24px 24px"><p style="margin:0;font-size:12px;color:#5b6773">You are copied as an owner or administrator. ${escapeHtml(child)}’s teachers see this on the Live Roster; reply from ${escapeHtml(child)}’s card there. Please do not reply to this email.</p></td></tr>
 </table></td></tr></table></body></html>`
   const text = [
     `${m.sender_label} wrote about ${child} (${m.subject})`, '', m.body.trim(), '',
-    `Open the Live roster: ${rosterUrl}`,
-    `You are copied as an owner or administrator. Reply from ${child}'s card on the Live roster.`,
+    `Open the Live Roster: ${rosterUrl}`,
+    `You are copied as an owner or administrator. Reply from ${child}'s card on the Live Roster.`,
   ].join('\n')
   return { subject, html, text }
 }

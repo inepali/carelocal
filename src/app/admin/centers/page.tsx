@@ -177,9 +177,9 @@ export default function AdminCentersPage() {
     const enabling = !center.roster_enabled
     if (!await showConfirm(
       enabling
-        ? `Turn on the live roster for ${center.name}? Its owner, administrators and full-time and part-time teachers will see where every child and teacher is, and can check children in and out.`
-        : `Turn off the live roster for ${center.name}? The roster page closes for everyone at the center. Today's check-ins and the history are kept.`,
-      { title: 'Live roster pilot', confirmLabel: enabling ? 'Turn on' : 'Turn off', tone: 'default' },
+        ? `Turn on the Live Roster for ${center.name}? Its owner, administrators and full-time and part-time teachers will see where every child and teacher is, and can check children in and out.`
+        : `Turn off the Live Roster for ${center.name}? The roster page closes for everyone at the center. Today's check-ins and the history are kept.`,
+      { title: 'Live Roster pilot', confirmLabel: enabling ? 'Turn on' : 'Turn off', tone: 'default' },
     )) return
     const res = await setCenterRosterEnabled(center.id, enabling)
     if (!res.success) { showAlert(res.error); return }

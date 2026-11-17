@@ -69,7 +69,7 @@ export function ReportsPanel({ child, guardians }: { child: Child; guardians: Ch
           naps, meals, diapers or bathroom, medicine, activities and approved photos. No staff names. Replies go to the center.
         </p>
         {settings && !settings.enabled && (
-          <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900">Daily reports are off for your center. Turn them on from the Live roster.</p>
+          <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900">Daily reports are off for your center. Turn them on from the Live Roster.</p>
         )}
         {settings?.enabled && !settings.reply_to && (
           <p className="mt-3 rounded-xl bg-surface px-3 py-2 text-sm text-text-main">Add the center&apos;s email (About) so parents can reply.</p>

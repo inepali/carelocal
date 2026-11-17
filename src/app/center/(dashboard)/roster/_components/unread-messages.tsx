@@ -3,7 +3,7 @@
 import { createContext, useContext } from 'react'
 
 /**
- * Unread parent messages on the Live roster: which children have a message from a parent that nobody on the
+ * Unread parent messages on the Live Roster: which children have a message from a parent that nobody on the
  * roster has opened yet. RosterBoard keeps the counts; the child circles show a dot; the child card refreshes
  * the counts after a conversation is opened.
  */
