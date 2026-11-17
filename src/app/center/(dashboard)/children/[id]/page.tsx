@@ -14,6 +14,7 @@ import { ChildRecords } from '../_components/ChildRecords'
 import { ContactsPanel } from '../_components/ContactsPanel'
 import { ActivityPanel } from '../_components/ActivityPanel'
 import { MedicinesPanel } from '../_components/MedicinesPanel'
+import { AllergiesPanel } from '../_components/AllergiesPanel'
 import { ReportsPanel } from '../_components/ReportsPanel'
 import { FeePaymentPanel } from '../_components/FeePaymentPanel'
 import { BillingHistoryPanel } from '../_components/BillingHistoryPanel'
@@ -99,7 +100,7 @@ function ChildFile() {
   const TABS: { id: Tab; label: string; count?: number }[] = [
     { id: 'records', label: 'Records' },
     { id: 'contacts', label: 'Contacts', count: guardians.length },
-    { id: 'medicines', label: 'Medicines' },
+    { id: 'medicines', label: 'Medicines & Allergy' },
     ...(ctx.rosterEnabled ? [{ id: 'reports' as const, label: 'Daily reports' }] : []),
     ...(canManageTuition(ctx) ? [{ id: 'tuition' as const, label: 'Fee & Payment' }, { id: 'billing' as const, label: 'Billing history' }] : []),
     { id: 'activity', label: 'Activity' },
@@ -150,7 +151,7 @@ function ChildFile() {
 
       {tab === 'records' && <ChildRecords child={child} requirements={requirements} records={records} files={files} userId={userId} onChanged={load} />}
       {tab === 'contacts' && <ContactsPanel child={child} guardians={guardians} onChanged={load} />}
-      {tab === 'medicines' && <MedicinesPanel child={child} />}
+      {tab === 'medicines' && <div className="space-y-8"><MedicinesPanel child={child} /><AllergiesPanel child={child} /></div>}
       {tab === 'reports' && <ReportsPanel child={child} guardians={guardians} />}
       {tab === 'tuition' && <FeePaymentPanel key={`${child.status}-${child.withdrawn_on ?? ''}`} child={child} />}
       {tab === 'billing' && <BillingHistoryPanel child={child} />}

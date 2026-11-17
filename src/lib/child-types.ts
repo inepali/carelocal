@@ -122,3 +122,20 @@ export interface ChildMedication {
   created_at: string
   updated_at: string
 }
+
+export type AllergySeverity = 'mild' | 'moderate' | 'severe' | 'life_threatening'
+/** An allergy on the child's file (Medicines & Allergy tab). Removed (active = false), never deleted. */
+export interface ChildAllergy {
+  id: string
+  center_id: string
+  child_id: string
+  /** The Manage Data → Allergies label, saved as text */
+  allergen: string
+  severity: AllergySeverity
+  reaction: string | null
+  /** What staff should do */
+  action_plan: string | null
+  active: boolean
+  created_at: string
+  updated_at: string
+}

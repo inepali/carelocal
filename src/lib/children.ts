@@ -1,6 +1,6 @@
 // Self-contained on purpose (type-only imports, no path aliases) so the access-rule tests can load it directly.
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Child, ChildAuditEntry, ChildDocumentStatus, ChildFile, ChildGuardian, ChildMedication } from './child-types'
+import type { AllergySeverity, Child, ChildAllergy, ChildAuditEntry, ChildDocumentStatus, ChildFile, ChildGuardian, ChildMedication } from './child-types'
 
 /**
  * Every read and write the Child Files screens make. Each function takes the CALLER's Supabase client, so the
@@ -372,5 +372,50 @@ export async function setMedicationActive(supabase: SupabaseClient, medicationId
   const { data, error } = await supabase.from('child_medications').update({ active }).eq('id', medicationId).select('id')
   if (error) return fail(error)
   if (!data?.length) return fail('Medicine not found or you do not have access to it.')
+  return { success: true as const } as Ok<object>
+}
+
+// --- Allergies (Medicines & Allergy tab) -------------------------------------------------------------------------
+
+export const ALLERGY_SEVERITIES: { value: AllergySeverity; label: string; className: string }[] = [
+  { value: 'mild', label: 'Mild', className: 'border-amber-200 bg-amber-50 text-amber-800' },
+  { value: 'moderate', label: 'Moderate', className: 'border-orange-200 bg-orange-50 text-orange-800' },
+  { value: 'severe', label: 'Severe', className: 'border-red-200 bg-red-50 text-red-700' },
+  { value: 'life_threatening', label: 'Life-threatening', className: 'border-red-300 bg-red-600 text-white' },
+]
+export interface AllergyInput { allergen: string; severity: AllergySeverity; reaction: string; action_plan: string }
+
+export async function loadAllergies(supabase: SupabaseClient, childId: string) {
+  const { data, error } = await supabase.from('child_allergies').select('*').eq('child_id', childId)
+    .order('active', { ascending: false }).order('allergen')
+  if (error) return fail(error)
+  return { success: true as const, allergies: (data ?? []) as ChildAllergy[] }
+}
+
+export async function saveAllergy(supabase: SupabaseClient, centerId: string, childId: string, input: AllergyInput & { id?: string }) {
+  const allergen = input.allergen?.trim() ?? ''
+  if (!allergen) return fail('Pick the allergy.')
+  if (allergen.length > 60) return fail('Keep the allergy to 60 characters.')
+  if (!ALLERGY_SEVERITIES.some(s => s.value === input.severity)) return fail('Pick how serious it is.')
+  const row = { allergen, severity: input.severity, reaction: clean(input.reaction), action_plan: clean(input.action_plan) }
+  const query = input.id
+    ? supabase.from('child_allergies').update(row).eq('id', input.id).select('*')
+    : supabase.from('child_allergies').insert({ ...row, center_id: centerId, child_id: childId }).select('*')
+  const { data, error } = await query
+  if (error) {
+    if (error.code === '23505') return fail(`${allergen} is already on this child's allergies.`)
+    return fail(error)
+  }
+  if (!data?.length) return fail('Allergy not found or you do not have access to it.')
+  return { success: true as const, allergy: data[0] as ChildAllergy } as Ok<{ allergy: ChildAllergy }>
+}
+
+export async function setAllergyActive(supabase: SupabaseClient, allergyId: string, active: boolean) {
+  const { data, error } = await supabase.from('child_allergies').update({ active }).eq('id', allergyId).select('id')
+  if (error) {
+    if (error.code === '23505') return fail('That allergy is already on this child. Edit that one instead.')
+    return fail(error)
+  }
+  if (!data?.length) return fail('Allergy not found or you do not have access to it.')
   return { success: true as const } as Ok<object>
 }

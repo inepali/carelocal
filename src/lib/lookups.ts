@@ -19,6 +19,8 @@ export const LOOKUP_GROUPS = [
   { id: 'Inspection Type', label: 'Inspection Types' },
   // Saved as the label into child_guardians.relationship (text, ≤ 60)
   { id: 'Guardian Type', label: 'Parent/Guardian Types', domains: ['childcare'], maxLabel: 60 },
+  // Saved as the label into child_allergies.allergen (text, ≤ 60)
+  { id: 'Allergy', label: 'Allergies', domains: ['childcare'], maxLabel: 60 },
 ] as const satisfies readonly LookupGroupDef[]
 
 export type LookupGroup = typeof LOOKUP_GROUPS[number]['id']
