@@ -128,12 +128,15 @@ export function FeePaymentPanel({ child }: { child: Child }) {
             : `No fees on ${child.first_name} yet. Use Add fee to pick from your rate card.`}
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {data.periods.map(p => <PeriodCard key={p.frequency} period={p} payers={data.payers} />)}
-          <PaymentCard childId={child.id} childName={child.first_name} periods={data.periods} />
-        </div>
+        data.periods.length > 0 && (
+          <div className="grid gap-4 lg:grid-cols-2">
+            {data.periods.map(p => <PeriodCard key={p.frequency} period={p} payers={data.payers} />)}
+          </div>
+        )
       )}
 
+      {/* Fees first, Payment second, side by side */}
+      <div className="grid items-start gap-4 lg:grid-cols-2">
       {(current.length > 0 || upcoming.length > 0) && (
         <section className="rounded-2xl border border-border bg-white p-5 shadow-sm">
           <h3 className="mb-3 text-base font-bold text-heading">Fees</h3>
@@ -167,6 +170,8 @@ export function FeePaymentPanel({ child }: { child: Child }) {
           </ul>
         </section>
       )}
+      <PaymentCard childId={child.id} childName={child.first_name} periods={data.periods} />
+      </div>
 
       {data.one_time.length > 0 && (
         <section className="rounded-2xl border border-border bg-white p-5 shadow-sm">
