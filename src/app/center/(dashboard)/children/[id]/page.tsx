@@ -1,8 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Baby, Loader2, Pencil, ShieldAlert, UserMinus, UserPlus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { canManageTuition, canOpenChildFiles, useCenterContext } from '../../context'
@@ -26,7 +26,12 @@ type Loaded = NonNullable<Awaited<ReturnType<typeof loadChildFile>>>
 type Tab = 'records' | 'contacts' | 'medicines' | 'reports' | 'tuition' | 'billing' | 'activity'
 
 /** One child's file: records with due dates and review, contacts and pick-up, and the audit trail. */
+// useSearchParams (?tab=) needs a Suspense boundary, like the other pages that read the URL
 export default function ChildFilePage() {
+  return <Suspense><ChildFile /></Suspense>
+}
+
+function ChildFile() {
   const { id } = useParams<{ id: string }>()
   const ctx = useCenterContext()
   const allowed = canOpenChildFiles(ctx)
@@ -34,15 +39,17 @@ export default function ChildFilePage() {
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('records')
-  // Open a tab from the link, e.g. ?tab=tuition from the Fee & Payment button on the Children list
-  const [urlTab] = useState(() => (typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('tab')))
+  // Open a tab from the link, e.g. ?tab=tuition from the Fee & Payment button on the Children list.
+  // Read through the router: on an in-app link the page renders before window.location changes.
+  const urlTab = useSearchParams().get('tab')
+  const openedFromUrl = useRef<string | null>(null)   // apply ?tab= once, so later tab clicks stick
   useEffect(() => {
-    if (!urlTab) return
+    if (!urlTab || openedFromUrl.current === urlTab) return
     const ok = ['records', 'contacts', 'medicines', 'activity'].includes(urlTab)
       || (urlTab === 'reports' && ctx.rosterEnabled)
       || ((urlTab === 'tuition' || urlTab === 'billing') && canManageTuition(ctx))
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (ok) setTab(urlTab as Tab)
+    if (ok) { openedFromUrl.current = urlTab; setTab(urlTab as Tab) }
   }, [urlTab, ctx])
   const [editing, setEditing] = useState(false)
   const [withdrawing, setWithdrawing] = useState(false)
