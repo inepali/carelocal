@@ -144,7 +144,6 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
     ...(canOpenRoster({ domainKey, role, childFilesEnabled, rosterEnabled }) ? [{ name: 'Live roster', href: '/center/roster', icon: LayoutGrid }] : []),
     ...(canManageSchedule({ role, scheduleEnabled }) ? [{ name: 'Schedule', href: '/center/schedule', icon: CalendarClock }] : []),
     ...(canOpenChildFiles({ domainKey, role, childFilesEnabled }) ? [{ name: 'Children', href: '/center/children', icon: Baby }] : []),
-    ...(canManageTuition({ domainKey, role, childFilesEnabled, tuitionEnabled }) ? [{ name: 'Billing', href: '/center/billing', icon: Receipt }] : []),
     ...(domainKey === 'childcare' && lessonPlansEnabled ? [{ name: 'Lesson Plans', href: '/center/lesson-plans/weekly', icon: NotebookPen }] : []),
     ...(domainKey === 'childcare' && menuPlanningEnabled ? [{ name: 'Menu', href: '/center/menu', icon: Utensils }] : []),
     ...(announcementsEnabled && (role === 'owner' || role === 'admin') ? [{ name: 'Messages', href: '/center/announcements', icon: Megaphone }] : []),
@@ -163,6 +162,8 @@ export default function CenterDashboardLayout({ children }: { children: React.Re
     { name: 'Support', href: '/center/support', icon: LifeBuoy },
     // Jobs has its own pages (new, edit, applications), so it stays highlighted on all of them
     ...(jobsEnabled ? [{ name: 'Jobs', href: '/center/jobs', icon: Briefcase, prefix: true }] : []),
+    // Billing (with Tuition on) has its run pages under /center/billing, so it stays highlighted on them
+    ...(canManageTuition({ domainKey, role, childFilesEnabled, tuitionEnabled }) ? [{ name: 'Billing', href: '/center/billing', icon: Receipt, prefix: true }] : []),
     { name: 'About', href: '/center/about', icon: Info, also: ['/center/lesson-plans'] },
   ]
 
