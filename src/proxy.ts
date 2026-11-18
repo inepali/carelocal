@@ -14,6 +14,8 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public folder
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // Also skipped: files from public/ (service worker, manifests), robots/sitemap, share images,
+    // and machine-to-machine routes (cron jobs, Stripe and Resend webhooks) that never use a browser session.
+    '/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.json|site\\.webmanifest|robots\\.txt|sitemap\\.xml|api/cron/|api/webhooks/|api/stripe/webhook|(?:.*/)?opengraph-image|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|js|json|webmanifest|txt|xml|woff2?|map)$).*)',
   ],
 }
