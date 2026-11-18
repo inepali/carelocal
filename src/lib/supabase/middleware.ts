@@ -34,6 +34,20 @@ export async function updateSession(request: NextRequest) {
         request,
       })
 
+  // Anonymous visitors and bots carry no Supabase auth cookie, so there is no session to read or refresh.
+  // Skip creating a client for them: most public traffic then costs almost no CPU here.
+  const hasSession = request.cookies.getAll().some(({ name }) => name.startsWith('sb-') && name.includes('-auth-token'))
+  if (!hasSession) {
+    const inAnonArea = (area: string) => request.nextUrl.pathname === area || request.nextUrl.pathname.startsWith(`${area}/`)
+    if (inAnonArea('/center') || inAnonArea('/staff') || inAnonArea('/admin')) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      url.searchParams.set('redirect', request.nextUrl.pathname)
+      return NextResponse.redirect(url)
+    }
+    return supabaseResponse
+  }
+
   // Create an unauthenticated supabase client
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://kfjpsucszngvsnacjscq.supabase.co',
