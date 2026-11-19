@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import {
   ArrowRight, BellRing, Briefcase, CalendarCheck, CalendarClock, CheckCircle2, FileCheck2, Globe, HeartHandshake,
-  LayoutGrid, MapPin, MessageSquareText, Search, Settings2, Store, Users,
+  KeyRound, LayoutGrid, MapPin, MessageSquareText, Receipt, Search, Settings2, Star, Store, Users,
 } from 'lucide-react'
 import type { DomainKey } from '@/lib/domain-config'
 import type { PublicCenterSummary } from '@/lib/server/public-center'
@@ -79,6 +79,18 @@ export function centersFaq(domain: DomainKey, starterPrice: number) {
       a: `A visitor picks a time or tells you when they are free. The request lands in your CareLocal account with their contact details, they get a confirmation email, and you follow up. CareLocal never sells or shares tour requests.`,
     },
     {
+      q: 'What is a Care Score?',
+      a: `A 1 to 5 star rating built from attributed reviews after verified shifts${domain === 'childcare' ? ' and from parents' : ''}. Your ${c.place} and every ${c.subWord} get one, and neither side sees the other's review until both are in. You choose whether your page shows it.`,
+    },
+    ...(domain === 'childcare' ? [{
+      q: 'Can I bill tuition in CareLocal?',
+      a: 'Yes, in early access. Set a dated rate card per program, add fees to each child, and run billing weekly or monthly with discounts, credits and split payers. Record card, check or cash payments, partial or in advance. Automatic ACH bank drafts are coming soon.',
+    }] : []),
+    {
+      q: 'Who on my team can manage the account?',
+      a: `The owner, plus any co-owners. Owners name a Director, an Assistant Director or other roles, so each person sees what their job needs.`,
+    },
+    {
       q: 'Is CareLocal a staffing agency?',
       a: `No. It is software for your own team. You build your own ${c.subWord} pool from people you know and trust, post your own jobs, and keep your own records. There are no placement fees or markups.`,
     },
@@ -112,7 +124,7 @@ export function CentersHero({ domain, stats, joinHref }: {
           Run your {c.place}. <span className="gradient-text">Get found by {c.families} and {c.people}.</span>
         </h1>
         <p className="mx-auto mb-9 max-w-2xl text-lg leading-relaxed text-text-muted md:text-xl">
-          Fill shifts by text, keep staff files inspection-ready and hire from one place. Paid plans add a public {c.place} page
+          Fill shifts by text, keep staff files inspection-ready, hire{domain === 'childcare' ? ', track time and bill tuition' : ' and track time'}, all from one place. Paid plans add a public {c.place} page
           with your programs, team, open jobs and online tour requests.
         </p>
 
@@ -234,6 +246,9 @@ export function CenterTools({ domain }: { domain: DomainKey }) {
     { icon: Briefcase, title: 'Hiring in one place', desc: 'Post jobs, review applicants with their documents, schedule interviews and send offers.' },
     { icon: domain === 'childcare' ? LayoutGrid : CalendarClock, title: c.classroom.title, desc: c.classroom.desc },
     { icon: domain === 'childcare' ? HeartHandshake : BellRing, title: c.family.title, desc: c.family.desc },
+    ...(domain === 'childcare' ? [{ icon: Receipt, title: 'Tuition and billing', desc: 'Dated rate cards per program, split payers and subsidies, one billing run per week or month, and a payment history for every child.' }] : []),
+    { icon: KeyRound, title: 'Time Clock and PTO', desc: `${c.people[0].toUpperCase()}${c.people.slice(1)} clock in on your ${c.place} tablet with their own PIN. Approve time off against a yearly balance and review timesheets.` },
+    { icon: Star, title: 'Care Score', desc: `Verified reviews after every shift, so you know which ${c.subWord}s to call first, and ${c.people} can see you are a good place to work.` },
     { icon: Settings2, title: 'Inspections and vendors', desc: 'Fire, sanitation, playground and every other inspection, with reports, due dates, vendors and expenses.' },
   ]
   const steps = [

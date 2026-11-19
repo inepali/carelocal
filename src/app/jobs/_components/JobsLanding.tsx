@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import {
-  ArrowRight, BellRing, Briefcase, CalendarCheck, CheckCircle2, FileCheck2, HandCoins, MapPin, MessageSquareText,
-  Search, ShieldCheck, Smartphone, UserRound,
+  ArrowRight, BellRing, Briefcase, Building2, CalendarCheck, CheckCircle2, FileCheck2, HandCoins, KeyRound, MapPin, MessageSquareText,
+  Search, ShieldCheck, Smartphone, Star, UserRound,
 } from 'lucide-react'
 import type { DomainKey } from '@/lib/domain-config'
 import type { PublicJob } from '@/lib/server/public-jobs'
@@ -69,6 +69,10 @@ export function jobsFaq(domain: DomainKey) {
     {
       q: `Can I pick up ${c.subWord} shifts and still look for a steady job?`,
       a: `Yes. It is the same profile. Apply to open jobs and join ${c.subWord} pools at as many centers as you like.`,
+    },
+    {
+      q: 'What is a Care Score?',
+      a: `A 1 to 5 star rating from verified reviews. After a ${c.subWord} shift, you and the center can review each other within 7 days, and neither sees the other's review until both are in. Your score goes with you to every center, and centers have one too.`,
     },
     {
       q: 'How do I hear about new jobs?',
@@ -196,6 +200,9 @@ export function WhyCareLocal({ domain }: { domain: DomainKey }) {
     { icon: FileCheck2, title: 'Documents ready to go', desc: `Upload ${c.docs} once from your phone and see what is about to expire before it holds you up.` },
     { icon: BellRing, title: 'Hear about jobs first', desc: 'Turn on job alerts for your city and role, and get a notification when a match is posted.' },
     { icon: HandCoins, title: 'Free, for real', desc: `No subscription and no per-shift fees for ${c.people}. Centers pay for CareLocal, not you.` },
+    { icon: Star, title: 'A Care Score that follows you', desc: `Centers rate each ${c.subWord} shift you work. Good reviews build your Care Score and get you offered more shifts, at every center.` },
+    { icon: Building2, title: 'Know the center before you go', desc: `Centers have a Care Score too, from ${c.people} who worked there. Read it before you apply or take a shift.` },
+    { icon: KeyRound, title: 'Clock in with your PIN', desc: 'At centers using the CareLocal Time Clock, punch in on the center tablet with your own PIN and request time off from your phone.' },
   ]
   return (
     <section className="px-6 py-20">

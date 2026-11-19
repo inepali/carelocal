@@ -9,7 +9,8 @@ import {
   Star, MessageSquare, Clock, ShieldCheck, ChevronDown,
   Lock, Link2, Eye, Archive,
   LayoutGrid, NotebookPen, Moon, Mail, Camera, Briefcase, GraduationCap, Heart, Baby,
-  CalendarClock, UtensilsCrossed, MessageCircle, Megaphone
+  CalendarClock, UtensilsCrossed, MessageCircle, Megaphone,
+  Receipt, KeyRound, Pill, Landmark
 } from 'lucide-react'
 
 const seo = getDomainConfig('childcare')
@@ -56,6 +57,14 @@ const A_DAY = [
     area: 'Staffing',
     title: "Today's room assignments, on one board.",
     desc: "Fixed schedules fill the day for you. Drag a floater onto a call-out, cover breaks across rooms, then publish so every teacher sees where they are.",
+    early: true,
+  },
+  {
+    time: '6:30 am',
+    icon: KeyRound,
+    area: 'Staffing',
+    title: 'Teachers clock in on the center tablet.',
+    desc: 'Each person punches in with their own 4-digit Time Card PIN, then opens My Room with it. Punches roll into timesheets and PTO balances.',
     early: true,
   },
   {
@@ -115,12 +124,28 @@ const A_DAY = [
     early: true,
   },
   {
+    time: 'Thursday',
+    icon: Receipt,
+    area: 'Office',
+    title: "Next week's tuition, billed in one run.",
+    desc: "Run billing for every child enrolled next week, including Monday's new starters. Discounts, credits and split payers are applied, and each payment lands in the child's billing history.",
+    early: true,
+  },
+  {
     time: 'Friday',
     icon: CheckCircle,
     area: 'Planning',
     title: "Next week's plan, approved.",
     desc: 'Teachers build next week from NC Foundations goals and submit it. The director approves it or asks for changes.',
     early: true,
+  },
+  {
+    time: 'After a shift',
+    icon: Star,
+    area: 'Staffing',
+    title: 'Both sides rate the shift.',
+    desc: "The center and the substitute review each other within 7 days, and neither sees the other's review until both are in. Ratings build each Care Score.",
+    early: false,
   },
   {
     time: 'Any time',
@@ -142,6 +167,10 @@ const BY_ROLE = [
       { text: 'Staff files, trainings and policy sign-off on NC checklists', early: false },
       { text: 'Inspections, vendors and expenses in one place', early: false },
       { text: 'Job postings with one-click apply, no ad fees', early: false },
+      { text: 'Care Score ratings for every substitute', early: false },
+      { text: 'Owner, Director and Assistant Director roles', early: false },
+      { text: 'Tuition rate cards and weekly or monthly billing', early: true },
+      { text: 'Time Clock with PINs, PTO requests and timesheets', early: true },
       { text: 'Live ratios for every room', early: true },
       { text: 'Daily staff schedule with break cover', early: true },
       { text: 'Lesson plan review and approval', early: true },
@@ -155,6 +184,8 @@ const BY_ROLE = [
     items: [
       { text: 'Free account and one document library for every center', early: false },
       { text: 'Claim open shifts from a text', early: false },
+      { text: 'A Care Score that follows you to every center', early: false },
+      { text: 'Clock in with your PIN and request time off', early: true },
       { text: 'Your room and hours for the day, on the roster', early: true },
       { text: 'Check-in, meals, naps and photos on the Live Roster', early: true },
       { text: 'Weekly lesson plans from NC Foundations goals', early: true },
@@ -170,7 +201,37 @@ const BY_ROLE = [
       { text: "Messages with their child's teacher", early: true },
       { text: 'Only photos the director has reviewed', early: true },
       { text: "The month's menu and what their child learned", early: true },
+      { text: 'Allergies and medicines on file with the center', early: true },
+      { text: "A say in the center's Care Score", early: false },
     ],
+  },
+]
+
+/** Front-office tools that came after staffing: billing, time, reputation, health files */
+const OFFICE = [
+  {
+    icon: Receipt,
+    title: 'Tuition and billing',
+    desc: 'A dated rate card per program, fees on each child, split payers like 50/50 parents or subsidy plus co-pay, and one billing run per week or month. Take partial or advance payments and keep a year-to-date history per child.',
+    early: true,
+  },
+  {
+    icon: KeyRound,
+    title: 'Time Clock and PTO',
+    desc: 'Staff clock in and out on a registered center tablet with their own Time Card PIN. Time-off requests go to the director for approval against a yearly PTO balance, and timesheets add up the hours.',
+    early: true,
+  },
+  {
+    icon: Star,
+    title: 'Care Score',
+    desc: 'Weighted 1 to 5 star reviews of centers and staff, from verified shifts and from parents. Reviews are attributed and stay hidden until both sides have written one, so ratings stay honest.',
+    early: false,
+  },
+  {
+    icon: Pill,
+    title: 'Medicines and allergies',
+    desc: "Each child file has a Medicines & Allergy tab, with allergies picked from your center's own list, so the roster and kitchen see what they need to.",
+    early: true,
   },
 ]
 
@@ -222,6 +283,11 @@ const SECURITY = [
     icon: Baby,
     title: 'Child files for directors only',
     desc: "Children's records, medicine and incidents open only for the owner and admins. Teachers see just what the roster needs.",
+  },
+  {
+    icon: Landmark,
+    title: 'Bank details encrypted',
+    desc: "Payers' routing and account numbers, and the center's own bank account, are encrypted and visible only to the owner.",
   },
   {
     icon: Camera,
@@ -311,6 +377,18 @@ const FAQS = [
     a: "Yes, in early access. Build the monthly breakfast, lunch and snack menu by dragging meal presets onto a calendar. Everyone at the center can see it, only the director and cook can edit it, and an optional CACFP mode tracks meal components for reporting."
   },
   {
+    q: "Can CareLocal bill tuition?",
+    a: "Yes, in early access. Set a rate card for each program with the dates it applies, add fees to each child, and run billing weekly or monthly. Billing is prepay, so next week's run includes children starting that week. Discounts and credits handle mid-week starts, payers can split a bill, and you can record card, check or cash payments, partial or in advance. Automatic ACH bank drafts are coming soon."
+  },
+  {
+    q: "Does CareLocal have a staff time clock?",
+    a: "Yes, in early access. Register a tablet at your center and give each staff member, substitutes included, a 4-digit Time Card PIN. They clock in and out there, request time off against a yearly PTO balance, and you approve requests and review timesheets."
+  },
+  {
+    q: "What is a Care Score?",
+    a: "A 1 to 5 star rating for centers and staff, built from reviews after verified shifts and from parents. Reviews are attributed, not anonymous, and neither side sees the other's review until both are in. Recent reviews count for more, and a profile shows \"New\" until it has 3 reviews."
+  },
+  {
     q: "Is CareLocal free for daycare teachers and substitutes?",
     a: "Yes, 100% free. Teachers, floaters, and substitutes never pay anything: no subscription and no per-shift fees. Create a profile, upload certifications, and claim shifts from any mobile browser."
   },
@@ -336,6 +414,7 @@ export default function ChildcareHomePage() {
             <ProductsMenu />
             <Link href="#how-it-works" className="hover:text-brand-600 transition-colors">How it works</Link>
             <Link href="#a-day" className="hover:text-brand-600 transition-colors">Classroom</Link>
+            <Link href="#office" className="hover:text-brand-600 transition-colors">Office</Link>
             <Link href="#features" className="hover:text-brand-600 transition-colors">Features</Link>
             <Link href="#compliance" className="hover:text-brand-600 transition-colors">Compliance</Link>
             <Link href="#security" className="hover:text-brand-600 transition-colors">Security</Link>
@@ -372,7 +451,7 @@ export default function ChildcareHomePage() {
           </h1>
 
           <p className="text-xl text-text-muted max-w-2xl mx-auto mb-10 leading-relaxed">
-            Substitutes, staff files, live ratios, daily schedules, lesson plans and parent updates, built for North Carolina child care centers.
+            Substitutes, staff files, live ratios, time clock, tuition billing and parent updates, built for North Carolina child care centers.
           </p>
 
           <div className="inline-flex items-center gap-2 bg-amber-400 text-heading rounded-full px-5 py-2 text-sm font-bold mb-6 shadow-sm">
@@ -510,6 +589,36 @@ export default function ChildcareHomePage() {
         </div>
       </section>
 
+      {/* ── Front office ── */}
+      <section id="office" className="py-24 px-6 bg-white border-t border-border">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-14">
+            <p className="text-sm font-bold uppercase tracking-widest text-brand-600 mb-3">New in CareLocal</p>
+            <h2 className="text-4xl font-bold text-heading mb-4">Run the front office too</h2>
+            <p className="text-muted text-lg max-w-2xl mx-auto">
+              Tuition, timesheets and reputation in the same login, so you stop juggling a billing app, a punch clock and a spreadsheet.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-2 gap-6">
+            {OFFICE.map(({ icon: Icon, title, desc, early }) => (
+              <div key={title} className="flex gap-4 bg-surface rounded-2xl p-6 border border-border">
+                <div className="shrink-0 w-12 h-12 rounded-xl bg-brand-600 flex items-center justify-center">
+                  <Icon className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <h3 className="font-bold text-text-main">{title}</h3>
+                    {early && <EarlyAccess />}
+                  </div>
+                  <p className="text-sm text-muted leading-relaxed">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-center text-sm text-muted mt-8">Automatic ACH bank drafts for tuition are coming soon.</p>
+        </div>
+      </section>
+
       {/* ── Features ── */}
       <section id="features" className="py-24 px-6 bg-brand-900">
         <div className="max-w-6xl mx-auto">
@@ -634,7 +743,7 @@ export default function ChildcareHomePage() {
             ))}
           </div>
           <p className="text-center text-sm text-muted mt-8">
-            All plans include a 3-month free trial and the full compliance toolkit — staff file checklists, policy sign-off, document requests, inspections and vendors. Classroom and family tools (Live Roster, daily schedule, daily reports, parent page, lesson plans, menus and announcements) are in early access and free during your trial. Annual billing saves 2 months.
+            All plans include a 3-month free trial and the full compliance toolkit — staff file checklists, policy sign-off, document requests, inspections and vendors. Classroom, office and family tools (Live Roster, daily schedule, Time Clock, tuition and billing, daily reports, parent page, lesson plans, menus and announcements) are in early access and free during your trial. Annual billing saves 2 months.
             <Link href="/contact" className="text-brand-600 font-medium ml-1 hover:underline">
               Need Enterprise? Contact us →
             </Link>
