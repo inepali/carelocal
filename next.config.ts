@@ -17,6 +17,10 @@ const CDN_CACHED: { source: string; value: string }[] = [
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  experimental: {
+    // Set by `next upgrade --agent=security`: keep this app on security upgrades
+    agentUpgrade: 'security',
+  },
   async headers() {
     return [
       {
