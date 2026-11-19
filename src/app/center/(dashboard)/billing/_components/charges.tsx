@@ -28,10 +28,11 @@ export function chargeMethodDetail(c: Pick<Charge, 'method' | 'account_type' | '
 const paymentLabel = (kind: string, method: string) =>
   kind === 'ach' ? 'ACH draft cleared' : kind === 'ach_return' ? 'ACH returned' : kind === 'credit' ? `Paid from credit (${chargeMethodLabel(method)})` : chargeMethodLabel(method)
 
-function RecordPaymentDialog({ charge, today, onClose, onSaved }: { charge: Charge; today: string; onClose: () => void; onSaved: () => void }) {
+/** Record money received on one payer charge. `card`: Run Credit Card (card on file, the approval number as reference) */
+export function RecordPaymentDialog({ charge, today, onClose, onSaved, card }: { charge: Charge; today: string; onClose: () => void; onSaved: () => void; card?: boolean }) {
   const [form, setForm] = useState({
     amount: charge.balance.toFixed(2),
-    method: charge.method === 'credit_card' ? 'credit_card' : charge.method === 'check' ? 'check' : 'check',
+    method: card || charge.method === 'credit_card' ? 'credit_card' : 'check',
     reference: '', received_on: today, note: '',
   })
   const [saving, setSaving] = useState(false)
@@ -51,9 +52,9 @@ function RecordPaymentDialog({ charge, today, onClose, onSaved }: { charge: Char
   }
 
   return (
-    <Modal title="Record payment" onClose={onClose} footer={<>
+    <Modal title={card ? 'Record card charge' : 'Record payment'} onClose={onClose} footer={<>
       <button className={BTN_QUIET} onClick={onClose}>Cancel</button>
-      <button className={BTN_PRIMARY} onClick={save} disabled={saving}>{saving && <Loader2 className="h-4 w-4 animate-spin" />} Record payment</button>
+      <button className={BTN_PRIMARY} onClick={save} disabled={saving}>{saving && <Loader2 className="h-4 w-4 animate-spin" />} {card ? 'Record charge' : 'Record payment'}</button>
     </>}>
       <p className="mb-4 text-sm text-muted">
         {charge.payer_name} · {money(charge.amount)} billed{charge.paid > 0 ? `, ${money(charge.paid)} paid` : ''} · <b className="text-text-main">{money(charge.balance)} due</b>
@@ -67,8 +68,8 @@ function RecordPaymentDialog({ charge, today, onClose, onSaved }: { charge: Char
           </select>
         </div>
         <div>
-          <label className={LBL}>{form.method === 'check' ? 'Check number' : 'Reference'} <span className="font-normal text-muted">(optional)</span></label>
-          <input className={FLD} maxLength={60} value={form.reference} onChange={set('reference')} placeholder={form.method === 'credit_card' ? 'Receipt or last 4' : ''} />
+          <label className={LBL}>{form.method === 'check' ? 'Check number' : form.method === 'credit_card' ? 'Approval number' : 'Reference'} <span className="font-normal text-muted">(optional)</span></label>
+          <input className={FLD} maxLength={60} value={form.reference} onChange={set('reference')} placeholder={form.method === 'credit_card' ? 'From the terminal receipt' : ''} />
         </div>
         <div><label className={LBL}>Date paid</label><input type="date" className={FLD} max={today} value={form.received_on} onChange={set('received_on')} /></div>
         <div className="sm:col-span-2"><label className={LBL}>Note <span className="font-normal text-muted">(optional)</span></label><input className={FLD} maxLength={300} value={form.note} onChange={set('note')} /></div>

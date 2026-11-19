@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, ChevronLeft, ChevronRight, ChevronDown, Landmark, Loader2, Receipt, Send } from 'lucide-react'
+import { AlertTriangle, ChevronLeft, ChevronRight, ChevronDown, CreditCard, Landmark, Loader2, Receipt, Send } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/lib/compliance'
 import { money } from '@/lib/tuition'
@@ -30,8 +30,9 @@ export default function BillingPage() {
           <Receipt className="h-8 w-8 text-brand-600" /> Billing
         </h1>
         <p className="text-muted">
-          Bill every enrolled child for the week or month from their fees, split by who pays. Families set up for ACH are
-          queued as bank drafts; everyone else pays by card, check or cash and you record it here or on the child&apos;s file.
+          Bill every enrolled child for the week or month from their fees, split by who pays. <b>Submit Billing</b> works out what
+          each family owes and how: ACH drafts, card on file, or check / cash / other. Then open the run to <b>Run ACH</b> (the
+          bank file) and <b>Run Credit Card</b>.
         </p>
       </div>
       {!canManageTuition(ctx) || !ctx.centerId ? (
@@ -94,6 +95,16 @@ function RunBilling({ centerId }: { centerId: string }) {
   const hidden = (data?.children.length ?? 0) - (data?.children.filter(c => c.billable).length ?? 0)
   const warnings = useMemo(() => (data?.children ?? []).filter(c => c.billable && c.warnings.length), [data])
   const t = data?.totals
+  // Card on file: payers whose method is card. Charged from the run's Run Credit Card step after submitting
+  const card = useMemo(() => {
+    let count = 0, total = 0
+    for (const c of data?.children ?? []) for (const ch of c.charges) {
+      if (!c.billable || ch.method !== 'credit_card') continue
+      count += 1; total += Math.round(Number(ch.amount) * 100)
+    }
+    return { count, total: total / 100 }
+  }, [data])
+  const otherTotal = t ? Math.max(0, Math.round((Number(t.manual_total) - card.total) * 100) / 100) : 0
   // One run per week / month: once submitted, the window can't be billed again (void the run first)
   const billedRun = data?.runs.find(r => r.status === 'submitted') ?? null
   // Credit payers already paid in advance: the run uses it as each charge is created
@@ -115,11 +126,12 @@ function RunBilling({ centerId }: { centerId: string }) {
     const lines = [
       `Bill ${t.billable} ${t.billable === 1 ? 'child' : 'children'} for the ${data.label}: ${money(t.total)}.`,
       t.ach_count > 0 ? `${t.ach_count} ACH ${t.ach_count === 1 ? 'draft' : 'drafts'} (${money(t.ach_total)}) will be queued for ${formatDate(draftDate)}.` : 'No ACH drafts.',
-      t.manual_total > 0 ? `${money(t.manual_total)} is to be paid by card, check, cash or other.` : '',
+      card.count > 0 ? `${card.count} card-on-file ${card.count === 1 ? 'charge' : 'charges'} (${money(card.total)}) to run with Run Credit Card.` : '',
+      otherTotal > 0 ? `${money(otherTotal)} is to be paid by check, cash or other.` : '',
       warnings.length ? `${warnings.length} ${warnings.length === 1 ? 'child has' : 'children have'} warnings.` : '',
-      'Each bill is posted to the child’s billing history.',
+      'Each bill is posted to the child’s billing history. Next, open the run to Run ACH and Run Credit Card.',
     ].filter(Boolean)
-    if (!await showConfirm(lines.join('\n'), { title: 'Submit billing run', confirmLabel: 'Submit' })) return
+    if (!await showConfirm(lines.join('\n'), { title: 'Submit Billing', confirmLabel: 'Submit Billing' })) return
     setSubmitting(true)
     const res = await submitRun(createClient(), centerId, frequency, data.period_start, t.total, t.ach_count > 0 ? draftDate : null, note)
     setSubmitting(false)
@@ -235,12 +247,21 @@ function RunBilling({ centerId }: { centerId: string }) {
                   <div className="mb-3 flex items-center gap-2 font-bold text-heading"><Landmark className="h-4 w-4 text-brand-600" /> ACH drafts</div>
                   <p className="mb-3 text-sm text-muted">
                     {t.ach_count} {t.ach_count === 1 ? 'family is' : 'families are'} set up for ACH (bank details and a signed authorization on file).
-                    Submitting queues {t.ach_count === 1 ? 'its draft' : 'their drafts'}; the owner then downloads the bank file from the run.
+                    Submit Billing queues {t.ach_count === 1 ? 'its draft' : 'their drafts'}; the owner then uses <b>Run ACH</b> on the run to build the bank (NACHA) file.
                     {!data.center_bank && ' Add the center’s bank account first (About → Center Profile).'}
                   </p>
                   <label className={LBL}>Draft date</label>
                   <input type="date" className={`${FLD} w-48`} min={data.today} value={draftDate} onChange={e => setDraftDate(e.target.value)} />
                   <p className="mt-1.5 text-xs text-muted">Drafts take 2–3 banking days to reach the center&apos;s account.</p>
+                </div>
+              )}
+              {card.count > 0 && (
+                <div className="rounded-2xl border border-border bg-white p-5 shadow-sm">
+                  <div className="mb-2 flex items-center gap-2 font-bold text-heading"><CreditCard className="h-4 w-4 text-brand-600" /> Card on file</div>
+                  <p className="text-sm text-muted">
+                    {card.count} {card.count === 1 ? 'charge' : 'charges'} ({money(card.total)}) for families who pay by card.
+                    After you submit, use <b>Run Credit Card</b> on the run to charge them and record each approval.
+                  </p>
                 </div>
               )}
               <div className="rounded-2xl border border-border bg-white p-5 shadow-sm">
@@ -260,7 +281,8 @@ function RunBilling({ centerId }: { centerId: string }) {
                 {Number(t.adjustments) > 0 && <Row label="… one-time discounts (in Discount)" value={`−${money(t.adjustments)}`} muted />}
                 <div className="my-3 border-t border-border" />
                 <Row label={`ACH drafts (${t.ach_count})`} value={money(t.ach_total)} />
-                <Row label="Card / check / cash / other" value={money(t.manual_total)} />
+                <Row label={`Card on file (${card.count})`} value={money(card.total)} />
+                <Row label="Check / cash / other (by hand)" value={money(otherTotal)} />
                 {t.unassigned_total > 0 && <Row label="… no payer set" value={money(t.unassigned_total)} muted />}
                 {creditUse > 0 && <Row label="Paid from credit on file" value={`−${money(creditUse)}`} />}
                 <div className="my-3 border-t border-border" />
@@ -270,7 +292,7 @@ function RunBilling({ centerId }: { centerId: string }) {
                 </div>
               </dl>
               <button className={`${BTN_PRIMARY} mt-5 w-full`} disabled={submitting || loading || t.billable === 0 || !!billedRun} onClick={submit}>
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} {billedRun ? 'Already billed' : 'Submit billing run'}
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} {billedRun ? 'Already billed' : 'Submit Billing'}
               </button>
               <p className="mt-2 text-xs text-muted">Amounts are worked out again when you submit. If anything changed since this preview, you&apos;ll be asked to review it again.</p>
             </div>
