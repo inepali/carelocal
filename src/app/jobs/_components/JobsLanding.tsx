@@ -295,7 +295,7 @@ export function HiringStrip() {
             <p className="text-muted">Post openings, review applicants with their documents, and fill shifts by text.</p>
           </div>
         </div>
-        <Link href="/" className="shrink-0 rounded-xl border border-brand-200 bg-white px-5 py-3 font-semibold text-brand-600 hover:bg-brand-50">For centers</Link>
+        <Link href="/centers" className="shrink-0 rounded-xl border border-brand-200 bg-white px-5 py-3 font-semibold text-brand-600 hover:bg-brand-50">For centers</Link>
       </div>
     </section>
   )

@@ -4,6 +4,7 @@ import { headers } from 'next/headers'
 import { getDomainKey, getDomainConfig, type DomainKey } from '@/lib/domain-config'
 import { siteUrl, SEO_KEYWORDS } from '@/lib/site'
 import { AppAnalytics } from '@/components/AppAnalytics'
+import { UtmCapture } from '@/components/UtmCapture'
 import { DialogHost } from '@/components/ui/DialogHost'
 import { RecoveryRedirect } from '@/components/auth/RecoveryRedirect'
 import './globals.css'
@@ -84,6 +85,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <DialogHost />
         <RecoveryRedirect />
         <AppAnalytics />
+        <UtmCapture />
       </body>
     </html>
   )

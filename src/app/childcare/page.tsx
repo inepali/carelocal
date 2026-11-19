@@ -8,7 +8,8 @@ import {
   CheckCircle, Zap, FileText, Users, ArrowRight,
   Star, MessageSquare, Clock, ShieldCheck, ChevronDown,
   Lock, Link2, Eye, Archive,
-  LayoutGrid, NotebookPen, Moon, Mail, Camera, Briefcase, GraduationCap, Heart, Baby
+  LayoutGrid, NotebookPen, Moon, Mail, Camera, Briefcase, GraduationCap, Heart, Baby,
+  CalendarClock, UtensilsCrossed, MessageCircle, Megaphone
 } from 'lucide-react'
 
 const seo = getDomainConfig('childcare')
@@ -50,6 +51,14 @@ const HOW_IT_WORKS = [
 /** One day at a center, start to finish: each feature with the moment it earns its keep */
 const A_DAY = [
   {
+    time: '6:15 am',
+    icon: CalendarClock,
+    area: 'Staffing',
+    title: "Today's room assignments, on one board.",
+    desc: "Fixed schedules fill the day for you. Drag a floater onto a call-out, cover breaks across rooms, then publish so every teacher sees where they are.",
+    early: true,
+  },
+  {
     time: '6:40 am',
     icon: Zap,
     area: 'Staffing',
@@ -74,6 +83,14 @@ const A_DAY = [
     early: true,
   },
   {
+    time: '11:30 am',
+    icon: UtensilsCrossed,
+    area: 'Kitchen',
+    title: 'Lunch is already planned.',
+    desc: "The cook serves from this month's menu, built from meal presets, with CACFP components tracked if you turn that on.",
+    early: true,
+  },
+  {
     time: '12:30 pm',
     icon: Moon,
     area: 'Classroom',
@@ -82,11 +99,19 @@ const A_DAY = [
     early: true,
   },
   {
+    time: '3:15 pm',
+    icon: MessageCircle,
+    area: 'Families',
+    title: 'A parent asks about pickup. The teacher sees it.',
+    desc: "Parents message from the center's parent page and the child's teacher answers from the roster, with the director copied.",
+    early: true,
+  },
+  {
     time: '6:00 pm',
     icon: Mail,
     area: 'Families',
     title: 'Every family gets the day.',
-    desc: 'Meals, naps, diapers, activities and approved photos go out in one daily report, with no extra parent app to set up.',
+    desc: 'Meals, naps, diapers, activities and approved photos go out in one daily report, and the last 60 days stay on the parent page. No app to install.',
     early: true,
   },
   {
@@ -95,6 +120,14 @@ const A_DAY = [
     area: 'Planning',
     title: "Next week's plan, approved.",
     desc: 'Teachers build next week from NC Foundations goals and submit it. The director approves it or asks for changes.',
+    early: true,
+  },
+  {
+    time: 'Any time',
+    icon: Megaphone,
+    area: 'Families',
+    title: 'One note to every family.',
+    desc: 'Send an announcement to all parents, one class, or all staff by email. Families can read it on the parent page too.',
     early: true,
   },
 ]
@@ -108,9 +141,12 @@ const BY_ROLE = [
       { text: 'SMS shift fill from your own substitute pool', early: false },
       { text: 'Staff files, trainings and policy sign-off on NC checklists', early: false },
       { text: 'Inspections, vendors and expenses in one place', early: false },
-      { text: 'Free job postings with one-click apply', early: false },
+      { text: 'Job postings with one-click apply, no ad fees', early: false },
       { text: 'Live ratios for every room', early: true },
+      { text: 'Daily staff schedule with break cover', early: true },
       { text: 'Lesson plan review and approval', early: true },
+      { text: 'Monthly menus, with optional CACFP tracking', early: true },
+      { text: 'Announcements to parents and staff', early: true },
     ],
   },
   {
@@ -119,6 +155,7 @@ const BY_ROLE = [
     items: [
       { text: 'Free account and one document library for every center', early: false },
       { text: 'Claim open shifts from a text', early: false },
+      { text: 'Your room and hours for the day, on the roster', early: true },
       { text: 'Check-in, meals, naps and photos on the Live Roster', early: true },
       { text: 'Weekly lesson plans from NC Foundations goals', early: true },
       { text: 'Class feedback on how each activity went', early: true },
@@ -129,8 +166,10 @@ const BY_ROLE = [
     icon: Heart,
     items: [
       { text: 'A daily report by email at the end of each day', early: true },
+      { text: 'A private parent page, opened with a PIN, with 60 days of history', early: true },
+      { text: "Messages with their child's teacher", early: true },
       { text: 'Only photos the director has reviewed', early: true },
-      { text: "What their child learned, from the class's lesson plan", early: true },
+      { text: "The month's menu and what their child learned", early: true },
     ],
   },
 ]
@@ -260,6 +299,18 @@ const FAQS = [
     a: "Yes, in early access. At the end of each day, families who opt in get an email with their child's meals, naps, diapers or bathroom, activities and photos. Photos go out only after a director approves them."
   },
   {
+    q: "Is there a parent app?",
+    a: "No app to install. Each center gets its own parent page link (in early access). Parents open it with a PIN the director sets and see their child's day, approved photos, medicine given, the class menu and lesson activities for the last 60 days, read announcements, and message the teacher. Incident reports stay with the center and are shared directly."
+  },
+  {
+    q: "Can I build the daily staff schedule in CareLocal?",
+    a: "Yes, in early access. Each teacher's fixed schedule fills the day's board automatically. Each morning you drag floaters and part-timers onto call-outs, add breaks and break cover, then publish. Teachers see their own room and hours on the roster, and breaks are not counted as paid time."
+  },
+  {
+    q: "Does CareLocal handle menus and CACFP?",
+    a: "Yes, in early access. Build the monthly breakfast, lunch and snack menu by dragging meal presets onto a calendar. Everyone at the center can see it, only the director and cook can edit it, and an optional CACFP mode tracks meal components for reporting."
+  },
+  {
     q: "Is CareLocal free for daycare teachers and substitutes?",
     a: "Yes, 100% free. Teachers, floaters, and substitutes never pay anything: no subscription and no per-shift fees. Create a profile, upload certifications, and claim shifts from any mobile browser."
   },
@@ -321,7 +372,7 @@ export default function ChildcareHomePage() {
           </h1>
 
           <p className="text-xl text-text-muted max-w-2xl mx-auto mb-10 leading-relaxed">
-            Substitutes, staff files, live ratios, daily reports and lesson plans, built for North Carolina child care centers.
+            Substitutes, staff files, live ratios, daily schedules, lesson plans and parent updates, built for North Carolina child care centers.
           </p>
 
           <div className="inline-flex items-center gap-2 bg-amber-400 text-heading rounded-full px-5 py-2 text-sm font-bold mb-6 shadow-sm">
@@ -353,9 +404,9 @@ export default function ChildcareHomePage() {
         {/* ── Stats bar ── */}
         <div className="max-w-3xl mx-auto mt-20 grid grid-cols-3 gap-px bg-border rounded-2xl overflow-hidden shadow-sm">
           {[
-            { val: '~24 hrs', label: 'Avg. shift fill time' },
-            { val: '80%', label: 'Shift fill rate' },
-            { val: '$0', label: 'Cost to staff' },
+            { val: '30 sec', label: 'To post an open shift' },
+            { val: '3 months', label: 'Free trial, no card' },
+            { val: '$0', label: 'Cost to staff, ever' },
           ].map(({ val, label }) => (
             <div key={label} className="bg-white px-6 py-6 text-center">
               <div className="text-3xl font-extrabold text-brand-600">{val}</div>
@@ -583,7 +634,7 @@ export default function ChildcareHomePage() {
             ))}
           </div>
           <p className="text-center text-sm text-muted mt-8">
-            All plans include a 3-month free trial and the full compliance toolkit — staff file checklists, policy sign-off, document requests, inspections and vendors. Classroom tools (Live Roster, daily reports and lesson plans) are in early access and free during your trial. Annual billing saves 2 months.
+            All plans include a 3-month free trial and the full compliance toolkit — staff file checklists, policy sign-off, document requests, inspections and vendors. Classroom and family tools (Live Roster, daily schedule, daily reports, parent page, lesson plans, menus and announcements) are in early access and free during your trial. Annual billing saves 2 months.
             <Link href="/contact" className="text-brand-600 font-medium ml-1 hover:underline">
               Need Enterprise? Contact us →
             </Link>
@@ -673,6 +724,8 @@ export default function ChildcareHomePage() {
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
             <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
             <Link href="/jobs" className="hover:text-white transition-colors">Jobs</Link>
+            <Link href="/centers" className="hover:text-white transition-colors">Centers</Link>
+            <Link href="/guides/nc-child-care-staff-file-checklist" className="hover:text-white transition-colors">NC staff file checklist</Link>
             <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
           </div>
           <span>© {new Date().getFullYear()} CareLocal. All rights reserved.</span>

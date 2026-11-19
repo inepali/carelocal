@@ -3,15 +3,15 @@ import { headers } from 'next/headers'
 import { getDomainConfig, getDomainKey, type DomainKey } from '@/lib/domain-config'
 
 // Social share card (Open Graph / X / LinkedIn / Slack previews), one per domain.
-export const alt = 'CareLocal — staffing and compliance in one platform'
+export const alt = 'CareLocal — staffing, compliance and family updates in one platform'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
 const CARD: Record<DomainKey, { bg: string; accent: string; headline: string; points: string[] }> = {
   childcare: {
     bg: '#0a3d3a', accent: '#f4b860',
-    headline: 'The all-in-one platform for childcare staffing and compliance',
-    points: ['Fill shifts by text', 'Staff files & training', 'Inspections & vendors'],
+    headline: 'Run your child care center from one login',
+    points: ['Fill shifts by text', 'Live ratios & daily reports', 'Parent page & messages'],
   },
   healthcare: {
     bg: '#312e81', accent: '#a5b4fc',

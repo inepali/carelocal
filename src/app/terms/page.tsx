@@ -93,15 +93,26 @@ export default async function TermsPage() {
           The Platform lets {v.providers} collect staff documents, record completion dates, set due dates, review submissions and track what is current, due soon or overdue. These are record-keeping tools. Due dates are calculated from the rules {v.an} {v.provider.toLowerCase()} configures and can be changed by the {v.provider.toLowerCase()}, so what the Platform shows is only as accurate as the rules and records entered. The Platform is not legal advice and does not guarantee that you meet any licensing, inspection or employment requirement. You remain responsible for your own compliance and for checking that records are correct.
         </LegalP>
         <LegalP>
-          Do not upload {domainKey === 'childcare' ? 'children’s records' : 'patient or resident records'} or other health information about the people you care for. Access to uploaded documents is logged.
+          {domainKey === 'childcare'
+            ? 'Centers that turn on child files, the Live Roster and the parent page may keep children’s records on the Platform, including allergies, medicine given and incident reports. The Center decides what to record and is responsible for having the right to record it, for keeping it accurate, for limiting access to authorized people, and for giving parents and guardians the access licensing rules require. Access to uploaded documents is logged.'
+            : 'Do not upload patient or resident records or other health information about the people you care for. Access to uploaded documents is logged.'}
         </LegalP>
+        {domainKey === 'childcare' && (
+          <LegalP>
+            <strong className="text-brand-900">Parent page, messages and announcements.</strong> A Center may give parents and guardians access to its parent page with a PIN, send daily reports, messages and announcements, and share photos. The Center is responsible for giving access only to people who are entitled to see a child’s information, for respecting custody and pickup restrictions it knows about, for approving photos before families see them, and for having any consent it needs to take and share photos. Parents and guardians must keep their PIN private and use the parent page only for their own child.
+          </LegalP>
+        )}
       </LegalSection>
 
       <LegalSection Icon={CreditCard} title="8. Plans, Fees & Payments">
         <LegalItems items={[
           { title: 'Plans and free trial', body: `${v.providers} may start with a free trial; the length is shown in your account. After the trial, paid plans are available, billed monthly or yearly in advance until cancelled. Prices and plan limits are shown in your account before you subscribe, and we will give notice before a price change takes effect.` },
           { title: 'Payment processing', body: 'Payments are processed by Stripe. We do not store full card numbers. You can update your payment method, change your plan or cancel from the billing portal in your account. If a payment fails or a subscription is past due, we may limit paid features, such as posting jobs, until it is resolved. Taxes may apply.' },
-          { title: 'Platform maintenance fee (Staff)', body: `A platform maintenance fee may apply to Staff. When a Staff member checks in to a confirmed shift, a fee set for the ${v.provider.toLowerCase()}’s metro area is added to that Staff member’s account balance, which is shown in the account. No fee is added for a shift that is not checked in to. The fee is a charge for use of the Platform and is not wages.` },
+          ...(domainKey === 'childcare' ? [
+            { title: 'Free for Staff', body: 'Staff accounts are free. Staff pay no subscription and no per-shift or platform fee for using the Platform.' },
+          ] : [
+            { title: 'Platform maintenance fee (Staff)', body: `A platform maintenance fee may apply to Staff. When a Staff member checks in to a confirmed shift, a fee set for the ${v.provider.toLowerCase()}’s metro area is added to that Staff member’s account balance, which is shown in the account. No fee is added for a shift that is not checked in to. The fee is a charge for use of the Platform and is not wages.` },
+          ]),
         ]} />
       </LegalSection>
 
@@ -121,7 +132,7 @@ export default async function TermsPage() {
           <li>post or send anything unlawful, discriminatory, harassing or misleading;</li>
           <li>use another person’s information, including tour request details, for purposes other than those it was given for;</li>
           <li>scrape, copy or bulk-download Platform data, or interfere with its security or operation; or</li>
-          <li>upload malicious files or records about {v.recipients} in your care.</li>
+          <li>upload malicious files{domainKey === 'childcare' ? ', or children’s records outside the child file, roster and parent tools built for them' : ` or records about ${v.recipients} in your care`}.</li>
         </ul>
       </LegalSection>
 
