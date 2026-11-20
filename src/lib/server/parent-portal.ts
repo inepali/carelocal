@@ -257,3 +257,10 @@ export async function loadPortalBill(tokenHash: string, billId: string) {
   if (error) throw new Error(`parent_billing_bill: ${error.message}`)
   return (data as import('@/lib/parent-billing').ParentBillDetail | null) ?? null
 }
+
+/** The lines a parent can ask to change and their bank change requests. Never throws (null: not ready, or billing off). */
+export async function loadPortalBankChanges(tokenHash: string) {
+  const { data, error } = await parentDb().rpc('parent_bank_changes', { p_token_hash: tokenHash })
+  if (error) { console.error('[parent-portal] parent_bank_changes:', error.message); return null }
+  return (data as import('@/lib/parent-billing').ParentBankChanges | null) ?? null
+}

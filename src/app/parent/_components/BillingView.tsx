@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { CalendarClock, ChevronDown, ChevronUp, Landmark, Phone, Receipt, Wallet } from 'lucide-react'
-import { loadPortalBill, loadPortalBills } from '@/lib/server/parent-portal'
+import { loadPortalBankChanges, loadPortalBill, loadPortalBills } from '@/lib/server/parent-portal'
+import { BankChangeCard } from './BankChangeCard'
 import {
   account, billStatus, chargeStatus, paymentLabel, periodLabel, shareLabel, usd,
   type ParentBillingSummary, type Tone,
@@ -36,9 +37,10 @@ export async function BillingView({ tokenHash, childId, summary, billId, before 
 }) {
   const open = billId && UUID.test(billId) ? billId : null
   const older = before && DAY.test(before) ? before : null
-  const [bills, detail] = await Promise.all([
+  const [bills, detail, changes] = await Promise.all([
     loadPortalBills(tokenHash, older),
     open ? loadPortalBill(tokenHash, open) : Promise.resolve(null),
+    loadPortalBankChanges(tokenHash),
   ])
   const s = summary
   const oldest = bills.length ? bills[bills.length - 1].period_start : null
@@ -202,7 +204,9 @@ export async function BillingView({ tokenHash, childId, summary, billId, before 
               </li>
             ))}
           </ul>
-          <p className="border-t border-border px-4 py-3 text-xs text-text-muted">To change your bank account or how you pay, please contact {s.center.name}.</p>
+          {changes
+            ? <BankChangeCard data={changes} centerName={s.center.name} />
+            : <p className="border-t border-border px-4 py-3 text-xs text-text-muted">To change your bank account or how you pay, please contact {s.center.name}.</p>}
         </section>
       )}
 
