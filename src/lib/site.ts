@@ -14,6 +14,12 @@ export function siteUrl(domainKey: DomainKey) {
 /** Search keywords per vertical (minor signal for Bing / others; Google ignores meta keywords). */
 export const SEO_KEYWORDS: Record<DomainKey, string[]> = {
   childcare: [
+    'child care management software',
+    'daycare management software',
+    'daycare parent communication app',
+    'childcare ratio tracking',
+    'daycare staff scheduling software',
+    'CACFP menu planning',
     'childcare staffing software',
     'childcare compliance software',
     'daycare staff file checklist',
