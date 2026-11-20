@@ -25,6 +25,12 @@ export interface NachaOptions {
   entryDescription?: string           // shows on the statement, 10 characters (default TUITION)
   effectiveDate: string               // YYYY-MM-DD, when the drafts settle
   balanced?: { account: string; accountType: 'checking' | 'savings'; name: string }   // offsetting credit to the center
+  // File header values some banks set themselves (they say so in their ACH file specs). Defaults: the center's
+  // routing number, the bank's name and the Company ID.
+  immediateDestination?: string       // 9 digits
+  immediateDestinationName?: string   // 23 characters
+  immediateOrigin?: string            // up to 10 letters or digits
+  lineEnding?: 'lf' | 'crlf'          // most banks take LF; some ask for CRLF
   now?: Date
 }
 
@@ -68,6 +74,10 @@ export function buildNachaFile(debits: NachaDebit[], o: NachaOptions): string {
     if (!(cents(d.amount) > 0) || cents(d.amount) > 99_999_999_99) throw new NachaError(`Bad amount for ${d.name}`)
   }
   if (o.balanced && !/^\d{4,17}$/.test(o.balanced.account)) throw new NachaError('The center’s account number isn’t valid')
+  const destination = o.immediateDestination?.trim() || o.originRouting
+  if (!/^\d{9}$/.test(destination)) throw new NachaError('The immediate destination should be 9 digits (from your bank)')
+  const origin = (o.immediateOrigin?.trim() || companyId).toUpperCase()
+  if (!/^[A-Z0-9]{1,10}$/.test(origin)) throw new NachaError('The immediate origin should be up to 10 letters or digits (from your bank)')
 
   const now = o.now ?? new Date()
   const pad2 = (n: number) => String(n).padStart(2, '0')
@@ -78,8 +88,8 @@ export function buildNachaFile(debits: NachaDebit[], o: NachaOptions): string {
   const batchNo = num(1, 7)
 
   const lines: string[] = []
-  lines.push(check('1' + '01' + ' ' + o.originRouting + companyId.padStart(10, ' ') + created + time + 'A' + '094' + '10' + '1'
-    + alpha(o.originBankName, 23) + alpha(o.companyName, 23) + ' '.repeat(8), 'File header'))
+  lines.push(check('1' + '01' + ' ' + destination + origin.padStart(10, ' ') + created + time + 'A' + '094' + '10' + '1'
+    + alpha(o.immediateDestinationName?.trim() || o.originBankName, 23) + alpha(o.companyName, 23) + ' '.repeat(8), 'File header'))
   lines.push(check('5' + serviceClass + alpha(o.companyName, 16) + ' '.repeat(20) + companyId.padEnd(10, ' ') + 'PPD'
     + alpha(o.entryDescription || 'TUITION', 10) + ' '.repeat(6) + yymmdd(o.effectiveDate) + '   ' + '1' + odfi8 + batchNo, 'Batch header'))
 
@@ -106,7 +116,28 @@ export function buildNachaFile(debits: NachaDebit[], o: NachaOptions): string {
   lines.push(check('9' + num(1, 6) + num(blocks, 6) + num(seq, 8) + hash10 + num(debitCents, 12) + num(creditCents, 12)
     + ' '.repeat(39), 'File control'))
   while (lines.length % 10 !== 0) lines.push('9'.repeat(94))
-  return lines.join('\n') + '\n'
+  const eol = o.lineEnding === 'crlf' ? '\r\n' : '\n'
+  return lines.join(eol) + eol
+}
+
+/**
+ * The file name for the bank. Some banks pick up files by name, so the pattern comes from the center's ACH settings.
+ * Tokens: {companyId} {date} (YYYYMMDD of the draft) {created} (YYYYMMDDHHMMSS now) {seq} (export count).
+ * Only letters, digits, dot, dash and underscore survive.
+ */
+export function nachaFileName(pattern: string | null | undefined, v: { companyId: string; draftDate: string; seq?: number; now?: Date }): string {
+  const now = v.now ?? new Date()
+  const p2 = (n: number) => String(n).padStart(2, '0')
+  const created = `${now.getFullYear()}${p2(now.getMonth() + 1)}${p2(now.getDate())}${p2(now.getHours())}${p2(now.getMinutes())}${p2(now.getSeconds())}`
+  const name = (pattern?.trim() || 'ach-drafts-{date}-{created}.ach')
+    .replaceAll('{companyId}', v.companyId.trim().toUpperCase())
+    .replaceAll('{date}', v.draftDate.replaceAll('-', ''))
+    .replaceAll('{created}', created)
+    .replaceAll('{seq}', String(v.seq ?? 1))
+    .replace(/[^A-Za-z0-9._-]/g, '')
+    .replace(/^\.+/, '')
+  if (!name || name.length > 120) throw new NachaError('The file name pattern makes an empty or too long name')
+  return name
 }
 
 /** The same drafts as a spreadsheet, for banks that take CSV uploads */
