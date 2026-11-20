@@ -10,6 +10,7 @@ import { money } from '@/lib/tuition'
 import { showAlert, showConfirm, showPrompt } from '@/lib/dialog'
 import { BATCH_STATUS, loadRun, markBatch, sumMoney, voidRun, type AchBatch, type Charge, type RunBill, type RunDetail } from '@/lib/billing'
 import { exportAchBatch, sendAchBatchBySftp } from '@/app/actions/billing-ach.actions'
+import { sendRunEmails } from '@/app/actions/billing-notice.actions'
 import { BANK_PRESETS, type AchSettingsData } from '@/lib/ach-banks'
 import { canManageTuition, useCenterContext } from '../../../context'
 import { BTN, BTN_PRIMARY, BTN_QUIET, BTN_QUIET_SM, FLD, LBL, Modal } from '../../../children/_components/ui'
@@ -55,6 +56,8 @@ export default function BillingRunPage() {
     if (!reason.trim()) { showAlert('Give a reason for voiding the run.'); return }
     const res = await voidRun(createClient(), run.id, reason)
     if (!res.success) { showAlert(res.error); return }
+    // Families already emailed about this bill get a "bill canceled" email
+    void sendRunEmails(run.id).catch(() => {})
     load()
   }
 

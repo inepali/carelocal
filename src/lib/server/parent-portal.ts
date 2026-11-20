@@ -237,3 +237,30 @@ export async function loadParentReviewStatus(tokenHash: string) {
   if (error) throw new Error(error.message)
   return (data ?? null) as ParentReviewStatus | null
 }
+
+/** The Billing tab's summary, or null (billing for families off, or this parent pays nothing). Never throws:
+ *  the tab simply hides when the database isn't ready for it. */
+export async function loadPortalBilling(tokenHash: string) {
+  const { data, error } = await parentDb().rpc('parent_billing_summary', { p_token_hash: tokenHash })
+  if (error) { console.error('[parent-portal] parent_billing_summary:', error.message); return null }
+  return (data as import('@/lib/parent-billing').ParentBillingSummary | null) ?? null
+}
+
+export async function loadPortalBills(tokenHash: string, before: string | null) {
+  const { data, error } = await parentDb().rpc('parent_billing_bills', { p_token_hash: tokenHash, p_before: before })
+  if (error) throw new Error(`parent_billing_bills: ${error.message}`)
+  return (data as import('@/lib/parent-billing').ParentBill[] | null) ?? []
+}
+
+export async function loadPortalBill(tokenHash: string, billId: string) {
+  const { data, error } = await parentDb().rpc('parent_billing_bill', { p_token_hash: tokenHash, p_bill_id: billId })
+  if (error) throw new Error(`parent_billing_bill: ${error.message}`)
+  return (data as import('@/lib/parent-billing').ParentBillDetail | null) ?? null
+}
+
+/** The lines a parent can ask to change and their bank change requests. Never throws (null: not ready, or billing off). */
+export async function loadPortalBankChanges(tokenHash: string) {
+  const { data, error } = await parentDb().rpc('parent_bank_changes', { p_token_hash: tokenHash })
+  if (error) { console.error('[parent-portal] parent_bank_changes:', error.message); return null }
+  return (data as import('@/lib/parent-billing').ParentBankChanges | null) ?? null
+}

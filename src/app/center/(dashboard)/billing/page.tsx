@@ -12,9 +12,12 @@ import {
   BATCH_STATUS, addDays, addMonths, billingWindow, chargeMethodLabel, defaultWindowDay, loadPreview, loadRuns, submitRun,
   type BillingPreview, type PreviewChild, type RunFrequency, type RunSummary,
 } from '@/lib/billing'
+import { sendRunEmails } from '@/app/actions/billing-notice.actions'
 import { canManageTuition, useCenterContext } from '../context'
 import { BTN_PRIMARY, BTN_QUIET_SM, FLD, LBL, Pill, todayISO } from '../children/_components/ui'
 import { VoidBadge } from './_components/charges'
+import FamilyBillingCard from './_components/FamilyBillingCard'
+import BankChangesPanel from './_components/BankChangesPanel'
 
 type Tab = 'run' | 'history'
 
@@ -41,6 +44,8 @@ export default function BillingPage() {
         </div>
       ) : (
         <>
+          <FamilyBillingCard centerId={ctx.centerId} />
+          <BankChangesPanel centerId={ctx.centerId} />
           <div className="mb-5 flex gap-1 border-b border-border">
             {([['run', 'Run billing'], ['history', 'Past runs']] as const).map(([id, label]) => (
               <button key={id} onClick={() => setTab(id)}
@@ -136,6 +141,8 @@ function RunBilling({ centerId }: { centerId: string }) {
     const res = await submitRun(createClient(), centerId, frequency, data.period_start, t.total, t.ach_count > 0 ? draftDate : null, note)
     setSubmitting(false)
     if (!res.success) { showAlert(res.error); load(); return }
+    // Bill emails to families (when Billing for families is on); the cron retries anything not sent
+    void sendRunEmails(res.data).catch(() => {})
     router.push(`/center/billing/runs/${res.data}`)
   }
 
