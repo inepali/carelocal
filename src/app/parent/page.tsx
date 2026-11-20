@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { Camera, ChevronLeft, ChevronRight, Clock, ImageOff, MessageSquarePlus, Phone, Star, Users } from 'lucide-react'
 import { reportDate, reportSections, reportTime } from '@/lib/daily-report'
 import {
-  loadParentGroupUrl, loadPortalAnnouncements, loadPortalDay, loadPortalHome, loadPortalPhotos, loadPortalThread, loadPortalThreads, parentTokenHash, rememberedCenterKey, signPortalPhotos,
+  loadParentGroupUrl, loadPortalAnnouncements, loadPortalBilling, loadPortalDay, loadPortalHome, loadPortalPhotos, loadPortalThread, loadPortalThreads, parentTokenHash, rememberedCenterKey, signPortalPhotos,
   type PortalHome,
 } from '@/lib/server/parent-portal'
 import { NoCenterLink } from './_components/SignInForm'
@@ -11,18 +11,21 @@ import { SignOutButton } from './_components/SignOutButton'
 import { Conversation, NewMessageForm } from './_components/Messages'
 import { MenuView } from './_components/MenuView'
 import { Notices } from './_components/Notices'
+import { BillingView } from './_components/BillingView'
 
 /**
  * /parent: a parent's view of their child's day, opened with a 6-digit PIN on the center’s link (no account). Server rendered;
  * every read goes through the parent_portal_* database functions with this device's session.
- *   ?child=<id>  which child (siblings share one code)   ?tab=today|photos|messages|notices|menu   ?day=YYYY-MM-DD
+ *   ?child=<id>  which child (siblings share one code)   ?tab=today|photos|messages|notices|menu|billing   ?day=YYYY-MM-DD
  *   ?before=<iso> (photos)   ?thread=<id> | ?compose=1 (messages)   ?tab=menu&week=YYYY-MM-DD (the center's menu, Sunday–Saturday)
+ *   ?tab=billing&bill=<id> | &before=YYYY-MM-DD (billing for the whole family, when the center turned it on)
  */
 
-type Search = { child?: string; tab?: string; day?: string; before?: string; thread?: string; compose?: string; week?: string }
-type Tab = 'today' | 'photos' | 'messages' | 'notices' | 'menu'
+type Search = { child?: string; tab?: string; day?: string; before?: string; thread?: string; compose?: string; week?: string; bill?: string }
+type Tab = 'today' | 'photos' | 'messages' | 'notices' | 'menu' | 'billing'
 const TABS: { id: Tab; label: string }[] = [
   { id: 'today', label: 'Activities' }, { id: 'photos', label: 'Photos' }, { id: 'messages', label: 'Messages' }, { id: 'notices', label: 'Notices' }, { id: 'menu', label: 'Menu' },
+  { id: 'billing', label: 'Billing' },
 ]
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -64,14 +67,15 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
   const menuOn = home.center.menu === true
   const asked: Tab = TABS.find(t => t.id === sp.tab)?.id ?? 'today'
   // Announcements are for the whole center, so the same on every child; opening the tab marks them seen
-  const [faces, threads, notices, groupUrl] = await Promise.all([
+  const [faces, threads, notices, groupUrl, billing] = await Promise.all([
     signPortalPhotos(home.center.id, home.children.map(c => c.photo_key)),
     loadPortalThreads(tokenHash, child.id),
     loadPortalAnnouncements(tokenHash, asked === 'notices'),
     loadParentGroupUrl(home.center.id),
+    loadPortalBilling(tokenHash),
   ])
-  const tab: Tab = (asked === 'notices' && notices === null) || (asked === 'menu' && !menuOn) ? 'today' : asked
-  const tabs = TABS.filter(t => (t.id !== 'notices' || notices !== null) && (t.id !== 'menu' || menuOn))
+  const tab: Tab = (asked === 'notices' && notices === null) || (asked === 'menu' && !menuOn) || (asked === 'billing' && !billing) ? 'today' : asked
+  const tabs = TABS.filter(t => (t.id !== 'notices' || notices !== null) && (t.id !== 'menu' || menuOn) && (t.id !== 'billing' || billing))
   const unread = (threads ?? []).reduce((n, t) => n + t.unread, 0)
   const newNotices = tab === 'notices' ? 0 : (notices ?? []).filter(n => n.unread).length
 
@@ -105,13 +109,14 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
         <h1 className="text-2xl font-bold">{child.first_name}</h1>
       </div>
 
-      <nav aria-label="Sections" className={`mb-5 grid gap-1 rounded-2xl border border-border bg-white p-1 font-semibold ${tabs.length >= 5 ? 'grid-cols-5 text-xs' : tabs.length === 4 ? 'grid-cols-4 text-[13px]' : 'grid-cols-3 text-sm'}`}>
+      <nav aria-label="Sections" className={`mb-5 grid gap-1 rounded-2xl border border-border bg-white p-1 font-semibold ${tabs.length >= 6 ? 'grid-cols-3 text-sm sm:grid-cols-6 sm:text-xs' : tabs.length === 5 ? 'grid-cols-5 text-xs' : tabs.length === 4 ? 'grid-cols-4 text-[13px]' : 'grid-cols-3 text-sm'}`}>
         {tabs.map(t => (
           <Link key={t.id} href={href({ child: child.id, tab: t.id === 'today' ? null : t.id })} aria-current={tab === t.id ? 'page' : undefined}
             className={`flex items-center justify-center gap-1.5 rounded-xl py-2 ${tab === t.id ? 'bg-brand-50 text-brand-700' : 'text-text-muted'}`}>
             {t.label}
             {t.id === 'messages' && unread > 0 && <span className="rounded-full bg-brand-600 px-1.5 text-[11px] leading-5 text-white" aria-label={`${unread} unread`}>{unread}</span>}
             {t.id === 'notices' && newNotices > 0 && <span className="rounded-full bg-brand-600 px-1.5 text-[11px] leading-5 text-white" aria-label={`${newNotices} new`}>{newNotices}</span>}
+            {t.id === 'billing' && billing && billing.due > 0 && tab !== 'billing' && <span className="h-2 w-2 rounded-full bg-amber-500" aria-label="Amount due" />}
           </Link>
         ))}
       </nav>
@@ -129,6 +134,7 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
       )}
 
       {tab === 'notices' && notices && <Notices items={notices} centerName={home.center.name} groupUrl={groupUrl} />}
+      {tab === 'billing' && billing && <BillingView tokenHash={tokenHash} childId={child.id} summary={billing} billId={sp.bill ?? null} before={sp.before ?? null} />}
       {tab === 'menu' && <MenuView tokenHash={tokenHash} childId={child.id} week={sp.week && DAY.test(sp.week) ? sp.week : null} />}
 
       <Link href="/parent/review" className="mt-8 flex items-center justify-between gap-3 rounded-2xl border border-border bg-white p-4 text-sm shadow-sm">

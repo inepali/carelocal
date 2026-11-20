@@ -6,7 +6,7 @@ import { KeyRound, Link2Off, Loader2 } from 'lucide-react'
 import { parentSignIn } from '@/app/actions/parent-portal.actions'
 
 /** PIN entry on a center's link. Six digits; it submits by itself once all six are in. */
-export function SignInForm({ centerKey, centerName, expired, next = '/parent' }: { centerKey: string; centerName: string; expired: boolean; next?: '/parent' | '/parent/review' }) {
+export function SignInForm({ centerKey, centerName, expired, next = '/parent' }: { centerKey: string; centerName: string; expired: boolean; next?: '/parent' | '/parent/review' | '/parent?tab=billing' }) {
   const router = useRouter()
   const [pin, setPin] = useState('')
   const [error, setError] = useState<string | null>(expired ? 'Please enter your PIN again.' : null)
