@@ -31,6 +31,7 @@ const words = authorizationText(data).join(' ')
 check('the authorization names the center and varying amounts', words.includes("Sunny Day's - Matthews") && /amount may change/.test(words) && /in writing/.test(words))
 check('the statement name is on the form', words.includes('"SUNNY DAYS"'))
 check('stop ACH wording', /stop drafting/.test(authorizationText({ ...data, kind: 'stop_ach' }).join(' ')))
+async function main() {
 const bytes = await buildBankChangeForm(data)
 const doc = await PDFDocument.load(bytes)
 check('a one-page PDF', doc.getPageCount() === 1 && Buffer.from(bytes.slice(0, 5)).toString() === '%PDF-')
@@ -46,6 +47,9 @@ check('approved: date and account', ok.html.includes('Saturday, Nov 21') && ok.h
 const no = bankChangeDecisionEmail({ center: 'Sunny Days', name: 'Maria Lopez', kind: 'stop_ach', approved: false, reason: '<b>Call us</b>' })
 check('declined: the reason, escaped', no.html.includes('&lt;b&gt;Call us&lt;/b&gt;') && !no.html.includes('<b>Call us'))
 check('first name greeting', no.html.includes('Hi Maria,'))
+}
 
+main().then(() => {
 console.log(`\n${passed} passed, ${failures.length} failed`)
 if (failures.length) { console.log('Failed:\n  ' + failures.join('\n  ')); process.exit(1) }
+})
