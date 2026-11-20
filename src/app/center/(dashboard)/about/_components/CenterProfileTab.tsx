@@ -9,6 +9,7 @@ import { getDomainKey, type DomainKey } from '@/lib/domain-config'
 import { showAlert } from '@/lib/dialog'
 import GroupMeCard from './GroupMeCard'
 import CenterBankCard from './CenterBankCard'
+import CenterAchSettingsCard from './CenterAchSettingsCard'
 
 export default function CenterProfileTab() {
   const supabase = createClient()
@@ -329,6 +330,8 @@ export default function CenterProfileTab() {
           <GroupMeCard />
 
           <CenterBankCard />
+
+          <CenterAchSettingsCard />
         </div>
 
         {/* ── Right: Sidebar / Subscription ── */}
