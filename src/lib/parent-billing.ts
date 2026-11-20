@@ -161,3 +161,78 @@ export function paymentLabel(p: ParentPayment) {
     default: return 'Payment'
   }
 }
+
+// Bank change requests (parent billing phase 2) ---------------------------------------------------------------------
+
+export type BankChangeKind = 'new_account' | 'stop_ach'
+export type BankChangeStatus = 'pending' | 'approved' | 'declined' | 'canceled'
+
+/** A payer line the parent can change */
+export interface ParentPayLine {
+  payer_id: string
+  child: string
+  method: 'ach' | 'credit_card' | 'check' | 'other'
+  account_type: 'checking' | 'savings' | null
+  last4: string | null
+  bank_name: string | null
+  starts: string
+}
+
+export interface ParentBankChange {
+  id: string
+  kind: BankChangeKind
+  status: BankChangeStatus
+  bank_name: string | null
+  account_type: 'checking' | 'savings' | null
+  last4: string | null
+  children: { id: string; name: string }[]
+  created_at: string
+  decided_at: string | null
+  decision_note: string | null
+  effective_from: string | null
+}
+
+export interface ParentBankChanges { lines: ParentPayLine[]; requests: ParentBankChange[] }
+
+/** What the center sees */
+export interface BankChangeRequest {
+  id: string
+  kind: BankChangeKind
+  status: BankChangeStatus
+  requester_name: string
+  requester_email: string | null
+  holder_name: string | null
+  bank_name: string | null
+  routing_number: string | null
+  account_type: 'checking' | 'savings' | null
+  last4: string | null
+  created_at: string
+  decided_at: string | null
+  decision_note: string | null
+  effective_from: string | null
+  authorization_file_id: string | null
+  decided_by: string | null
+  lines: { payer_id: string; child_id: string; child: string; method: string; last4: string | null; account_type: string | null; current: boolean }[]
+}
+
+/** How a request reads, for either side */
+export function bankChangeLabel(r: { kind: BankChangeKind; account_type: 'checking' | 'savings' | null; last4: string | null; bank_name?: string | null }) {
+  if (r.kind === 'stop_ach') return 'Stop ACH drafts, pay at the center'
+  return `ACH from ${r.bank_name ? `${r.bank_name} ` : ''}${account(r.account_type, r.last4)}`
+}
+
+export function bankChangeStatus(r: { status: BankChangeStatus; effective_from: string | null }): { label: string; tone: Tone } {
+  switch (r.status) {
+    case 'pending': return { label: 'Waiting for the center', tone: 'due' }
+    case 'approved': return { label: r.effective_from ? `Done, from ${shortDay(r.effective_from)}` : 'Done', tone: 'good' }
+    case 'declined': return { label: 'Not made', tone: 'bad' }
+    default: return { label: 'Canceled', tone: 'muted' }
+  }
+}
+
+/** The parent's form checks, before anything is sent (the server checks again) */
+export function checkRouting(p: string): boolean {
+  if (!/^\d{9}$/.test(p) || p === '000000000') return false
+  const n = p.split('').map(Number)
+  return (3 * (n[0] + n[3] + n[6]) + 7 * (n[1] + n[4] + n[7]) + (n[2] + n[5] + n[8])) % 10 === 0
+}

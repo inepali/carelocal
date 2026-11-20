@@ -17,6 +17,7 @@ import { canManageTuition, useCenterContext } from '../context'
 import { BTN_PRIMARY, BTN_QUIET_SM, FLD, LBL, Pill, todayISO } from '../children/_components/ui'
 import { VoidBadge } from './_components/charges'
 import FamilyBillingCard from './_components/FamilyBillingCard'
+import BankChangesPanel from './_components/BankChangesPanel'
 
 type Tab = 'run' | 'history'
 
@@ -44,6 +45,7 @@ export default function BillingPage() {
       ) : (
         <>
           <FamilyBillingCard centerId={ctx.centerId} />
+          <BankChangesPanel centerId={ctx.centerId} />
           <div className="mb-5 flex gap-1 border-b border-border">
             {([['run', 'Run billing'], ['history', 'Past runs']] as const).map(([id, label]) => (
               <button key={id} onClick={() => setTab(id)}
