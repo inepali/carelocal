@@ -6,7 +6,8 @@
  * Database tests: scripts/billing/billing.test.sql
  */
 import { mondayOf, addDays, monthStart, addMonths, billingWindow, defaultWindowDay, sumMoney, checkPayment, planPayment, checkReceipt } from '../../src/lib/billing.ts'
-import { buildNachaFile, buildAchCsv, abaOk, NachaError } from '../../src/lib/server/nacha.ts'
+import { buildNachaFile, buildAchCsv, abaOk, nachaFileName, NachaError } from '../../src/lib/server/nacha.ts'
+import { checkAchSettings, settingsToInput, FINGERPRINT } from '../../src/lib/ach-banks.ts'
 
 let passed = 0
 const failures = []
@@ -98,6 +99,40 @@ check('refuses bad company id', throws(() => buildNachaFile(debits, { ...opts, c
 check('refuses bad payer routing', throws(() => buildNachaFile([{ ...debits[0], routing: '123456789' }], opts), /routing number for/))
 check('refuses bad account', throws(() => buildNachaFile([{ ...debits[0], account: '12' }], opts), /account number for/))
 check('refuses an empty batch', throws(() => buildNachaFile([], opts), /No drafts/))
+
+console.log('nacha bank settings')
+const hdr = buildNachaFile(debits, { ...opts, immediateDestination: '091000019', immediateDestinationName: 'Wells Fargo Bank', immediateOrigin: '123456789' }).split('\n')[0]
+check('immediate destination override', hdr.slice(3, 13) === ' 091000019')
+check('immediate origin override (9 digits get a leading space)', hdr.slice(13, 23) === ' 123456789')
+check('destination name override', hdr.slice(40, 63) === 'WELLS FARGO BANK       ')
+check('header still 94 characters', hdr.length === 94)
+const defaults = buildNachaFile(debits, opts)
+check('no overrides = same file as before', defaults === buildNachaFile(debits, { ...opts, immediateDestination: '', immediateOrigin: '', lineEnding: 'lf' }))
+const crlf = buildNachaFile(debits, { ...opts, lineEnding: 'crlf' })
+check('CRLF line endings', crlf.split('\r\n').length === 11 && !/[^\r]\n/.test(crlf))
+check('CRLF records still 94', crlf.trimEnd().split('\r\n').every(l => l.length === 94))
+check('refuses a bad destination', throws(() => buildNachaFile(debits, { ...opts, immediateDestination: '1234' }), /immediate destination/))
+check('refuses a bad origin', throws(() => buildNachaFile(debits, { ...opts, immediateOrigin: 'AB-CD' }), /immediate origin/))
+const when = new Date(2026, 10, 15, 21, 5, 9)
+check('file name default', nachaFileName('', { companyId: 'x1', draftDate: '2026-11-16', now: when }) === 'ach-drafts-20261116-20261115210509.ach')
+check('file name tokens', nachaFileName('{companyId}_ACH_{created}_NACHA.txt', { companyId: '1123456789', draftDate: '2026-11-16', now: when }) === '1123456789_ACH_20261115210509_NACHA.txt')
+check('file name strips unsafe characters', nachaFileName('../{date}/x y.ach', { companyId: '1', draftDate: '2026-11-16', now: when }) === '20261116xy.ach')
+check('file name refuses empty', throws(() => nachaFileName('///', { companyId: '1', draftDate: '2026-11-16' }), /file name/))
+
+console.log('ach settings form')
+const base = { ...settingsToInput(null), company_id: '1123456789' }
+check('defaults are valid', checkAchSettings(base, { sftp_secret: false }) === null)
+check('other bank needs a name', /bank’s name/.test(checkAchSettings({ ...base, bank: 'other' }, { sftp_secret: false }) ?? ''))
+check('company id length', /Company ID/.test(checkAchSettings({ ...base, company_id: '12345678901' }, { sftp_secret: false }) ?? ''))
+check('host without scheme', /SFTP host/.test(checkAchSettings({ ...base, sftp_host: 'https://x.com' }, { sftp_secret: false }) ?? ''))
+check('fingerprint format', FINGERPRINT.test('SHA256:' + 'A'.repeat(43)) && !FINGERPRINT.test('MD5:aa:bb'))
+const sftp = { ...base, send_method: 'sftp', sftp_host: 'sftp.bank.com', sftp_username: 'center1', sftp_host_fingerprint: 'SHA256:' + 'b'.repeat(43) }
+check('sftp needs a password or key', /To send by SFTP/.test(checkAchSettings(sftp, { sftp_secret: false }) ?? ''))
+check('sftp ok with a saved key', checkAchSettings(sftp, { sftp_secret: true }) === null)
+check('sftp not ok when the saved key is cleared', /To send by SFTP/.test(checkAchSettings({ ...sftp, clear: ['sftp_secret'] }, { sftp_secret: true }) ?? ''))
+check('private key must be a PEM', /private key/.test(checkAchSettings({ ...sftp, sftp_secret: 'hunter2' }, { sftp_secret: false }) ?? ''))
+check('password sign-in takes any password', checkAchSettings({ ...sftp, sftp_auth: 'password', sftp_secret: 'hunter2' }, { sftp_secret: false }) === null)
+check('folder cannot climb', /“\.\.”/.test(checkAchSettings({ ...base, sftp_remote_dir: '../etc' }, { sftp_secret: false }) ?? ''))
 
 console.log('csv')
 const csv = buildAchCsv([{ ...debits[0], name: '=HYPERLINK("x")' }], '2026-11-16')

@@ -18,10 +18,12 @@ const VERSION = 'v1'
  * What the number is for, bound into the ciphertext (GCM additional data), so a center's deposit account can't be
  * copied into a payer row (or the other way round) and still decrypt.
  */
-export type BankPurpose = 'payer' | 'center'
+export type BankPurpose = 'payer' | 'center' | 'achSecret'
 const AAD: Record<BankPurpose, Buffer> = {
   payer: Buffer.from('carelocal:tuition:ach-account:v1'),
   center: Buffer.from('carelocal:center:deposit-account:v1'),
+  // SFTP passwords and private keys, bank API secrets (center_ach_settings)
+  achSecret: Buffer.from('carelocal:center:ach-secret:v1'),
 }
 
 export class BankKeyMissingError extends Error {
@@ -56,4 +58,12 @@ export function decryptAccountNumber(stored: string, key: Buffer = bankKey(), pu
   decipher.setAAD(AAD[purpose])
   decipher.setAuthTag(Buffer.from(tag, 'base64'))
   return Buffer.concat([decipher.update(Buffer.from(ct, 'base64')), decipher.final()]).toString('utf8')
+}
+
+/** A center's bank connection secret (SFTP password or private key, API secret), same key and format, its own purpose */
+export function encryptSecret(value: string, key: Buffer = bankKey()): string {
+  return encryptAccountNumber(value, key, 'achSecret')
+}
+export function decryptSecret(stored: string, key: Buffer = bankKey()): string {
+  return decryptAccountNumber(stored, key, 'achSecret')
 }

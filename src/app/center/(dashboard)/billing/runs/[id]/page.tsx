@@ -9,7 +9,8 @@ import { formatDate } from '@/lib/compliance'
 import { money } from '@/lib/tuition'
 import { showAlert, showConfirm, showPrompt } from '@/lib/dialog'
 import { BATCH_STATUS, loadRun, markBatch, sumMoney, voidRun, type AchBatch, type Charge, type RunBill, type RunDetail } from '@/lib/billing'
-import { exportAchBatch } from '@/app/actions/billing-ach.actions'
+import { exportAchBatch, sendAchBatchBySftp } from '@/app/actions/billing-ach.actions'
+import { BANK_PRESETS, type AchSettingsData } from '@/lib/ach-banks'
 import { canManageTuition, useCenterContext } from '../../../context'
 import { BTN, BTN_PRIMARY, BTN_QUIET, BTN_QUIET_SM, FLD, LBL, Modal } from '../../../children/_components/ui'
 import { ChargeList, ChargeStatusPill, RecordPaymentDialog, VoidBadge } from '../../_components/charges'
@@ -95,7 +96,7 @@ export default function BillingRunPage() {
           </Step>
           <Step n={2} title="Run ACH" done={!run.ach || run.ach.status === 'settled' || run.ach.status === 'void'}>
             {run.ach
-              ? <AchCard batch={run.ach} isOwner={data.is_owner} busy={exporting} setBusy={setExporting} onChanged={load} />
+              ? <AchCard batch={run.ach} centerId={ctx.centerId} isOwner={data.is_owner} busy={exporting} setBusy={setExporting} onChanged={load} />
               : <p className="text-sm text-muted">No ACH drafts in this run.</p>}
           </Step>
           <Step n={3} title="Run Credit Card" done={cardCharges.every(x => x.charge.balance <= 0)}>
@@ -220,8 +221,29 @@ function CardRun({ items, today, onChanged }: { items: { bill: RunBill; charge: 
 
 const LS_KEY = 'carelocal.billing.ach-export'
 
-function AchCard({ batch, isOwner, busy, setBusy, onChanged }: { batch: AchBatch; isOwner: boolean; busy: boolean; setBusy: (b: boolean) => void; onChanged: () => void }) {
+function AchCard({ batch, centerId, isOwner, busy, setBusy, onChanged }: { batch: AchBatch; centerId: string | null | undefined; isOwner: boolean; busy: boolean; setBusy: (b: boolean) => void; onChanged: () => void }) {
   const [dialog, setDialog] = useState(false)
+  const [ach, setAch] = useState<AchSettingsData['settings']>(null)
+  useEffect(() => {
+    if (!centerId) return
+    let live = true
+    createClient().rpc('center_ach_settings_get', { p_center_id: centerId }).then(({ data }) => { if (live) setAch((data as AchSettingsData | null)?.settings ?? null) })
+    return () => { live = false }
+  }, [centerId])
+  const savedId = !!ach?.company_id
+  const sftpReady = !!(ach && ach.send_method === 'sftp' && ach.sftp_host && ach.sftp_username && ach.has_sftp_secret && ach.sftp_host_fingerprint)
+  const uploadHint = ach ? BANK_PRESETS[ach.bank].uploadHint : 'your bank’s ACH file upload page (e.g. Truist One View → ACH → file import).'
+
+  async function send() {
+    if (!await showConfirm(`Send the ACH file for ${batch.count} ${batch.count === 1 ? 'draft' : 'drafts'} to ${ach?.sftp_host} now? The bank drafts every family in it, so this can't be undone here. The batch is marked sent when the bank has the file.`,
+      { title: 'Send to bank', confirmLabel: 'Send file' })) return
+    setBusy(true)
+    const res = await sendAchBatchBySftp(batch.id)
+    setBusy(false)
+    onChanged()
+    if (!res.success) { showAlert(res.error, { title: 'Not sent' }); return }
+    showAlert(`The bank received ${res.fileName}: ${res.count} ${res.count === 1 ? 'draft' : 'drafts'}, ${money(res.total)}. The batch is marked sent. Press "Mark cleared" when the money reaches the center's account.`, { title: 'File sent' })
+  }
   const [form, setForm] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(LS_KEY) ?? '{}') as { companyId?: string; companyName?: string; balanced?: boolean; format?: 'nacha' | 'csv' }
@@ -231,7 +253,7 @@ function AchCard({ batch, isOwner, busy, setBusy, onChanged }: { batch: AchBatch
 
   async function download() {
     setBusy(true)
-    const res = await exportAchBatch(batch.id, form)
+    const res = await exportAchBatch(batch.id, savedId && form.format === 'nacha' ? { format: 'nacha' } : form)
     setBusy(false)
     if (!res.success) { showAlert(res.error); return }
     try { localStorage.setItem(LS_KEY, JSON.stringify({ format: form.format, companyId: form.companyId, companyName: form.companyName, balanced: form.balanced })) } catch { /* private mode */ }
@@ -242,7 +264,7 @@ function AchCard({ batch, isOwner, busy, setBusy, onChanged }: { batch: AchBatch
     document.body.appendChild(a); a.click(); a.remove()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
     setDialog(false)
-    showAlert(`NACHA file built: ${res.count} ${res.count === 1 ? 'draft' : 'drafts'} (${money(res.total)}). Upload it on your bank's ACH file upload page, then press "Mark sent". Delete the file from your computer once it's uploaded: it has full account numbers.`, { title: 'ACH file ready' })
+    showAlert(`NACHA file built: ${res.count} ${res.count === 1 ? 'draft' : 'drafts'} (${money(res.total)}). Upload it: ${uploadHint} Then press "Mark sent". Delete the file from your computer once it's uploaded: it has full account numbers.`, { title: 'ACH file ready' })
     onChanged()
   }
   async function mark(status: 'sent' | 'settled') {
@@ -271,10 +293,12 @@ function AchCard({ batch, isOwner, busy, setBusy, onChanged }: { batch: AchBatch
           {(batch.status === 'scheduled' || batch.status === 'exported') && !isOwner && <p className="mt-1 text-xs text-muted">The center&apos;s owner downloads the bank file (it carries full account numbers).</p>}
           <ol className="mt-2 list-decimal space-y-0.5 pl-5 text-xs text-muted">
             <li className={batch.status === 'scheduled' ? 'font-semibold text-text-main' : ''}><b>Run ACH</b> builds the NACHA file (owner only, it has full account numbers).</li>
-            <li className={batch.status === 'exported' ? 'font-semibold text-text-main' : ''}>Upload it on your bank&apos;s ACH file upload page (e.g. Truist One View → ACH → file import), then press <b>Mark sent</b>.</li>
+            <li className={batch.status === 'exported' ? 'font-semibold text-text-main' : ''}>{sftpReady
+              ? <>Press <b>Send to bank</b> to deliver it by SFTP (it&apos;s marked sent for you), or upload it by hand and press <b>Mark sent</b>.</>
+              : <>Upload it: {uploadHint} Then press <b>Mark sent</b>.</>}</li>
             <li className={batch.status === 'sent' ? 'font-semibold text-text-main' : ''}>When the money reaches the center&apos;s account (2–3 banking days), press <b>Mark cleared</b>. Mark any draft the bank returns.</li>
           </ol>
-          <p className="mt-1 text-xs text-muted">Banks don&apos;t take ACH files by API from CareLocal yet, so the upload is by hand. With Moov (or a bank SFTP link) this step becomes automatic.</p>
+          {!sftpReady && <p className="mt-1 text-xs text-muted">If your bank sets up SFTP file transmission, CareLocal can send the file for you (About → Center Profile → ACH bank settings).</p>}
         </div>
         <div className="flex flex-wrap gap-2">
           {(batch.status === 'scheduled' || batch.status === 'exported') && isOwner && (
@@ -282,7 +306,10 @@ function AchCard({ batch, isOwner, busy, setBusy, onChanged }: { batch: AchBatch
               {batch.status === 'exported' ? <><Download className="h-3.5 w-3.5" /> Build file again</> : <><Landmark className="h-3.5 w-3.5" /> Run ACH</>}
             </button>
           )}
-          {batch.status === 'exported' && !batch.file_stale && <button className={BTN} onClick={() => mark('sent')}><Send className="h-3.5 w-3.5" /> Mark sent</button>}
+          {(batch.status === 'scheduled' || batch.status === 'exported') && isOwner && sftpReady && (
+            <button className={BTN} onClick={send} disabled={busy}>{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />} Send to bank</button>
+          )}
+          {batch.status === 'exported' && !batch.file_stale && <button className={sftpReady ? BTN_QUIET_SM : BTN} onClick={() => mark('sent')}><Send className="h-3.5 w-3.5" /> Mark sent</button>}
           {batch.status === 'sent' && <button className={BTN} onClick={() => mark('settled')}><CheckCircle2 className="h-3.5 w-3.5" /> Mark cleared</button>}
         </div>
       </div>
@@ -302,6 +329,9 @@ function AchCard({ batch, isOwner, busy, setBusy, onChanged }: { batch: AchBatch
             </div>
             {form.format === 'nacha' && (
               <>
+                {savedId ? (
+                  <p className="rounded-xl bg-surface p-3 text-sm text-text-main">Built with the center&apos;s ACH bank settings: Company ID <b className="font-mono">{ach?.company_id}</b>{ach?.balanced ? ', balanced file' : ''}. Change them in About → Center Profile.</p>
+                ) : <>
                 <div>
                   <label className={LBL}>Company ID</label>
                   <input className={FLD} maxLength={10} value={form.companyId} onChange={e => setForm(f => ({ ...f, companyId: e.target.value.trim() }))} placeholder="e.g. 1123456789" />
@@ -315,6 +345,8 @@ function AchCard({ batch, isOwner, busy, setBusy, onChanged }: { batch: AchBatch
                   <input type="checkbox" className="mt-1" checked={form.balanced} onChange={e => setForm(f => ({ ...f, balanced: e.target.checked }))} />
                   <span>Add an offsetting credit to the center&apos;s account (a &ldquo;balanced&rdquo; file). Only if your bank asks for one.</span>
                 </label>
+                <p className="text-xs text-muted">Save these once in About → Center Profile → ACH bank settings so you don&apos;t type them each run.</p>
+                </>}
               </>
             )}
             <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-900">The file has full bank account numbers. Downloading it is logged on each child&apos;s file. Delete it from your computer once it&apos;s uploaded to the bank.</p>
