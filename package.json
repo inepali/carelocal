@@ -46,7 +46,7 @@
     "dotenv": "^17.4.1",
     "google-auth-library": "^10.7.0",
     "lucide-react": "^1.8.0",
-    "next": "^16.4.1",
+    "next": "^16.4.6",
     "openpgp": "^6.3.2",
     "pdf-lib": "^1.17.1",
     "pg": "^8.20.0",
@@ -73,7 +73,7 @@
     "@types/ssh2-sftp-client": "^9.0.6",
     "@types/web-push": "^3.6.4",
     "eslint": "^9",
-    "eslint-config-next": "^16.4.1",
+    "eslint-config-next": "^16.4.6",
     "supabase": "^2.89.1",
     "tailwindcss": "^4",
     "typescript": "^5"

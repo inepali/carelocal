@@ -19,6 +19,10 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   // ssh2 (bank SFTP for ACH files) ships optional native add-ons, so it is loaded from node_modules, not bundled
   serverExternalPackages: ['ssh2', 'ssh2-sftp-client'],
+  experimental: {
+    // Set by `next upgrade --agent=security`: keep this app on security upgrades
+    agentUpgrade: 'security',
+  },
   async headers() {
     return [
       {
