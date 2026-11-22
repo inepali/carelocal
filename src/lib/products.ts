@@ -1,4 +1,4 @@
-import { Clock, Monitor, ShoppingCart, type LucideIcon } from 'lucide-react'
+import { Monitor, ShoppingCart, type LucideIcon } from 'lucide-react'
 
 export interface Product {
   name: string
@@ -19,12 +19,6 @@ export const PRODUCTS: Product[] = [
     tagline: 'Digital displays for schedules and announcements at your center',
     href: 'https://caredisplay.carelocal.net',
     Icon: Monitor,
-  },
-  {
-    name: 'CareTime',
-    tagline: 'Staff time tracking and attendance',
-    href: 'https://purple-snake-685383.hostingersite.com/',
-    Icon: Clock,
   },
   {
     name: 'PurchApp',
