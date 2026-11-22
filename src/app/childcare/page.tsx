@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ProductsMenu } from '@/components/marketing/ProductsMenu'
+import { NavDropdown } from '@/components/marketing/NavDropdown'
 import { ComplianceSuite } from '@/components/marketing/ComplianceSuite'
 import { getDomainConfig } from '@/lib/domain-config'
 import { StructuredData } from '@/components/marketing/StructuredData'
@@ -413,13 +414,19 @@ export default function ChildcareHomePage() {
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-muted">
             <ProductsMenu />
             <Link href="#how-it-works" className="hover:text-brand-600 transition-colors">How it works</Link>
-            <Link href="#a-day" className="hover:text-brand-600 transition-colors">Classroom</Link>
-            <Link href="#office" className="hover:text-brand-600 transition-colors">Office</Link>
-            <Link href="#features" className="hover:text-brand-600 transition-colors">Features</Link>
-            <Link href="#compliance" className="hover:text-brand-600 transition-colors">Compliance</Link>
-            <Link href="#security" className="hover:text-brand-600 transition-colors">Security</Link>
+            <NavDropdown
+              label="Features"
+              href="#features"
+              items={[
+                { name: 'All features', href: '#features' },
+                { name: 'Classroom', href: '#a-day' },
+                { name: 'Office', href: '#office' },
+                { name: 'Compliance', href: '#compliance' },
+                { name: 'Security', href: '#security' },
+                { name: 'Jobs', href: '/jobs' },
+              ]}
+            />
             <Link href="#pricing" className="hover:text-brand-600 transition-colors">Pricing</Link>
-            <Link href="/jobs" className="hover:text-brand-600 transition-colors">Jobs</Link>
             <Link href="/contact" className="hover:text-brand-600 transition-colors">Contact</Link>
           </div>
           <div className="flex items-center gap-3">

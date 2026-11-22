@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ProductsMenu } from '@/components/marketing/ProductsMenu'
+import { NavDropdown } from '@/components/marketing/NavDropdown'
 import { ComplianceSuite } from '@/components/marketing/ComplianceSuite'
 import { getDomainConfig } from '@/lib/domain-config'
 import { StructuredData } from '@/components/marketing/StructuredData'
@@ -147,8 +148,14 @@ export default function HealthcareHomePage() {
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-brand-700">
             <ProductsMenu />
             <Link href="#how-it-works" className="hover:text-brand-600 transition-colors">How it works</Link>
-            <Link href="#features" className="hover:text-brand-600 transition-colors">Features</Link>
-            <Link href="#compliance" className="hover:text-brand-600 transition-colors">Compliance</Link>
+            <NavDropdown
+              label="Features"
+              href="#features"
+              items={[
+                { name: 'All features', href: '#features' },
+                { name: 'Compliance', href: '#compliance' },
+              ]}
+            />
             <Link href="#pricing" className="hover:text-brand-600 transition-colors">Pricing</Link>
             <Link href="/contact" className="hover:text-brand-600 transition-colors">Contact</Link>
           </div>

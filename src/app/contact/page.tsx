@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { submitContactForm } from '@/app/actions/contact.actions'
 import { ProductsMenu } from '@/components/marketing/ProductsMenu'
+import { NavDropdown } from '@/components/marketing/NavDropdown'
 import { getDomainConfig, getDomainKey, type DomainKey } from '@/lib/domain-config'
 
 export default function ContactPage() {
@@ -144,8 +145,14 @@ export default function ContactPage() {
             {domainKey !== 'senior' && (
               <>
                 <Link href="/#how-it-works" className="hover:text-brand-600 transition-colors">How it works</Link>
-                <Link href="/#features" className="hover:text-brand-600 transition-colors">Features</Link>
-                <Link href="/#compliance" className="hover:text-brand-600 transition-colors">Compliance</Link>
+                <NavDropdown
+                  label="Features"
+                  href="/#features"
+                  items={[
+                    { name: 'All features', href: '/#features' },
+                    { name: 'Compliance', href: '/#compliance' },
+                  ]}
+                />
                 <Link href="/#pricing" className="hover:text-brand-600 transition-colors">Pricing</Link>
                 <Link href="/contact" className="hover:text-brand-600 transition-colors">Contact</Link>
               </>
